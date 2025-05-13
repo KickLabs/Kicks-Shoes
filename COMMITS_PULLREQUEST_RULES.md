@@ -58,7 +58,7 @@
 
 ### ✔ Cấu trúc:
 
-<type>/<screen>-<ui|be>
+`<type>/<screen>-<ui|be>`
 
 ### 📌 Ví dụ:
 
