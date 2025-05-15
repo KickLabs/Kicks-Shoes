@@ -113,7 +113,23 @@
    - [ ] Đã test đầy đủ trước khi tạo PR
    - [ ] Đã tự review lại code
    - [ ] Đảm bảo không commit các file không cần thiết (VD: `.env`, `node_modules`, build folder, v.v.)
-   - [ ] Đã đặt tên branch, commit theo đúng quy định -->
+   - [ ] Đã đặt tên branch, commit theo đúng quy định
+      - [ ] Đã test đầy đủ trước khi tạo PR
+   - [ ] Đã tự review lại code
+   - [ ] Đảm bảo không commit các file không cần thiết (VD: `.env`, `node_modules`, build folder, v.v.)
+   - [ ] Đã đặt tên branch, commit theo đúng quy định
+   - [ ] Đã pull source mới nhất về nhánh và xử lý conflict
+   - [ ] Đã thêm đủ label mô tả, function
+   - [ ] Đã thêm reviewers
+
+   - [ ] Fully tested before creating the PR
+   - [ ] Self-reviewed the code
+   - [ ] Ensured no unnecessary files are committed (e.g., .env, node_modules, build folder, etc.)
+   - [ ] Branch name and commit messages follow the naming conventions
+   - [ ] Pulled the latest source to the branch and resolved any conflicts
+   - [ ] Added appropriate labels and function descriptions
+   - [ ] Added reviewers
+   -->
 
 ---
 

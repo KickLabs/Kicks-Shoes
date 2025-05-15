@@ -4,6 +4,14 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./styles/index.css";
 import App from "./components/layout/App";
 import ErrorPage from "./components/common/pages/Error";
+import Dashboard, {
+  DashboardContent,
+} from "./components/pages/dashboard/Dashboard";
+import HomePage from "./components/pages/home/pages/HomePage";
+import AllProducts from "./components/pages/dashboard/AllProducts";
+import OrderList from "./components/pages/dashboard/OrderList";
+import OrderDetails from "./components/pages/dashboard/OrderDetails";
+import ProductDetails from "./components/pages/dashboard/ProductDetails";
 
 const router = createBrowserRouter([
   {
@@ -13,47 +21,37 @@ const router = createBrowserRouter([
     children: [
       {
         path: "",
-        element: <App />,
+        element: <HomePage />,
       },
       {
-        path: "shop",
-        element: <>Shop</>,
-      },
-      {
-        path: `shop/product/:id`,
-        element: <>Shop</>,
-      },
-      {
-        path: "profile",
-        element: <>Shop</>,
-      },
-      {
-        path: "checkout",
-        element: <>Shop</>,
-      },
-      {
-        path: "cart",
-        element: <>Shop</>,
-      },
-      {
-        path: "contact",
-        element: <>Shop</>,
-      },
-      {
-        path: "blogs",
-        element: <>Shop</>,
-      },
-      {
-        path: `/blogs/:id`,
-        element: <>Shop</>,
-      },
-      {
-        path: `/favorites`,
-        element: <>Shop</>,
-      },
-      {
-        path: `/dashboard`,
-        element: <>Shop</>,
+        path: "dashboard",
+        element: <Dashboard />,
+        children: [
+          {
+            path: "",
+            element: <DashboardContent />,
+          },
+          {
+            path: "products",
+            element: <AllProducts />,
+          },
+          {
+            path: "orders",
+            element: <OrderList />,
+          },
+          {
+            path: "orders/:orderId",
+            element: <OrderDetails />,
+          },
+          {
+            path: "products/:productId",
+            element: <ProductDetails />,
+          },
+          {
+            path: "products/add-new",
+            element: <ProductDetails isAddNew={true} />,
+          },
+        ],
       },
     ],
   },
