@@ -25,11 +25,13 @@ const router = createBrowserRouter([
         element: <HomePage />,
       },
       {
-
-        path: "header",
-        element: <AppHeader />,
         path: "dashboard",
-        element: <Dashboard />,
+        element: (
+          <>
+            <AppHeader />
+            <Dashboard />
+          </>
+        ),
         children: [
           {
             path: "",
