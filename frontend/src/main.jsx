@@ -4,6 +4,8 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./styles/index.css";
 import App from "./components/layout/App";
 import ErrorPage from "./components/common/pages/Error";
+import HomePage from "./components/pages/home/pages/HomePage";
+import AppHeader from "./components/common/components/Header";
 
 const router = createBrowserRouter([
   {
@@ -13,47 +15,12 @@ const router = createBrowserRouter([
     children: [
       {
         path: "",
-        element: <App />,
+        element: <HomePage />,
       },
       {
-        path: "shop",
-        element: <>Shop</>,
-      },
-      {
-        path: `shop/product/:id`,
-        element: <>Shop</>,
-      },
-      {
-        path: "profile",
-        element: <>Shop</>,
-      },
-      {
-        path: "checkout",
-        element: <>Shop</>,
-      },
-      {
-        path: "cart",
-        element: <>Shop</>,
-      },
-      {
-        path: "contact",
-        element: <>Shop</>,
-      },
-      {
-        path: "blogs",
-        element: <>Shop</>,
-      },
-      {
-        path: `/blogs/:id`,
-        element: <>Shop</>,
-      },
-      {
-        path: `/favorites`,
-        element: <>Shop</>,
-      },
-      {
-        path: `/dashboard`,
-        element: <>Shop</>,
+
+        path: "header",
+        element: <AppHeader />,
       },
     ],
   },
