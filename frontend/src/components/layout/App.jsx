@@ -25,11 +25,13 @@ function App() {
             outlineWidth: 0,
             defaultShadow: "none",
           },
+          Pagination: {
+            itemSize: 38,
+          },
         },
       }}
     >
       <div>
-        {/* Có thể thêm header/sidebar ở đây nếu muốn */}
         <Outlet />
       </div>
     </ConfigProvider>
