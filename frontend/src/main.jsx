@@ -4,7 +4,6 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./styles/index.css";
 import App from "./components/layout/App";
 import ErrorPage from "./components/common/pages/Error";
-import AppHeader from "./components/common/components/Header";
 import Dashboard, {
   DashboardContent,
 } from "./components/pages/dashboard/Dashboard";
@@ -28,7 +27,6 @@ const router = createBrowserRouter([
         path: "dashboard",
         element: (
           <>
-            <AppHeader />
             <Dashboard />
           </>
         ),

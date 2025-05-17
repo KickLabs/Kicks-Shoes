@@ -1,7 +1,11 @@
 import { ConfigProvider } from "antd";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
+import AppHeader from "./../common/components/Header";
 
 function App() {
+  const location = useLocation();
+  const isDashboard = location.pathname.startsWith("/dashboard");
+
   return (
     <ConfigProvider
       theme={{
@@ -32,6 +36,7 @@ function App() {
       }}
     >
       <div>
+        {!isDashboard && <AppHeader />}
         <Outlet />
       </div>
     </ConfigProvider>

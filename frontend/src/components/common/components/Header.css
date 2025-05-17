@@ -5,15 +5,9 @@
   justify-content: space-between;
   padding: 0 40px;
   height: 64px;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
   margin: 15px;
   border-radius: 10px;
 }
-
 
 .header-right {
   display: flex;
@@ -38,7 +32,7 @@
 }
 
 .logo-img {
-  width: 400px ;
+  width: 400px;
   max-width: 45%;
   height: 10%;
   fill: #000;
@@ -72,6 +66,6 @@
   cursor: pointer;
 }
 
-.noti{
+.noti {
   background-color: orange;
 }
