@@ -1,0 +1,71 @@
+.app-header {
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  height: 64px;
+  margin: 15px;
+  border-radius: 10px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-left {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.header-center {
+  flex: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.logo-img {
+  width: 400px;
+  max-width: 45%;
+  height: 10%;
+  fill: #000;
+  object-fit: contain;
+  filter: brightness(0) invert(0);
+}
+
+.header-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.header-icon {
+  font-size: 18px;
+  cursor: pointer;
+  color: #000;
+  background: #fff;
+  padding: 6px;
+  border-radius: 50%;
+}
+
+.header-avatar {
+  background-color: #fff;
+  color: #000;
+  cursor: pointer;
+}
+
+.menu-icon {
+  font-size: 20px;
+  color: #000;
+  cursor: pointer;
+}
+
+.noti {
+  background-color: orange;
+}

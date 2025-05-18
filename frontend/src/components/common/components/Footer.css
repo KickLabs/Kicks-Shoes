@@ -20,6 +20,7 @@
 .input-group {
   display: flex;
   gap: 0.5rem;
+  color: white;
 }
 
 .background{
@@ -28,10 +29,10 @@
   border-bottom-right-radius: 2rem;
 }
 .footer-links {
-  background-color: #1e1e1e;
+  background-color: black;
   padding: 2rem;
-  
-  border-radius: 2rem;
+  border-top-left-radius: 2rem;
+  border-top-right-radius: 2rem;
 }
 
 .social-icons svg:hover {
@@ -41,7 +42,9 @@
 .footer-bottom {
   background-color: #e6e6e6;
   text-align: center;
-  padding: 1rem;
+  padding-top: 1rem;
+  padding-right: 1rem;
+  padding-left: 1rem;
   font-size: 0.875rem;
 }
 
@@ -58,4 +61,24 @@
   .logo-area {
     text-align: right;
   }
+}
+
+.logo-above{
+  width: 600px;
+  max-width: 65%;
+}
+
+.logo-below{
+  width: 1500px;
+  max-width: 95%;
+}
+
+.footer-logo-below{
+  flex: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: black;
+  border-bottom-left-radius: 2rem;
+  border-bottom-right-radius: 2rem;
 }

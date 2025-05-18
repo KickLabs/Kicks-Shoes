@@ -2,6 +2,7 @@ import React from "react";
 import { Row, Col, Input, Button, Typography, List, Divider } from "antd";
 import { FaFacebookF, FaInstagram, FaTwitter, FaTiktok } from "react-icons/fa";
 import "./Footer.css";
+import logo from "@assets/Logo.svg";
 
 const { Title, Text, Link } = Typography;
 
@@ -21,13 +22,36 @@ const Footer = () => {
               Stay updated with the latest news and exclusive offers!
             </Text>
             <div className="input-group">
-              <Input placeholder="Enter your email" style={{ width: 200 }} />
-              <Button type="primary">Submit</Button>
+              <Input
+              placeholder="Email address"
+              style={{
+              width: 200,
+              backgroundColor: "#4361ee",
+              color: "#ffffff", // Màu chữ chính
+              }}
+              placeholderStyle={{ color: "#ffffff" }} // Màu placeholder
+              />
+              <Button style={{backgroundColor: "black"}} type="primary">Submit</Button>
             </div>
           </Col>
           <Col xs={24} md={10} className="logo-area">
             <Title level={1} style={{ color: "white", margin: 0 }}>
-              KICKS<span style={{ color: "orange" }}>+</span>
+              <img src={logo} alt="Logo" className="logo-above" />
+              <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 14,
+                height: 14,
+                borderRadius: "50%",
+                background: "#ff9800",
+                position: "relative",
+                top: -50,
+              }}
+              >
+              <div style={{color: "#4361ee", fontSize: "10px"}}>+</div>
+              </div>
             </Title>
           </Col>
         </Row>
@@ -84,7 +108,13 @@ const Footer = () => {
         </Row>
         
       </div>
+      <div className="footer-logo-below">
+        <img src={logo} alt="Logo" className="logo-below" />
       </div>
+      </div>
+      {/* <div className="footer-logo-below">
+        <img src={logo} alt="Logo" className="logo-below" />
+      </div> */}
       <div className="footer-bottom">
         <Text style={{ color: "#1e1e1e" }}>
           © {new Date().getFullYear()} KICKS+. All rights reserved. |{" "}
