@@ -115,13 +115,24 @@ Apply [Conventional Commits](https://www.conventionalcommits.org/) to:
 4. **Ảnh chụp màn hình (nếu có UI thay đổi) | Screenshot (if UI changes)**
 5. **Checklist**
 
+VN
 ```markdown
-- [ ] Đã test đầy đủ | Fully tested before creating the PR
-- [ ] Tự review code | Self-reviewed the code
-- [ ] Không commit file không cần thiết (.env, node_modules, ...) | Ensured no unnecessary files are committed
-- [ ] Đúng quy tắc tên branch, commit | Branch and commit follow conventions
-- [ ] Đã xử lý conflict | Resolved all conflicts
-- [ ] Có label và reviewers phù hợp | Added proper labels and reviewers
+- [ ] Đã test đầy đủ
+- [ ] Tự review code
+- [ ] Không commit file không cần thiết (.env, node_modules, ...)
+- [ ] Đúng quy tắc tên branch, commit
+- [ ] Đã xử lý conflict
+- [ ] Có label và reviewers phù hợp
+```
+
+EN
+```markdown
+- [ ] Fully tested before creating the PR
+- [ ] Self-reviewed the code
+- [ ] Ensured no unnecessary files are committed (.env, node_modules, ...)
+- [ ] Branch and commit follow conventions
+- [ ] Resolved all conflicts
+- [ ] Added proper labels and reviewers
 ```
 
 ---
