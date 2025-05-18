@@ -47,7 +47,7 @@ const Footer = () => {
                 borderRadius: "50%",
                 background: "#ff9800",
                 position: "relative",
-                top: -50,
+                top: -80,
               }}
               >
               <div style={{color: "#4361ee", fontSize: "10px"}}>+</div>
