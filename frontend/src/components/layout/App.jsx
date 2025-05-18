@@ -1,5 +1,6 @@
 import { ConfigProvider } from "antd";
 import { Outlet, useLocation } from "react-router-dom";
+import Footer from "./../common/components/Footer";
 import AppHeader from "./../common/components/Header";
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
       <div>
         {!isDashboard && <AppHeader />}
         <Outlet />
+        {!isDashboard && <Footer />}
       </div>
     </ConfigProvider>
   );
