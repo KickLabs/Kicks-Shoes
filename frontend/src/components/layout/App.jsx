@@ -1,7 +1,12 @@
 import { ConfigProvider } from "antd";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
+import Footer from "./../common/components/Footer";
+import AppHeader from "./../common/components/Header";
 
 function App() {
+  const location = useLocation();
+  const isDashboard = location.pathname.startsWith("/dashboard");
+
   return (
     <ConfigProvider
       theme={{
@@ -32,8 +37,9 @@ function App() {
       }}
     >
       <div>
-        {/* Có thể thêm header/sidebar ở đây nếu muốn */}
+        {!isDashboard && <AppHeader />}
         <Outlet />
+        {!isDashboard && <Footer />}
       </div>
     </ConfigProvider>
   );
