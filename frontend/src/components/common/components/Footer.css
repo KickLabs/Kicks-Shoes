@@ -1,5 +1,4 @@
 .footer-container {
-  background-color: #f3f3f3;
   font-family: Arial, sans-serif;
   overflow: hidden;
   margin: 15px;
@@ -23,7 +22,7 @@
   color: white;
 }
 
-.background{
+.background {
   background-color: #4361ee;
   border-bottom-left-radius: 2rem;
   border-bottom-right-radius: 2rem;
@@ -63,22 +62,24 @@
   }
 }
 
-.logo-above{
+.logo-above {
   width: 600px;
   max-width: 65%;
 }
 
-.logo-below{
+.logo-below {
   width: 1500px;
   max-width: 95%;
 }
 
-.footer-logo-below{
+.footer-logo-below {
   flex: 0;
   display: flex;
   justify-content: center;
-  align-items: center;
   background-color: black;
   border-bottom-left-radius: 2rem;
   border-bottom-right-radius: 2rem;
+  align-items: flex-start;
+  height: 15vw;
+  overflow: hidden;
 }
