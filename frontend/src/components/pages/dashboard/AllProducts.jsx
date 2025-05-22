@@ -4,7 +4,7 @@ import "./dashboard.css";
 import ProductCard from "./components/ProductCard";
 import TabHeader from "./components/TabHeader";
 import { ActiveTabContext } from "./Dashboard";
-import { getProducts, getTotalProducts } from "./data/dashboardData";
+import { getProducts, getTotalProducts } from "../../../data/mockData";
 
 export default function AllProducts() {
   const { setActiveTab } = useContext(ActiveTabContext);

@@ -9,7 +9,7 @@ import SaleGraph from "./components/SaleGraph";
 import BestSellers from "./components/BestSellers";
 import TableOrders from "./components/TableOrders";
 import "./dashboard.css";
-import { getOrders } from "./data/dashboardData";
+import { getOrders } from "../../../data/mockData";
 
 const { Content } = Layout;
 

@@ -6,7 +6,7 @@ import {
   LogoutOutlined,
   RightOutlined,
 } from "@ant-design/icons";
-import { products } from "../data/dashboardData";
+import { products } from "../../../../data/mockData";
 const { Header: AntHeader } = Layout;
 
 export default function Header() {

@@ -1,31 +1,41 @@
 import React from "react";
 import "./ProductCard.css";
+import { formatPrice } from "../../../utils/StringFormat";
 
 const ProductCard = ({ product }) => {
-  const { image, isNew, isSale, salePercent, name, price, onViewProduct } =
-    product;
   return (
     <div className="product-card">
       <div className="product-card__image-container">
-        {isNew && <div className="product-card__badge">New</div>}
-        {isSale && (
+        {product.isNew && <div className="product-card__badge">New</div>}
+        {product.price.isOnSale && (
           <div
-            style={{ backgroundColor: "#FFA52F", width: "65px" }}
+            style={{ backgroundColor: "#FFA52F", width: "70px" }}
             className="product-card__badge"
           >
-            ${salePercent}% off
+            {product.price.discountPercent}% off
           </div>
         )}
-        <img src={image} alt={name} className="product-card__image" />
+        <img
+          src={product.images[0]}
+          alt={product.name}
+          className="product-card__image"
+        />
       </div>
       <div className="product-card__info">
-        <h2 className="product-card__name">{name}</h2>
+        <h2 className="product-card__name">{product.name}</h2>
       </div>
       <div className="product-card__footer">
-        <button className="product-card__button" onClick={onViewProduct}>
+        <button className="product-card__button">
           <div className="product-card__button-inner">
             <span>VIEW PRODUCT -</span>
-            <span className="product-card__price">${price}</span>
+            <span className="product-card__price">
+              {product.price.isOnSale
+                ? formatPrice(
+                    product.price.regular *
+                      (product.price.discountPercent / 100)
+                  )
+                : formatPrice(product.price.regular)}
+            </span>
           </div>
         </button>
       </div>

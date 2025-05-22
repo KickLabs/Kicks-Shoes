@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "antd";
 import { MoreOutlined } from "@ant-design/icons";
 import shoe from "../../../../assets/images/nikeproduct.png";
-import { products } from "../data/dashboardData";
+import { products } from "../../../../data/mockData";
 
 export default function BestSellers() {
   // Get top 3 products by sales
@@ -22,11 +22,13 @@ export default function BestSellers() {
             <img className="best-seller-avatar" src={shoe} alt={item.name} />
             <div className="best-seller-info">
               <div className="best-seller-name">{item.name}</div>
-              <div className="best-seller-price">${item.price.toFixed(2)}</div>
+              <div className="best-seller-price">
+                ${item.price.regular.toFixed(2)}
+              </div>
             </div>
             <div className="best-seller-meta">
               <div className="best-seller-price-bold">
-                ${item.price.toFixed(2)}
+                ${item.price.regular.toFixed(2)}
               </div>
               <div className="best-seller-sales">{item.sales} sales</div>
             </div>

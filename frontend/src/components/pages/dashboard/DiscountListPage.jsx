@@ -8,7 +8,7 @@ import {
   DatePicker,
 } from "antd";
 import TabHeader from "./components/TabHeader";
-import { getDiscounts, getTotalDiscounts } from "./data/dashboardData";
+import { getDiscounts, getTotalDiscounts } from "../../../data/mockData";
 import { useContext, useEffect, useState } from "react";
 import { ActiveTabContext } from "./Dashboard";
 import TableDiscounts from "./components/TableDiscounts";

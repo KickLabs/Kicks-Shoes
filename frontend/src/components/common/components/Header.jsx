@@ -10,6 +10,7 @@ import { Avatar, Dropdown, Input, Layout, Menu, Button } from "antd";
 import logo from "@assets/Logo.svg";
 import "./Header.css";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { getAllProducts } from "../../../data/mockData";
 
 const { Header } = Layout;
 
@@ -17,12 +18,7 @@ const NotificationBadgeOnly = ({ count = 0 }) => (
   <div>{count > 99 ? "99+" : count}</div>
 );
 
-const products = [
-  { id: 1, name: "Nike Air Max", image: "nike-air-max.jpg" },
-  { id: 2, name: "Adidas Ultraboost", image: "adidas-ultraboost.jpg" },
-  { id: 3, name: "Jordan Retro", image: "jordan-retro.jpg" },
-  { id: 4, name: "New Balance 990", image: "new-balance-990.jpg" },
-];
+const products = getAllProducts();
 
 const AppHeader = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -269,7 +265,7 @@ const AppHeader = () => {
                       }}
                     >
                       <img
-                        src={`/assets/images/${p.image}`}
+                        src={`${p.images[0]}`}
                         alt={p.name}
                         style={{
                           width: 48,

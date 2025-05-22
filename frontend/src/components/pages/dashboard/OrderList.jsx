@@ -1,7 +1,7 @@
 import { Pagination } from "antd";
 import TableOrders from "./components/TableOrders";
 import TabHeader from "./components/TabHeader";
-import { getOrders, getTotalOrders } from "./data/dashboardData";
+import { getOrders, getTotalOrders } from "../../../data/mockData";
 import { useContext, useEffect, useState } from "react";
 import { ActiveTabContext } from "./Dashboard";
 

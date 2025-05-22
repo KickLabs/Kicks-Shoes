@@ -15,7 +15,7 @@ const ProductCard = ({ product }) => {
               <div className="custom-product-name">{product.name}</div>
               <div className="custom-product-type">{product.type}</div>
               <div className="custom-product-price">
-                ${product.price.toFixed(2)}
+                ${product.price.regular.toFixed(2)}
               </div>
             </div>
           </div>
