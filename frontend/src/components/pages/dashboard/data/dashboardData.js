@@ -538,6 +538,232 @@ export const orders = [
   },
 ];
 
+export const discounts = [
+  {
+    id: 1,
+    code: "SUMMER2024",
+    percentage: 20,
+    totalDiscount: 100,
+    totalUsed: 45,
+    minimumAmount: 50.0,
+    maximumDiscount: 100.0,
+    status: "Active",
+  },
+  {
+    id: 2,
+    code: "WELCOME10",
+    percentage: 10,
+    totalDiscount: 100,
+    totalUsed: 32,
+    minimumAmount: 30.0,
+    maximumDiscount: 50.0,
+    status: "Active",
+  },
+  {
+    id: 3,
+    code: "SPRING15",
+    percentage: 15,
+    totalDiscount: 100,
+    totalUsed: 28,
+    minimumAmount: 75.0,
+    maximumDiscount: 75.0,
+    status: "Active",
+  },
+  {
+    id: 4,
+    code: "FLASH25",
+    percentage: 25,
+    totalDiscount: 100,
+    totalUsed: 15,
+    minimumAmount: 100.0,
+    maximumDiscount: 150.0,
+    status: "Active",
+  },
+  {
+    id: 5,
+    code: "LOYALTY20",
+    percentage: 20,
+    totalDiscount: 100,
+    totalUsed: 40,
+    minimumAmount: 60.0,
+    maximumDiscount: 80.0,
+    status: "Active",
+  },
+  {
+    id: 6,
+    code: "HOLIDAY30",
+    percentage: 30,
+    totalDiscount: 100,
+    totalUsed: 20,
+    minimumAmount: 150.0,
+    maximumDiscount: 200.0,
+    status: "Active",
+  },
+  {
+    id: 7,
+    code: "NEWUSER15",
+    percentage: 15,
+    totalDiscount: 100,
+    totalUsed: 25,
+    minimumAmount: 40.0,
+    maximumDiscount: 60.0,
+    status: "Active",
+  },
+  {
+    id: 8,
+    code: "BULK25",
+    percentage: 25,
+    totalDiscount: 100,
+    totalUsed: 18,
+    minimumAmount: 200.0,
+    maximumDiscount: 250.0,
+    status: "Active",
+  },
+  {
+    id: 9,
+    code: "CLEARANCE40",
+    percentage: 40,
+    totalDiscount: 100,
+    totalUsed: 12,
+    minimumAmount: 80.0,
+    maximumDiscount: 120.0,
+    status: "Active",
+  },
+  {
+    id: 10,
+    code: "WEEKEND20",
+    percentage: 20,
+    totalDiscount: 100,
+    totalUsed: 35,
+    minimumAmount: 50.0,
+    maximumDiscount: 70.0,
+    status: "Active",
+  },
+];
+
+export const users = [
+  {
+    id: 1,
+    name: "John Doe",
+    email: "john@example.com",
+    phone: "123-456-7890",
+    role: "Admin",
+    status: "Active",
+  },
+  {
+    id: 2,
+    name: "Jane Smith",
+    email: "jane@example.com",
+    phone: "098-765-4321",
+    role: "User",
+    status: "Active",
+  },
+  {
+    id: 3,
+    name: "Mike Johnson",
+    email: "mike@example.com",
+    phone: "555-123-4567",
+    role: "User",
+    status: "Active",
+  },
+  {
+    id: 4,
+    name: "Sarah Wilson",
+    email: "sarah@example.com",
+    phone: "555-987-6543",
+    role: "Admin",
+    status: "Inactive",
+  },
+  {
+    id: 5,
+    name: "David Brown",
+    email: "david@example.com",
+    phone: "555-456-7890",
+    role: "User",
+    status: "Active",
+  },
+  {
+    id: 6,
+    name: "Emily Davis",
+    email: "emily@example.com",
+    phone: "555-789-0123",
+    role: "User",
+    status: "Active",
+  },
+  {
+    id: 7,
+    name: "Robert Taylor",
+    email: "robert@example.com",
+    phone: "555-234-5678",
+    role: "User",
+    status: "Inactive",
+  },
+  {
+    id: 8,
+    name: "Lisa Anderson",
+    email: "lisa@example.com",
+    phone: "555-345-6789",
+    role: "User",
+    status: "Active",
+  },
+  {
+    id: 9,
+    name: "James Wilson",
+    email: "james@example.com",
+    phone: "555-456-7890",
+    role: "Admin",
+    status: "Active",
+  },
+  {
+    id: 10,
+    name: "Maria Garcia",
+    email: "maria@example.com",
+    phone: "555-567-8901",
+    role: "User",
+    status: "Active",
+  },
+  {
+    id: 11,
+    name: "Thomas Lee",
+    email: "thomas@example.com",
+    phone: "555-678-9012",
+    role: "User",
+    status: "Inactive",
+  },
+  {
+    id: 12,
+    name: "Jennifer White",
+    email: "jennifer@example.com",
+    phone: "555-789-0123",
+    role: "User",
+    status: "Active",
+  },
+  {
+    id: 13,
+    name: "William Clark",
+    email: "william@example.com",
+    phone: "555-890-1234",
+    role: "User",
+    status: "Active",
+  },
+  {
+    id: 14,
+    name: "Patricia Martinez",
+    email: "patricia@example.com",
+    phone: "555-901-2345",
+    role: "User",
+    status: "Active",
+  },
+  {
+    id: 15,
+    name: "Michael Thompson",
+    email: "michael@example.com",
+    phone: "555-012-3456",
+    role: "User",
+    status: "Inactive",
+  },
+];
+
 export const getProducts = (page = 1, pageSize = 9) => {
   const startIndex = (page - 1) * pageSize;
   const endIndex = startIndex + pageSize;
@@ -564,4 +790,32 @@ export const getTotalProducts = () => {
 
 export const getTotalOrders = () => {
   return orders.length;
+};
+
+export const getDiscounts = (page = 1, pageSize = 10) => {
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  return discounts.slice(startIndex, endIndex);
+};
+
+export const getDiscountById = (id) => {
+  return discounts.find((discount) => discount.id === id);
+};
+
+export const getTotalDiscounts = () => {
+  return discounts.length;
+};
+
+export const getUsers = (page = 1, pageSize = 9) => {
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  return users.slice(startIndex, endIndex);
+};
+
+export const getUserById = (id) => {
+  return users.find((user) => user.id === id);
+};
+
+export const getTotalUsers = () => {
+  return users.length;
 };

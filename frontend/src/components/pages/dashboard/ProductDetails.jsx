@@ -98,7 +98,6 @@ export default function ProductDetails() {
   };
   const handleCreate = () => {
     message.success("Product created!");
-    // Reset form or redirect if needed
   };
 
   return (
