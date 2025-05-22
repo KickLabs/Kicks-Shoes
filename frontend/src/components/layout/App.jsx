@@ -6,6 +6,7 @@ import AppHeader from "./../common/components/Header";
 function App() {
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard");
+  const isLoginAdmin = location.pathname.startsWith("/login-admin");
 
   return (
     <ConfigProvider
@@ -37,9 +38,9 @@ function App() {
       }}
     >
       <div>
-        {!isDashboard && <AppHeader />}
+        {!isDashboard && !isLoginAdmin && <AppHeader />}
         <Outlet />
-        {!isDashboard && <Footer />}
+        {!isDashboard && !isLoginAdmin && <Footer />}
       </div>
     </ConfigProvider>
   );

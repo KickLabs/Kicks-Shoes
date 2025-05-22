@@ -1,0 +1,511 @@
+.login-page {
+  padding: 20px;
+  font-family: "Rubik", sans-serif;
+  color: #ccc;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: left;
+  background-color: #e7e7e3;
+}
+
+.login-container {
+  background-color: #e7e7e3;
+  display: flex;
+  gap: 20px;
+  border-radius: 12px;
+  max-width: none;
+  width: 100%;
+  padding: 30px;
+  box-sizing: border-box;
+}
+
+/* LOGIN BOX */
+
+.login-box {
+  background: #e7e7e3;
+  padding: 25px 30px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-box h2 {
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: #1a1a1a;
+  font-size: 32px;
+}
+
+.input {
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid #000000;
+  background-color: #e7e7e3;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  color: #79767c;
+  font-family: "Rubik";
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0.5px;
+  height: 50px;
+}
+
+.input:focus {
+  border-color: #333434 !important;
+  box-shadow: 0 0 6px #aaaaaaaa;
+}
+
+.checkbox {
+  font-size: 0.9rem;
+  color: #000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  text-align: left;
+}
+
+.checkbox input[type="checkbox"] {
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #000;
+}
+
+.ant-checkbox-inner {
+  border-color: #000 !important;
+  background-color: #fff !important;
+}
+
+.ant-checkbox-wrapper:hover .ant-checkbox-inner,
+.ant-checkbox:hover .ant-checkbox-inner {
+  border-color: #000 !important;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #000 !important;
+  border-color: #000 !important;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner::after {
+  border-color: white !important;
+}
+
+.ant-checkbox-checked:hover .ant-checkbox-inner {
+  background-color: #000 !important;
+  border-color: #000 !important;
+}
+.remember-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.more-info {
+  display: block;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  padding-left: 24px;
+  color: #232321;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600 !important;
+  line-height: normal;
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-skip-ink: none;
+  text-decoration-thickness: auto;
+  text-underline-offset: auto;
+  text-underline-position: from-font;
+}
+
+.more-info:hover {
+  color: #6f6b6b;
+  text-decoration: underline;
+}
+
+.email-login-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25px 16px;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 6px;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  background: #232321;
+  transition: background-color 0.3s ease;
+}
+
+.email-login-btn:hover {
+  background-color: #6f6b6b !important;
+}
+
+.email-login-btn .email-text {
+  text-align: left;
+}
+
+.email-login-btn .arrow {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+/* SOCIAL BUTTONS */
+.social-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.social {
+  flex: 1;
+  border: none;
+  border-radius: 6px;
+  padding: 25px 0;
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  color: white;
+}
+
+.google {
+  background-color: #e7e7e3;
+  color: #ff0000;
+  border: 2px solid #000000;
+}
+
+.google:hover {
+  background-color: #f2f2f2;
+}
+
+.apple {
+  color: black;
+  background-color: #e7e7e3;
+  border: 2px solid #000000;
+  position: relative;
+}
+
+.apple:hover {
+  background-color: #222;
+}
+
+.apple-logo-white {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.apple:hover .apple-logo {
+  display: none;
+}
+
+.apple:hover .apple-logo-white {
+  display: block;
+}
+
+.facebook {
+  background-color: #e7e7e3;
+  border: 2px solid #000000;
+  color: blue;
+}
+
+.facebook:hover {
+  background-color: #0f57d3;
+}
+
+.terms {
+  color: #666;
+  margin-top: 14px;
+  line-height: 1.3;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+
+/* CLUB BOX */
+.club-paragraph,
+.club-box ul {
+  color: #232321;
+  font-size: 16px !important;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  opacity: 0.8;
+}
+.club-box {
+  background: white;
+  flex: 1;
+  align-self: flex-start;
+  border-radius: 10px;
+  padding: 25px 30px;
+  box-shadow: 0 4px 15px rgb(0 0 0 / 0.1);
+  color: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.club-box h3 {
+  margin-bottom: 6px;
+  color: black;
+  font-size: 38px !important;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.club-box p {
+  font-size: 0.9rem;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+
+.club-box ul {
+  list-style: inside disc;
+  margin-bottom: 12px;
+  padding-left: 0;
+  color: #444;
+}
+
+.club-box ul li {
+  margin-bottom: 6px;
+}
+
+.join-club-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ffffff;
+  background: #232321;
+  font-weight: 700;
+  padding: 25px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.3s ease;
+  text-align: left;
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+.join-club-btn:hover {
+  background-color: #6f6b6b !important;
+}
+
+.join-club-btn .join-text {
+  text-align: left;
+}
+
+.join-club-btn .arrow {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.text-link {
+  color: #000 !important;
+  text-decoration: underline !important;
+  cursor: pointer;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500 !important;
+  line-height: normal;
+  text-decoration-skip-ink: none;
+  text-underline-offset: auto;
+  text-underline-position: from-font;
+  margin-bottom: 20px;
+}
+
+.text-link:hover {
+  color: #6f6b6b !important;
+  text-decoration: underline;
+}
+
+span.ant-checkbox-label {
+  color: #232321;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+
+/* Responsive */
+
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+  }
+}
+.login-image-half {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.login-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+/* 1. Xếp hàng ngang */
+.gender-radio-group {
+  display: flex;
+  gap: 20px;
+}
+
+/* 2. Biến radio thành ô vuông */
+.gender-radio-group .ant-radio-inner {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 2px !important; /* Vuông */
+  border: 2px solid #000 !important;
+  background-color: #fff !important;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* 3. Ẩn dấu tròn xanh mặc định của Antd */
+.gender-radio-group .ant-radio-inner::after {
+  display: none !important;
+}
+
+/* 4. Khi chọn: ô vuông đen và thêm dấu tick trắng */
+.gender-radio-group .ant-radio-checked .ant-radio-inner {
+  background-color: #000 !important;
+  border-color: #000 !important;
+}
+
+/* 5. Chèn dấu tick trắng bằng pseudo-element ::before */
+.gender-radio-group .ant-radio-checked .ant-radio-inner::before {
+  content: "✖";
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* 6. Giảm khoảng cách giữa radio và text nếu cần */
+.gender-radio-group .ant-radio-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+img.social-logo {
+  width: 32px;
+  height: 32px;
+}
+
+.form-label {
+  color: var(--Dark-Gray, #232321);
+  font-family: Rubik;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  margin-bottom: 20px;
+}
+
+/* ADMIN LOGIN PAGE */
+.login-container-admin {
+  background-color: #e7e7e3;
+  display: flex;
+  border-radius: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  min-width: 100vw;
+  padding: 0;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+}
+
+.login-image-half-admin {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 0;
+  background: #fff;
+  min-height: 100vh;
+  height: 100vh;
+}
+
+.login-image-admin {
+  width: 100%;
+  height: 100vh;
+  object-fit: cover;
+  border-radius: 0;
+  max-width: unset;
+  max-height: unset;
+}
+
+.login-box-admin {
+  background: #e7e7e3;
+  padding: 40px 32px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 0 4px 15px rgb(0 0 0 / 0.08);
+  min-width: 350px;
+  max-width: 480px;
+  height: 100vh;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .login-container-admin {
+    flex-direction: column;
+    padding: 0;
+    min-height: 100vh;
+    height: 100vh;
+  }
+  .login-image-half-admin {
+    min-height: 200px;
+    height: 40vh;
+    margin-bottom: 0;
+    border-radius: 0;
+  }
+  .login-image-admin {
+    height: 40vh;
+  }
+  .login-box-admin {
+    padding: 24px 10px;
+    min-width: unset;
+    max-width: unset;
+    border-radius: 0 0 12px 12px;
+    height: 60vh;
+  }
+}
