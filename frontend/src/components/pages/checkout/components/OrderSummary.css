@@ -1,0 +1,28 @@
+.order-summary-card {
+  margin-bottom: 24px;
+}
+
+.order-summary-title {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.order-summary-row {
+  margin-bottom: 8px;
+}
+
+.order-summary-divider {
+  margin: 12px 0;
+}
+
+.order-summary-text {
+  color: var(--Dark-Gray, #232321);
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+.contact-input,
+.shipping-address-input {
+  height: 50px;
+}

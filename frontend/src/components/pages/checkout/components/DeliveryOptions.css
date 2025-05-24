@@ -1,0 +1,74 @@
+.delivery-card {
+  background: #e7e7e3;
+  margin-bottom: 24px;
+  border: none;
+}
+
+.delivery-title {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.delivery-radio-group {
+  width: 100%;
+}
+
+.delivery-radio-space {
+  width: 100%;
+}
+
+.delivery-option-card {
+  margin-bottom: 16px;
+  border-width: 1px;
+}
+
+.delivery-radio {
+  width: 100%;
+}
+
+.delivery-row {
+  width: 100%;
+}
+
+.delivery-form {
+  margin-top: 16px;
+}
+
+.delivery-updates-text {
+  margin-bottom: 8px;
+}
+
+.review-button {
+  margin-top: 16px;
+  height: 48px;
+  background-color: #000;
+  border-color: #000;
+}
+
+.delivery-updates-text-paragraph {
+  margin-bottom: 0;
+  color: var(--Dark-Gray, #232321);
+  font-family: Rubik;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.delivery-text {
+  color: var(--Dark-Gray, #232321);
+  font-family: Rubik;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+.delivery-title,
+.shipping-address-title,
+.contact-title {
+  margin-top: 0;
+  color: #232321;
+  font-family: Rubik;
+  font-size: 32px !important;
+  font-style: normal;
+}

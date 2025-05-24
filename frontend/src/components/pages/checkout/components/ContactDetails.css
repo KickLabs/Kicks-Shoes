@@ -1,0 +1,30 @@
+.contact-card {
+  background: #e7e7e3;
+  margin-bottom: 24px;
+  border: none;
+  padding-bottom: 0%;
+  margin-bottom: -24px !important;
+}
+
+.contact-title {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.contact-paragraph {
+  margin-bottom: 16px;
+  opacity: 0.8;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.contact-form-item {
+  margin-bottom: 24px;
+}
+
+.contact-input {
+  border-color: black;
+  background-color: #e7e7e3;
+}

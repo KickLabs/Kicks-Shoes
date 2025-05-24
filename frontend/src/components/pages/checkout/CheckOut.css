@@ -1,0 +1,36 @@
+.checkout-layout {
+  background: #e7e7e3;
+  padding: 24px;
+}
+
+.checkout-right-col {
+  display: flex;
+  flex-direction: column;
+  /* gap: 24px; */
+}
+
+.checkout-form-title {
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-skip-ink: none;
+  text-decoration-thickness: auto;
+  text-underline-offset: auto;
+  text-underline-position: from-font;
+  color: rgba(0, 0, 0, 0.88);
+  opacity: 0.8;
+}
+
+.order-product-description,
+.order-product-color {
+  display: block;
+  color: var(--Dark-Gray, #232321);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  opacity: 0.8;
+}

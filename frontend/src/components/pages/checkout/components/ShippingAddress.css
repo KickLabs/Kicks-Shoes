@@ -1,0 +1,27 @@
+.shipping-address-card {
+  background: #e7e7e3;
+  border: none;
+  margin-bottom: -24px !important;
+  margin-top: -24px !important;
+}
+
+.shipping-address-title {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.shipping-address-item {
+  margin-bottom: 16px;
+}
+
+.shipping-address-input {
+  border-color: black;
+  background-color: #e7e7e3;
+}
+
+.shipping-address-note {
+  display: block;
+  margin-top: -12px;
+  margin-bottom: 16px;
+  font-size: 12px;
+}

@@ -1,0 +1,31 @@
+.order-card-title {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.order-image {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.order-product-name {
+  display: block;
+}
+
+.order-product-description {
+  display: block;
+}
+
+.order-product-color {
+  display: block;
+}
+
+.order-product-info {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.order-product-price {
+  display: block;
+  color: #4a69e2;
+}
