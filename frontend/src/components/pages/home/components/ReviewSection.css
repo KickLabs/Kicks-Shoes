@@ -1,0 +1,76 @@
+.review-wrapper {
+  margin: 5vw 0 6vw;
+}
+
+.review-header {
+  background: var(--Gray, #e7e7e3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin: 10px 0 40px;
+}
+.review-header h4 {
+  color: var(--Dark-Gray, #232321);
+  font-family: Rubik;
+  font-size: clamp(0.5rem, 8vw, 4rem);
+  font-style: normal;
+  font-weight: 600;
+  line-height: 95%; /* 70.3px */
+  text-transform: uppercase;
+  margin-left: 3vw;
+}
+
+.review-header button {
+  color: var(--Pure-White, #fff);
+  font-family: Rubik;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 0.25px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  background: var(--Blue, #4a69e2);
+  display: flex;
+  height: 48px;
+  padding: 8px 32px;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  border: none;
+}
+
+/* .review-list {
+  margin-left: 3vw;
+display: flex;
+align-items: flex-start;
+gap: 16px;
+} */
+
+.review-list {
+  margin-left: 3vw;
+  display: flex;
+  flex-wrap: wrap; /* Cần thiết để các card xuống hàng */
+  gap: 16px;
+}
+
+/* Mặc định: 3 card */
+.review-card {
+  flex: 0 0 calc(33.333% - 16px);
+  box-sizing: border-box;
+}
+
+/* <= 600px: 2 card */
+@media (max-width: 600px) {
+  .review-card {
+    flex: 0 0 calc(50% - 16px);
+  }
+}
+
+/* <= 400px: 1 card */
+@media (max-width: 450px) {
+  .review-card {
+    flex: 0 0 100%;
+  }
+}

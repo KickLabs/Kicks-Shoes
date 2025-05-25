@@ -1,0 +1,45 @@
+
+.category-card {
+  background: #f5f8fc;
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.category-card img {
+  max-width: 100%;
+  height: 28vw;
+  object-fit: cover;
+}
+
+.category-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0 16px 15px;
+}
+
+.category-info h3 {
+  font-size: 1.2rem;
+  color: var(--Dark-Gray, #232321);
+  font-family: Rubik;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  text-transform: uppercase;
+}
+
+.category-btn {
+  background: #232321;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+
+  padding: 8px 12px;
+  margin-right: 15px;
+}

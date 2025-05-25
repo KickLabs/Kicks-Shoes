@@ -1,0 +1,19 @@
+.landing-moto {
+  text-align: center;
+  font-family: Rubik;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+  text-transform: uppercase;
+
+  font-size: clamp(0.5rem, 8vw, 6.4rem);
+}
+.landing-moto h1 {
+  color: var(--Dark-Gray, #232321);
+  white-space: nowrap;
+}
+
+.landing-moto .right {
+  color: var(--Blue, #4a69e2);
+}
+

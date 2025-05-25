@@ -1,0 +1,39 @@
+.categories-section {
+  background-color: #161616;
+  padding: 40px 24px;
+  color: white;
+  font-family: "Rubik", sans-serif;
+  margin-left: -15px;
+}
+
+.categories-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.categories-header h2 {
+  margin-left: 3vw;
+  font-size: clamp(0.5rem, 8vw, 4rem);
+  font-weight: 700;
+}
+
+.categories-nav button {
+  background: #fff;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.categories-grid {
+  margin-left: 3vw;
+  border-radius: 30px 0 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  overflow: hidden;
+}
