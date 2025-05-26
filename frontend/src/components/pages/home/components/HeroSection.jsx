@@ -7,7 +7,7 @@ import { Button } from "antd";
 
 export const HeroSection = () => {
   return (
-    <>
+    <div style={{ margin: "1vw" }}>
       <LandingSlogan />
       <div className="hero-preview-wrapper">
         <img id="bg-img" src={heroImage} alt="Nike Max Air" />
@@ -26,6 +26,6 @@ export const HeroSection = () => {
           <img src={heroPreview2} alt="preview-image" />
         </div>
       </div>
-    </>
+    </div>
   );
 };

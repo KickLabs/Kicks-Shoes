@@ -5,7 +5,7 @@ import "./styles/index.css";
 import App from "./components/layout/App";
 import ErrorPage from "./components/common/pages/Error";
 import Dashboard, {
-  DashboardContent,
+  DashboardContent
 } from "./components/pages/dashboard/Dashboard";
 import HomePage from "./components/pages/home/pages/HomePage";
 import AllProducts from "./components/pages/dashboard/AllProducts";
@@ -20,6 +20,8 @@ import Login from "./components/pages/authentication/pages/Login";
 import RegisterPage from "./components/pages/authentication/pages/Register";
 import LoginAdmin from "./components/pages/authentication/pages/LoginAdmin";
 import CartPage from "./components/pages/cart/pages/CartPage";
+import ListingPage from "./components/pages/listing-page/pages/ListingPage";
+import ProductDetailPage from "./components/pages/product/pages/ProductDetailPage";
 
 const router = createBrowserRouter([
   {
@@ -29,27 +31,35 @@ const router = createBrowserRouter([
     children: [
       {
         path: "",
-        element: <HomePage />,
+        element: <HomePage />
       },
       {
         path: "checkout",
-        element: <CheckoutPage />,
+        element: <CheckoutPage />
       },
       {
         path: "login",
-        element: <Login />,
+        element: <Login />
       },
       {
         path: "cart",
-        element: <CartPage />,
+        element: <CartPage />
       },
       {
         path: "login-admin",
-        element: <LoginAdmin />,
+        element: <LoginAdmin />
       },
       {
         path: "register",
-        element: <RegisterPage />,
+        element: <RegisterPage />
+      },
+      {
+        path: "listing-page",
+        element: <ListingPage />
+      },
+      {
+        path: "product/:id",
+        element: <ProductDetailPage />
       },
       {
         path: "dashboard",
@@ -57,44 +67,44 @@ const router = createBrowserRouter([
         children: [
           {
             path: "",
-            element: <DashboardContent />,
+            element: <DashboardContent />
           },
           {
             path: "products",
-            element: <AllProducts />,
+            element: <AllProducts />
           },
           {
             path: "orders",
-            element: <OrderList />,
+            element: <OrderList />
           },
           {
             path: "orders/:orderId",
-            element: <OrderDetails />,
+            element: <OrderDetails />
           },
           {
             path: "products/:productId",
-            element: <ProductDetails />,
+            element: <ProductDetails />
           },
           {
             path: "products/add-new",
-            element: <ProductDetails isAddNew={true} />,
+            element: <ProductDetails isAddNew={true} />
           },
           {
             path: "discounts",
-            element: <DiscountListPage />,
+            element: <DiscountListPage />
           },
           {
             path: "chat",
-            element: <ChatPage />,
+            element: <ChatPage />
           },
           {
             path: "users",
-            element: <UserManagementPage />,
-          },
-        ],
-      },
-    ],
-  },
+            element: <UserManagementPage />
+          }
+        ]
+      }
+    ]
+  }
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")).render(

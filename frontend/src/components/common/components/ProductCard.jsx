@@ -1,8 +1,9 @@
-import React from "react";
 import "./ProductCard.css";
 import { formatPrice } from "../../../utils/StringFormat";
+import { useNavigate } from "react-router-dom";
 
 const ProductCard = ({ product }) => {
+  const navigate = useNavigate();
   return (
     <div className="product-card">
       <div className="product-card__image-container">
@@ -26,7 +27,10 @@ const ProductCard = ({ product }) => {
       </div>
       <div className="product-card__footer">
         <button className="product-card__button">
-          <div className="product-card__button-inner">
+          <div
+            className="product-card__button-inner"
+            onClick={() => navigate(`/product/${product.id}`)}
+          >
             <span>VIEW PRODUCT -</span>
             <span className="product-card__price">
               {product.price.isOnSale

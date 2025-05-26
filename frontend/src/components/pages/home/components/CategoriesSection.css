@@ -1,8 +1,7 @@
 .categories-section {
   background-color: #161616;
-  padding: 40px 24px;
+  padding: 40px 0 0px 24px;
   color: white;
-  font-family: "Rubik", sans-serif;
   margin-left: -15px;
 }
 
@@ -36,4 +35,7 @@
   display: flex;
   flex-wrap: wrap;
   overflow: hidden;
+}
+.categories-nav {
+  margin-right: 50px;
 }

@@ -41,7 +41,7 @@
 .input {
   padding: 10px 14px;
   border-radius: 6px;
-  border: 1px solid #000000;
+  border: 1px solid #232321;
   background-color: #e7e7e3;
   outline: none;
   width: 100%;
@@ -183,7 +183,7 @@
 .google {
   background-color: #e7e7e3;
   color: #ff0000;
-  border: 2px solid #000000;
+  border: 2px solid #232321;
 }
 
 .google:hover {
@@ -193,7 +193,7 @@
 .apple {
   color: black;
   background-color: #e7e7e3;
-  border: 2px solid #000000;
+  border: 2px solid #232321;
   position: relative;
 }
 
@@ -219,7 +219,7 @@
 
 .facebook {
   background-color: #e7e7e3;
-  border: 2px solid #000000;
+  border: 2px solid #232321;
   color: blue;
 }
 
@@ -340,8 +340,9 @@ span.ant-checkbox-label {
   color: #232321;
   font-size: 16px;
   font-style: normal;
-  font-weight: 600;
+  font-weight: 500;
   line-height: normal;
+  padding: 6px;
 }
 
 /* Responsive */

@@ -1,0 +1,215 @@
+.product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.product-name {
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.product-price {
+  color: #1677ff;
+  font-weight: 600;
+}
+
+.variant-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.variant-label {
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.color-options {
+  display: flex;
+  gap: 12px;
+}
+.add-card-btn {
+  justify-content: space-between;
+  align-items: flex-end;
+  align-self: stretch;
+  margin: 0 0 50px 0;
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.color-swatch.active {
+  border: 2px solid #1677ff;
+  box-shadow: 0 0 0 2px #e6f4ff;
+}
+
+.size-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.size-chart-link {
+  font-size: 14px;
+  color: #1677ff;
+  text-decoration: none;
+}
+
+.size-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.size-btn {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.size-btn.active {
+  border-color: #1677ff;
+  background-color: #f0f8ff;
+}
+
+.product-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+.product-card__badge {
+  position: absolute;
+  background: #4a69e2;
+  color: #fff;
+  font-family: "Rubik", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  width: 47px;
+  padding: 7px 18px 7px 14px;
+  border-radius: 18px 0 18px 0;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 0;
+  left: 0;
+}
+
+.product-description {
+  font-size: 14px;
+  color: #555;
+}
+
+.summary-text {
+  text-transform: uppercase;
+}
+
+.benefit-list {
+  margin-top: 8px;
+  padding-left: 20px;
+}
+
+.sale-tag {
+  font-weight: 500;
+}
+
+.product-tags {
+  display: flex;
+  gap: 100px;
+  margin-bottom: 25px;
+  position: relative;
+}
+
+.product-card__badge {
+  background: #4a69e2;
+  color: #fff;
+  font-family: "Rubik", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 18px 0 18px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.new-badge {
+  background-color: #4a69e2;
+  min-width: 48px;
+}
+
+.sale-badge {
+  background-color: #ff4d4f;
+  min-width: 58px;
+}
+
+.cart-btn {
+  flex: 1;
+  background: #232321;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  height: 48px;
+  font-family: Rubik;
+  font-weight: 450;
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.buy-now-btn {
+  background: #4a69e2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  height: 48px;
+  font-family: Rubik;
+  font-weight: 450;
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn {
+  width: 48px;
+  height: 48px;
+  background: #232321;
+  border: none;
+  color: white;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  cursor: pointer;
+}
+
