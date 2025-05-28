@@ -7,10 +7,10 @@ import {
   InputNumber,
   DatePicker,
 } from "antd";
-import TabHeader from "./components/TabHeader";
+import TabHeader from "../../common/components/TabHeader";
 import { getDiscounts, getTotalDiscounts } from "../../../data/mockData";
 import { useContext, useEffect, useState } from "react";
-import { ActiveTabContext } from "./Dashboard";
+import { ActiveTabContext } from "../../common/components/ActiveTabContext"; 
 import TableDiscounts from "./components/TableDiscounts";
 
 const DiscountListPage = () => {

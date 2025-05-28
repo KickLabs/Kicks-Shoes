@@ -1,27 +1,28 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import "./styles/index.css";
-import App from "./components/layout/App";
+import ChatPage from "./components/common/components/ChatPage";
+import OrderDetails from "./components/common/components/OrderDetails";
+import OrderList from "./components/common/components/OrderList";
+import ProductDetails from "./components/common/components/ProductDetails";
 import ErrorPage from "./components/common/pages/Error";
+import App from "./components/layout/App";
+import Login from "./components/pages/authentication/pages/Login";
+import LoginAdmin from "./components/pages/authentication/pages/LoginAdmin";
+import RegisterPage from "./components/pages/authentication/pages/Register";
+import CartPage from "./components/pages/cart/pages/CartPage";
+import CheckoutPage from "./components/pages/checkout/CheckOut";
+import AllProducts from "./components/pages/dashboard/AllProducts";
 import Dashboard, {
   DashboardContent
 } from "./components/pages/dashboard/Dashboard";
-import HomePage from "./components/pages/home/pages/HomePage";
-import AllProducts from "./components/pages/dashboard/AllProducts";
-import OrderList from "./components/pages/dashboard/OrderList";
-import OrderDetails from "./components/pages/dashboard/OrderDetails";
-import ProductDetails from "./components/pages/dashboard/ProductDetails";
 import DiscountListPage from "./components/pages/dashboard/DiscountListPage";
-import ChatPage from "./components/pages/dashboard/ChatPage";
 import UserManagementPage from "./components/pages/dashboard/UserManagementPage";
-import CheckoutPage from "./components/pages/checkout/CheckOut";
-import Login from "./components/pages/authentication/pages/Login";
-import RegisterPage from "./components/pages/authentication/pages/Register";
-import LoginAdmin from "./components/pages/authentication/pages/LoginAdmin";
-import CartPage from "./components/pages/cart/pages/CartPage";
+import HomePage from "./components/pages/home/pages/HomePage";
 import ListingPage from "./components/pages/listing-page/pages/ListingPage";
 import ProductDetailPage from "./components/pages/product/pages/ProductDetailPage";
+import "./styles/index.css";
+import Account from "./components/pages/account/Account";
 
 const router = createBrowserRouter([
   {
@@ -100,6 +101,28 @@ const router = createBrowserRouter([
           {
             path: "users",
             element: <UserManagementPage />
+          }
+        ]
+      },
+      {
+        path: "account",
+        element: <Account />,
+        children: [
+          {
+            path: "null",
+            element: <>null</>
+          },
+          {
+            path: "orders",
+            element: <OrderList />
+          },
+          {
+            path: "orders/:orderId",
+            element: <OrderDetails />
+          },
+          {
+            path: "chat",
+            element: <ChatPage />
           }
         ]
       }

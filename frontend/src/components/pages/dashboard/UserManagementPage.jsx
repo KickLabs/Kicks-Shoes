@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Button, Pagination } from "antd";
 import TableUsers from "./components/TableUsers";
-import TabHeader from "./components/TabHeader";
+import TabHeader from "../../common/components/TabHeader";
 import { getUsers, getTotalUsers } from "../../../data/mockData";
-import { ActiveTabContext } from "./Dashboard";
+import { ActiveTabContext } from "../../common/components/ActiveTabContext"; 
 
 const UserManagementPage = () => {
   const [currentPage, setCurrentPage] = useState(1);

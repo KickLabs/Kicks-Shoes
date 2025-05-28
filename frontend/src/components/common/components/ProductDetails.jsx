@@ -1,23 +1,21 @@
-import React, { useContext, useEffect, useState } from "react";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
-  Card,
   Button,
-  Input,
-  Select,
-  Tag,
-  Upload,
-  Row,
+  Card,
   Col,
+  Input,
   message,
+  Row,
+  Select,
+  Upload
 } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
-import { ActiveTabContext } from "./Dashboard";
-import TabHeader from "./components/TabHeader";
+import { useContext, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import "./order-details.css";
-import "./dashboard.css";
-import "./product-details.css";
 import productImg from "../../../assets/images/nikeproduct.png";
+import { ActiveTabContext } from "./ActiveTabContext";
+import "./order-details.css";
+import "./product-details.css";
+import TabHeader from "./TabHeader";
 
 const { TextArea } = Input;
 const { Option } = Select;
