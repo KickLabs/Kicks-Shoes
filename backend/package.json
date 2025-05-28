@@ -2,11 +2,11 @@
   "name": "kicks-shoes-backend",
   "version": "1.0.0",
   "description": "Backend for Kicks Shoes E-commerce",
-  "main": "server.js",
+  "main": "src/app.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
