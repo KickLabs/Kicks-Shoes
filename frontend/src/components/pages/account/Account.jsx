@@ -2,6 +2,7 @@ import { useState, createContext } from "react";
 import { Layout } from "antd";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../../common/components/Sidebar";
+import "./account.css"; 
 import { ActiveTabContext } from "../../common/components/ActiveTabContext";
 import {
   DashboardOutlined,
@@ -27,14 +28,14 @@ console.log(location.pathname);
 
   return (
     <ActiveTabContext.Provider value={{ activeTab, setActiveTab }}>
-      <Layout style={{ minHeight: "100vh" }}>
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} tabs={accountTabs}/>
-        <Layout>
-          <Content style={{ margin: "24px 16px 0" }}>
-            <Outlet />
-          </Content>
-        </Layout>
-      </Layout>
+<Layout className="account-layout" style={{ minHeight: "100vh", backgroundColor:"#e7e7e3" }}>
+  <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} tabs={accountTabs} />
+  <Layout>
+    <Content style={{ margin: "24px 16px 0" }}>
+      <Outlet />
+    </Content>
+  </Layout>
+</Layout>
     </ActiveTabContext.Provider>
   );
 }
