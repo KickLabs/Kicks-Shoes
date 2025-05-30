@@ -35,8 +35,6 @@
   transition: background-color 0.3s ease;
 }
 
-
-
 /* Hover */
 .account-layout .sidebar-menu .ant-menu-item:hover {
   background-color: #dcdcd6 !important;
@@ -44,13 +42,13 @@
 }
 /* Mục đang chọn */
 .account-layout .sidebar-menu .ant-menu-item.ant-menu-item-selected {
-  background-color: #4A69E2 !important;
+  background-color: #4a69e2 !important;
   color: white !important;
 }
 
 /* Hover vào mục đang chọn vẫn giữ nguyên màu xanh */
 .account-layout .sidebar-menu .ant-menu-item.ant-menu-item-selected:hover {
-  background-color: #4A69E2 !important;
+  background-color: #4a69e2 !important;
   color: white !important;
 }
 
@@ -75,4 +73,235 @@
 /* Override màu nền chỉ trong trang Account */
 .account-layout .ant-layout.css-dev-only-do-not-override-zi87jd {
   background-color: #e7e7e3 !important;
+}
+
+/* Profile Tab Styles - Đẹp, hiện đại, chia 2 cột rõ ràng */
+.profile-tab-container {
+  background: #fff;
+  border-radius: 20px;
+  padding: 40px 40px 32px 40px;
+  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.profile-tab-container .profile-header {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+  margin-bottom: 18px;
+  justify-content: flex-start;
+}
+
+.profile-tab-container .profile-avatar {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-right: 12px;
+}
+.profile-tab-container .profile-avatar img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #e7e7e3;
+  transition: box-shadow 0.2s;
+}
+.profile-tab-container .profile-avatar:hover img {
+  box-shadow: 0 0 0 4px #4a69e2;
+}
+.profile-tab-container .profile-avatar .change-avatar-btn {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #4a69e2;
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 2px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(74, 105, 226, 0.1);
+  transition: background 0.2s;
+  z-index: 2;
+}
+.profile-tab-container .profile-avatar .change-avatar-btn:hover {
+  background: #3551b5;
+}
+
+.profile-tab-container .profile-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.profile-tab-container .profile-info h2 {
+  margin: 0 0 2px 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+.profile-tab-container .profile-info .email {
+  color: #888;
+  margin: 10px 0;
+  font-size: 1rem;
+}
+.profile-tab-container .profile-info .point {
+  display: inline-block;
+  border: 1px solid #ccc;
+  border-radius: 16px;
+  padding: 4px 16px;
+  margin-bottom: 8px;
+  font-size: 1rem;
+  background: #f8f8f8;
+  width: fit-content;
+  height: 30px;
+}
+.profile-tab-container .profile-info .status {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 0.95rem;
+  color: #fff;
+  background: #4a69e2;
+  border-radius: 12px;
+  padding: 2px 12px;
+  font-weight: 500;
+}
+
+.profile-tab-container .profile-actions {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  margin: 8px 0 18px 0;
+  justify-content: center;
+}
+
+.profile-tab-container .profile-actions .ant-btn {
+  min-width: 140px;
+}
+
+.profile-tab-container .profile-sections {
+  display: flex;
+  gap: 32px;
+  width: 100%;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.profile-tab-container .profile-section {
+  flex: 1;
+  min-width: 240px;
+  background: #f8f8fa;
+  border-radius: 14px;
+  padding: 24px 20px 18px 20px;
+  box-shadow: 0 2px 8px rgba(74, 105, 226, 0.04);
+  margin-bottom: 0;
+}
+.profile-tab-container .profile-section-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-bottom: 21px;
+  color: #4a69e2;
+  letter-spacing: 0.5px;
+}
+.profile-tab-container .profile-field {
+  margin-bottom: 14px;
+}
+.profile-tab-container .profile-field label {
+  font-weight: 500;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #222;
+  margin-bottom: 6px;
+}
+.profile-tab-container .profile-field .ant-input,
+.profile-tab-container .profile-field .ant-select-selector {
+  border-radius: 8px;
+  height: 38px;
+  font-size: 15px;
+}
+.profile-tab-container .profile-field .ant-input {
+  margin-top: 2px;
+}
+.profile-tab-container .profile-field .ant-input[disabled] {
+  background: #f5f5f5;
+}
+.profile-tab-container .profile-field .ant-select {
+  width: 100%;
+}
+.profile-tab-container .profile-field .ant-picker {
+  width: 100%;
+  border-radius: 8px;
+  height: 38px;
+}
+.profile-tab-container .profile-field .anticon {
+  color: #4a69e2;
+  font-size: 1.1em;
+}
+.profile-tab-container .profile-field .desc {
+  font-size: 0.97em;
+  color: #666;
+  margin-top: 2px;
+}
+
+.profile-tab-container .save-btn {
+  margin-top: 32px;
+  border-radius: 25px;
+  border: 1.5px solid #4a69e2;
+  color: #fff;
+  background: linear-gradient(90deg, #4a69e2 60%, #6b8cff 100%);
+  font-weight: 600;
+  font-size: 17px;
+  width: 200px;
+  height: 48px;
+  align-self: center;
+  box-shadow: 0 2px 8px rgba(74, 105, 226, 0.1);
+  transition: background 0.2s, color 0.2s;
+  height: 50px;
+}
+.profile-tab-container .save-btn:hover {
+  background: #fff !important;
+  color: #4a69e2 !important;
+  border: 1.5px solid #4a69e2 !important;
+}
+
+@media (max-width: 900px) {
+  .profile-tab-container {
+    max-width: 99vw;
+    padding: 18px 2vw 18px 2vw;
+  }
+  .profile-tab-container .profile-sections {
+    flex-direction: column;
+    gap: 18px;
+  }
+}
+@media (max-width: 600px) {
+  .profile-tab-container {
+    padding: 8px 0 8px 0;
+    margin: 8px auto 0 auto;
+  }
+  .profile-tab-container .profile-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .profile-tab-container .profile-sections {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .profile-tab-container .profile-section {
+    padding: 14px 6px 10px 6px;
+  }
+}
+
+.profile-action-btn {
+  height: 50px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 25px;
 }

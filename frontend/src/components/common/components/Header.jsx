@@ -74,7 +74,7 @@ const AppHeader = () => {
   }, [showInput]);
 
   const handleSeeAllProducts = () => {
-    navigate("/dashboard/products");
+    navigate("/listing-page");
     setShowDropdown(false);
     setShowInput(false);
   };
@@ -87,44 +87,12 @@ const AppHeader = () => {
       label: "New Drops",
     },
     {
-      key: "men",
-      label: (
-        <span>
-          Men <DownOutlined style={{ fontSize: 10 }} />
-        </span>
-      ),
-      children: [
-        {
-          key: "sneakers",
-          label: "Sneakers",
-        },
-        {
-          key: "apparel",
-          label: "Apparel",
-        },
-      ],
-    },
-    {
-      key: "women",
-      label: (
-        <span>
-          Women <DownOutlined style={{ fontSize: 10 }} />
-        </span>
-      ),
-      children: [
-        {
-          key: "sneakers-w",
-          label: "Sneakers",
-        },
-        {
-          key: "accessories",
-          label: "Accessories",
-        },
-      ],
+      key: "products",
+      label: "Products",
     },
   ];
 
-  // Dropdown menu items
+  // Dropdown menu items (for mobile)
   const dropdownItems = [
     {
       key: "new",
@@ -132,34 +100,23 @@ const AppHeader = () => {
       label: "New Drops",
     },
     {
-      key: "men",
-      label: "Men",
-      children: [
-        {
-          key: "sneakers",
-          label: "Sneakers",
-        },
-        {
-          key: "apparel",
-          label: "Apparel",
-        },
-      ],
-    },
-    {
-      key: "women",
-      label: "Women",
-      children: [
-        {
-          key: "sneakers-w",
-          label: "Sneakers",
-        },
-        {
-          key: "accessories",
-          label: "Accessories",
-        },
-      ],
+      key: "products",
+      label: "Products",
     },
   ];
+
+  const handleMenuClick = (e) => {
+    if (e.key === "new") {
+      navigate("/listing-page");
+    } else if (e.key === "products") {
+      navigate("/listing-page");
+    }
+  };
+
+  const handleClickAvatar = () => {
+    console.log("Avatar clicked");
+    navigate(`/account`);
+  };
 
   return (
     <Header className="app-header">
@@ -175,11 +132,19 @@ const AppHeader = () => {
 
       <div className="header-left">
         {isMobile ? (
-          <Dropdown menu={{ items: dropdownItems }} trigger={["click"]}>
+          <Dropdown
+            menu={{ items: dropdownItems, onClick: handleMenuClick }}
+            trigger={["click"]}
+          >
             <MenuOutlined className="menu-icon" />
           </Dropdown>
         ) : (
-          <Menu mode="horizontal" className="header-menu" items={menuItems} />
+          <Menu
+            mode="horizontal"
+            className="header-menu"
+            items={menuItems}
+            onClick={handleMenuClick}
+          />
         )}
       </div>
 
@@ -208,7 +173,12 @@ const AppHeader = () => {
                 allowClear
               />
             )}
-            <Avatar icon={<UserOutlined />} className="header-avatar" />
+            <div
+              onClick={handleClickAvatar}
+              style={{ display: "inline-block", cursor: "pointer" }}
+            >
+              <Avatar icon={<UserOutlined />} className="header-avatar" />
+            </div>
           </>
         ) : (
           <>
@@ -256,13 +226,14 @@ const AppHeader = () => {
                 ) : (
                   filtered.slice(0, 3).map((p) => (
                     <div
-                      key={p.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 16,
-                        marginBottom: 16,
+                      onClick={() => {
+                        navigate(`/product/${p.id}`);
+                        setShowDropdown(false);
+                        setShowInput(false);
+                        setSearch("");
                       }}
+                      key={p.id}
+                      className="header-search-result-item"
                     >
                       <img
                         src={`${p.images[0]}`}
@@ -289,7 +260,12 @@ const AppHeader = () => {
                 </Button>
               </div>
             )}
-            <Avatar icon={<UserOutlined />} className="header-avatar" />
+            <div
+              onClick={handleClickAvatar}
+              style={{ display: "inline-block", cursor: "pointer" }}
+            >
+              <Avatar icon={<UserOutlined />} className="header-avatar" />
+            </div>
             <div
               style={{
                 display: "inline-flex",

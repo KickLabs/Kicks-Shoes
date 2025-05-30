@@ -18,9 +18,8 @@ const accountTabs = [
     key: "1",
     name: "My Account",
     icon: <DashboardOutlined />,
-    path: "/account",
+    path: "/account/profile",
   },
-  { key: "2", name: "Null", icon: <AppstoreOutlined />, path: "/account/null" },
   {
     key: "3",
     name: "Order List",

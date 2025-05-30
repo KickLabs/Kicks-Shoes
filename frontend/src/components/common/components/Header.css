@@ -69,3 +69,31 @@
 .noti {
   background-color: orange;
 }
+
+.header-search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  transition: background 0.18s, box-shadow 0.18s;
+  cursor: pointer;
+}
+.header-search-result-item:hover {
+  background: #f5f7ff;
+  box-shadow: 0 2px 8px rgba(74, 105, 226, 0.08);
+}
+
+.header-search-result-item img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.header-search-result-item span {
+  font-weight: 500;
+  font-size: 18px;
+  color: #232321;
+}

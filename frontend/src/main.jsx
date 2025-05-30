@@ -14,7 +14,7 @@ import CartPage from "./components/pages/cart/pages/CartPage";
 import CheckoutPage from "./components/pages/checkout/CheckOut";
 import AllProducts from "./components/pages/dashboard/AllProducts";
 import Dashboard, {
-  DashboardContent
+  DashboardContent,
 } from "./components/pages/dashboard/Dashboard";
 import DiscountListPage from "./components/pages/dashboard/DiscountListPage";
 import UserManagementPage from "./components/pages/dashboard/UserManagementPage";
@@ -23,6 +23,7 @@ import ListingPage from "./components/pages/listing-page/pages/ListingPage";
 import ProductDetailPage from "./components/pages/product/pages/ProductDetailPage";
 import "./styles/index.css";
 import Account from "./components/pages/account/Account";
+import ProfileTab from "./components/pages/account/components/ProfileTab";
 
 const router = createBrowserRouter([
   {
@@ -32,35 +33,35 @@ const router = createBrowserRouter([
     children: [
       {
         path: "",
-        element: <HomePage />
+        element: <HomePage />,
       },
       {
         path: "checkout",
-        element: <CheckoutPage />
+        element: <CheckoutPage />,
       },
       {
         path: "login",
-        element: <Login />
+        element: <Login />,
       },
       {
         path: "cart",
-        element: <CartPage />
+        element: <CartPage />,
       },
       {
         path: "login-admin",
-        element: <LoginAdmin />
+        element: <LoginAdmin />,
       },
       {
         path: "register",
-        element: <RegisterPage />
+        element: <RegisterPage />,
       },
       {
         path: "listing-page",
-        element: <ListingPage />
+        element: <ListingPage />,
       },
       {
         path: "product/:id",
-        element: <ProductDetailPage />
+        element: <ProductDetailPage />,
       },
       {
         path: "dashboard",
@@ -68,66 +69,70 @@ const router = createBrowserRouter([
         children: [
           {
             path: "",
-            element: <DashboardContent />
+            element: <DashboardContent />,
           },
           {
             path: "products",
-            element: <AllProducts />
+            element: <AllProducts />,
           },
           {
             path: "orders",
-            element: <OrderList />
+            element: <OrderList />,
           },
           {
             path: "orders/:orderId",
-            element: <OrderDetails />
+            element: <OrderDetails />,
           },
           {
             path: "products/:productId",
-            element: <ProductDetails />
+            element: <ProductDetails />,
           },
           {
             path: "products/add-new",
-            element: <ProductDetails isAddNew={true} />
+            element: <ProductDetails isAddNew={true} />,
           },
           {
             path: "discounts",
-            element: <DiscountListPage />
+            element: <DiscountListPage />,
           },
           {
             path: "chat",
-            element: <ChatPage />
+            element: <ChatPage />,
           },
           {
             path: "users",
-            element: <UserManagementPage />
-          }
-        ]
+            element: <UserManagementPage />,
+          },
+        ],
       },
       {
         path: "account",
         element: <Account />,
         children: [
           {
-            path: "null",
-            element: <>null</>
+            path: "",
+            element: <ProfileTab />,
+          },
+          {
+            path: "profile",
+            element: <ProfileTab />,
           },
           {
             path: "orders",
-            element: <OrderList />
+            element: <OrderList />,
           },
           {
             path: "orders/:orderId",
-            element: <OrderDetails />
+            element: <OrderDetails />,
           },
           {
             path: "chat",
-            element: <ChatPage />
-          }
-        ]
-      }
-    ]
-  }
+            element: <ChatPage />,
+          },
+        ],
+      },
+    ],
+  },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
