@@ -5,6 +5,7 @@ import TabHeader from "./TabHeader";
 import { ActiveTabContext } from "./ActiveTabContext";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from "react-markdown";
+import { useLocation } from "react-router-dom";
 
 const { Text } = Typography;
 
@@ -19,6 +20,8 @@ const ChatPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { setActiveTab } = useContext(ActiveTabContext);
   const messagesEndRef = useRef(null);
+  const location = useLocation();
+  const isDashboard = location.pathname.startsWith("/dashboard");
 
   // Mock data for chat list
   const chatList = [
@@ -28,12 +31,17 @@ const ChatPage = () => {
       lastMessage: "How can I help you today?",
       time: "Just now",
       unread: 0,
-      avatar: null,
-    },
+      avatar: null
+    }
   ];
 
   useEffect(() => {
-    setActiveTab("6");
+    if (isDashboard) {
+      setActiveTab("6");
+    } else {
+      setActiveTab("4");
+    }
+
     // Set default chat to AI Assistant
     setSelectedChat(chatList[0]);
   }, [setActiveTab]);
@@ -54,11 +62,11 @@ const ChatPage = () => {
           {
             parts: [
               {
-                text: userMessage,
-              },
-            ],
-          },
-        ],
+                text: userMessage
+              }
+            ]
+          }
+        ]
       });
 
       const response = await result.response;
@@ -78,7 +86,7 @@ const ChatPage = () => {
         id: Date.now(),
         content: newMessage,
         sender: "user",
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: new Date().toLocaleTimeString()
       };
       setMessages((prev) => [...prev, userMessage]);
       setNewMessage("");
@@ -89,7 +97,7 @@ const ChatPage = () => {
         id: Date.now() + 1,
         content: aiResponse,
         sender: "ai",
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: new Date().toLocaleTimeString()
       };
       setMessages((prev) => [...prev, aiMessage]);
     }

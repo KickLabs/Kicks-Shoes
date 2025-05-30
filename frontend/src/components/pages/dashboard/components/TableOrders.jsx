@@ -17,7 +17,7 @@ const StatusTag = React.memo(({ status }) => (
           height: 8,
           borderRadius: "50%",
           background: status === "Completed" ? "#3b82f6" : "#f59e42",
-          marginRight: 6,
+          marginRight: 6
         }}
       />
       {status}
@@ -26,7 +26,7 @@ const StatusTag = React.memo(({ status }) => (
 ));
 
 StatusTag.propTypes = {
-  status: PropTypes.string.isRequired,
+  status: PropTypes.string.isRequired
 };
 
 const CustomerCell = React.memo(({ name }) => (
@@ -36,7 +36,7 @@ const CustomerCell = React.memo(({ name }) => (
 ));
 
 CustomerCell.propTypes = {
-  name: PropTypes.string.isRequired,
+  name: PropTypes.string.isRequired
 };
 
 const TableOrders = ({ title, orders, dashboard }) => {
@@ -46,7 +46,7 @@ const TableOrders = ({ title, orders, dashboard }) => {
         title: "Product",
         dataIndex: "items",
         key: "product",
-        render: (items) => items[0]?.name || "N/A",
+        render: (items) => items[0]?.name || "N/A"
       },
       { title: "Order ID", dataIndex: "id", key: "id" },
       { title: "Date", dataIndex: "date", key: "date" },
@@ -54,14 +54,14 @@ const TableOrders = ({ title, orders, dashboard }) => {
         title: "Status",
         dataIndex: "status",
         key: "status",
-        render: (status) => <StatusTag status={status} />,
+        render: (status) => <StatusTag status={status} />
       },
       {
         title: "Amount",
         dataIndex: "amount",
         key: "amount",
-        render: (amount) => `$${amount.toFixed(2)}`,
-      },
+        render: (amount) => `$${amount.toFixed(2)}`
+      }
     ];
 
     if (dashboard) {
@@ -70,14 +70,14 @@ const TableOrders = ({ title, orders, dashboard }) => {
         dataIndex: "checkbox",
         key: "checkbox",
         width: 40,
-        render: () => <Checkbox />,
+        render: () => <Checkbox />
       });
 
       baseColumns.splice(4, 0, {
         title: "Customer Name",
         dataIndex: "customer",
         key: "customer",
-        render: (name) => <CustomerCell name={name} />,
+        render: (name) => <CustomerCell name={name} />
       });
     }
 
@@ -95,7 +95,7 @@ const TableOrders = ({ title, orders, dashboard }) => {
           onClick: () => {
             window.location.href = `/dashboard/orders/${record.id}`;
           },
-          style: { cursor: "pointer" },
+          style: { cursor: "pointer" }
         })}
       />
     </div>
@@ -116,12 +116,12 @@ TableOrders.propTypes = {
           productId: PropTypes.number.isRequired,
           name: PropTypes.string.isRequired,
           quantity: PropTypes.number.isRequired,
-          price: PropTypes.number.isRequired,
+          price: PropTypes.number.isRequired
         })
-      ).isRequired,
+      ).isRequired
     })
   ).isRequired,
-  dashboard: PropTypes.bool,
+  dashboard: PropTypes.bool
 };
 
 export default React.memo(TableOrders);

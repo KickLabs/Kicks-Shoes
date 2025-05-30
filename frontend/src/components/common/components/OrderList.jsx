@@ -5,6 +5,8 @@ import { getOrders, getTotalOrders } from "../../../data/mockData";
 import TableOrders from "../../pages/dashboard/components/TableOrders";
 import { ActiveTabContext } from "./ActiveTabContext";
 import TabHeader from "./TabHeader";
+import { Dropdown, Button, Menu } from "antd";
+import { DownOutlined } from "@ant-design/icons";
 
 const OrderList = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,10 +26,42 @@ const OrderList = () => {
     setCurrentPage(page);
   };
 
+  const statusMenu = (
+    <Menu
+      items={[
+        { label: "Pending", key: "pending" },
+        { label: "Completed", key: "completed" },
+        { label: "Cancelled", key: "cancelled" }
+      ]}
+      onClick={(e) => {
+        console.log("Selected status:", e.key);
+        // TODO: Thay đổi status tại đây
+      }}
+    />
+  );
+
   return (
     <>
-      <TabHeader breadcrumb="Order List" />
-      <TableOrders title="Recent Purchases" orders={currentOrders} dashboard={isDashboard} />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}
+      >
+        <TabHeader breadcrumb="Order List" />
+        <Dropdown overlay={statusMenu} trigger={["click"]}>
+          <Button style={{ height: 45 }}>
+            Change Status <DownOutlined />
+          </Button>
+        </Dropdown>
+      </div>
+
+      <TableOrders
+        title="Recent Purchases"
+        orders={currentOrders}
+        dashboard={isDashboard}
+      />
       <div className="pagination-container">
         <Pagination
           current={currentPage}

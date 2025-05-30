@@ -1,0 +1,78 @@
+/* Toàn bộ vùng account có màu nền e7e7e3 */
+.account-layout {
+  background-color: #e7e7e3 !important;
+  padding: 15px;
+}
+
+/* Sidebar: bo góc, đổ bóng nhẹ, cách lề trái */
+.account-layout .sidebar {
+  background-color: #ffffff !important;
+  border-radius: 12px;
+  padding: 16px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  height: fit-content;
+  top: 30px;
+  align-self: flex-start;
+}
+
+/* Ẩn logo KICKS */
+.account-layout .sidebar .logo {
+  display: none !important;
+}
+
+/* Menu bên trong sidebar */
+.account-layout .sidebar-menu {
+  background-color: transparent !important;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Item menu */
+.account-layout .sidebar-menu .ant-menu-item {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+
+
+/* Hover */
+.account-layout .sidebar-menu .ant-menu-item:hover {
+  background-color: #dcdcd6 !important;
+  color: black !important;
+}
+/* Mục đang chọn */
+.account-layout .sidebar-menu .ant-menu-item.ant-menu-item-selected {
+  background-color: #4A69E2 !important;
+  color: white !important;
+}
+
+/* Hover vào mục đang chọn vẫn giữ nguyên màu xanh */
+.account-layout .sidebar-menu .ant-menu-item.ant-menu-item-selected:hover {
+  background-color: #4A69E2 !important;
+  color: white !important;
+}
+
+/* ChatPage layout */
+.account-layout .chat-page {
+  background-color: #e7e7e3 !important;
+}
+
+/* Khoảng cách giữa sidebar và chat */
+.account-layout .chat-layout {
+  display: flex;
+  gap: 24px; /* khoảng cách giữa sidebar và chat box */
+}
+
+/* Chat content (main) bo góc, padding bên trong */
+.account-layout .chat-main {
+  background-color: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
+  flex: 1;
+}
+/* Override màu nền chỉ trong trang Account */
+.account-layout .ant-layout.css-dev-only-do-not-override-zi87jd {
+  background-color: #e7e7e3 !important;
+}
