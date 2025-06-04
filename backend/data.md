@@ -1,5 +1,6 @@
 # Database Schema Documentation
 
+## Handle BE, DB
 ## User Schema
 
 ```javascript
