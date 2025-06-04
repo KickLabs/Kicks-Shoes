@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Category Controller
+ * @created 2025-06-04
+ * @file categoryController.js
+ * @description This controller handles all category-related HTTP requests for the Kicks Shoes application.
+ * It processes incoming requests, validates input data, and coordinates with the category service
+ * to perform category operations. The controller is responsible for request/response handling
+ * and error management.
+ */
+
 import Category from "../models/Category.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import { ErrorResponse } from "../utils/errorResponse.js";

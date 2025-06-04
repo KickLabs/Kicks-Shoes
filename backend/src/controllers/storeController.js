@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Store Controller
+ * @created 2025-06-04
+ * @file storeController.js
+ * @description This controller handles all store-related HTTP requests for the Kicks Shoes application.
+ * It processes incoming requests, validates input data, and coordinates with the store service
+ * to perform store operations. The controller is responsible for request/response handling
+ * and error management.
+ */
+
 import Store from "../models/Store.js";
 
 // Get all stores

@@ -4,18 +4,26 @@ import react from "@vitejs/plugin-react";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg'],
+  assetsInclude: ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.svg"],
   resolve: {
     alias: {
-      '@assets': '/src/assets',
+      "@assets": "/src/assets",
     },
   },
   server: {
-    port: 3000,
+    port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://localhost:3000",
         changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
+      "/verify-email": {
+        target: "http://localhost:3000/api/auth",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/verify-email/, "/verify-email"),
       },
     },
   },

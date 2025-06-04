@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Category Routes
+ * @created 2025-06-04
+ * @file categoryRoutes.js
+ * @description This file defines all category-related routes for the Kicks Shoes application.
+ * It maps HTTP endpoints to their corresponding controller functions and applies necessary middleware.
+ */
+
 import express from "express";
 import {
   getCategories,

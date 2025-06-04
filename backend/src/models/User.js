@@ -1,7 +1,24 @@
+/**
+ * @fileoverview User Model
+ * @created 2025-05-31
+ * @file User.js
+ * @description This file defines the User model schema for the Kicks Shoes application.
+ * It includes user authentication details, personal information, and account status.
+ * The schema implements methods for password hashing, verification, and user data validation.
+ */
+
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
+    fullName: {
+      type: String,
+      required: [true, "Full name is required"],
+      trim: true,
+      minlength: [2, "Full name must be at least 2 characters long"],
+      maxlength: [50, "Full name cannot exceed 50 characters"],
+    },
     username: {
       type: String,
       required: [true, "Username is required"],
@@ -58,6 +75,18 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+      select: false,
+    },
+    verificationTokenExpires: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -70,11 +99,27 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ email: 1 });
 userSchema.index({ username: 1 });
 userSchema.index({ role: 1 });
+userSchema.index({ isVerified: 1 });
 
 // Virtual for full user info
 userSchema.virtual("fullInfo").get(function () {
-  return `${this.username} (${this.email}) - ${this.role}`;
+  return `${this.fullName} (${this.email}) - ${this.role}`;
 });
+
+// Encrypt password using bcrypt
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
+    next();
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+// Match user entered password to hashed password in database
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 const User = mongoose.model("User", userSchema);
 

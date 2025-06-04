@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Product Model
+ * @created 2025-05-31
+ * @file Product.js
+ * @description This file defines the Product model schema for the Kicks Shoes application.
+ * It includes product details such as name, description, price, inventory, and category relationships.
+ * The schema supports product variations, images, and store associations.
+ */
+
 import mongoose from "mongoose";
 const { Schema } = mongoose;
 

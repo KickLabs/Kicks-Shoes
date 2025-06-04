@@ -1,3 +1,21 @@
+/**
+ * @fileoverview Main Application Entry Point
+ * @created 2025-05-31
+ * @file app.js
+ * @description This is the main entry point of the Kicks Shoes backend application.
+ * It sets up the Express server, middleware configurations, and route handlers.
+ * The application uses a modular architecture with separate routes, controllers,
+ * and services for better organization and maintainability.
+ *
+ * Key features:
+ * - Express server configuration
+ * - Middleware setup (CORS, body-parser, etc.)
+ * - Route registration
+ * - Error handling
+ * - Database connection
+ * - Logging configuration
+ */
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -5,40 +23,47 @@ import connectDB from "./config/database.js";
 import userRoutes from "./routes/userRoutes.js";
 import storeRoutes from "./routes/storeRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import emailRoutes from "./routes/emailRoutes.js";
+import morgan from "morgan";
+import helmet from "helmet";
+import compression from "compression";
+import { errorHandler } from "./middlewares/error.js";
+import logger from "./utils/logger.js";
+
 // Load environment variables
 dotenv.config();
-
-// Initialize express app
-const app = express();
 
 // Connect to database
 connectDB();
 
+const app = express();
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
+app.use(morgan("dev"));
+app.use(helmet());
+app.use(compression());
 
-// Routes
+// Default route
 app.get("/", (req, res) => {
   res.json({ message: "Welcome to Kicks Shoes API" });
 });
+
+// Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/email", emailRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  const statusCode = err.statusCode || 500;
-  const message = err.message || "Something went wrong!";
-  res.status(statusCode).json({ message });
-});
+// Error handler
+app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  logger.info(`Server is running on port ${PORT}`);
 });
-
-export default app;

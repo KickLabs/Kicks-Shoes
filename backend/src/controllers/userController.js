@@ -1,5 +1,14 @@
-import User from "../models/User.js";
+/**
+ * @fileoverview User Controller
+ * @created 2025-06-04
+ * @file userController.js
+ * @description This controller handles all user-related HTTP requests for the Kicks Shoes application.
+ * It processes incoming requests, validates input data, and coordinates with the user service
+ * to perform user operations. The controller is responsible for request/response handling
+ * and error management.
+ */
 
+import User from "../models/User.js";
 // Get all users
 export const getUsers = async (req, res) => {
   try {

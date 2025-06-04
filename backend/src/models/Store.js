@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Store Model
+ * @created 2025-05-31
+ * @file Store.js
+ * @description This file defines the Store model schema for managing store information in the Kicks Shoes application.
+ * It includes store details, location information, operating hours, and relationships with products and owners.
+ */
+
 import mongoose from "mongoose";
 
 const storeSchema = new mongoose.Schema(
