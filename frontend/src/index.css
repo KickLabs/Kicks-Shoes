@@ -1,0 +1,47 @@
+/* Global Ant Design Input Styles */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-select-selector,
+.ant-picker {
+  height: 40px !important;
+  min-height: 40px !important;
+}
+
+.ant-input-lg,
+.ant-input-affix-wrapper-lg,
+.ant-input-number-lg,
+.ant-select-lg .ant-select-selector,
+.ant-picker-lg {
+  height: 48px !important;
+  min-height: 48px !important;
+}
+
+.ant-input-sm,
+.ant-input-affix-wrapper-sm,
+.ant-input-number-sm,
+.ant-select-sm .ant-select-selector,
+.ant-picker-sm {
+  height: 32px !important;
+  min-height: 32px !important;
+}
+
+/* Override specific component styles */
+.product-details-container .ant-input,
+.product-details-container .ant-input-number,
+.product-details-container .ant-select-selector,
+.product-details-container .ant-input-affix-wrapper,
+.product-details-container .ant-input-textarea {
+  min-height: 40px !important;
+}
+
+.profile-tab-container .profile-field .ant-input,
+.profile-tab-container .profile-field .ant-select-selector,
+.profile-tab-container .profile-field .ant-picker {
+  height: 40px !important;
+}
+
+.contact-input,
+.shipping-address-input {
+  height: 40px !important;
+}

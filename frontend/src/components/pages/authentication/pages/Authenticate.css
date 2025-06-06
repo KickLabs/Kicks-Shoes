@@ -510,3 +510,189 @@ img.social-logo {
     height: 60vh;
   }
 }
+
+/* Error Message Styles */
+.ant-message-error {
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.ant-message-error .ant-message-error-content {
+  color: #ff4d4f;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ant-message-error a {
+  color: #1890ff;
+  text-decoration: underline;
+  margin-left: 8px;
+}
+
+.ant-message-error a:hover {
+  color: #40a9ff;
+}
+
+.ant-form-item-explain-error {
+  color: #ff4d4f;
+  font-size: 14px;
+  margin-top: 4px;
+}
+.input.ant-input-status-error {
+  border-color: #ff4d4f;
+}
+
+.input.ant-input-status-error:hover,
+.input.ant-input-status-error:focus {
+  border-color: #ff7875;
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2);
+}
+
+/* Forgot Password & Reset Password Form Styles */
+.forgot-password-container,
+.reset-password-container {
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.forgot-password-box,
+.reset-password-box {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.forgot-password-title,
+.reset-password-title {
+  color: #1a1a1a;
+  margin-bottom: 24px !important;
+  font-weight: 600 !important;
+}
+
+.forgot-password-description,
+.reset-password-description {
+  color: #666;
+  margin-bottom: 32px !important;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.forgot-password-form .ant-form-item,
+.reset-password-form .ant-form-item {
+  margin-bottom: 24px;
+}
+
+.forgot-password-form .ant-input,
+.reset-password-form .ant-input,
+.forgot-password-form .ant-input-password,
+.reset-password-form .ant-input-password {
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 8px 16px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.forgot-password-form .ant-input:hover,
+.reset-password-form .ant-input:hover,
+.forgot-password-form .ant-input-password:hover,
+.reset-password-form .ant-input-password:hover {
+  border-color: #4a69e2;
+}
+
+.forgot-password-form .ant-input:focus,
+.reset-password-form .ant-input:focus,
+.forgot-password-form .ant-input-password:focus,
+.reset-password-form .ant-input-password:focus {
+  border-color: #4a69e2;
+  box-shadow: 0 0 0 2px rgba(74, 105, 226, 0.1);
+}
+
+.forgot-password-form .ant-btn,
+.reset-password-form .ant-btn {
+  height: 48px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  width: 100%;
+  background: #4a69e2;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.forgot-password-form .ant-btn:hover,
+.reset-password-form .ant-btn:hover {
+  background: #3a59d2;
+  transform: translateY(-1px);
+}
+
+.forgot-password-form .ant-btn:active,
+.reset-password-form .ant-btn:active {
+  transform: translateY(0);
+}
+
+.back-to-login {
+  margin-top: 24px;
+  color: #4a69e2;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.back-to-login:hover {
+  color: #3a59d2;
+  text-decoration: underline;
+}
+
+.invalid-link-container {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.invalid-link-title {
+  color: #ff4d4f;
+  margin-bottom: 16px !important;
+}
+
+.invalid-link-description {
+  color: #666;
+  margin-bottom: 24px;
+}
+
+.request-new-link {
+  color: #4a69e2;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.request-new-link:hover {
+  color: #3a59d2;
+  text-decoration: underline;
+}
+
+/* Responsive styles */
+@media (max-width: 480px) {
+  .forgot-password-box,
+  .reset-password-box {
+    padding: 24px;
+  }
+
+  .forgot-password-title,
+  .reset-password-title {
+    font-size: 24px !important;
+  }
+
+  .forgot-password-description,
+  .reset-password-description {
+    font-size: 14px;
+  }
+}

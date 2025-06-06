@@ -11,17 +11,15 @@ import imagesdn from "../../../../assets/images/loginadminbanner.png";
 const LoginAdmin = () => {
   return (
     <div className="login-container-admin">
-      {/* Club box with image + branding */}
       <div className="login-image-half-admin">
         <img src={imagesdn} alt="Sneakers" className="login-image-admin" />
       </div>
 
-      {/* Login form */}
       <div className="login-box-admin">
         <Form layout="vertical">
           <LoginHeader />
           <RememberCheckbox />
-          <EmailLoginButton />
+          <EmailLoginButton text="LOGIN" loading={loading} />
           <SocialButton />
           <Term />
         </Form>

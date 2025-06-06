@@ -128,31 +128,49 @@ export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Check required fields
     if (!email || !password) {
       return next(new ErrorResponse("Please provide email and password", 400));
     }
 
-    // Check if user exists
     const user = await User.findOne({ email }).select("+password");
+
     if (!user) {
-      return next(new ErrorResponse("Invalid credentials", 401));
-    }
-
-    // Check if password matches
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return next(new ErrorResponse("Invalid credentials", 401));
-    }
-
-    // Check if email is verified
-    if (!user.isVerified) {
       return next(
-        new ErrorResponse("Please verify your email before logging in", 401)
+        new ErrorResponse(
+          "Email not found. Please check your email or register a new account.",
+          401
+        )
       );
     }
 
-    // Generate tokens
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return next(
+        new ErrorResponse(
+          "Incorrect password. Please try again or use 'Forgot Password' if you don't remember.",
+          401
+        )
+      );
+    }
+
+    if (!user.isVerified) {
+      return next(
+        new ErrorResponse(
+          "Please verify your email before logging in. Check your inbox for the verification link.",
+          401
+        )
+      );
+    }
+
+    if (!user.status) {
+      return next(
+        new ErrorResponse(
+          "Your account has been deactivated. Please contact support for assistance.",
+          401
+        )
+      );
+    }
+
     const accessToken = generateToken(
       { id: user._id },
       process.env.JWT_EXPIRES_IN || "1d"
@@ -162,7 +180,6 @@ export const login = async (req, res, next) => {
       process.env.JWT_REFRESH_EXPIRES_IN || "7d"
     );
 
-    // Remove password from response
     user.password = undefined;
 
     logger.info("User logged in successfully", { userId: user._id });
@@ -229,14 +246,32 @@ export const getMe = async (req, res, next) => {
  */
 export const updateProfile = async (req, res, next) => {
   try {
-    const { username, email, phone, address } = req.body;
+    const {
+      fullName,
+      username,
+      email,
+      phone,
+      address,
+      dateOfBirth,
+      gender,
+      aboutMe,
+    } = req.body;
 
     // Build update object
     const updateFields = {};
+    if (fullName) updateFields.fullName = fullName;
     if (username) updateFields.username = username;
     if (email) updateFields.email = email;
     if (phone) updateFields.phone = phone;
     if (address) updateFields.address = address;
+    if (dateOfBirth) updateFields.dateOfBirth = dateOfBirth;
+    if (gender) updateFields.gender = gender;
+    if (aboutMe) updateFields.aboutMe = aboutMe;
+
+    // Handle avatar file if present
+    if (req.file) {
+      updateFields.avatar = req.file.path;
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
@@ -278,6 +313,7 @@ export const updateProfile = async (req, res, next) => {
 export const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
+    logger.info("Change password request", req.body);
 
     if (!currentPassword || !newPassword) {
       return next(
@@ -384,9 +420,9 @@ export const forgotPassword = async (req, res, next) => {
  */
 export const resetPassword = async (req, res, next) => {
   try {
-    const { token, password } = req.body;
+    const { token, newPassword } = req.body;
 
-    if (!token || !password) {
+    if (!token || !newPassword) {
       return next(
         new ErrorResponse("Please provide token and new password", 400)
       );
@@ -395,13 +431,15 @@ export const resetPassword = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
+    console.log(user);
+    console.log(newPassword);
 
     if (!user) {
       return next(new ErrorResponse("User not found", 404));
     }
 
     // Update password
-    user.password = password;
+    user.password = newPassword;
     await user.save();
 
     logger.info("Password reset successfully", { userId: user._id });

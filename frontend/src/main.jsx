@@ -20,6 +20,8 @@ import App from "./components/layout/App";
 import Login from "./components/pages/authentication/pages/Login";
 import LoginAdmin from "./components/pages/authentication/pages/LoginAdmin";
 import RegisterPage from "./components/pages/authentication/pages/Register";
+import ForgotPassword from "./components/pages/authentication/pages/ForgotPassword";
+import ChangePassword from "./components/pages/authentication/pages/ChangePassword";
 
 // Main Pages
 import CartPage from "./components/pages/cart/pages/CartPage";
@@ -41,6 +43,10 @@ import "./styles/index.css";
 import EmailVerificationFailed from "./components/pages/authentication/pages/EmailVerificationFailed";
 import EmailVerified from "./components/pages/authentication/pages/EmailVerified";
 import EmailVerification from "./components/pages/authentication/pages/EmailVerification";
+import ResetPasswordForm from "./components/pages/authentication/pages/ResetPasswordForm";
+
+const userInfo = localStorage.getItem("userInfo");
+const user = userInfo ? JSON.parse(userInfo) : null;
 
 const router = createBrowserRouter([
   {
@@ -159,6 +165,18 @@ const router = createBrowserRouter([
             element: <ChatPage />,
           },
         ],
+      },
+      {
+        path: "change-password",
+        element: <ChangePassword />,
+      },
+      {
+        path: "forgot-password",
+        element: <ForgotPassword />,
+      },
+      {
+        path: "reset-password",
+        element: <ResetPasswordForm />,
       },
     ],
   },

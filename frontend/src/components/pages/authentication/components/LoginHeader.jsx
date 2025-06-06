@@ -1,5 +1,5 @@
 import React from "react";
-import { Typography, Form, Input } from "antd";
+import { Typography } from "antd";
 
 const { Title } = Typography;
 
@@ -7,19 +7,29 @@ const LoginHeader = () => {
   return (
     <>
       <Title level={2}>Login</Title>
-      <a href="#" className="text-link" style={{ fontWeight: "bold" }}>
-        Forgot your password?
-      </a>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: "fit-content",
+        }}
+      >
+        <a
+          href="/forgot-password"
+          className="text-link"
+          style={{ fontWeight: "bold", marginBottom: 8 }}
+        >
+          Forgot your password?
+        </a>
 
-      <Form layout="vertical">
-        <Form.Item>
-          <Input className="input" placeholder="Email" />
-        </Form.Item>
-
-        <Form.Item>
-          <Input.Password className="input" placeholder="Password" />
-        </Form.Item>
-      </Form>
+        <a
+          href="/register"
+          className="text-link"
+          style={{ fontWeight: "bold" }}
+        >
+          Register
+        </a>
+      </div>
     </>
   );
 };

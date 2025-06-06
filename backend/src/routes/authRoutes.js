@@ -22,6 +22,7 @@ import {
   refreshToken,
 } from "../controllers/authController.js";
 import { protect } from "../middlewares/auth.js";
+import upload from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -88,7 +89,7 @@ router.get("/me", protect, getMe);
  * @desc    Update user profile
  * @access  Private
  */
-router.put("/update-profile", protect, updateProfile);
+router.put("/update-profile", protect, upload.single("avatar"), updateProfile);
 
 /**
  * @route   PUT /api/auth/change-password
