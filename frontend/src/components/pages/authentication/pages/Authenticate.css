@@ -42,7 +42,7 @@
   padding: 10px 14px;
   border-radius: 6px;
   border: 1px solid #232321;
-  background-color: #e7e7e3;
+  background-color: #e7e7e3 !important;
   outline: none;
   width: 100%;
   box-sizing: border-box;
@@ -58,7 +58,21 @@
 
 .input:focus {
   border-color: #333434 !important;
-  box-shadow: 0 0 6px #aaaaaaaa;
+  box-shadow: 0 0 6px #aaaaaaaa !important;
+}
+
+.input:hover {
+  border-color: #64748b;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0px 1000px #e7e7e3 inset !important;
+  box-shadow: 0 0 0px 1000px #e7e7e3 inset !important;
+  -webkit-text-fill-color: #000 !important; /* màu chữ */
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .checkbox {
