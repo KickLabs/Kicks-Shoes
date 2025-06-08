@@ -21,14 +21,14 @@ import {
   resendVerification,
   refreshToken,
 } from "../controllers/authController.js";
-import { protect, optionalAuth } from "../middlewares/auth.js";
+import { protect, optionalAuth } from "../middlewares/auth.middleware.js";
 import {
   requireCustomer,
   requireShop,
   requireAdmin,
-} from "../middlewares/roleAuth.js";
+} from "../middlewares/role.middleware.js";
 
-import upload from "../middlewares/uploadMiddleware.js";
+import upload from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
