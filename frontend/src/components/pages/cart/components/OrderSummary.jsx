@@ -1,6 +1,10 @@
 import "./OrderSummary.css";
 import { orderData } from "../../../../data/cartData";
+import { Button } from "antd";
+import { useNavigate } from "react-router-dom";
+
 export const OrderSummary = () => {
+  const navigate = useNavigate();
   return (
     <div className="order-wrapper">
       <div className="order-table">
@@ -23,7 +27,13 @@ export const OrderSummary = () => {
             <p>${orderData.total.toLocaleString()}</p>
           </div>
         </div>
-          <button>Checkout</button>
+        <Button
+          style={{ height: 48, width: "100%", marginTop: 16 }}
+          type="default"
+          onClick={() => navigate("/checkout")}
+        >
+          Checkout
+        </Button>
       </div>
     </div>
   );

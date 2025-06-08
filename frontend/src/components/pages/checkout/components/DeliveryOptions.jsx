@@ -106,7 +106,14 @@ export default function DeliveryOptions({ deliveryMethod, setDeliveryMethod }) {
         </Form.Item>
       </Form>
 
-      <Button type="primary" size="large" block className="review-button">
+      <Button
+        type="default"
+        size="large"
+        block
+        className="review-button"
+        onClick={() => navigate("/checkout")}
+        style={{ height: 48, width: "100%", marginTop: 16, color: "white" }}
+      >
         REVIEW AND PAY
       </Button>
     </Card>

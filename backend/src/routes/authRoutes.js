@@ -21,12 +21,18 @@ import {
   resendVerification,
   refreshToken,
 } from "../controllers/authController.js";
-import { protect } from "../middlewares/auth.js";
+import { protect, optionalAuth } from "../middlewares/auth.js";
+import {
+  requireCustomer,
+  requireShop,
+  requireAdmin,
+} from "../middlewares/roleAuth.js";
+
 import upload from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
-// Public routes
+// Public routes (no auth required)
 /**
  * @route   POST /api/auth/register
  * @desc    Register new user
@@ -76,7 +82,7 @@ router.post("/reset-password", resetPassword);
  */
 router.post("/refresh-token", refreshToken);
 
-// Protected routes
+// Protected routes (require authentication)
 /**
  * @route   GET /api/auth/me
  * @desc    Get current user profile

@@ -14,19 +14,18 @@ import {
   updateCategory,
   deleteCategory,
 } from "../controllers/categoryController.js";
-import { protect, authorize } from "../middlewares/auth.js";
+import { protect, optionalAuth } from "../middlewares/auth.js";
+import { requireAdmin } from "../middlewares/roleAuth.js";
 
 const router = express.Router();
 
-router
-  .route("/")
-  .get(getCategories)
-  .post(protect, authorize("admin"), createCategory);
+// Public routes (optional auth)
+router.get("/", optionalAuth, getCategories);
+router.get("/:id", optionalAuth, getCategory);
 
-router
-  .route("/:id")
-  .get(getCategory)
-  .put(protect, authorize("admin"), updateCategory)
-  .delete(protect, authorize("admin"), deleteCategory);
+// Admin only routes
+router.post("/", protect, requireAdmin, createCategory);
+router.put("/:id", protect, requireAdmin, updateCategory);
+router.delete("/:id", protect, requireAdmin, deleteCategory);
 
 export default router;

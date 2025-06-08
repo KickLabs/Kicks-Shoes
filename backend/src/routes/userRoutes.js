@@ -13,17 +13,34 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  getUserProfile,
+  updateUserProfile,
+  getUsersIsActive,
 } from "../controllers/userController.js";
-import { protect, authorize } from "../middlewares/auth.js";
+import { protect, optionalAuth } from "../middlewares/auth.js";
+import { requireAdmin } from "../middlewares/roleAuth.js";
+import upload from "../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
-router.route("/").get(getUsers).post(protect, authorize("admin"), createUser);
+// Public routes (optional auth)
+router.get("/profile/:username", optionalAuth, getUserProfile);
+
+// Protected routes
+router.put("/profile", protect, upload.single("avatar"), updateUserProfile);
+
+// Admin only routes
+router
+  .route("/")
+  .get(protect, requireAdmin, getUsers)
+  .post(protect, requireAdmin, createUser);
+
+router.get("/active", protect, requireAdmin, getUsersIsActive);
 
 router
   .route("/:id")
-  .get(getUser)
-  .put(protect, authorize("admin"), updateUser)
-  .delete(protect, authorize("admin"), deleteUser);
+  .get(protect, requireAdmin, getUser)
+  .put(protect, requireAdmin, updateUser)
+  .delete(protect, requireAdmin, deleteUser);
 
 export default router;

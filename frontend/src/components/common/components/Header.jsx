@@ -7,8 +7,9 @@ import {
   UserOutlined,
   LogoutOutlined,
   LockOutlined,
+  ShoppingCartOutlined,
 } from "@ant-design/icons";
-import { Avatar, Dropdown, Input, Layout, Menu, Button } from "antd";
+import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal } from "antd";
 import logo from "@assets/Logo.svg";
 import "./Header.css";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -342,11 +343,13 @@ const AppHeader = () => {
                 width: 28,
                 height: 28,
                 borderRadius: "50%",
-                background: "#ff9800",
                 marginLeft: 12,
+                fontSize: 20,
+                cursor: "pointer",
               }}
+              onClick={() => navigate("/cart")}
             >
-              <NotificationBadgeOnly count={8} />
+              <ShoppingCartOutlined />
             </div>
           </>
         )}

@@ -11,6 +11,7 @@ import User from "../models/User.js";
 import TokenBlacklist from "../models/TokenBlacklist.js";
 import { ErrorResponse } from "../utils/errorResponse.js";
 import logger from "../utils/logger.js";
+import { ROLES } from "./roleAuth.js";
 
 /**
  * Protect routes - Check if user is authenticated
@@ -74,6 +75,59 @@ export const protect = async (req, res, next) => {
     }
   } catch (error) {
     logger.error("Auth middleware error", {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(error);
+  }
+};
+
+/**
+ * Optional authentication - Check if user is authenticated but don't require it
+ * Useful for routes that can be accessed by both guests and authenticated users
+ */
+export const optionalAuth = async (req, res, next) => {
+  try {
+    let token;
+
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+
+    if (!token) {
+      // No token provided, continue as guest
+      req.user = null;
+      return next();
+    }
+
+    try {
+      const blacklistedToken = await TokenBlacklist.findOne({ token });
+      if (blacklistedToken) {
+        // Token is blacklisted, continue as guest
+        req.user = null;
+        return next();
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id);
+
+      if (user && user.isVerified) {
+        req.user = user;
+      } else {
+        req.user = null;
+      }
+
+      next();
+    } catch (error) {
+      // Token verification failed, continue as guest
+      req.user = null;
+      next();
+    }
+  } catch (error) {
+    logger.error("Optional auth middleware error", {
       error: error.message,
       stack: error.stack,
     });
