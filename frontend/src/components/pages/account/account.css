@@ -73,7 +73,6 @@
 /* Override màu nền chỉ trong trang Account */
 .account-layout .ant-layout.css-dev-only-do-not-override-zi87jd {
   background-color: #e7e7e3 !important;
-  margin-top: 10px;
 }
 
 /* Profile Tab Styles - Đẹp, hiện đại, chia 2 cột rõ ràng */
@@ -86,10 +85,6 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-}
-
-.recent-orders {
-  margin-top: 0px;
 }
 
 .profile-tab-container .profile-header {
@@ -309,8 +304,4 @@
   font-size: 16px;
   font-weight: 500;
   border-radius: 25px;
-}
-
-.ant-layout {
-  background-color: #e7e7e3 !important;
 }

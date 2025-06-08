@@ -8,13 +8,16 @@
  * and error management.
  */
 
-import Category from "../models/Category.js";
-import { asyncHandler } from "../middlewares/asyncHandler.js";
+import { CategoryService } from "../services/category.service.js";
+import { asyncHandler } from "../middlewares/async.middleware.js";
 import { ErrorResponse } from "../utils/errorResponse.js";
+import logger from "../utils/logger.js";
 
 // Get all categories
 export const getCategories = asyncHandler(async (req, res) => {
-  const categories = await Category.find();
+  logger.info("Getting all categories");
+  const categories = await CategoryService.getCategories();
+
   res.status(200).json({
     success: true,
     count: categories.length,
@@ -24,23 +27,22 @@ export const getCategories = asyncHandler(async (req, res) => {
 
 // Get single category
 export const getCategory = asyncHandler(async (req, res, next) => {
-  const category = await Category.findById(req.params.id);
+  try {
+    const category = await CategoryService.getCategoryById(req.params.id);
 
-  if (!category) {
-    return next(
-      new ErrorResponse(`Category not found with id of ${req.params.id}`, 404)
-    );
+    res.status(200).json({
+      success: true,
+      data: category,
+    });
+  } catch (error) {
+    return next(new ErrorResponse(error.message, 404));
   }
-
-  res.status(200).json({
-    success: true,
-    data: category,
-  });
 });
 
 // Create new category
 export const createCategory = asyncHandler(async (req, res) => {
-  const category = await Category.create(req.body);
+  logger.info("Creating new category", { categoryData: req.body });
+  const category = await CategoryService.createCategory(req.body);
 
   res.status(201).json({
     success: true,
@@ -50,39 +52,36 @@ export const createCategory = asyncHandler(async (req, res) => {
 
 // Update category
 export const updateCategory = asyncHandler(async (req, res, next) => {
-  let category = await Category.findById(req.params.id);
-
-  if (!category) {
-    return next(
-      new ErrorResponse(`Category not found with id of ${req.params.id}`, 404)
+  try {
+    logger.info("Updating category", {
+      categoryId: req.params.id,
+      updateData: req.body,
+    });
+    const category = await CategoryService.updateCategory(
+      req.params.id,
+      req.body
     );
+
+    res.status(200).json({
+      success: true,
+      data: category,
+    });
+  } catch (error) {
+    return next(new ErrorResponse(error.message, 404));
   }
-
-  category = await Category.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
-
-  res.status(200).json({
-    success: true,
-    data: category,
-  });
 });
 
 // Delete category
 export const deleteCategory = asyncHandler(async (req, res, next) => {
-  const category = await Category.findById(req.params.id);
+  try {
+    logger.info("Deleting category", { categoryId: req.params.id });
+    await CategoryService.deleteCategory(req.params.id);
 
-  if (!category) {
-    return next(
-      new ErrorResponse(`Category not found with id of ${req.params.id}`, 404)
-    );
+    res.status(200).json({
+      success: true,
+      data: {},
+    });
+  } catch (error) {
+    return next(new ErrorResponse(error.message, 404));
   }
-
-  await category.deleteOne();
-
-  res.status(200).json({
-    success: true,
-    data: {},
-  });
 });

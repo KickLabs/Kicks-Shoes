@@ -17,9 +17,9 @@ import {
   updateUserProfile,
   getUsersIsActive,
 } from "../controllers/userController.js";
-import { protect, optionalAuth } from "../middlewares/auth.js";
-import { requireAdmin } from "../middlewares/roleAuth.js";
-import upload from "../middlewares/uploadMiddleware.js";
+import { protect, optionalAuth } from "../middlewares/auth.middleware.js";
+import { requireAdmin, requireShop } from "../middlewares/role.middleware.js";
+import upload from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -32,15 +32,15 @@ router.put("/profile", protect, upload.single("avatar"), updateUserProfile);
 // Admin only routes
 router
   .route("/")
-  .get(protect, requireAdmin, getUsers)
-  .post(protect, requireAdmin, createUser);
+  .get(protect, requireShop || requireAdmin, getUsers)
+  .post(protect, requireShop || requireAdmin, createUser);
 
-router.get("/active", protect, requireAdmin, getUsersIsActive);
+router.get("/active", protect, requireShop, getUsersIsActive);
 
 router
   .route("/:id")
-  .get(protect, requireAdmin, getUser)
-  .put(protect, requireAdmin, updateUser)
-  .delete(protect, requireAdmin, deleteUser);
+  .get(protect, requireShop || requireAdmin, getUser)
+  .put(protect, requireShop || requireAdmin, updateUser)
+  .delete(protect, requireShop || requireAdmin, deleteUser);
 
 export default router;

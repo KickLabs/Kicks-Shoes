@@ -14,8 +14,8 @@ import {
   updateCategory,
   deleteCategory,
 } from "../controllers/categoryController.js";
-import { protect, optionalAuth } from "../middlewares/auth.js";
-import { requireAdmin } from "../middlewares/roleAuth.js";
+import { protect, optionalAuth } from "../middlewares/auth.middleware.js";
+import { requireAdmin, requireShop } from "../middlewares/role.middleware.js";
 
 const router = express.Router();
 
@@ -24,8 +24,8 @@ router.get("/", optionalAuth, getCategories);
 router.get("/:id", optionalAuth, getCategory);
 
 // Admin only routes
-router.post("/", protect, requireAdmin, createCategory);
-router.put("/:id", protect, requireAdmin, updateCategory);
-router.delete("/:id", protect, requireAdmin, deleteCategory);
+router.post("/", protect, requireShop, createCategory);
+router.put("/:id", protect, requireShop, updateCategory);
+router.delete("/:id", protect, requireShop, deleteCategory);
 
 export default router;

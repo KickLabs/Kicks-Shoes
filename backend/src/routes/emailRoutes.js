@@ -6,9 +6,9 @@
  */
 
 import express from "express";
-import { protect } from "../middlewares/auth.js";
+import { protect } from "../middlewares/auth.middleware.js";
 import { sendTemplatedEmail } from "../utils/sendEmail.js";
-import { asyncHandler } from "../middlewares/asyncHandler.js";
+import { asyncHandler } from "../middlewares/async.middleware.js";
 import { ErrorResponse } from "../utils/errorResponse.js";
 import logger from "../utils/logger.js";
 

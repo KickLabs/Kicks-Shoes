@@ -10,10 +10,10 @@
 
 import User from "../models/User.js";
 import TokenBlacklist from "../models/TokenBlacklist.js";
-import { asyncHandler } from "../middlewares/asyncHandler.js";
+import { asyncHandler } from "../middlewares/async.middleware.js";
 import { ErrorResponse } from "../utils/errorResponse.js";
 import jwt from "jsonwebtoken";
-import { comparePassword } from "../middlewares/passwordMiddleware.js";
+import { comparePassword } from "../middlewares/password.middleware.js";
 import { sendTemplatedEmail } from "../utils/sendEmail.js";
 import logger from "../utils/logger.js";
 import { generateToken } from "../utils/jwt.js";

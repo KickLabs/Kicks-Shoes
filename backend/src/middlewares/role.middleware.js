@@ -1,7 +1,8 @@
 /**
- * @fileoverview Role-based Authorization Middleware
- * @description This file contains middleware functions for handling role-based access control in the Kicks Shoes application.
- * It defines 4 roles: guest (no auth needed), customer, shop, and admin with their respective access levels.
+ * @fileoverview Role Middleware
+ * @created 2025-06-08
+ * @file role.middleware.js
+ * @description This file contains middleware functions for role-based access control.
  */
 
 import { ErrorResponse } from "../utils/errorResponse.js";
@@ -90,6 +91,35 @@ export const requireExactRole = (role) => {
         stack: error.stack,
       });
       next(error);
+    }
+  };
+};
+
+/**
+ * Middleware to check if user has any of the required roles
+ * @param {...string} roles - The roles that are allowed to access the route
+ * @returns {Function} Express middleware function
+ */
+export const requireRoles = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: "Authentication required",
+      });
+    }
+
+    if (roles.includes(req.user.role)) {
+      next();
+    } else {
+      res.status(403).json({
+        success: false,
+        error: `Role ${
+          req.user.role
+        } is not authorized to access this route. Required roles: ${roles.join(
+          ", "
+        )}`,
+      });
     }
   };
 };

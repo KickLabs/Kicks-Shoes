@@ -1,85 +1,40 @@
 /**
  * @fileoverview Category Model
- * @created 2025-06-04
+ * @created 2025-05-31
  * @file Category.js
- * @description This file defines the Category model schema for the Kicks Shoes shop.
+ * @description This file defines the Category model schema for organizing products in the Kicks Shoes application.
+ * It supports hierarchical category structures and includes metadata for category management.
  */
 
 import mongoose from "mongoose";
+const { Schema } = mongoose;
 
-const categorySchema = new mongoose.Schema(
+const CategorySchema = new Schema(
   {
     name: {
       type: String,
-      required: [true, "Category name is required"],
-      unique: true,
+      required: true,
       trim: true,
     },
     slug: {
       type: String,
       unique: true,
-      trim: true,
       lowercase: true,
+      trim: true,
     },
     description: {
       type: String,
       trim: true,
+      default: "",
     },
-    image: {
-      type: String,
-      validate: {
-        validator: function (v) {
-          return /^https?:\/\/.+/.test(v);
-        },
-        message: "Image URL must be a valid URL",
-      },
-    },
-    parent: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
-      default: null,
-    },
-    level: {
-      type: Number,
-      default: 1,
-      min: [1, "Level must be at least 1"],
-    },
-    order: {
-      type: Number,
-      default: 0,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    attributes: [
-      {
-        name: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-        values: [
-          {
-            type: String,
-            trim: true,
-          },
-        ],
-      },
-    ],
   },
   {
     timestamps: true,
   }
 );
 
-// Indexes
-categorySchema.index({ parent: 1 });
-categorySchema.index({ level: 1 });
-categorySchema.index({ isActive: 1 });
-
-// Generate slug from name
-categorySchema.pre("save", function (next) {
+// Generate slug from name before saving
+CategorySchema.pre("save", function (next) {
   if (this.isModified("name")) {
     this.slug = this.name
       .toLowerCase()
@@ -89,28 +44,6 @@ categorySchema.pre("save", function (next) {
   next();
 });
 
-// Update level based on parent
-categorySchema.pre("save", async function (next) {
-  if (this.isModified("parent")) {
-    if (this.parent) {
-      const parentCategory = await this.constructor.findById(this.parent);
-      if (parentCategory) {
-        this.level = parentCategory.level + 1;
-      }
-    } else {
-      this.level = 1;
-    }
-  }
-  next();
-});
-
-// Virtual for subcategories
-categorySchema.virtual("subcategories", {
-  ref: "Category",
-  localField: "_id",
-  foreignField: "parent",
-});
-
-const Category = mongoose.model("Category", categorySchema);
+const Category = mongoose.model("Category", CategorySchema);
 
 export default Category;

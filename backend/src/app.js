@@ -25,10 +25,12 @@ import shopRoutes from "./routes/storeRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import emailRoutes from "./routes/emailRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
 import morgan from "morgan";
 import helmet from "helmet";
 import compression from "compression";
-import { errorHandler } from "./middlewares/error.js";
+import { errorHandler } from "./middlewares/error.middleware.js";
 import logger from "./utils/logger.js";
 import { setupUploadDirectories } from "./utils/setupUploads.js";
 
@@ -72,6 +74,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/shop", shopRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/email", emailRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/products", productRoutes);
 
 // Error handler
 app.use(errorHandler);

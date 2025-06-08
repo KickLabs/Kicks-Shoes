@@ -11,7 +11,7 @@ import User from "../models/User.js";
 import TokenBlacklist from "../models/TokenBlacklist.js";
 import { ErrorResponse } from "../utils/errorResponse.js";
 import logger from "../utils/logger.js";
-import { ROLES } from "./roleAuth.js";
+import { ROLES } from "./role.middleware.js";
 
 /**
  * Protect routes - Check if user is authenticated
