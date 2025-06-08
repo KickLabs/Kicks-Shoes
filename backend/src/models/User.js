@@ -1,10 +1,8 @@
 /**
  * @fileoverview User Model
- * @created 2025-05-31
+ * @created 2025-06-04
  * @file User.js
- * @description This file defines the User model schema for the Kicks Shoes application.
- * It includes user authentication details, personal information, and account status.
- * The schema implements methods for password hashing, verification, and user data validation.
+ * @description This file defines the User model schema for the Kicks Shoes shop.
  */
 
 import mongoose from "mongoose";
@@ -12,13 +10,6 @@ import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
-    fullName: {
-      type: String,
-      required: [true, "Full name is required"],
-      trim: true,
-      minlength: [2, "Full name must be at least 2 characters long"],
-      maxlength: [50, "Full name cannot exceed 50 characters"],
-    },
     username: {
       type: String,
       required: [true, "Username is required"],
@@ -27,116 +18,148 @@ const userSchema = new mongoose.Schema(
       minlength: [3, "Username must be at least 3 characters long"],
       maxlength: [30, "Username cannot exceed 30 characters"],
     },
-    aboutMe: {
-      type: String,
-      trim: true,
-      maxlength: [500, "About me cannot exceed 500 characters"],
-    },
     email: {
       type: String,
       required: [true, "Email is required"],
       unique: true,
       trim: true,
       lowercase: true,
-      match: [
-        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-        "Please enter a valid email",
-      ],
+      match: [/^\S+@\S+\.\S+$/, "Please enter a valid email"],
     },
     password: {
       type: String,
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters long"],
-      select: false,
     },
     role: {
       type: String,
-      enum: {
-        values: ["customer", "shop", "admin"],
-        message: "{VALUE} is not a valid role",
-      },
-      required: [true, "Role is required"],
+      enum: ["customer", "admin"],
       default: "customer",
     },
-    avatar: {
+    firstName: {
       type: String,
-      default:
-        "https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png",
+      trim: true,
     },
-    address: {
+    lastName: {
       type: String,
       trim: true,
     },
     phone: {
       type: String,
       trim: true,
-      match: [/^[0-9]{10,11}$/, "Please enter a valid phone number"],
+      match: [/^[0-9]{10,15}$/, "Please enter a valid phone number"],
     },
-    reward_point: {
+    addresses: [
+      {
+        type: {
+          type: String,
+          enum: ["home", "work", "other"],
+          default: "home",
+        },
+        street: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        city: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        state: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        country: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        zipCode: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        isDefault: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+    avatar: {
+      type: String,
+      validate: {
+        validator: function (v) {
+          return /^https?:\/\/.+/.test(v);
+        },
+        message: "Avatar URL must be a valid URL",
+      },
+    },
+    rewardPoints: {
       type: Number,
       default: 0,
       min: [0, "Reward points cannot be negative"],
     },
-    dateOfBirth: {
-      type: Date,
-      default: null,
-    },
-    gender: {
-      type: String,
-      enum: {
-        values: ["male", "female", "other"],
-        message: "{VALUE} is not a valid gender",
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
       },
-      default: "other",
-    },
+    ],
     status: {
-      type: Boolean,
-      default: true,
+      type: String,
+      enum: ["active", "inactive", "banned"],
+      default: "active",
     },
-    isVerified: {
+    lastLogin: {
+      type: Date,
+    },
+    emailVerified: {
       type: Boolean,
       default: false,
     },
-    verificationToken: {
-      type: String,
-      select: false,
-    },
-    verificationTokenExpires: {
-      type: Date,
-      select: false,
+    phoneVerified: {
+      type: Boolean,
+      default: false,
     },
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
   }
 );
 
-// Indexes for better query performance
-userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
+// Indexes
 userSchema.index({ role: 1 });
-userSchema.index({ isVerified: 1 });
+userSchema.index({ status: 1 });
+userSchema.index({ "addresses.zipCode": 1 });
 
-// Virtual for full user info
-userSchema.virtual("fullInfo").get(function () {
-  return `${this.fullName} (${this.email}) - ${this.role}`;
-});
-
-// Encrypt password using bcrypt
+// Hash password before saving
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    next();
-  }
+  if (!this.isModified("password")) return next();
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
-// Match user entered password to hashed password in database
-userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+// Method to compare password
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Method to get full name
+userSchema.virtual("fullName").get(function () {
+  return `${this.firstName || ""} ${this.lastName || ""}`.trim();
+});
+
+// Method to get default address
+userSchema.methods.getDefaultAddress = function () {
+  return this.addresses.find((addr) => addr.isDefault) || this.addresses[0];
 };
 
 const User = mongoose.model("User", userSchema);

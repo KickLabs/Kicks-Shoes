@@ -13,6 +13,8 @@ const UserSchema = new Schema({
   phone: String,
   reward_point: { type: Number, default: 0 },
   status: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 ```
 
@@ -22,9 +24,15 @@ const UserSchema = new Schema({
 const StoreSchema = new Schema({
   owner_id: { type: Schema.Types.ObjectId, ref: "User" },
   name: String,
+  description: String,
   address: String,
   contact: String,
+  logo: String,
+  banner: String,
+  rating: { type: Number, default: 0 },
   status: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 ```
 
@@ -32,8 +40,12 @@ const StoreSchema = new Schema({
 
 ```javascript
 const CategorySchema = new Schema({
-  name: String,
+  name: { type: String, required: true },
   description: String,
+  image: String,
+  status: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 ```
 
@@ -65,6 +77,8 @@ const ProductSchema = new Schema({
   salePercent: { type: Number, default: 0 },
   tags: [String],
   status: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 ```
 
@@ -73,10 +87,29 @@ const ProductSchema = new Schema({
 ```javascript
 const OrderSchema = new Schema({
   user_id: { type: Schema.Types.ObjectId, ref: "User" },
-  status: String,
+  status: {
+    type: String,
+    enum: [
+      "pending",
+      "processing",
+      "shipped",
+      "delivered",
+      "cancelled",
+      "refunded",
+    ],
+    default: "pending",
+  },
   total_price: Number,
+  shipping_address: String,
   payment_method: String,
+  payment_status: {
+    type: String,
+    enum: ["pending", "paid", "failed"],
+    default: "pending",
+  },
+  tracking_number: String,
   created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
 });
 ```
 
@@ -88,6 +121,9 @@ const OrderItemSchema = new Schema({
   product_id: { type: Schema.Types.ObjectId, ref: "Product" },
   quantity: Number,
   price: Number,
+  size: String,
+  color: String,
+  created_at: { type: Date, default: Date.now },
 });
 ```
 
@@ -100,8 +136,12 @@ const CartSchema = new Schema({
     {
       product_id: { type: Schema.Types.ObjectId, ref: "Product" },
       quantity: Number,
+      size: String,
+      color: String,
     },
   ],
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
 });
 ```
 
@@ -115,6 +155,7 @@ const FavoriteSchema = new Schema({
       product_id: { type: Schema.Types.ObjectId, ref: "Product" },
     },
   ],
+  created_at: { type: Date, default: Date.now },
 });
 ```
 
@@ -124,9 +165,11 @@ const FavoriteSchema = new Schema({
 const FeedbackSchema = new Schema({
   user_id: { type: Schema.Types.ObjectId, ref: "User" },
   product_id: { type: Schema.Types.ObjectId, ref: "Product" },
-  rating: Number,
+  rating: { type: Number, min: 1, max: 5 },
   comment: String,
+  images: [String],
   created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
 });
 ```
 
@@ -136,6 +179,8 @@ const FeedbackSchema = new Schema({
 const RewardPointSchema = new Schema({
   user_id: { type: Schema.Types.ObjectId, ref: "User" },
   points: Number,
+  type: { type: String, enum: ["earn", "redeem"] },
+  description: String,
   created_at: { type: Date, default: Date.now },
 });
 ```
@@ -148,8 +193,14 @@ const RefundSchema = new Schema({
   order_id: { type: Schema.Types.ObjectId, ref: "Order" },
   refund_reason: String,
   refund_amount: Number,
-  refund_image: String,
+  refund_image: [String],
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected", "completed"],
+    default: "pending",
+  },
   created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
 });
 ```
 
@@ -157,12 +208,18 @@ const RefundSchema = new Schema({
 
 ```javascript
 const DiscountSchema = new Schema({
-  user_id: { type: Schema.Types.ObjectId, ref: "User" },
-  discount_percentage: Number,
-  discount_code: String,
-  number_of_discount: Number,
-  total_use: Number,
-  status: Boolean,
+  code: { type: String, required: true, unique: true },
+  type: { type: String, enum: ["percentage", "fixed"], required: true },
+  value: { type: Number, required: true },
+  min_order_value: Number,
+  max_discount: Number,
+  start_date: Date,
+  end_date: Date,
+  usage_limit: Number,
+  used_count: { type: Number, default: 0 },
+  status: { type: Boolean, default: true },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
 });
 ```
 
@@ -171,101 +228,122 @@ const DiscountSchema = new Schema({
 ```javascript
 const ReportSchema = new Schema({
   reported_by: { type: Schema.Types.ObjectId, ref: "User" },
-  target_type: String,
+  target_type: { type: String, enum: ["product", "store", "user"] },
   target_id: Schema.Types.ObjectId,
   reason: String,
-  status: String,
+  description: String,
+  status: {
+    type: String,
+    enum: ["pending", "investigating", "resolved", "dismissed"],
+    default: "pending",
+  },
   created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
 });
 ```
 
 # API Endpoints Documentation
 
-## 1. User (Authentication & Profile)
+## 1. Authentication & User Management
 
-| Method | Endpoint         | Description                    | Middleware |
-| ------ | ---------------- | ------------------------------ | ---------- |
-| POST   | `/auth/register` | Register a new user            | -          |
-| POST   | `/auth/login`    | Login and return token         | -          |
-| GET    | `/auth/profile`  | Get current user profile       | auth       |
-| PUT    | `/auth/profile`  | Update user profile            | auth       |
-| POST   | `/auth/logout`   | (Optional) Logout, clear token | auth       |
+| Method | Endpoint             | Description                | Middleware  |
+| ------ | -------------------- | -------------------------- | ----------- |
+| POST   | `/api/auth/register` | Register a new user        | -           |
+| POST   | `/api/auth/login`    | Login and return token     | -           |
+| GET    | `/api/auth/profile`  | Get current user profile   | auth        |
+| PUT    | `/api/auth/profile`  | Update user profile        | auth        |
+| POST   | `/api/auth/logout`   | Logout and clear token     | auth        |
+| GET    | `/api/users`         | Get all users (admin only) | auth(admin) |
+| PUT    | `/api/users/:id`     | Update user (admin only)   | auth(admin) |
+| DELETE | `/api/users/:id`     | Delete user (admin only)   | auth(admin) |
 
-## 2. Favorite
+## 2. Store Management
 
-| Method | Endpoint         | Description                        | Middleware |
-| ------ | ---------------- | ---------------------------------- | ---------- |
-| GET    | `/favorites`     | Get list of user favorite products | auth       |
-| POST   | `/favorites/:id` | Add product to favorites           | auth       |
-| DELETE | `/favorites/:id` | Remove product from favorites      | auth       |
+| Method | Endpoint                   | Description        | Middleware |
+| ------ | -------------------------- | ------------------ | ---------- |
+| POST   | `/api/stores`              | Create new store   | auth(shop) |
+| GET    | `/api/stores`              | List all stores    | -          |
+| GET    | `/api/stores/:id`          | Get store details  | -          |
+| PUT    | `/api/stores/:id`          | Update store       | auth(shop) |
+| DELETE | `/api/stores/:id`          | Delete store       | auth(shop) |
+| GET    | `/api/stores/:id/products` | Get store products | -          |
 
-## 3. Store & Product & Category
+## 3. Product Management
 
-| Method | Endpoint          | Description            | Middleware  |
-| ------ | ----------------- | ---------------------- | ----------- |
-| POST   | `/store`          | Create new store       | auth(store) |
-| GET    | `/store/:id`      | Get store info         | -           |
-| PUT    | `/store/:id`      | Update store info      | auth(store) |
-| DELETE | `/store/:id`      | Delete store           | auth(store) |
-| GET    | `/stores`         | List all stores        | -           |
-| POST   | `/category`       | Create category        | auth(admin) |
-| GET    | `/categories`     | List categories        | -           |
-| POST   | `/store/products` | Create new product     | auth(store) |
-| GET    | `/store/products` | List products by store | auth(store) |
-| GET    | `/products`       | Explore all products   | -           |
-| GET    | `/products/:id`   | Get product detail     | -           |
-| PUT    | `/products/:id`   | Update product         | auth(store) |
-| DELETE | `/products/:id`   | Delete product         | auth(store) |
+| Method | Endpoint               | Description         | Middleware |
+| ------ | ---------------------- | ------------------- | ---------- |
+| POST   | `/api/products`        | Create new product  | auth(shop) |
+| GET    | `/api/products`        | List all products   | -          |
+| GET    | `/api/products/:id`    | Get product details | -          |
+| PUT    | `/api/products/:id`    | Update product      | auth(shop) |
+| DELETE | `/api/products/:id`    | Delete product      | auth(shop) |
+| GET    | `/api/products/search` | Search products     | -          |
+| GET    | `/api/products/filter` | Filter products     | -          |
 
-## 4. Cart
+## 4. Category Management
 
-| Method | Endpoint        | Description             | Middleware |
-| ------ | --------------- | ----------------------- | ---------- |
-| GET    | `/cart`         | View current cart       | auth       |
-| POST   | `/cart`         | Add item to cart        | auth       |
-| PUT    | `/cart/:itemId` | Update quantity in cart | auth       |
-| DELETE | `/cart/:itemId` | Remove item from cart   | auth       |
+| Method | Endpoint              | Description          | Middleware  |
+| ------ | --------------------- | -------------------- | ----------- |
+| POST   | `/api/categories`     | Create category      | auth(admin) |
+| GET    | `/api/categories`     | List all categories  | -           |
+| GET    | `/api/categories/:id` | Get category details | -           |
+| PUT    | `/api/categories/:id` | Update category      | auth(admin) |
+| DELETE | `/api/categories/:id` | Delete category      | auth(admin) |
 
-## 5. Order & OrderItem
+## 5. Cart Management
 
-| Method | Endpoint             | Description               | Middleware |
-| ------ | -------------------- | ------------------------- | ---------- |
-| POST   | `/order`             | Create order from cart    | auth       |
-| GET    | `/order/history`     | View user's order history | auth       |
-| GET    | `/order/:id`         | View order detail         | auth       |
-| POST   | `/order/refund/:id`  | Request refund            | auth       |
-| POST   | `/order/payment/:id` | (Mock) Process payment    | auth       |
+| Method | Endpoint            | Description      | Middleware |
+| ------ | ------------------- | ---------------- | ---------- |
+| GET    | `/api/cart`         | Get cart items   | auth       |
+| POST   | `/api/cart`         | Add item to cart | auth       |
+| PUT    | `/api/cart/:itemId` | Update cart item | auth       |
+| DELETE | `/api/cart/:itemId` | Remove cart item | auth       |
+| DELETE | `/api/cart`         | Clear cart       | auth       |
 
-## 6. Feedback
+## 6. Order Management
 
-| Method | Endpoint    | Description               | Middleware |
-| ------ | ----------- | ------------------------- | ---------- |
-| POST   | `/feedback` | Submit feedback           | auth       |
-| GET    | `/feedback` | List feedbacks (filtered) | Public     |
+| Method | Endpoint                 | Description         | Middleware |
+| ------ | ------------------------ | ------------------- | ---------- |
+| POST   | `/api/orders`            | Create new order    | auth       |
+| GET    | `/api/orders`            | Get user orders     | auth       |
+| GET    | `/api/orders/:id`        | Get order details   | auth       |
+| PUT    | `/api/orders/:id`        | Update order status | auth(shop) |
+| POST   | `/api/orders/:id/cancel` | Cancel order        | auth       |
+| POST   | `/api/orders/:id/refund` | Request refund      | auth       |
 
-## 7. Report (System Operations)
+## 7. Favorite Management
 
-| Method | Endpoint             | Description                        | Middleware  |
-| ------ | -------------------- | ---------------------------------- | ----------- |
-| POST   | `/report`            | Submit report (product/user/store) | auth        |
-| GET    | `/admin/reports`     | View all reports                   | auth(admin) |
-| PATCH  | `/admin/reports/:id` | Resolve report (mark as handled)   | auth(admin) |
+| Method | Endpoint             | Description           | Middleware |
+| ------ | -------------------- | --------------------- | ---------- |
+| GET    | `/api/favorites`     | Get user favorites    | auth       |
+| POST   | `/api/favorites/:id` | Add to favorites      | auth       |
+| DELETE | `/api/favorites/:id` | Remove from favorites | auth       |
 
-## 8. Admin Actions
+## 8. Feedback Management
 
-| Method | Endpoint              | Description              | Middleware  |
-| ------ | --------------------- | ------------------------ | ----------- |
-| PATCH  | `/admin/ban/:id`      | Ban user or store        | auth(admin) |
-| DELETE | `/admin/products/:id` | Remove violating product | auth(admin) |
+| Method | Endpoint            | Description          | Middleware |
+| ------ | ------------------- | -------------------- | ---------- |
+| POST   | `/api/feedback`     | Submit feedback      | auth       |
+| GET    | `/api/feedback`     | Get product feedback | -          |
+| PUT    | `/api/feedback/:id` | Update feedback      | auth       |
+| DELETE | `/api/feedback/:id` | Delete feedback      | auth       |
 
-## 9. RewardPoint & Discount
+## 9. Reward Points & Discounts
 
-| Method | Endpoint               | Description                  | Middleware  |
-| ------ | ---------------------- | ---------------------------- | ----------- |
-| GET    | `/reward`              | View reward points           | auth        |
-| POST   | `/reward/add/:orderId` | Add reward points from order | auth        |
-| POST   | `/reward/redeem`       | Redeem reward points         | auth        |
-| GET    | `/discount`            | List discount codes          | Public      |
-| POST   | `/discount`            | Create discount code         | auth(admin) |
-| PUT    | `/discount/:id`        | Update discount              | auth(admin) |
-| DELETE | `/discount/:id`        | Delete discount              | auth(admin) |
+| Method | Endpoint              | Description             | Middleware  |
+| ------ | --------------------- | ----------------------- | ----------- |
+| GET    | `/api/rewards`        | Get user rewards        | auth        |
+| POST   | `/api/rewards/redeem` | Redeem points           | auth        |
+| GET    | `/api/discounts`      | Get available discounts | -           |
+| POST   | `/api/discounts`      | Create discount (admin) | auth(admin) |
+| PUT    | `/api/discounts/:id`  | Update discount         | auth(admin) |
+| DELETE | `/api/discounts/:id`  | Delete discount         | auth(admin) |
+
+## 10. Report Management
+
+| Method | Endpoint           | Description          | Middleware  |
+| ------ | ------------------ | -------------------- | ----------- |
+| POST   | `/api/reports`     | Submit report        | auth        |
+| GET    | `/api/reports`     | Get reports (admin)  | auth(admin) |
+| PUT    | `/api/reports/:id` | Update report status | auth(admin) |
+| DELETE | `/api/reports/:id` | Delete report        | auth(admin) |

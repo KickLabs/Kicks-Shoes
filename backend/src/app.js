@@ -21,7 +21,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./config/database.js";
 import userRoutes from "./routes/userRoutes.js";
-import storeRoutes from "./routes/storeRoutes.js";
+import shopRoutes from "./routes/storeRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import emailRoutes from "./routes/emailRoutes.js";
@@ -69,15 +69,17 @@ app.get("/", (req, res) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/stores", storeRoutes);
+app.use("/api/shop", shopRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/email", emailRoutes);
 
 // Error handler
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
 });
+
+export default app;
