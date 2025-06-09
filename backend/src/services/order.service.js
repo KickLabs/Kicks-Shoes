@@ -44,17 +44,14 @@ export class OrderService {
         throw new Error("Invalid total amount");
       }
 
-      // Calculate total price from products
       const calculatedTotal = products.reduce((sum, product) => {
         return sum + product.price * product.quantity;
       }, 0);
 
-      // Validate total amount matches calculated total
       if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
         throw new Error("Total amount does not match sum of items");
       }
 
-      // Create order first with empty items array
       const order = new Order({
         user,
         items: [],
@@ -65,15 +62,13 @@ export class OrderService {
         paymentStatus: "pending",
       });
 
-      // Save order to get its ID
       await order.save();
 
-      // Create order items with order reference
       const orderItems = await Promise.all(
         products.map(async (product) => {
           const subtotal = product.price * product.quantity;
           const orderItem = new OrderItem({
-            order: order._id, // Add order reference
+            order: order._id,
             product: product.id,
             quantity: product.quantity,
             price: product.price,
@@ -86,7 +81,6 @@ export class OrderService {
         })
       );
 
-      // Update order with order items
       order.items = orderItems;
       await order.save();
 
@@ -315,23 +309,17 @@ export class OrderService {
         throw new Error("Invalid order ID");
       }
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
       try {
         const order = await Order.findByIdAndUpdate(orderId, {
           status: "refunded",
         });
-        await session.commitTransaction();
         return order;
       } catch (error) {
-        await session.abortTransaction();
         logger.error("Error refunding order:", {
           error: error.message,
           stack: error.stack,
         });
         throw new Error(`Failed to refund order: ${error.message}`);
-      } finally {
-        session.endSession();
       }
     } catch (error) {
       logger.error("Error refunding order:", {

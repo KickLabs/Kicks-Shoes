@@ -242,6 +242,22 @@ export const cancelOrder = async (req, res, next) => {
         message: "Order ID is required",
       });
     }
+    const orderToCancel = await OrderService.getOrderByOrderId(id);
+    if (!orderToCancel) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+    if (
+      orderToCancel.status !== "pending" &&
+      orderToCancel.status !== "processing"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Can only cancel pending or processing orders",
+      });
+    }
 
     logger.info("Cancelling order", { orderId: id, reason });
 
@@ -258,7 +274,7 @@ export const cancelOrder = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: order,
+      message: "Order with id " + id + " cancelled successfully",
     });
   } catch (error) {
     logger.error("Error cancelling order:", error);
@@ -276,32 +292,121 @@ export const refundOrder = async (req, res, next) => {
     const { id } = req.params;
     const { reason, amount } = req.body;
 
-    if (!id) {
+    // Input validation
+    if (!id?.trim()) {
       return res.status(400).json({
         success: false,
         message: "Order ID is required",
       });
     }
 
-    logger.info("Processing refund", { orderId: id, reason, amount });
+    if (!reason?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Refund reason is required",
+      });
+    }
 
-    const order = await OrderService.refundOrder(id, { reason, amount });
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid refund amount is required",
+      });
+    }
 
-    if (!order) {
+    const orderToRefund = await OrderService.getOrderByOrderId(id);
+    if (!orderToRefund) {
+      logger.warn("Refund attempt for non-existent order", { orderId: id });
       return res.status(404).json({
         success: false,
         message: "Order not found",
       });
     }
 
-    logger.info("Refund processed successfully", { orderId: id });
+    // Check if order is eligible for refund
+    const isEligibleForRefund =
+      // Case 1: Paid and cancelled orders
+      (orderToRefund.paymentStatus === "paid" &&
+        orderToRefund.status === "cancelled") ||
+      // Case 2: Delivered orders (within 7 days of delivery)
+      (orderToRefund.status === "delivered" &&
+        orderToRefund.updatedAt &&
+        new Date() - new Date(orderToRefund.updatedAt) <=
+          7 * 24 * 60 * 60 * 1000) ||
+      // Case 3: COD orders that have been paid
+      (orderToRefund.paymentMethod === "cash_on_delivery" &&
+        orderToRefund.paymentStatus === "paid");
 
-    res.status(200).json({
+    if (!isEligibleForRefund) {
+      logger.warn("Refund attempt for ineligible order", {
+        orderId: id,
+        status: orderToRefund.status,
+        paymentStatus: orderToRefund.paymentStatus,
+        paymentMethod: orderToRefund.paymentMethod,
+      });
+      return res.status(400).json({
+        success: false,
+        message:
+          "Order is not eligible for refund. Only cancelled orders, delivered orders within 7 days, or paid COD orders can be refunded.",
+      });
+    }
+
+    // Validate refund amount
+    if (amount > orderToRefund.totalAmount) {
+      logger.warn("Refund amount exceeds order total", {
+        orderId: id,
+        refundAmount: amount,
+        orderTotal: orderToRefund.totalAmount,
+      });
+      return res.status(400).json({
+        success: false,
+        message: "Refund amount cannot exceed order total",
+      });
+    }
+
+    logger.info("Processing refund request", {
+      orderId: id,
+      refundAmount: amount,
+      reason,
+      orderStatus: orderToRefund.status,
+      paymentStatus: orderToRefund.paymentStatus,
+      paymentMethod: orderToRefund.paymentMethod,
+    });
+
+    // Process refund
+    const orderRefunded = await OrderService.refundOrder(id, {
+      reason,
+      amount,
+      originalStatus: orderToRefund.status,
+      originalPaymentStatus: orderToRefund.paymentStatus,
+    });
+
+    if (!orderRefunded) {
+      logger.error("Refund processing failed", { orderId: id });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to process refund",
+      });
+    }
+
+    logger.info("Refund processed successfully", {
+      orderId: id,
+      refundAmount: amount,
+      orderStatus: orderRefunded.status,
+      paymentStatus: orderRefunded.paymentStatus,
+    });
+
+    return res.status(200).json({
       success: true,
-      data: order,
+      data: orderRefunded,
+      message: "Refund processed successfully",
     });
   } catch (error) {
-    logger.error("Error processing refund:", error);
+    logger.error("Error processing refund:", {
+      error: error.message,
+      stack: error.stack,
+      orderId: req.params.id,
+    });
     next(error);
   }
 };
