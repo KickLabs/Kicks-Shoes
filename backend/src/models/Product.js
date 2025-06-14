@@ -167,7 +167,6 @@ const productSchema = new Schema(
 // Indexes
 productSchema.index({ name: "text", brand: "text", description: "text" });
 productSchema.index({ "inventory.size": 1, "inventory.color": 1 });
-productSchema.index({ "inventory.sku": 1 }, { sparse: true });
 
 // Virtuals
 productSchema.virtual("discountedPrice").get(function () {

@@ -26,14 +26,14 @@ const discountSchema = new mongoose.Schema(
       required: [true, "Discount value is required"],
       min: [0, "Discount value cannot be negative"],
       validate: {
-        validator: function(value) {
+        validator: function (value) {
           if (this.type === "percentage") {
             return value <= 100;
           }
           return true;
         },
-        message: "Percentage discount cannot exceed 100%"
-      }
+        message: "Percentage discount cannot exceed 100%",
+      },
     },
     minPurchase: {
       type: Number,
@@ -95,7 +95,6 @@ const discountSchema = new mongoose.Schema(
 );
 
 // Indexes
-discountSchema.index({ code: 1 });
 discountSchema.index({ status: 1 });
 discountSchema.index({ startDate: 1 });
 discountSchema.index({ endDate: 1 });
@@ -103,9 +102,9 @@ discountSchema.index({ applicableProducts: 1 });
 discountSchema.index({ applicableCategories: 1 });
 
 // Method to update status based on dates
-discountSchema.methods.updateStatus = function() {
+discountSchema.methods.updateStatus = function () {
   const now = new Date();
-  
+
   if (now > this.endDate) {
     this.status = "expired";
   } else if (now < this.startDate) {
@@ -113,17 +112,21 @@ discountSchema.methods.updateStatus = function() {
   } else {
     this.status = "active";
   }
-  
+
   if (this.usedCount >= this.usageLimit) {
     this.status = "expired";
   }
-  
+
   return this.status;
 };
 
 // Pre-save middleware to update status
-discountSchema.pre("save", function(next) {
-  if (this.isModified("startDate") || this.isModified("endDate") || this.isModified("usedCount")) {
+discountSchema.pre("save", function (next) {
+  if (
+    this.isModified("startDate") ||
+    this.isModified("endDate") ||
+    this.isModified("usedCount")
+  ) {
     this.updateStatus();
   }
   next();

@@ -31,16 +31,15 @@ import orderRoutes from "./routes/orderRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import rewardPointRoutes from "./routes/rewardPointRoutes.js";
 import discountRoutes from "./routes/discountRoutes.js";
-import morgan from "morgan";
-import helmet from "helmet";
-import compression from "compression";
-import { errorHandler } from "./middlewares/error.middleware.js";
 import favouriteRoutes from "./routes/favouriteRoutes.js";
-import { default as shopRoutes, default as storeRoutes } from "./routes/storeRoutes.js";
+import {
+  default as shopRoutes,
+  default as storeRoutes,
+} from "./routes/storeRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import logger from "./utils/logger.js";
 import { setupUploadDirectories } from "./utils/setupUploads.js";
-import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
+import { startDiscountStatusUpdateCron } from "./utils/cronJobs.js";
 
 // Load environment variables
 dotenv.config();
