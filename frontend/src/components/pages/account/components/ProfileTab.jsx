@@ -84,13 +84,21 @@ export default function ProfileTab() {
       if (avatarFile) {
         formData.append("avatar", avatarFile);
       }
-      await updateProfile(formData);
+      const updatedUser = await updateProfile(formData);
+      console.log('Updated user:', updatedUser);
+      
+      // Cập nhật preview ảnh ngay lập tức nếu có URL mới
+      if (updatedUser && updatedUser.avatar) {
+        const previewImg = document.querySelector(".profile-avatar img");
+        if (previewImg) {
+          previewImg.src = updatedUser.avatar;
+        }
+      }
+      
       message.success("Profile updated successfully");
     } catch (error) {
       console.error("Update error:", error);
-      message.error(
-        error.message || "Failed to update profile. Please try again."
-      );
+      message.error(error.message || "Failed to update profile. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -102,7 +110,15 @@ export default function ProfileTab() {
       <div className="profile-tab-container">
         <div className="profile-header">
           <div className="profile-avatar">
-            <img src={user.avatar || "/default-avatar.png"} alt="avatar" />
+            <img 
+              src={user.avatar || "https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png"} 
+              alt="avatar" 
+              onError={(e) => {
+                console.log('Avatar load error, falling back to default');
+                e.target.src = "https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png";
+                return true; // Prevent infinite error loop
+              }}
+            />
             <label className="change-avatar-btn">
               <EditOutlined />
               <input

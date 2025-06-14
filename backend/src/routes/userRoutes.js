@@ -20,6 +20,7 @@ import {
 import { protect, optionalAuth } from "../middlewares/auth.middleware.js";
 import { requireAdmin, requireShop } from "../middlewares/role.middleware.js";
 import upload from "../middlewares/upload.middleware.js";
+import { handleUpload } from "../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -27,7 +28,13 @@ const router = express.Router();
 router.get("/profile/:username", optionalAuth, getUserProfile);
 
 // Protected routes
-router.put("/profile", protect, upload.single("avatar"), updateUserProfile);
+router.put(
+  "/profile", 
+  protect, 
+  upload.single("avatar"),
+  handleUpload,
+  updateUserProfile
+);
 
 // Admin only routes
 router
