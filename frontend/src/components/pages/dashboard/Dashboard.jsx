@@ -44,11 +44,12 @@
 
   const dashboardTabs = [
     { key: "1", name: "Dashboard", icon: <DashboardOutlined />, path: "/dashboard" },
-    { key: "2", name: "All Products", icon: <AppstoreOutlined />, path: "/dashboard/products" },
-    { key: "3", name: "Order List", icon: <UnorderedListOutlined />, path: "/dashboard/orders" },
-    { key: "4", name: "Discount Management", icon: <WalletOutlined />, path: "/dashboard/discounts" },
-    { key: "5", name: "User Management", icon: <UserOutlined />, path: "/dashboard/users" },
-    { key: "6", name: "Chat", icon: <MessageOutlined />, path: "/dashboard/chat" },
+    { key: "2", name: "All Categories", icon: <AppstoreOutlined />, path: "/dashboard/categories" },
+    { key: "3", name: "All Products", icon: <AppstoreOutlined />, path: "/dashboard/products" },
+    { key: "4", name: "Order List", icon: <UnorderedListOutlined />, path: "/dashboard/orders" },
+    { key: "5", name: "Discount Management", icon: <WalletOutlined />, path: "/dashboard/discounts" },
+    { key: "6", name: "User Management", icon: <UserOutlined />, path: "/dashboard/users" },
+    { key: "7", name: "Chat", icon: <MessageOutlined />, path: "/dashboard/chat" },
   ];
 
   export default function Dashboard() {

@@ -12,6 +12,7 @@ import OrderDetails from "./components/common/components/OrderDetails";
 import OrderList from "./components/common/components/OrderList";
 import ProductDetails from "./components/common/components/ProductDetails";
 import ErrorPage from "./components/common/pages/Error";
+import CategoryDetails from "./components/pages/categories/CategoryDetail";
 
 // Layout
 import App from "./components/layout/App";
@@ -37,6 +38,7 @@ import ListingPage from "./components/pages/listing-page/pages/ListingPage";
 import ProductDetailPage from "./components/pages/product/pages/ProductDetailPage";
 import Account from "./components/pages/account/Account";
 import ProfileTab from "./components/pages/account/components/ProfileTab";
+import AllCategories from "./components/pages/categories/AllCategories";
 
 // Styles
 import "./styles/index.css";
@@ -110,6 +112,19 @@ const router = createBrowserRouter([
             path: "products",
             element: <AllProducts />,
           },
+          {
+            path: "categories",
+            element: <AllCategories />,
+          },
+          {
+            path: "categories/:storeId",
+            element: <CategoryDetails />,
+          },
+          {
+            path: "categories/add-new",
+            element: <CategoryDetails isAddNew={true} />,
+          },
+
           {
             path: "orders",
             element: <OrderList />,

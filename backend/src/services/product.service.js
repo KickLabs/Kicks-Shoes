@@ -20,11 +20,7 @@ export class ProductService {
    * @returns {Promise<Product>} The created product
    */
   static async createProduct(productData) {
-    let session;
     try {
-      session = await mongoose.startSession();
-      session.startTransaction();
-
       const {
         name,
         description,
@@ -74,21 +70,13 @@ export class ProductService {
         isNew,
       });
 
-      await product.save({ session });
-      await session.commitTransaction();
+      await product.save();
 
       logger.info("Product created successfully", { productId: product._id });
       return product;
     } catch (error) {
-      if (session) {
-        await session.abortTransaction();
-      }
       logger.error("Error creating product", { error: error.message });
       throw error;
-    } finally {
-      if (session) {
-        session.endSession();
-      }
     }
   }
 
@@ -152,4 +140,126 @@ export class ProductService {
       throw error;
     }
   }
+  /**
+ * Delete a product by ID
+ * @param {String} productId - The ID of the product to delete
+ * @returns {Promise<Product|null>} The deleted product or null if not found
+ */
+static async deleteProduct(productId) {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new Error("Invalid product ID");
+    }
+
+    const deletedProduct = await Product.findByIdAndDelete(productId);
+    if (!deletedProduct) {
+      throw new Error("Product not found");
+    }
+
+    logger.info("Product deleted successfully", { productId });
+    return deletedProduct;
+  } catch (error) {
+    logger.error("Error deleting product", { error: error.message });
+    throw error;
+  }
+}
+/**
+ * Get a product by ID
+ * @param {String} productId - The ID of the product to retrieve
+ * @returns {Promise<Product|null>} The product or null if not found
+ */
+static async getProductById(productId) {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new Error("Invalid product ID");
+    }
+
+    const product = await Product.findById(productId);
+    return product;
+  } catch (error) {
+    logger.error("Error retrieving product by ID", {
+      productId,
+      error: error.message,
+    });
+    throw error;
+  }
+}
+  /**
+ * Get all products with optional filters, sorting and pagination
+ * @param {Object} query - Query parameters for filtering, sorting, and pagination
+ * @returns {Promise<Array<Product>>} List of matching products
+ */
+static async getAllProducts(query = {}) {
+  try {
+    const {
+      keyword = '',
+      category,
+      brand,
+      sortBy = 'createdAt',
+      order = 'desc',
+      page = 1,
+      limit = 10,
+    } = query;
+
+    const filter = {};
+
+    if (keyword) {
+      filter.name = { $regex: keyword, $options: 'i' };
+    }
+
+    if (category) filter.category = category;
+    if (brand) filter.brand = brand;
+
+    const sortOptions = {};
+    sortOptions[sortBy] = order === 'asc' ? 1 : -1;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Lấy tổng số sản phẩm
+    const total = await Product.countDocuments(filter);
+
+    // Lấy danh sách sản phẩm phân trang
+    const products = await Product.find(filter)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    return { products, total };
+  } catch (error) {
+    logger.error("Error retrieving filtered products", { error: error.message });
+    throw error;
+  }
+}
+/**
+ * Update a product by ID
+ * @param {String} productId - The ID of the product to update
+ * @param {Object} updateData - The product fields to update
+ * @returns {Promise<Product|null>} The updated product or null if not found
+ */
+static async updateProduct(productId, updateData) {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new Error("Invalid product ID");
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedProduct) {
+      throw new Error("Product not found");
+    }
+
+    logger.info("Product updated successfully", { productId });
+    return updatedProduct;
+  } catch (error) {
+    logger.error("Error updating product", {
+      productId,
+      error: error.message,
+    });
+    throw error;
+  }
+}
 }

@@ -18,7 +18,7 @@ const UserManagementPage = () => {
   const { setActiveTab } = useContext(ActiveTabContext);
 
   useEffect(() => {
-    setActiveTab("5");
+    setActiveTab("6");
   }, [setActiveTab]);
 
   return (

@@ -1,0 +1,148 @@
+.all-categories-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.all-categories-grid {
+  margin-bottom: 24px;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+/* Category Card Styles */
+.category-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.category-icon {
+  flex-shrink: 0;
+}
+
+.category-info {
+  flex: 1;
+}
+
+.category-name {
+  margin: 0;
+  font-size: 12px !important;
+  font-weight: 50;
+  color: #262626;
+}
+
+.category-description {
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.category-description p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.category-meta {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Category Details Container */
+.category-details-container {
+  min-height: 100vh;
+}
+
+.category-details-container .ant-card {
+  transition: all 0.3s ease;
+}
+
+.category-details-container .ant-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Form Labels */
+.category-details-container label {
+  color: #262626;
+  font-size: 14px;
+}
+
+/* Input Focus States */
+.category-details-container .ant-input:focus,
+.category-details-container .ant-input-focused {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Card Titles */
+.category-details-container .ant-card-head-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* Button Hover Effects */
+.category-details-container .ant-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .all-categories-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .category-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .category-details-container {
+    padding: 16px !important;
+  }
+
+  .category-details-container .ant-card {
+    margin-bottom: 16px;
+  }
+}
+
+/* Loading states */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: #999;
+}
+
+.empty-state .ant-empty-description {
+  color: #999;
+}

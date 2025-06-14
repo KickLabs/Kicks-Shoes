@@ -37,7 +37,7 @@ const ChatPage = () => {
 
   useEffect(() => {
     if (isDashboard) {
-      setActiveTab("6");
+      setActiveTab("7");
     } else {
       setActiveTab("4");
     }

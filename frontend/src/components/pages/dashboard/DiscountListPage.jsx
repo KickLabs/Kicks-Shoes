@@ -28,7 +28,7 @@ const DiscountListPage = () => {
   const { setActiveTab } = useContext(ActiveTabContext);
 
   useEffect(() => {
-    setActiveTab("4");
+    setActiveTab("5");
   }, [setActiveTab]);
 
   const showModal = () => {

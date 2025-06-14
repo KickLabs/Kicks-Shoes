@@ -19,7 +19,7 @@ const OrderList = () => {
   const isDashboard = location.pathname.startsWith("/dashboard");
 
   useEffect(() => {
-    setActiveTab("3");
+    setActiveTab("4");
   }, [setActiveTab]);
 
   const handlePageChange = (page) => {

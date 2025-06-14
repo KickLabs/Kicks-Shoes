@@ -9,6 +9,7 @@ import { query, validationResult } from "express-validator";
 import { ProductService } from "../services/product.service.js";
 import { ErrorResponse } from "../utils/errorResponse.js";
 import logger from "../utils/logger.js";
+import { get } from "mongoose";
 
 // Validation rules for query parameters only
 const queryValidationRules = [
@@ -131,8 +132,112 @@ export const createManyProducts = async (req, res, next) => {
   }
 };
 
+export const deleteProduct = async (req, res, next) => {
+  try {
+    const productId = req.params.id;
+    logger.info("Deleting product", { productId });
+
+    const deletedProduct = await ProductService.deleteProduct(productId);
+    if (!deletedProduct) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    logger.info("Product deleted successfully", { productId });
+    res.status(200).json({
+      success: true,
+      data: deletedProduct,
+    });
+  } catch (error) {
+    logger.error("Error deleting product", { error: error.message });
+    next(new ErrorResponse(error.message, 500));
+  }
+};
+
+export const getProductById = async (req, res, next) => {
+  try {
+    const productId = req.params.id;
+    logger.info("Fetching product details", { productId });
+
+    const product = await ProductService.getProductById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    logger.info("Product details fetched successfully", { productId });
+    res.status(200).json({
+      success: true,
+      data: product,
+    });
+  } catch (error) {
+    logger.error("Error fetching product details", { error: error.message });
+    next(new ErrorResponse(error.message, 500));
+  }
+}
+export const getAllProducts = async (req, res, next) => {
+  try {
+    logger.info("Fetching all products", { query: req.query });
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array(),
+      });
+    }
+
+    // Nhận về { products, total }
+    const { products, total } = await ProductService.getAllProducts(req.query);
+
+    logger.info("Products fetched successfully", { count: products.length });
+    res.status(200).json({
+      success: true,
+      data: {
+        products,
+        total,
+      },
+    });
+  } catch (error) {
+    logger.error("Error fetching products", { error: error.message });
+    next(new ErrorResponse(error.message, 500));
+  }
+};
+
+export const updateProduct = async (req, res, next) => {
+  try {
+    const productId = req.params.id;
+    logger.info("Updating product", { productId, updateData: req.body });
+
+    const updatedProduct = await ProductService.updateProduct(productId, req.body);
+    if (!updatedProduct) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    logger.info("Product updated successfully", { productId });
+    res.status(200).json({
+      success: true,
+      data: updatedProduct,
+    });
+  } catch (error) {
+    logger.error("Error updating product", { error: error.message });
+    next(new ErrorResponse(error.message, 500));
+  }
+};
+
 // Export all routes
 export const productRoutes = {
   createProduct,
   createManyProducts,
+  deleteProduct,
+  getProductById,
+  getAllProducts,
+  updateProduct
 };
