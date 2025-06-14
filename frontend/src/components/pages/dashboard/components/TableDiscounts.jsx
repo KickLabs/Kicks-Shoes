@@ -1,103 +1,115 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React from "react";
+import { Table, Button, Space, Tag, Popconfirm } from "antd";
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import PropTypes from "prop-types";
-import { Table, Tag, Button } from "antd";
+import moment from "moment";
 
-const StatusTag = React.memo(({ status }) => (
-  <Tag
-    color={
-      status === "Active" ? "rgb(59 130 246 / 30%)" : "rgb(245 158 66 / 30%)"
+const TableDiscounts = ({ title, discounts, loading, onEdit, onDelete }) => {
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "active":
+        return "success";
+      case "inactive":
+        return "warning";
+      case "expired":
+        return "error";
+      default:
+        return "default";
     }
-    style={{ borderRadius: 10, fontWeight: 500 }}
-  >
-    <span style={{ display: "inline-flex", alignItems: "center" }}>
-      <span
-        style={{
-          display: "inline-block",
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          background: status === "Active" ? "#3b82f6" : "#f59e42",
-          marginRight: 6,
-        }}
-      />
-      {status}
-    </span>
-  </Tag>
-));
-
-StatusTag.propTypes = {
-  status: PropTypes.string.isRequired,
-};
-
-const TableDiscounts = ({ title, discounts }) => {
-  const columns = useMemo(
-    () => [
-      {
-        title: "Discount Code",
-        dataIndex: "code",
-        key: "code",
-      },
-      {
-        title: "Percentage",
-        dataIndex: "percentage",
-        key: "percentage",
-        render: (percentage) => `${percentage}%`,
-      },
-      {
-        title: "Total Discount",
-        dataIndex: "totalDiscount",
-        key: "totalDiscount",
-        render: (amount) => `${amount}`,
-      },
-      {
-        title: "Total Used",
-        dataIndex: "totalUsed",
-        key: "totalUsed",
-      },
-      {
-        title: "Minimum Amount",
-        dataIndex: "minimumAmount",
-        key: "minimumAmount",
-        render: (amount) => `${amount.toFixed(2)}đ`,
-      },
-      {
-        title: "Maximum Discount",
-        dataIndex: "maximumDiscount",
-        key: "maximumDiscount",
-        render: (amount) => `${amount.toFixed(2)}đ`,
-      },
-      {
-        title: "Status",
-        dataIndex: "status",
-        key: "status",
-        render: (status) => <StatusTag status={status} />,
-      },
-      {
-        title: "Action",
-        key: "action",
-        render: (_, record) => (
-          <Button type="link" onClick={() => handleEdit(record.id)}>
-            Edit
-          </Button>
-        ),
-      },
-    ],
-    []
-  );
-
-  const handleEdit = (id) => {
-    // Handle edit action
-    console.log("Edit discount:", id);
   };
 
+  const columns = [
+    {
+      title: "Code",
+      dataIndex: "code",
+      key: "code",
+    },
+    {
+      title: "Description",
+      dataIndex: "description",
+      key: "description",
+    },
+    {
+      title: "Type",
+      dataIndex: "type",
+      key: "type",
+      render: (type) => (
+        <Tag color={type === "percentage" ? "blue" : "green"}>
+          {type.charAt(0).toUpperCase() + type.slice(1)}
+        </Tag>
+      ),
+    },
+    {
+      title: "Value",
+      dataIndex: "value",
+      key: "value",
+      render: (value, record) => 
+        record.type === "percentage" ? `${value}%` : `$${value}`,
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status) => (
+        <Tag color={getStatusColor(status)}>
+          {status.toUpperCase()}
+        </Tag>
+      ),
+    },
+    {
+      title: "Valid Period",
+      key: "period",
+      render: (_, record) => (
+        <>
+          {moment(record.startDate).format("DD/MM/YYYY")}
+          <br />
+          to
+          <br />
+          {moment(record.endDate).format("DD/MM/YYYY")}
+        </>
+      ),
+    },
+    {
+      title: "Usage",
+      key: "usage",
+      render: (_, record) => `${record.usedCount}/${record.usageLimit}`,
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => onEdit(record)}
+          >
+            Edit
+          </Button>
+          <Popconfirm
+            title="Are you sure you want to delete this discount?"
+            onConfirm={() => onDelete(record._id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button type="primary" danger icon={<DeleteOutlined />}>
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   return (
-    <div className="recent-orders" style={{ marginTop: 24 }}>
-      <h4>{title}</h4>
+    <div className="table-responsive">
       <Table
+        title={() => <h2>{title}</h2>}
         columns={columns}
         dataSource={discounts}
+        rowKey="_id"
+        loading={loading}
         pagination={false}
-        rowKey="id"
       />
     </div>
   );
@@ -107,16 +119,23 @@ TableDiscounts.propTypes = {
   title: PropTypes.string.isRequired,
   discounts: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.number.isRequired,
+      _id: PropTypes.string.isRequired,
       code: PropTypes.string.isRequired,
-      percentage: PropTypes.number.isRequired,
-      totalDiscount: PropTypes.number.isRequired,
-      totalUsed: PropTypes.number.isRequired,
-      minimumAmount: PropTypes.number.isRequired,
-      maximumDiscount: PropTypes.number.isRequired,
+      description: PropTypes.string,
+      type: PropTypes.oneOf(["percentage", "fixed"]).isRequired,
+      value: PropTypes.number.isRequired,
+      maxDiscount: PropTypes.number,
+      minPurchase: PropTypes.number,
+      startDate: PropTypes.string.isRequired,
+      endDate: PropTypes.string.isRequired,
+      usageLimit: PropTypes.number.isRequired,
+      usedCount: PropTypes.number.isRequired,
       status: PropTypes.string.isRequired,
     })
   ).isRequired,
+  loading: PropTypes.bool,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
 };
 
 export default React.memo(TableDiscounts);

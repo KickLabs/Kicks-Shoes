@@ -29,11 +29,17 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import emailRoutes from "./routes/emailRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
+import discountRoutes from "./routes/discountRoutes.js";
+import morgan from "morgan";
+import helmet from "helmet";
+import compression from "compression";
+import { errorHandler } from "./middlewares/error.middleware.js";
 import favouriteRoutes from "./routes/favouriteRoutes.js";
 import { default as shopRoutes, default as storeRoutes } from "./routes/storeRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import logger from "./utils/logger.js";
 import { setupUploadDirectories } from "./utils/setupUploads.js";
+import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
 
 // Load environment variables
 dotenv.config();
@@ -78,6 +84,10 @@ app.use("/api/email", emailRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/discounts", discountRoutes);
+
+// Start cron jobs
+startDiscountStatusUpdateCron();
 app.use("/api/favourites", favouriteRoutes);
 
 // Error handler
