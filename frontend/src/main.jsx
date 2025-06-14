@@ -38,6 +38,7 @@ import ListingPage from "./components/pages/listing-page/pages/ListingPage";
 import ProductDetailPage from "./components/pages/product/pages/ProductDetailPage";
 import Account from "./components/pages/account/Account";
 import ProfileTab from "./components/pages/account/components/ProfileTab";
+import FavouritesTab from "./components/pages/account/components/FavouritesTab";
 import AllCategories from "./components/pages/categories/AllCategories";
 
 // Styles
@@ -54,7 +55,7 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
-    errorElement: <ErrorPage />,
+    // errorElement: <ErrorPage />,
     children: [
       {
         path: "",
@@ -166,6 +167,10 @@ const router = createBrowserRouter([
           {
             path: "profile",
             element: <ProfileTab />,
+          },
+          {
+            path: "favourites",
+            element: <FavouritesTab />,
           },
           {
             path: "orders",
