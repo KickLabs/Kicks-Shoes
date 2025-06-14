@@ -29,6 +29,7 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import emailRoutes from "./routes/emailRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
+import rewardPointRoutes from "./routes/rewardPointRoutes.js";
 import discountRoutes from "./routes/discountRoutes.js";
 import morgan from "morgan";
 import helmet from "helmet";
@@ -84,6 +85,7 @@ app.use("/api/email", emailRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/reward-points", rewardPointRoutes);
 app.use("/api/discounts", discountRoutes);
 
 // Start cron jobs

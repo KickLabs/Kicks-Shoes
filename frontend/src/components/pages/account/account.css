@@ -305,3 +305,20 @@
   font-weight: 500;
   border-radius: 25px;
 }
+
+.point {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 16px;
+  color: #333;
+}
+
+.point .anticon-gift {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+}
+
+.point:hover .anticon-gift {
+  transform: scale(1.1);
+}

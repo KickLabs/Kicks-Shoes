@@ -38,6 +38,7 @@ import ListingPage from "./components/pages/listing-page/pages/ListingPage";
 import ProductDetailPage from "./components/pages/product/pages/ProductDetailPage";
 import Account from "./components/pages/account/Account";
 import ProfileTab from "./components/pages/account/components/ProfileTab";
+import RewardPointsDetail from "./components/pages/account/components/RewardPointsDetail";
 import FavouritesTab from "./components/pages/account/components/FavouritesTab";
 import AllCategories from "./components/pages/categories/AllCategories";
 
@@ -183,6 +184,10 @@ const router = createBrowserRouter([
           {
             path: "chat",
             element: <ChatPage />,
+          },
+          {
+            path: "reward-points",
+            element: <RewardPointsDetail />,
           },
         ],
       },
