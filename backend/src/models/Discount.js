@@ -4,9 +4,7 @@
  * @file Discount.js
  * @description This file defines the Discount model schema for the Kicks Shoes application.
  */
-
 import mongoose from "mongoose";
-
 const discountSchema = new mongoose.Schema(
   {
     code: {
@@ -101,10 +99,10 @@ discountSchema.index({ endDate: 1 });
 discountSchema.index({ applicableProducts: 1 });
 discountSchema.index({ applicableCategories: 1 });
 
+
 // Method to update status based on dates
 discountSchema.methods.updateStatus = function () {
   const now = new Date();
-
   if (now > this.endDate) {
     this.status = "expired";
   } else if (now < this.startDate) {
@@ -112,15 +110,14 @@ discountSchema.methods.updateStatus = function () {
   } else {
     this.status = "active";
   }
-
   if (this.usedCount >= this.usageLimit) {
     this.status = "expired";
   }
-
   return this.status;
 };
 
 // Pre-save middleware to update status
+
 discountSchema.pre("save", function (next) {
   if (
     this.isModified("startDate") ||
@@ -149,6 +146,16 @@ discountSchema.methods.isValid = function () {
     now <= this.endDate &&
     this.usedCount < this.usageLimit
   );
+};
+discountSchema.statics.updateAllDiscountStatus = async function() {
+  const discounts = await this.find();
+  for (let discount of discounts) {
+    const oldStatus = discount.status;
+    const newStatus = discount.updateStatus();
+    if (oldStatus !== newStatus) {
+      await discount.save();
+    }
+  }
 };
 
 const Discount = mongoose.model("Discount", discountSchema);
