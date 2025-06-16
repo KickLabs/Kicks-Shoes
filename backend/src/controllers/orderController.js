@@ -5,35 +5,53 @@
  * @description This controller handles all order-related HTTP requests for the Kicks Shoes application.
  */
 
-import { body, validationResult } from "express-validator";
-import { OrderService } from "../services/order.service.js";
-import { ErrorResponse } from "../utils/errorResponse.js";
-import logger from "../utils/logger.js";
+import { body, validationResult } from 'express-validator';
+import { OrderService } from '../services/order.service.js';
+import { ErrorResponse } from '../utils/errorResponse.js';
+import logger from '../utils/logger.js';
 
 // Validation rules for order operations
 const orderValidationRules = {
   create: [
-    body("products").isArray().withMessage("Products must be an array"),
-    body("products.*.id").isMongoId().withMessage("Invalid product ID"),
-    body("products.*.quantity")
-      .isInt({ min: 1 })
-      .withMessage("Invalid quantity"),
-    body("totalAmount").isFloat({ min: 0 }).withMessage("Invalid total amount"),
-    body("paymentMethod")
-      .isIn(["credit_card", "paypal", "cash"])
-      .withMessage("Invalid payment method"),
-    body("shippingAddress")
+    body('products').isArray().withMessage('Products must be an array'),
+    body('products.*.id').isMongoId().withMessage('Invalid product ID'),
+    body('products.*.quantity').isInt({ min: 1 }).withMessage('Invalid quantity'),
+    body('totalAmount').isFloat({ min: 0 }).withMessage('Invalid total amount'),
+    body('paymentMethod')
+      .isIn(['credit_card', 'paypal', 'bank_transfer', 'cash_on_delivery'])
+      .withMessage('Invalid payment method'),
+    body('shippingAddress').isString().notEmpty().withMessage('Shipping address is required'),
+    body('shippingMethod')
+      .optional()
+      .isIn(['standard', 'express', 'next_day'])
+      .withMessage('Invalid shipping method'),
+    body('shippingCost')
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage('Shipping cost must be a non-negative number'),
+    body('tax').optional().isFloat({ min: 0 }).withMessage('Tax must be a non-negative number'),
+    body('discount')
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage('Discount must be a non-negative number'),
+    body('notes')
+      .optional()
       .isString()
-      .notEmpty()
-      .withMessage("Shipping address is required"),
+      .isLength({ max: 500 })
+      .withMessage('Notes cannot exceed 500 characters'),
   ],
   update: [
-    body("status")
+    body('status')
       .optional()
-      .isIn(["pending", "processing", "shipped", "delivered", "cancelled"]),
-    body("paymentStatus").optional().isIn(["pending", "paid", "failed"]),
-    body("trackingNumber").optional().isString(),
-    body("shippingAddress").optional().isString(),
+      .isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']),
+    body('paymentStatus').optional().isIn(['pending', 'paid', 'failed', 'refunded']),
+    body('trackingNumber').optional().isString(),
+    body('shippingAddress').optional().isString(),
+    body('shippingMethod').optional().isIn(['standard', 'express', 'next_day']),
+    body('shippingCost').optional().isFloat({ min: 0 }),
+    body('tax').optional().isFloat({ min: 0 }),
+    body('discount').optional().isFloat({ min: 0 }),
+    body('notes').optional().isString().isLength({ max: 500 }),
   ],
 };
 
@@ -59,13 +77,22 @@ export const createOrder = [
   validateRequest,
   async (req, res, next) => {
     try {
-      logger.info("Creating new order", {
+      logger.info('Creating new order', {
         userId: req.user._id,
         productCount: req.body.products.length,
       });
 
-      const { products, totalAmount, paymentMethod, shippingAddress } =
-        req.body;
+      const {
+        products,
+        totalAmount,
+        paymentMethod,
+        shippingAddress,
+        shippingMethod,
+        shippingCost,
+        tax,
+        discount,
+        notes,
+      } = req.body;
 
       const order = await OrderService.createOrder({
         user: req.user._id,
@@ -73,16 +100,21 @@ export const createOrder = [
         totalAmount,
         paymentMethod,
         shippingAddress,
+        shippingMethod,
+        shippingCost,
+        tax,
+        discount,
+        notes,
       });
 
-      logger.info("Order created successfully", { orderId: order._id });
+      logger.info('Order created successfully', { orderId: order._id });
 
       res.status(201).json({
         success: true,
         data: order,
       });
     } catch (error) {
-      logger.error("Error creating order:", error);
+      logger.error('Error creating order:', error);
       next(error);
     }
   },
@@ -105,12 +137,19 @@ export const getOrders = async (req, res, next) => {
       endDate,
     });
 
+    if (!orders) {
+      return res.status(404).json({
+        success: false,
+        message: 'No orders found',
+      });
+    }
+
     res.status(200).json({
       success: true,
       data: orders,
     });
   } catch (error) {
-    logger.error("Error getting orders:", error);
+    logger.error('Error getting orders:', error);
     next(error);
   }
 };
@@ -127,7 +166,7 @@ export const getOrderById = async (req, res, next) => {
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Order ID is required",
+        message: 'Order ID is required',
       });
     }
 
@@ -136,7 +175,7 @@ export const getOrderById = async (req, res, next) => {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found",
+        message: 'Order not found',
       });
     }
 
@@ -145,7 +184,7 @@ export const getOrderById = async (req, res, next) => {
       data: order,
     });
   } catch (error) {
-    logger.error("Error getting order by ID:", error);
+    logger.error('Error getting order by ID:', error);
     next(error);
   }
 };
@@ -163,21 +202,30 @@ export const getOrdersByUserId = async (req, res, next) => {
     if (!userId) {
       return res.status(400).json({
         success: false,
-        message: "User ID is required",
+        message: 'User ID is required',
       });
     }
 
-    const orders = await OrderService.getOrderByUserId(userId, {
+    logger.info('Getting orders for user:', { userId, page, limit });
+
+    const result = await OrderService.getOrderByUserId(userId, {
       page: parseInt(page),
       limit: parseInt(limit),
     });
 
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'No orders found for this user',
+      });
+    }
+
     res.status(200).json({
       success: true,
-      data: orders,
+      data: result,
     });
   } catch (error) {
-    logger.error("Error getting orders by user ID:", error);
+    logger.error('Error getting orders by user ID:', error);
     next(error);
   }
 };
@@ -197,29 +245,29 @@ export const updateOrder = [
       if (!id) {
         return res.status(400).json({
           success: false,
-          message: "Order ID is required",
+          message: 'Order ID is required',
         });
       }
 
-      logger.info("Updating order", { orderId: id, updates: req.body });
+      logger.info('Updating order', { orderId: id, updates: req.body });
 
       const order = await OrderService.updateOrder(id, req.body);
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message: "Order not found",
+          message: 'Order not found',
         });
       }
 
-      logger.info("Order updated successfully", { orderId: id });
+      logger.info('Order updated successfully', { orderId: id });
 
       res.status(200).json({
         success: true,
         data: order,
       });
     } catch (error) {
-      logger.error("Error updating order:", error);
+      logger.error('Error updating order:', error);
       next(error);
     }
   },
@@ -238,45 +286,42 @@ export const cancelOrder = async (req, res, next) => {
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Order ID is required",
+        message: 'Order ID is required',
       });
     }
     const orderToCancel = await OrderService.getOrderByOrderId(id);
     if (!orderToCancel) {
       return res.status(404).json({
         success: false,
-        message: "Order not found",
+        message: 'Order not found',
       });
     }
-    if (
-      orderToCancel.status !== "pending" &&
-      orderToCancel.status !== "processing"
-    ) {
+    if (orderToCancel.status !== 'pending' && orderToCancel.status !== 'processing') {
       return res.status(400).json({
         success: false,
-        message: "Can only cancel pending or processing orders",
+        message: 'Can only cancel pending or processing orders',
       });
     }
 
-    logger.info("Cancelling order", { orderId: id, reason });
+    logger.info('Cancelling order', { orderId: id, reason });
 
     const order = await OrderService.cancelOrder(id, reason);
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Order not found",
+        message: 'Order not found',
       });
     }
 
-    logger.info("Order cancelled successfully", { orderId: id });
+    logger.info('Order cancelled successfully', { orderId: id });
 
     res.status(200).json({
       success: true,
-      message: "Order with id " + id + " cancelled successfully",
+      message: 'Order with id ' + id + ' cancelled successfully',
     });
   } catch (error) {
-    logger.error("Error cancelling order:", error);
+    logger.error('Error cancelling order:', error);
     next(error);
   }
 };
@@ -295,49 +340,47 @@ export const refundOrder = async (req, res, next) => {
     if (!id?.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Order ID is required",
+        message: 'Order ID is required',
       });
     }
 
     if (!reason?.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Refund reason is required",
+        message: 'Refund reason is required',
       });
     }
 
     if (!amount || amount <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Valid refund amount is required",
+        message: 'Valid refund amount is required',
       });
     }
 
     const orderToRefund = await OrderService.getOrderByOrderId(id);
     if (!orderToRefund) {
-      logger.warn("Refund attempt for non-existent order", { orderId: id });
+      logger.warn('Refund attempt for non-existent order', { orderId: id });
       return res.status(404).json({
         success: false,
-        message: "Order not found",
+        message: 'Order not found',
       });
     }
 
     // Check if order is eligible for refund
     const isEligibleForRefund =
       // Case 1: Paid and cancelled orders
-      (orderToRefund.paymentStatus === "paid" &&
-        orderToRefund.status === "cancelled") ||
+      (orderToRefund.paymentStatus === 'paid' && orderToRefund.status === 'cancelled') ||
       // Case 2: Delivered orders (within 7 days of delivery)
-      (orderToRefund.status === "delivered" &&
+      (orderToRefund.status === 'delivered' &&
         orderToRefund.updatedAt &&
-        new Date() - new Date(orderToRefund.updatedAt) <=
-          7 * 24 * 60 * 60 * 1000) ||
+        new Date() - new Date(orderToRefund.updatedAt) <= 7 * 24 * 60 * 60 * 1000) ||
       // Case 3: COD orders that have been paid
-      (orderToRefund.paymentMethod === "cash_on_delivery" &&
-        orderToRefund.paymentStatus === "paid");
+      (orderToRefund.paymentMethod === 'cash_on_delivery' &&
+        orderToRefund.paymentStatus === 'paid');
 
     if (!isEligibleForRefund) {
-      logger.warn("Refund attempt for ineligible order", {
+      logger.warn('Refund attempt for ineligible order', {
         orderId: id,
         status: orderToRefund.status,
         paymentStatus: orderToRefund.paymentStatus,
@@ -346,24 +389,24 @@ export const refundOrder = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message:
-          "Order is not eligible for refund. Only cancelled orders, delivered orders within 7 days, or paid COD orders can be refunded.",
+          'Order is not eligible for refund. Only cancelled orders, delivered orders within 7 days, or paid COD orders can be refunded.',
       });
     }
 
     // Validate refund amount
     if (amount > orderToRefund.totalAmount) {
-      logger.warn("Refund amount exceeds order total", {
+      logger.warn('Refund amount exceeds order total', {
         orderId: id,
         refundAmount: amount,
         orderTotal: orderToRefund.totalAmount,
       });
       return res.status(400).json({
         success: false,
-        message: "Refund amount cannot exceed order total",
+        message: 'Refund amount cannot exceed order total',
       });
     }
 
-    logger.info("Processing refund request", {
+    logger.info('Processing refund request', {
       orderId: id,
       refundAmount: amount,
       reason,
@@ -381,14 +424,14 @@ export const refundOrder = async (req, res, next) => {
     });
 
     if (!orderRefunded) {
-      logger.error("Refund processing failed", { orderId: id });
+      logger.error('Refund processing failed', { orderId: id });
       return res.status(500).json({
         success: false,
-        message: "Failed to process refund",
+        message: 'Failed to process refund',
       });
     }
 
-    logger.info("Refund processed successfully", {
+    logger.info('Refund processed successfully', {
       orderId: id,
       refundAmount: amount,
       orderStatus: orderRefunded.status,
@@ -398,14 +441,80 @@ export const refundOrder = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       data: orderRefunded,
-      message: "Refund processed successfully",
+      message: 'Refund processed successfully',
     });
   } catch (error) {
-    logger.error("Error processing refund:", {
+    logger.error('Error processing refund:', {
       error: error.message,
       stack: error.stack,
       orderId: req.params.id,
     });
+    next(error);
+  }
+};
+
+/**
+ * Update order status
+ * @route PATCH /api/orders/:id/status
+ * @access Private/Admin
+ */
+export const updateOrderStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order ID is required',
+      });
+    }
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status is required',
+      });
+    }
+
+    // Validate status
+    const validStatuses = [
+      'pending',
+      'processing',
+      'shipped',
+      'delivered',
+      'cancelled',
+      'refunded',
+    ];
+    if (!validStatuses.includes(status.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status value',
+      });
+    }
+
+    logger.info('Updating order status', { orderId: id, newStatus: status });
+
+    const order = await OrderService.updateOrder(id, {
+      status: status.toLowerCase(),
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    logger.info('Order status updated successfully', { orderId: id });
+
+    res.status(200).json({
+      success: true,
+      data: order,
+      message: 'Order status updated successfully',
+    });
+  } catch (error) {
+    logger.error('Error updating order status:', error);
     next(error);
   }
 };
@@ -419,4 +528,5 @@ export const orderRoutes = {
   updateOrder,
   cancelOrder,
   refundOrder,
+  updateOrderStatus,
 };

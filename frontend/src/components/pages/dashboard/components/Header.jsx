@@ -1,16 +1,13 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Layout, Button, Input } from "antd";
-import {
-  SearchOutlined,
-  BellOutlined,
-  LogoutOutlined,
-  RightOutlined,
-} from "@ant-design/icons";
-import { products } from "../../../../data/mockData";
+import React, { useState, useRef, useEffect } from 'react';
+import { Layout, Button, Input } from 'antd';
+import { SearchOutlined, BellOutlined, LogoutOutlined, RightOutlined } from '@ant-design/icons';
+import { products } from '../../../../data/mockData';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 const { Header: AntHeader } = Layout;
 
 export default function Header() {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [filtered, setFiltered] = useState([]);
   const [showInput, setShowInput] = useState(false);
@@ -20,16 +17,16 @@ export default function Header() {
   const wrapperRef = useRef(null);
   const adminBtnRef = useRef(null);
   const adminMenuRef = useRef(null);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (search.trim() === "") {
+    if (search.trim() === '') {
       setFiltered([]);
       setShowDropdown(false);
       return;
     }
-    const result = products.filter((p) =>
-      p.name.toLowerCase().includes(search.toLowerCase())
-    );
+    const result = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
     setFiltered(result);
     setShowDropdown(true);
   }, [search]);
@@ -39,19 +36,18 @@ export default function Header() {
       if (
         wrapperRef.current &&
         !wrapperRef.current.contains(event.target) &&
-        (!adminMenuRef.current ||
-          !adminMenuRef.current.contains(event.target)) &&
+        (!adminMenuRef.current || !adminMenuRef.current.contains(event.target)) &&
         (!adminBtnRef.current || !adminBtnRef.current.contains(event.target))
       ) {
         setShowDropdown(false);
         setShowInput(false);
-        setSearch("");
+        setSearch('');
         setShowAdminMenu(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -66,7 +62,7 @@ export default function Header() {
   };
 
   const handleInputClear = () => {
-    setSearch("");
+    setSearch('');
     setShowDropdown(false);
     setShowInput(false);
   };
@@ -74,22 +70,35 @@ export default function Header() {
   const handleOverlayClick = () => {
     setShowDropdown(false);
     setShowInput(false);
-    setSearch("");
+    setSearch('');
     setShowAdminMenu(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login-admin');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const handleChangePassword = () => {
+    navigate('/change-password');
   };
 
   return (
     <AntHeader
       className="header"
       style={{
-        background: "#fff",
+        background: '#fff',
         margin: 0,
-        display: "flex",
-        justifyContent: "flex-end",
-        alignItems: "center",
-        borderRadius: "0px",
-        padding: "0 24px",
-        position: "relative",
+        display: 'flex',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        borderRadius: '0px',
+        padding: '0 24px',
+        position: 'relative',
         zIndex: 10,
       }}
     >
@@ -97,12 +106,12 @@ export default function Header() {
         <div
           onClick={handleOverlayClick}
           style={{
-            position: "fixed",
+            position: 'fixed',
             top: 0,
             left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.18)",
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.18)',
             zIndex: 99,
           }}
         />
@@ -110,15 +119,15 @@ export default function Header() {
       <div
         ref={wrapperRef}
         style={{
-          position: "relative",
+          position: 'relative',
           marginRight: 16,
-          display: "flex",
-          alignItems: "center",
+          display: 'flex',
+          alignItems: 'center',
         }}
       >
         {!showInput && (
           <SearchOutlined
-            style={{ fontSize: 20, cursor: "pointer" }}
+            style={{ fontSize: 20, cursor: 'pointer' }}
             onClick={handleSearchIconClick}
           />
         )}
@@ -128,7 +137,7 @@ export default function Header() {
             placeholder="Search products..."
             prefix={<SearchOutlined />}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
             onFocus={() => search && setShowDropdown(true)}
             style={{ width: 220, borderRadius: 8, marginLeft: 4 }}
             allowClear
@@ -142,31 +151,27 @@ export default function Header() {
           <div
             ref={dropdownRef}
             style={{
-              position: "absolute",
+              position: 'absolute',
               top: 40,
               left: 0,
               width: 320,
-              background: "#fff",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+              background: '#fff',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
               borderRadius: 16,
               zIndex: 100,
               padding: 20,
             }}
           >
-            <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 16 }}>
-              Products
-            </div>
+            <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 16 }}>Products</div>
             {filtered.length === 0 ? (
-              <div style={{ color: "#888", padding: "16px 0" }}>
-                No products found.
-              </div>
+              <div style={{ color: '#888', padding: '16px 0' }}>No products found.</div>
             ) : (
-              filtered.slice(0, 3).map((p) => (
+              filtered.slice(0, 3).map(p => (
                 <div
                   key={p.id}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: 16,
                     marginBottom: 16,
                   }}
@@ -178,19 +183,14 @@ export default function Header() {
                       width: 48,
                       height: 48,
                       borderRadius: 8,
-                      objectFit: "cover",
+                      objectFit: 'cover',
                     }}
                   />
-                  <span style={{ fontWeight: 500, fontSize: 18 }}>
-                    {p.name}
-                  </span>
+                  <span style={{ fontWeight: 500, fontSize: 18 }}>{p.name}</span>
                 </div>
               ))
             )}
-            <a
-              href="/dashboard/products"
-              style={{ color: "#2d5bff", fontWeight: 600 }}
-            >
+            <a href="/dashboard/products" style={{ color: '#2d5bff', fontWeight: 600 }}>
               See all products
             </a>
           </div>
@@ -201,7 +201,7 @@ export default function Header() {
         type="default"
         ref={adminBtnRef}
         style={{ fontWeight: 600, letterSpacing: 1, borderRadius: 8 }}
-        onClick={() => setShowAdminMenu((v) => !v)}
+        onClick={() => setShowAdminMenu(v => !v)}
       >
         ADMIN <span style={{ marginLeft: 4 }}>▼</span>
       </Button>
@@ -209,51 +209,47 @@ export default function Header() {
         <div
           ref={adminMenuRef}
           style={{
-            position: "absolute",
+            position: 'absolute',
             top: 56,
             right: 20,
             width: 280,
-            background: "#fff",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+            background: '#fff',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
             borderRadius: 16,
             zIndex: 200,
             padding: 24,
-            display: "flex",
-            flexDirection: "column",
+            display: 'flex',
+            flexDirection: 'column',
             gap: 16,
           }}
         >
           <div style={{ fontWeight: 700, fontSize: 22 }}>Admin</div>
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
+              display: 'flex',
+              alignItems: 'center',
               fontWeight: 500,
               fontSize: 16,
-              cursor: "pointer",
-              justifyContent: "space-between",
+              cursor: 'pointer',
+              justifyContent: 'space-between',
               height: 40,
             }}
-            onClick={() => {
-              /* TODO: handle change password */
-            }}
+            onClick={handleChangePassword}
           >
             CHANGE PASSWORD <RightOutlined />
           </div>
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
+              display: 'flex',
+              alignItems: 'center',
               fontWeight: 500,
               fontSize: 16,
-              color: "#222",
-              cursor: "pointer",
+              color: '#222',
+              cursor: 'pointer',
               gap: 8,
               height: 40,
             }}
-            onClick={() => {
-              /* TODO: handle logout */
-            }}
+            onClick={handleLogout}
           >
             LOG OUT <LogoutOutlined />
           </div>

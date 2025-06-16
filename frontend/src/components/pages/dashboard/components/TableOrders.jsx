@@ -1,31 +1,31 @@
-import React, { useState, useMemo, useCallback } from "react";
-import PropTypes from "prop-types";
-import { Table, Tag, Avatar, Checkbox } from "antd";
+import React, { useState, useMemo } from 'react';
+import PropTypes from 'prop-types';
+import { Table, Tag } from 'antd';
 
 const StatusTag = React.memo(({ status }) => (
   <Tag
     color={
-      status === "completed"
-        ? "rgb(59 130 246 / 30%)"
-        : status === "refunded"
-        ? "rgb(239 68 68 / 30%)"
-        : "rgb(245 158 66 / 30%)"
+      status === 'delivered'
+        ? 'rgb(59 130 246 / 30%)'
+        : status === 'cancelled' || status === 'refunded'
+          ? 'rgb(239 68 68 / 30%)'
+          : 'rgb(245 158 66 / 30%)'
     }
     style={{ borderRadius: 10, fontWeight: 500 }}
   >
-    <span style={{ display: "inline-flex", alignItems: "center" }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
       <span
         style={{
-          display: "inline-block",
+          display: 'inline-block',
           width: 8,
           height: 8,
-          borderRadius: "50%",
+          borderRadius: '50%',
           background:
-            status === "completed"
-              ? "#3b82f6"
-              : status === "refunded"
-              ? "#ef4444"
-              : "#f59e42",
+            status === 'delivered'
+              ? '#3b82f6'
+              : status === 'cancelled' || status === 'refunded'
+                ? '#ef4444'
+                : '#f59e42',
           marginRight: 6,
         }}
       />
@@ -39,7 +39,7 @@ StatusTag.propTypes = {
 };
 
 const CustomerCell = React.memo(({ name }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
     <span>{name}</span>
   </div>
 ));
@@ -48,67 +48,93 @@ CustomerCell.propTypes = {
   name: PropTypes.string.isRequired,
 };
 
-const TableOrders = ({ title, orders, dashboard }) => {
+const TableOrders = ({
+  title,
+  orders = [],
+  dashboard = false,
+  loading = false,
+  onOrderSelect = () => {},
+}) => {
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
   const columns = useMemo(() => {
     const baseColumns = [
       {
-        title: "Order ID",
-        dataIndex: "_id",
-        key: "id",
+        title: 'Order ID',
+        dataIndex: 'orderNumber',
+        key: 'id',
       },
       {
-        title: "Date",
-        dataIndex: "createdAt",
-        key: "date",
-        render: (date) => new Date(date).toLocaleDateString(),
+        title: 'Date',
+        dataIndex: 'createdAt',
+        key: 'date',
+        render: date => new Date(date).toLocaleDateString(),
       },
       {
-        title: "Status",
-        dataIndex: "status",
-        key: "status",
-        render: (status) => <StatusTag status={status} />,
+        title: 'Status',
+        dataIndex: 'status',
+        key: 'status',
+        render: status => <StatusTag status={status} />,
       },
       {
-        title: "Amount",
-        dataIndex: "totalPrice",
-        key: "amount",
-        render: (amount) => `$${amount?.toFixed(2) || "0.00"}`,
+        title: 'Amount',
+        dataIndex: 'totalPrice',
+        key: 'amount',
+        render: amount => `$${amount?.toFixed(2) || '0.00'}`,
       },
     ];
 
     if (dashboard) {
-      baseColumns.unshift({
-        title: <Checkbox />,
-        dataIndex: "checkbox",
-        key: "checkbox",
-        width: 40,
-        render: () => <Checkbox />,
-      });
-
       baseColumns.splice(4, 0, {
-        title: "Customer Name",
-        dataIndex: "user",
-        key: "customer",
-        render: (userId) => <CustomerCell name={userId} />,
+        title: 'Customer Name',
+        dataIndex: 'user',
+        key: 'customer',
+        render: user => <CustomerCell name={user?.fullName || 'N/A'} />,
       });
     }
 
     return baseColumns;
   }, [dashboard]);
 
+  const dataSource = useMemo(() => {
+    if (!Array.isArray(orders)) return [];
+    return orders.map(order => ({
+      ...order,
+      key: order._id || order.orderNumber,
+    }));
+  }, [orders]);
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: selectedKeys => {
+      setSelectedRowKeys(selectedKeys);
+      if (selectedKeys.length === 1) {
+        onOrderSelect?.(selectedKeys[0]);
+      } else {
+        onOrderSelect?.(null);
+      }
+    },
+  };
+
   return (
     <div className="recent-orders" style={{ marginTop: 24 }}>
       <h4>{title}</h4>
       <Table
         columns={columns}
-        dataSource={orders}
+        dataSource={dataSource}
         pagination={false}
-        rowKey="_id"
-        onRow={(record) => ({
+        loading={loading}
+        rowKey={record => record._id || record.orderNumber}
+        rowSelection={dashboard ? rowSelection : undefined}
+        onRow={record => ({
           onClick: () => {
-            window.location.href = `/dashboard/orders/${record._id}`;
+            if (dashboard) {
+              window.location.href = `/dashboard/orders/${record._id}`;
+            } else {
+              window.location.href = `/account/orders/${record._id}`;
+            }
           },
-          style: { cursor: "pointer" },
+          style: { cursor: 'pointer' },
         })}
       />
     </div>
@@ -119,15 +145,20 @@ TableOrders.propTypes = {
   title: PropTypes.string.isRequired,
   orders: PropTypes.arrayOf(
     PropTypes.shape({
-      _id: PropTypes.string.isRequired,
-      user: PropTypes.string.isRequired,
-      status: PropTypes.string.isRequired,
-      totalPrice: PropTypes.number.isRequired,
-      createdAt: PropTypes.string.isRequired,
-      items: PropTypes.array.isRequired,
+      _id: PropTypes.string,
+      orderNumber: PropTypes.string,
+      user: PropTypes.shape({
+        fullName: PropTypes.string,
+      }),
+      status: PropTypes.string,
+      totalPrice: PropTypes.number,
+      createdAt: PropTypes.string,
+      items: PropTypes.array,
     })
-  ).isRequired,
+  ),
   dashboard: PropTypes.bool,
+  loading: PropTypes.bool,
+  onOrderSelect: PropTypes.func,
 };
 
 export default React.memo(TableOrders);
