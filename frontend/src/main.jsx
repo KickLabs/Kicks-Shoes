@@ -1,206 +1,218 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { AuthProvider } from "./contexts/AuthContext";
-import { CartProvider } from "./contexts/CartContext";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
+import { useAuth } from './contexts/AuthContext';
 
 // Common Components
-import ChatPage from "./components/common/components/ChatPage";
-import OrderDetails from "./components/common/components/OrderDetails";
-import OrderList from "./components/common/components/OrderList";
-import ProductDetails from "./components/common/components/ProductDetails";
-import ErrorPage from "./components/common/pages/Error";
-import CategoryDetails from "./components/pages/categories/CategoryDetail";
+import ChatPage from './components/common/components/ChatPage';
+import OrderDetails from './components/common/components/OrderDetails';
+import OrderList from './components/common/components/OrderList';
+import ProductDetails from './components/common/components/ProductDetails';
+import ErrorPage from './components/common/pages/Error';
+import CategoryDetails from './components/pages/categories/CategoryDetail';
 
 // Layout
-import App from "./components/layout/App";
+import App from './components/layout/App';
 
 // Authentication Pages
-import Login from "./components/pages/authentication/pages/Login";
-import LoginAdmin from "./components/pages/authentication/pages/LoginAdmin";
-import RegisterPage from "./components/pages/authentication/pages/Register";
-import ForgotPassword from "./components/pages/authentication/pages/ForgotPassword";
-import ChangePassword from "./components/pages/authentication/pages/ChangePassword";
+import Login from './components/pages/authentication/pages/Login';
+import LoginAdmin from './components/pages/authentication/pages/LoginAdmin';
+import RegisterPage from './components/pages/authentication/pages/Register';
+import ForgotPassword from './components/pages/authentication/pages/ForgotPassword';
+import ChangePassword from './components/pages/authentication/pages/ChangePassword';
 
 // Main Pages
-import CartPage from "./components/pages/cart/pages/CartPage";
-import CheckoutPage from "./components/pages/checkout/Checkout";
-import AllProducts from "./components/pages/dashboard/AllProducts";
-import Dashboard, {
-  DashboardContent,
-} from "./components/pages/dashboard/Dashboard";
-import DiscountListPage from "./components/pages/dashboard/DiscountListPage";
-import UserManagementPage from "./components/pages/dashboard/UserManagementPage";
-import HomePage from "./components/pages/home/pages/HomePage";
-import ListingPage from "./components/pages/listing-page/pages/ListingPage";
-import ProductDetailPage from "./components/pages/product/pages/ProductDetailPage";
-import Account from "./components/pages/account/Account";
-import ProfileTab from "./components/pages/account/components/ProfileTab";
-import RewardPointsDetail from "./components/pages/account/components/RewardPointsDetail";
-import FavouritesTab from "./components/pages/account/components/FavouritesTab";
-import AllCategories from "./components/pages/categories/AllCategories";
+import CartPage from './components/pages/cart/pages/CartPage';
+import CheckoutPage from './components/pages/checkout/Checkout';
+import AllProducts from './components/pages/dashboard/AllProducts';
+import Dashboard, { DashboardContent } from './components/pages/dashboard/Dashboard';
+import DiscountListPage from './components/pages/dashboard/DiscountListPage';
+import UserManagementPage from './components/pages/dashboard/UserManagementPage';
+import HomePage from './components/pages/home/pages/HomePage';
+import ListingPage from './components/pages/listing-page/pages/ListingPage';
+import ProductDetailPage from './components/pages/product/pages/ProductDetailPage';
+import Account from './components/pages/account/Account';
+import ProfileTab from './components/pages/account/components/ProfileTab';
+import RewardPointsDetail from './components/pages/account/components/RewardPointsDetail';
+import FavouritesTab from './components/pages/account/components/FavouritesTab';
+import AllCategories from './components/pages/categories/AllCategories';
 
 // Styles
-import "./styles/index.css";
-import EmailVerificationFailed from "./components/pages/authentication/pages/EmailVerificationFailed";
-import EmailVerified from "./components/pages/authentication/pages/EmailVerified";
-import EmailVerification from "./components/pages/authentication/pages/EmailVerification";
-import ResetPasswordForm from "./components/pages/authentication/pages/ResetPasswordForm";
+import './styles/index.css';
+import EmailVerificationFailed from './components/pages/authentication/pages/EmailVerificationFailed';
+import EmailVerified from './components/pages/authentication/pages/EmailVerified';
+import EmailVerification from './components/pages/authentication/pages/EmailVerification';
+import ResetPasswordForm from './components/pages/authentication/pages/ResetPasswordForm';
 
-const userInfo = localStorage.getItem("userInfo");
+const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
+
+const ProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/login-admin" replace />;
+  }
+
+  return children;
+};
 
 const router = createBrowserRouter([
   {
-    path: "/",
+    path: '/',
     element: <App />,
     // errorElement: <ErrorPage />,
     children: [
       {
-        path: "",
+        path: '',
         element: <HomePage />,
       },
       {
-        path: "verify-email",
+        path: 'verify-email',
         element: <EmailVerification />,
       },
       {
-        path: "email-verified",
+        path: 'email-verified',
         element: <EmailVerified />,
       },
       {
-        path: "email-verification-failed",
+        path: 'email-verification-failed',
         element: <EmailVerificationFailed />,
       },
       {
-        path: "checkout",
+        path: 'checkout',
         element: <CheckoutPage />,
       },
       {
-        path: "login",
+        path: 'login',
         element: <Login />,
       },
       {
-        path: "cart",
+        path: 'cart',
         element: <CartPage />,
       },
       {
-        path: "login-admin",
+        path: 'login-admin',
         element: <LoginAdmin />,
       },
       {
-        path: "register",
+        path: 'register',
         element: <RegisterPage />,
       },
       {
-        path: "listing-page",
+        path: 'listing-page',
         element: <ListingPage />,
       },
       {
-        path: "product/:id",
+        path: 'product/:id',
         element: <ProductDetailPage />,
       },
       {
-        path: "dashboard",
-        element: <Dashboard />,
+        path: 'dashboard',
+        element: (
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        ),
         children: [
           {
-            path: "",
+            path: '',
             element: <DashboardContent />,
           },
           {
-            path: "products",
+            path: 'products',
             element: <AllProducts />,
           },
           {
-            path: "categories",
+            path: 'categories',
             element: <AllCategories />,
           },
           {
-            path: "categories/:storeId",
+            path: 'categories/:storeId',
             element: <CategoryDetails />,
           },
           {
-            path: "categories/add-new",
+            path: 'categories/add-new',
             element: <CategoryDetails isAddNew={true} />,
           },
-
           {
-            path: "orders",
+            path: 'orders',
             element: <OrderList />,
           },
           {
-            path: "orders/:orderId",
+            path: 'orders/:orderId',
             element: <OrderDetails />,
           },
           {
-            path: "products/:productId",
+            path: 'products/:productId',
             element: <ProductDetails />,
           },
           {
-            path: "products/add-new",
+            path: 'products/add-new',
             element: <ProductDetails isAddNew={true} />,
           },
           {
-            path: "discounts",
+            path: 'discounts',
             element: <DiscountListPage />,
           },
           {
-            path: "chat",
+            path: 'chat',
             element: <ChatPage />,
           },
           {
-            path: "users",
+            path: 'users',
             element: <UserManagementPage />,
           },
         ],
       },
       {
-        path: "account",
+        path: 'account',
         element: <Account />,
         children: [
           {
-            path: "",
+            path: '',
             element: <ProfileTab />,
           },
           {
-            path: "profile",
+            path: 'profile',
             element: <ProfileTab />,
           },
           {
-            path: "favourites",
+            path: 'favourites',
             element: <FavouritesTab />,
           },
           {
-            path: "orders",
+            path: 'orders',
             element: <OrderList />,
           },
           {
-            path: "orders/:orderId",
+            path: 'orders/:orderId',
             element: <OrderDetails />,
           },
           {
-            path: "chat",
+            path: 'chat',
             element: <ChatPage />,
           },
           {
-            path: "reward-points",
+            path: 'reward-points',
             element: <RewardPointsDetail />,
           },
         ],
       },
       {
-        path: "change-password",
+        path: 'change-password',
         element: <ChangePassword />,
       },
       {
-        path: "forgot-password",
+        path: 'forgot-password',
         element: <ForgotPassword />,
       },
       {
-        path: "reset-password",
+        path: 'reset-password',
         element: <ResetPasswordForm />,
       },
     ],
@@ -229,4 +241,4 @@ const Root = () => (
   </React.StrictMode>
 );
 
-ReactDOM.createRoot(document.getElementById("root")).render(<Root />);
+ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
