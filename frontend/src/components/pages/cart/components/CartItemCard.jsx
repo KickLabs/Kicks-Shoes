@@ -1,47 +1,101 @@
 import React from "react";
 import "./CartItemCard.css";
+import { updateCartItem, removeCartItem, getCart } from "../cartService";
+import { useDispatch } from "react-redux";
 
 const CartItemCard = ({ item }) => {
+  const dispatch = useDispatch();
+
+  const handleSizeChange = (itemId, newSize) => {
+    dispatch(
+      updateCartItem({
+        itemId,
+        updateData: { size: newSize },
+      })
+    ).then(() => {
+      dispatch(getCart());
+    });
+  };
+
+  const handleQuantityChange = (itemId, newQuantity) => {
+    dispatch(
+      updateCartItem({
+        itemId,
+        updateData: { quantity: newQuantity },
+      })
+    ).then(() => {
+      dispatch(getCart());
+    });
+  };
+
+  const handleRemove = (itemId) => {
+    dispatch(removeCartItem(itemId)).then(() => {
+      dispatch(getCart());
+    });
+  };
+  
+
+  if (!item.product || !Array.isArray(item.product.images)) {
+    return <div className="cart-item-card">Invalid product data</div>;
+  }
   return (
     <div className="cart-item-card">
-      <img src={item.image} alt={item.name} className="item-image" />
+      <img
+        src={item.product.images[0]}
+        alt={item.product.name}
+        className="item-image"
+      />
       <div className="item-details">
         <div className="item-header">
-          <h3>{item.name}</h3>
-          <span className="item-price">${item.price.toFixed(2)}</span>
+          <h3>{item.product.name}</h3>
+          <span className="item-price">
+            ${item.product.discountedPrice.toFixed(2)}
+          </span>
         </div>
-        <p className="item-category">{item.category}</p>
+        <p className="item-category">
+          {item.product.brand} - Men’s Road Running Shoes
+        </p>
         <p className="item-color">{item.color}</p>
         <div className="item-options">
           <div className="select-group">
             <label>Size</label>
             <select
-              value={item.size}
+              value={Number(item.size)}
               onChange={(e) =>
-                handleSizeChange(item.id, Number(e.target.value))
+                handleSizeChange(item._id, Number(e.target.value))
               }
             >
-              {Array.from({ length: 10 }, (_, i) => {
-                const size = 36 + i;
-                return (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-          <div className="select-group">
-            <label>Quantity</label>
-            <select value={item.quantity}>
-              {Array.from({ length: 10 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {i + 1}
+              <option value="" disabled>
+                Choose size
+              </option>
+              {item.product.variants.sizes.map((size) => (
+                <option key={size} value={Number(size)}>
+                  {size}
                 </option>
               ))}
             </select>
           </div>
+
+          <div className="select-group">
+            <label>Quantity</label>
+            <select
+              value={item.quantity}
+              onChange={(e) =>
+                handleQuantityChange(item._id, Number(e.target.value))
+              }
+            >
+              {Array.from(
+                { length: Math.min(10, item.product.stock) },
+                (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {i + 1}
+                  </option>
+                )
+              )}
+            </select>
+          </div>
         </div>
+
         <div className="item-actions">
           <button className="icon-button">
             <svg
@@ -60,7 +114,16 @@ const CartItemCard = ({ item }) => {
               />
             </svg>
           </button>
-          <button className="icon-button">
+          <button
+            className="icon-button"
+            onClick={() => {
+              if (
+                window.confirm("Are you sure you want to remove this item?")
+              ) {
+                handleRemove(item._id);
+              }
+            }}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="33"
