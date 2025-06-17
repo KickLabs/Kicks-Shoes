@@ -11,16 +11,21 @@
 import User from "../models/User.js";
 import { ErrorResponse } from "../utils/errorResponse.js";
 import logger from "../utils/logger.js";
+import { UserService } from "../services/user.service.js";
 
-// Get all users
+// Get all users with pagination
 export const getUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
-    res.json(users);
+    const { users, total } = await UserService.getAllUsers(req.query);
+    res.json({ success: true, data: users, total });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+// Get all users
+
 
 // Get all users is active
 export const getUsersIsActive = async (req, res) => {
@@ -185,3 +190,31 @@ export const updateUserProfile = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Toggle user status (ban or unban)
+ * @route PATCH /api/users/:id/status
+ * @access Admin
+ */
+export const toggleUserStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Toggle status
+    user.status = !user.status;
+
+    await user.save();
+
+    res.json({
+      message: `User has been ${user.status ? "unbanned" : "banned"}`,
+      status: user.status,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+

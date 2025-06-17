@@ -7,7 +7,7 @@ const ProductCard = ({ product }) => {
     <div className="custom-product-card">
       <div className="custom-product-card-header">
         <div className="custom-product-image">
-          <img src={nikeproduct} alt={product.name} />
+          <img src={product.images[0]} alt={product.name} />
         </div>
         <div className="custom-product-info">
           <div className="custom-product-title-row">
