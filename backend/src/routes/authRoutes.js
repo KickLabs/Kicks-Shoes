@@ -20,6 +20,11 @@ import {
   verifyEmail,
   resendVerification,
   refreshToken,
+  registerApp,
+  verifyOtp,
+  loginWithGoogle,
+  loginWithFacebook,
+  resendOtp,
 } from "../controllers/authController.js";
 import { protect, optionalAuth } from "../middlewares/auth.middleware.js";
 import {
@@ -110,5 +115,11 @@ router.put("/change-password", protect, changePassword);
  * @access  Private
  */
 router.post("/logout", protect, logout);
+router.post("/google-login", loginWithGoogle);
+router.post("/facebook-login", loginWithFacebook);
+
+router.post("/register-app", registerApp);
+router.post("/verify-otp", verifyOtp);
+router.post("/resend-otp", resendOtp);
 
 export default router;

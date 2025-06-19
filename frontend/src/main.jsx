@@ -29,7 +29,7 @@ import CartPage from "./components/pages/cart/pages/CartPage";
 import CheckoutPage from "./components/pages/checkout/Checkout";
 import AllProducts from "./components/pages/dashboard/AllProducts";
 import Dashboard, {
-  DashboardContent,
+  DashboardContent
 } from "./components/pages/dashboard/Dashboard";
 import DiscountListPage from "./components/pages/dashboard/DiscountListPage";
 import UserManagementPage from "./components/pages/dashboard/UserManagementPage";
@@ -49,6 +49,9 @@ import EmailVerified from "./components/pages/authentication/pages/EmailVerified
 import EmailVerification from "./components/pages/authentication/pages/EmailVerification";
 import ResetPasswordForm from "./components/pages/authentication/pages/ResetPasswordForm";
 
+//login gg
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
 const userInfo = localStorage.getItem("userInfo");
 const user = userInfo ? JSON.parse(userInfo) : null;
 
@@ -60,47 +63,47 @@ const router = createBrowserRouter([
     children: [
       {
         path: "",
-        element: <HomePage />,
+        element: <HomePage />
       },
       {
         path: "verify-email",
-        element: <EmailVerification />,
+        element: <EmailVerification />
       },
       {
         path: "email-verified",
-        element: <EmailVerified />,
+        element: <EmailVerified />
       },
       {
         path: "email-verification-failed",
-        element: <EmailVerificationFailed />,
+        element: <EmailVerificationFailed />
       },
       {
         path: "checkout",
-        element: <CheckoutPage />,
+        element: <CheckoutPage />
       },
       {
         path: "login",
-        element: <Login />,
+        element: <Login />
       },
       {
         path: "cart",
-        element: <CartPage />,
+        element: <CartPage />
       },
       {
         path: "login-admin",
-        element: <LoginAdmin />,
+        element: <LoginAdmin />
       },
       {
         path: "register",
-        element: <RegisterPage />,
+        element: <RegisterPage />
       },
       {
         path: "listing-page",
-        element: <ListingPage />,
+        element: <ListingPage />
       },
       {
         path: "product/:id",
-        element: <ProductDetailPage />,
+        element: <ProductDetailPage />
       },
       {
         path: "dashboard",
@@ -108,54 +111,54 @@ const router = createBrowserRouter([
         children: [
           {
             path: "",
-            element: <DashboardContent />,
+            element: <DashboardContent />
           },
           {
             path: "products",
-            element: <AllProducts />,
+            element: <AllProducts />
           },
           {
             path: "categories",
-            element: <AllCategories />,
+            element: <AllCategories />
           },
           {
             path: "categories/:storeId",
-            element: <CategoryDetails />,
+            element: <CategoryDetails />
           },
           {
             path: "categories/add-new",
-            element: <CategoryDetails isAddNew={true} />,
+            element: <CategoryDetails isAddNew={true} />
           },
 
           {
             path: "orders",
-            element: <OrderList />,
+            element: <OrderList />
           },
           {
             path: "orders/:orderId",
-            element: <OrderDetails />,
+            element: <OrderDetails />
           },
           {
             path: "products/:productId",
-            element: <ProductDetails />,
+            element: <ProductDetails />
           },
           {
             path: "products/add-new",
-            element: <ProductDetails isAddNew={true} />,
+            element: <ProductDetails isAddNew={true} />
           },
           {
             path: "discounts",
-            element: <DiscountListPage />,
+            element: <DiscountListPage />
           },
           {
             path: "chat",
-            element: <ChatPage />,
+            element: <ChatPage />
           },
           {
             path: "users",
-            element: <UserManagementPage />,
-          },
-        ],
+            element: <UserManagementPage />
+          }
+        ]
       },
       {
         path: "account",
@@ -163,48 +166,48 @@ const router = createBrowserRouter([
         children: [
           {
             path: "",
-            element: <ProfileTab />,
+            element: <ProfileTab />
           },
           {
             path: "profile",
-            element: <ProfileTab />,
+            element: <ProfileTab />
           },
           {
             path: "favourites",
-            element: <FavouritesTab />,
+            element: <FavouritesTab />
           },
           {
             path: "orders",
-            element: <OrderList />,
+            element: <OrderList />
           },
           {
             path: "orders/:orderId",
-            element: <OrderDetails />,
+            element: <OrderDetails />
           },
           {
             path: "chat",
-            element: <ChatPage />,
+            element: <ChatPage />
           },
           {
             path: "reward-points",
-            element: <RewardPointsDetail />,
-          },
-        ],
+            element: <RewardPointsDetail />
+          }
+        ]
       },
       {
         path: "change-password",
-        element: <ChangePassword />,
+        element: <ChangePassword />
       },
       {
         path: "forgot-password",
-        element: <ForgotPassword />,
+        element: <ForgotPassword />
       },
       {
         path: "reset-password",
-        element: <ResetPasswordForm />,
-      },
-    ],
-  },
+        element: <ResetPasswordForm />
+      }
+    ]
+  }
 ]);
 
 const Root = () => (
@@ -223,7 +226,9 @@ const Root = () => (
           pauseOnHover
           theme="light"
         />
-        <RouterProvider router={router} />
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+          <RouterProvider router={router} />
+        </GoogleOAuthProvider>
       </CartProvider>
     </AuthProvider>
   </React.StrictMode>
