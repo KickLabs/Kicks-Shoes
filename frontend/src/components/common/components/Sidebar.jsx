@@ -15,6 +15,14 @@ export default function Sidebar({ activeTab, setActiveTab, tabs }) {
     }
   };
 
+  // Convert tabs to menu items format
+  const menuItems = tabs.map(tab => ({
+    key: tab.key,
+    icon: tab.icon,
+    label: tab.name,
+    style: { height: 48 }
+  }));
+
   return (
     <Sider width={220} className="sidebar">
       <div className="logo">
@@ -27,13 +35,8 @@ export default function Sidebar({ activeTab, setActiveTab, tabs }) {
         selectedKeys={[activeTab]}
         onClick={({ key }) => handleMenuClick(key)}
         className="sidebar-menu"
-      >
-        {tabs.map((tab) => (
-          <Menu.Item key={tab.key} icon={tab.icon} style={{ height: 48 }}>
-            {tab.name}
-          </Menu.Item>
-        ))}
-      </Menu>
+        items={menuItems}
+      />
     </Sider>
   );
 }

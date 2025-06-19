@@ -167,9 +167,9 @@ toObject: { virtuals: true },
   }
 );
 
-// --- Indexes ---
-productSchema.index({ name: 'text', brand: 'text', description: 'text' });
-productSchema.index({ 'inventory.size': 1, 'inventory.color': 1 });
+// Indexes
+productSchema.index({ name: "text", brand: "text", description: "text" });
+productSchema.index({ "inventory.size": 1, "inventory.color": 1 });
 
 // --- Virtuals ---
 productSchema.virtual('discountedPrice').get(function () {

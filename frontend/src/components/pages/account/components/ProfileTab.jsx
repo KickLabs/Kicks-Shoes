@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, Input, Select, DatePicker, Spin, message, Form } from "antd";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   EditOutlined,
   UserOutlined,
@@ -10,6 +12,7 @@ import {
   CalendarOutlined,
   InfoCircleOutlined,
   CheckCircleOutlined,
+  GiftOutlined,
 } from "@ant-design/icons";
 import "../account.css";
 import TabHeader from "../../../common/components/TabHeader";
@@ -21,6 +24,8 @@ export default function ProfileTab() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -34,8 +39,20 @@ export default function ProfileTab() {
         aboutMe: user.aboutMe,
         dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
       });
+      fetchTotalPoints();
     }
   }, [user, form]);
+
+  const fetchTotalPoints = async () => {
+    try {
+      const response = await axios.get(`/api/reward-points/user/${user._id}/total`);
+      if (response.data.success) {
+        setTotalPoints(response.data.data.availablePoints);
+      }
+    } catch (error) {
+      console.error("Failed to fetch total points:", error);
+    }
+  };
 
   if (!user) {
     return (
@@ -84,13 +101,21 @@ export default function ProfileTab() {
       if (avatarFile) {
         formData.append("avatar", avatarFile);
       }
-      await updateProfile(formData);
+      const updatedUser = await updateProfile(formData);
+      console.log('Updated user:', updatedUser);
+      
+      // Cập nhật preview ảnh ngay lập tức nếu có URL mới
+      if (updatedUser && updatedUser.avatar) {
+        const previewImg = document.querySelector(".profile-avatar img");
+        if (previewImg) {
+          previewImg.src = updatedUser.avatar;
+        }
+      }
+      
       message.success("Profile updated successfully");
     } catch (error) {
       console.error("Update error:", error);
-      message.error(
-        error.message || "Failed to update profile. Please try again."
-      );
+      message.error(error.message || "Failed to update profile. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -102,7 +127,15 @@ export default function ProfileTab() {
       <div className="profile-tab-container">
         <div className="profile-header">
           <div className="profile-avatar">
-            <img src={user.avatar || "/default-avatar.png"} alt="avatar" />
+            <img 
+              src={user.avatar || "https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png"} 
+              alt="avatar" 
+              onError={(e) => {
+                console.log('Avatar load error, falling back to default');
+                e.target.src = "https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png";
+                return true; // Prevent infinite error loop
+              }}
+            />
             <label className="change-avatar-btn">
               <EditOutlined />
               <input
@@ -123,11 +156,24 @@ export default function ProfileTab() {
             <div className="email">
               <MailOutlined /> {user.email}
             </div>
-            <div className="point">
-              <span role="img" aria-label="point" style={{ marginRight: 8 }}>
-                🎁
-              </span>
-              Point: {user.reward_point || 0}
+            <div 
+              className="point" 
+              onClick={() => navigate('/account/reward-points')}
+              style={{ 
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '8px 16px',
+                background: '#f0f2f5',
+                borderRadius: '6px',
+                transition: 'background 0.3s',
+                ':hover': {
+                  background: '#e6e8eb'
+                }
+              }}
+            >
+              <GiftOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+              Points: {totalPoints}
             </div>
           </div>
         </div>

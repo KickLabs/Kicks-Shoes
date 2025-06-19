@@ -9,6 +9,7 @@ import {
   AppstoreOutlined,
   UnorderedListOutlined,
   MessageOutlined,
+  HeartOutlined,
 } from "@ant-design/icons";
 
 const { Content } = Layout;
@@ -19,6 +20,12 @@ const accountTabs = [
     name: "My Account",
     icon: <DashboardOutlined />,
     path: "/account/profile",
+  },
+  {
+    key: "2",
+    name: "Favourites",
+    icon: <HeartOutlined />,
+    path: "/account/favourites",
   },
   {
     key: "3",

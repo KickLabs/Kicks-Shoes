@@ -125,6 +125,17 @@ export const getUserProfile = async (req, res, next) => {
  */
 export const updateUserProfile = async (req, res, next) => {
   try {
+    logger.info('Starting profile update', {
+      hasFile: !!req.file,
+      fileDetails: req.file ? {
+        fieldname: req.file.fieldname,
+        originalname: req.file.originalname,
+        path: req.file.path,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+      } : null
+    });
+
     const allowedUpdates = [
       "fullName",
       "aboutMe",
@@ -145,6 +156,7 @@ export const updateUserProfile = async (req, res, next) => {
 
     // Handle avatar upload
     if (req.file) {
+      logger.info('File uploaded to Cloudinary', { path: req.file.path });
       updates.avatar = req.file.path;
     }
 
@@ -157,6 +169,12 @@ export const updateUserProfile = async (req, res, next) => {
     if (!user) {
       return next(new ErrorResponse("User not found", 404));
     }
+
+    logger.info('Profile updated successfully', {
+      userId: user._id,
+      avatar: user.avatar,
+      updates
+    });
 
     res.json(user);
   } catch (error) {

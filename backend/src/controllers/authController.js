@@ -74,7 +74,7 @@ export const register = async (req, res, next) => {
       templateData: {
         name: user.fullName,
         verificationLink: `${
-          process.env.FRONTEND_URL || "http://localhost:5173"
+          process.env.FRONTEND_URL || "http://localhost:5000"
         }/verify-email?token=${verificationToken}`,
       },
     });
@@ -589,7 +589,7 @@ export const resendVerification = async (req, res, next) => {
       templateData: {
         name: user.username,
         verificationLink: `${
-          process.env.FRONTEND_URL || "http://localhost:5173"
+          process.env.FRONTEND_URL || "http://localhost:5000"
         }/verify-email?token=${verificationToken}`,
       },
     });

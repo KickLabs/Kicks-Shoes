@@ -1,34 +1,55 @@
 export const cartItems = [
   {
-    id: 1,
-    name: "DROPSET TRAINER SHOES",
-    category: "Men’s Road Running Shoes",
-    color: "Enamel Blue / University White",
-    size: "41",
-    quantity: 1,
-    price: 130.0,
-    image: "https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-  },
-  {
-    id: 2,
-    name: "ULTRABOOST 22",
-    category: "Men’s Running Shoes",
-    color: "Core Black / Grey",
-    size: "36",
-    quantity: 2,
-    price: 180.0,
-    image: "https://images.unsplash.com/photo-1600269452121-4f2416e55c28?q=80&w=1965&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-  },
-  {
-    id: 3,
-    name: "ADIDAS 4DFWD",
-    category: "Training Shoes",
-    color: "Grey / Signal Green",
-    size: "40",
-    quantity: 1,
-    price: 200.0,
-    image: "https://images.unsplash.com/photo-1579446650032-86effeeb3389?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-  }
+            "product": {
+                "price": {
+                    "regular": 150,
+                    "discountPercent": 15,
+                    "isOnSale": true
+                },
+                "variants": {
+                    "sizes": [
+                        39,
+                        41,
+                        43
+                    ],
+                    "colors": [
+                        "Grey",
+                        "Blue"
+                    ]
+                },
+                "_id": "684ee78077ef071409ebaf0d",
+                "name": "Adidas Ultraboost Light",
+                "description": "Ultraboost Light is designed with energy-returning cushioning, lightweight feel, and bold look for runners and daily use.",
+                "brand": "Adidas",
+                "category": "666a0f7a4bdc4e3c5d1ab11e",
+                "tags": [
+                    "running",
+                    "unisex",
+                    "lightweight"
+                ],
+                "status": true,
+                "stock": 5,
+                "sales": 0,
+                "images": [
+                    "https://i.pinimg.com/736x/47/2d/76/472d76497b7bd432b5500df716573247.jpg"
+                ],
+                "rating": 4.7,
+                "isNew": true,
+                "inventory": [],
+                "createdAt": "2025-06-15T15:32:16.893Z",
+                "updatedAt": "2025-06-15T15:32:16.893Z",
+                "sku": "ADI-ADI-0338",
+                "__v": 0,
+                "discountedPrice": 127.5,
+                "isInStock": true,
+                "id": "684ee78077ef071409ebaf0d"
+            },
+            "quantity": 2,
+            "size": "42",
+            "color": "Blue",
+            "price": 900000,
+            "_id": "684ee8f577ef071409ebaf13"
+        }
 ];
 
 export const orderData = {

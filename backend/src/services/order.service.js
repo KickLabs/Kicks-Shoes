@@ -6,10 +6,10 @@
  * It provides methods for creating, updating, and deleting orders.
  */
 
-import Order from "../models/Order.js";
-import OrderItem from "../models/OrderItem.js";
-import mongoose from "mongoose";
-import logger from "../utils/logger.js";
+import Order from '../models/Order.js';
+import OrderItem from '../models/OrderItem.js';
+import mongoose from 'mongoose';
+import logger from '../utils/logger.js';
 
 /**
  * Service class for handling order operations
@@ -22,50 +22,63 @@ export class OrderService {
    */
   static async createOrder(orderData) {
     try {
-      logger.info("Creating order:", { orderData });
-      const { user, products, totalAmount, paymentMethod, shippingAddress } =
-        orderData;
+      logger.info('Creating order:', { orderData });
+      const {
+        user,
+        products,
+        totalAmount,
+        paymentMethod,
+        shippingAddress,
+        shippingMethod = 'standard',
+        shippingCost = 0,
+        tax = 0,
+        discount = 0,
+        notes,
+      } = orderData;
 
-      if (
-        !user ||
-        !products ||
-        !totalAmount ||
-        !paymentMethod ||
-        !shippingAddress
-      ) {
-        throw new Error("Missing required fields");
+      if (!user || !products || !totalAmount || !paymentMethod || !shippingAddress) {
+        throw new Error('Missing required fields');
       }
 
       if (!Array.isArray(products) || products.length === 0) {
-        throw new Error("Products must be a non-empty array");
+        throw new Error('Products must be a non-empty array');
       }
 
-      if (typeof totalAmount !== "number" || totalAmount <= 0) {
-        throw new Error("Invalid total amount");
+      if (typeof totalAmount !== 'number' || totalAmount <= 0) {
+        throw new Error('Invalid total amount');
       }
 
-      const calculatedTotal = products.reduce((sum, product) => {
+      const calculatedSubtotal = products.reduce((sum, product) => {
         return sum + product.price * product.quantity;
       }, 0);
 
+      // Calculate final total including shipping, tax and discount
+      const calculatedTotal = calculatedSubtotal + shippingCost + tax - discount;
+
       if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
-        throw new Error("Total amount does not match sum of items");
+        throw new Error('Total amount does not match sum of items');
       }
 
       const order = new Order({
         user,
         items: [],
         totalPrice: calculatedTotal,
+        subtotal: calculatedSubtotal,
         paymentMethod,
         shippingAddress,
-        status: "pending",
-        paymentStatus: "pending",
+        shippingMethod,
+        shippingCost,
+        tax,
+        discount,
+        notes,
+        status: 'pending',
+        paymentStatus: 'pending',
       });
 
       await order.save();
 
       const orderItems = await Promise.all(
-        products.map(async (product) => {
+        products.map(async product => {
           const subtotal = product.price * product.quantity;
           const orderItem = new OrderItem({
             order: order._id,
@@ -84,10 +97,10 @@ export class OrderService {
       order.items = orderItems;
       await order.save();
 
-      logger.info("Order created successfully", { orderId: order._id });
+      logger.info('Order created successfully', { orderId: order._id });
       return order;
     } catch (error) {
-      logger.error("Error creating order:", {
+      logger.error('Error creating order:', {
         error: error.message,
         stack: error.stack,
       });
@@ -96,19 +109,77 @@ export class OrderService {
   }
 
   /**
-   * Get all orders
-   * @returns {Promise<Order[]>} The list of orders
+   * Get all orders with pagination
+   * @param {Object} options - Pagination and filter options
+   * @returns {Promise<Object>} The orders with pagination info
    */
-  static async getOrders() {
+  static async getOrders(options = {}) {
     try {
-      logger.info("Getting all orders");
-      const orders = await Order.find();
-      return orders;
+      logger.info('Getting all orders with pagination:', { options });
+      const { page = 1, limit = 10, status, startDate, endDate } = options;
+      const skip = (page - 1) * limit;
+
+      const query = {};
+      if (status) {
+        query.status = status;
+      }
+      if (startDate && endDate) {
+        query.createdAt = {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate),
+        };
+      }
+
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        const [orders, total] = await Promise.all([
+          Order.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate({
+              path: 'user',
+              select: 'fullName email phone avatar',
+            })
+            .populate({
+              path: 'items',
+              populate: {
+                path: 'product',
+                select: 'name images price',
+              },
+            }),
+          Order.countDocuments(query),
+        ]);
+
+        await session.commitTransaction();
+
+        return {
+          orders,
+          pagination: {
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            pages: Math.ceil(total / limit),
+          },
+        };
+      } catch (error) {
+        await session.abortTransaction();
+        logger.error('Error getting orders:', {
+          error: error.message,
+          stack: error.stack,
+        });
+        throw new Error(`Failed to get orders: ${error.message}`);
+      } finally {
+        session.endSession();
+      }
     } catch (error) {
-      logger.error("Error getting orders:", {
+      logger.error('Error getting orders:', {
         error: error.message,
         stack: error.stack,
       });
+      throw new Error(`Failed to get orders: ${error.message}`);
     }
   }
 
@@ -119,27 +190,43 @@ export class OrderService {
    */
   static async getOrderByOrderId(orderId) {
     try {
-      logger.info("Getting order by order ID:", { orderId });
+      logger.info('Getting order by order ID:', { orderId });
       if (!orderId) {
-        logger.error("Order ID is required");
-        throw new Error("Order ID is required");
+        logger.error('Order ID is required');
+        throw new Error('Order ID is required');
       }
 
       if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        logger.error("Invalid order ID");
-        throw new Error("Invalid order ID");
+        logger.error('Invalid order ID');
+        throw new Error('Invalid order ID');
       }
 
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
-        const order = await Order.findById(orderId);
+        const order = await Order.findById(orderId)
+          .populate({
+            path: 'user',
+            select: 'fullName email phone avatar',
+          })
+          .populate({
+            path: 'items',
+            populate: {
+              path: 'product',
+              select: 'name images price',
+            },
+          });
+
+        if (!order) {
+          throw new Error('Order not found');
+        }
+
         await session.commitTransaction();
         return order;
       } catch (error) {
         await session.abortTransaction();
-        logger.error("Error getting order by order ID:", {
+        logger.error('Error getting order by order ID:', {
           error: error.message,
           stack: error.stack,
         });
@@ -148,7 +235,7 @@ export class OrderService {
         session.endSession();
       }
     } catch (error) {
-      logger.error("Error getting order by order ID:", {
+      logger.error('Error getting order by order ID:', {
         error: error.message,
         stack: error.stack,
       });
@@ -159,31 +246,62 @@ export class OrderService {
   /**
    * Get all order by user ID
    * @param {string} userId - The ID of the user
-   * @returns {Promise<Order>} The order
+   * @param {Object} options - Pagination options
+   * @returns {Promise<Object>} The orders with pagination info
    */
-  static async getOrderByUserId(userId) {
+  static async getOrderByUserId(userId, options = {}) {
     try {
-      logger.info("Getting all orders by user ID:", { userId });
+      logger.info('Getting all orders by user ID:', { userId });
       if (!userId) {
-        logger.error("User ID is required");
-        throw new Error("User ID is required");
+        logger.error('User ID is required');
+        throw new Error('User ID is required');
       }
 
       if (!mongoose.Types.ObjectId.isValid(userId)) {
-        logger.error("Invalid user ID");
-        throw new Error("Invalid user ID");
+        logger.error('Invalid user ID');
+        throw new Error('Invalid user ID');
       }
+
+      const { page = 1, limit = 10 } = options;
+      const skip = (page - 1) * limit;
 
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
-        const orders = await Order.find({ user: userId });
+        const [orders, total] = await Promise.all([
+          Order.find({ user: userId })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate({
+              path: 'user',
+              select: 'fullName email phone avatar',
+            })
+            .populate({
+              path: 'items',
+              populate: {
+                path: 'product',
+                select: 'name image price',
+              },
+            }),
+          Order.countDocuments({ user: userId }),
+        ]);
+
         await session.commitTransaction();
-        return orders;
+
+        return {
+          orders,
+          pagination: {
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            pages: Math.ceil(total / limit),
+          },
+        };
       } catch (error) {
         await session.abortTransaction();
-        logger.error("Error getting orders by user ID:", {
+        logger.error('Error getting orders by user ID:', {
           error: error.message,
           stack: error.stack,
         });
@@ -192,7 +310,7 @@ export class OrderService {
         session.endSession();
       }
     } catch (error) {
-      logger.error("Error getting orders by user ID:", {
+      logger.error('Error getting orders by user ID:', {
         error: error.message,
         stack: error.stack,
       });
@@ -208,28 +326,57 @@ export class OrderService {
    */
   static async updateOrder(orderId, updateData) {
     try {
-      logger.info("Updating order:", { orderId, updateData });
+      logger.info('Updating order:', { orderId, updateData });
       if (!orderId) {
-        logger.error("Order ID is required");
-        throw new Error("Order ID is required");
+        logger.error('Order ID is required');
+        throw new Error('Order ID is required');
       }
 
       if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        logger.error("Invalid order ID");
-        throw new Error("Invalid order ID");
+        logger.error('Invalid order ID');
+        throw new Error('Invalid order ID');
       }
+
       const session = await mongoose.startSession();
       session.startTransaction();
 
       try {
-        const order = await Order.findByIdAndUpdate(orderId, updateData, {
-          new: true,
-        });
+        // Get current order
+        const currentOrder = await Order.findById(orderId);
+        if (!currentOrder) {
+          throw new Error('Order not found');
+        }
+
+        // If financial fields are being updated, recalculate total
+        const financialFields = ['shippingCost', 'tax', 'discount'];
+        const hasFinancialUpdates = financialFields.some(field => field in updateData);
+
+        if (hasFinancialUpdates) {
+          const OrderItem = mongoose.model('OrderItem');
+          const items = await OrderItem.find({
+            _id: { $in: currentOrder.items },
+          });
+          const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+
+          const newShippingCost = updateData.shippingCost ?? currentOrder.shippingCost;
+          const newTax = updateData.tax ?? currentOrder.tax;
+          const newDiscount = updateData.discount ?? currentOrder.discount;
+
+          updateData.subtotal = subtotal;
+          updateData.totalPrice = subtotal + newShippingCost + newTax - newDiscount;
+        }
+
+        const order = await Order.findByIdAndUpdate(
+          orderId,
+          { $set: updateData },
+          { new: true, runValidators: true }
+        );
+
         await session.commitTransaction();
         return order;
       } catch (error) {
         await session.abortTransaction();
-        logger.error("Error updating order:", {
+        logger.error('Error updating order:', {
           error: error.message,
           stack: error.stack,
         });
@@ -238,7 +385,7 @@ export class OrderService {
         session.endSession();
       }
     } catch (error) {
-      logger.error("Error updating order:", {
+      logger.error('Error updating order:', {
         error: error.message,
         stack: error.stack,
       });
@@ -253,15 +400,15 @@ export class OrderService {
    */
   static async cancelOrder(orderId) {
     try {
-      logger.info("Cancelling order:", { orderId });
+      logger.info('Cancelling order:', { orderId });
       if (!orderId) {
-        logger.error("Order ID is required");
-        throw new Error("Order ID is required");
+        logger.error('Order ID is required');
+        throw new Error('Order ID is required');
       }
 
       if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        logger.error("Invalid order ID");
-        throw new Error("Invalid order ID");
+        logger.error('Invalid order ID');
+        throw new Error('Invalid order ID');
       }
 
       const session = await mongoose.startSession();
@@ -269,13 +416,13 @@ export class OrderService {
 
       try {
         const order = await Order.findByIdAndUpdate(orderId, {
-          status: "cancelled",
+          status: 'cancelled',
         });
         await session.commitTransaction();
         return order;
       } catch (error) {
         await session.abortTransaction();
-        logger.error("Error cancelling order:", {
+        logger.error('Error cancelling order:', {
           error: error.message,
           stack: error.stack,
         });
@@ -284,7 +431,7 @@ export class OrderService {
         session.endSession();
       }
     } catch (error) {
-      logger.error("Error cancelling order:", {
+      logger.error('Error cancelling order:', {
         error: error.message,
         stack: error.stack,
       });
@@ -299,30 +446,30 @@ export class OrderService {
    */
   static async refundOrder(orderId) {
     try {
-      logger.info("Refunding order:", { orderId });
+      logger.info('Refunding order:', { orderId });
       if (!orderId) {
-        logger.error("Order ID is required");
-        throw new Error("Order ID is required");
+        logger.error('Order ID is required');
+        throw new Error('Order ID is required');
       }
       if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        logger.error("Invalid order ID");
-        throw new Error("Invalid order ID");
+        logger.error('Invalid order ID');
+        throw new Error('Invalid order ID');
       }
 
       try {
         const order = await Order.findByIdAndUpdate(orderId, {
-          status: "refunded",
+          status: 'refunded',
         });
         return order;
       } catch (error) {
-        logger.error("Error refunding order:", {
+        logger.error('Error refunding order:', {
           error: error.message,
           stack: error.stack,
         });
         throw new Error(`Failed to refund order: ${error.message}`);
       }
     } catch (error) {
-      logger.error("Error refunding order:", {
+      logger.error('Error refunding order:', {
         error: error.message,
         stack: error.stack,
       });
