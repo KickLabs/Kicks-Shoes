@@ -6,9 +6,9 @@
  * It provides methods for creating, updating, and deleting products.
  */
 
-import Product from "../models/Product.js";
-import mongoose from "mongoose";
-import logger from "../utils/logger.js";
+import Product from '../models/Product.js';
+import mongoose from 'mongoose';
+import logger from '../utils/logger.js';
 
 /**
  * Service class for handling product operations
@@ -21,21 +21,39 @@ export class ProductService {
    */
   static async createProduct(productData) {
     try {
+      // Parse lại các trường object nếu là string (để controller không cần đổi)
+      const price =
+        productData.price && typeof productData.price === 'string'
+          ? JSON.parse(productData.price)
+          : productData.price;
+      const variants =
+        productData.variants && typeof productData.variants === 'string'
+          ? JSON.parse(productData.variants)
+          : productData.variants;
+      const inventory =
+        productData.inventory && typeof productData.inventory === 'string'
+          ? JSON.parse(productData.inventory)
+          : productData.inventory;
+      const tags =
+        productData.tags && typeof productData.tags === 'string'
+          ? JSON.parse(productData.tags)
+          : productData.tags;
       const {
         name,
         description,
-        price,
         category,
         brand,
         images,
-        variants,
-        tags,
         status,
         stock,
         sales,
         rating,
+        isNew,
+        summary,
+        sku,
       } = productData;
-
+      // Log images để debug
+      logger.info('DEBUG images field', { images });
       // Validate required fields
       if (
         !name ||
@@ -44,12 +62,12 @@ export class ProductService {
         !category ||
         !brand ||
         !images ||
+        !Array.isArray(images) ||
+        images.length === 0 ||
         !variants
       ) {
-        throw new Error("Missing required fields");
+        throw new Error('Missing required fields');
       }
-
-      const isNew = true;
       const product = new Product({
         name,
         description,
@@ -68,14 +86,15 @@ export class ProductService {
         sales: sales || 0,
         rating: rating || 0,
         isNew,
+        summary,
+        sku,
+        inventory: inventory || [],
       });
-
       await product.save();
-
-      logger.info("Product created successfully", { productId: product._id });
+      logger.info('Product created successfully', { productId: product._id });
       return product;
     } catch (error) {
-      logger.error("Error creating product", { error: error.message });
+      logger.error('Error creating product', { error: error.message });
       throw error;
     }
   }
@@ -101,21 +120,21 @@ export class ProductService {
             !productData.category ||
             !productData.price
           ) {
-            throw new Error("Missing required fields");
+            throw new Error('Missing required fields');
           }
           if (
             !productData.inventory ||
             !Array.isArray(productData.inventory) ||
             productData.inventory.length === 0
           ) {
-            throw new Error("Invalid inventory data");
+            throw new Error('Invalid inventory data');
           }
           if (
             !productData.variants ||
             !productData.variants.sizes ||
             !productData.variants.colors
           ) {
-            throw new Error("Invalid variants data");
+            throw new Error('Invalid variants data');
           }
 
           const newProduct = new Product(productData);
@@ -129,137 +148,137 @@ export class ProductService {
         }
       }
 
-      logger.info("Bulk product creation completed", {
+      logger.info('Bulk product creation completed', {
         successful: results.success.length,
         failed: results.failed.length,
       });
 
       return results;
     } catch (error) {
-      logger.error("Error in bulk product creation", { error: error.message });
+      logger.error('Error in bulk product creation', { error: error.message });
       throw error;
     }
   }
   /**
- * Delete a product by ID
- * @param {String} productId - The ID of the product to delete
- * @returns {Promise<Product|null>} The deleted product or null if not found
- */
-static async deleteProduct(productId) {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      throw new Error("Invalid product ID");
-    }
+   * Delete a product by ID
+   * @param {String} productId - The ID of the product to delete
+   * @returns {Promise<Product|null>} The deleted product or null if not found
+   */
+  static async deleteProduct(productId) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new Error('Invalid product ID');
+      }
 
-    const deletedProduct = await Product.findByIdAndDelete(productId);
-    if (!deletedProduct) {
-      throw new Error("Product not found");
-    }
+      const deletedProduct = await Product.findByIdAndDelete(productId);
+      if (!deletedProduct) {
+        throw new Error('Product not found');
+      }
 
-    logger.info("Product deleted successfully", { productId });
-    return deletedProduct;
-  } catch (error) {
-    logger.error("Error deleting product", { error: error.message });
-    throw error;
+      logger.info('Product deleted successfully', { productId });
+      return deletedProduct;
+    } catch (error) {
+      logger.error('Error deleting product', { error: error.message });
+      throw error;
+    }
   }
-}
-/**
- * Get a product by ID
- * @param {String} productId - The ID of the product to retrieve
- * @returns {Promise<Product|null>} The product or null if not found
- */
-static async getProductById(productId) {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      throw new Error("Invalid product ID");
-    }
-
-    const product = await Product.findById(productId);
-    return product;
-  } catch (error) {
-    logger.error("Error retrieving product by ID", {
-      productId,
-      error: error.message,
-    });
-    throw error;
-  }
-}
   /**
- * Get all products with optional filters, sorting and pagination
- * @param {Object} query - Query parameters for filtering, sorting, and pagination
- * @returns {Promise<Array<Product>>} List of matching products
- */
-static async getAllProducts(query = {}) {
-  try {
-    const {
-      keyword = '',
-      category,
-      brand,
-      sortBy = 'createdAt',
-      order = 'desc',
-      page = 1,
-      limit = 10,
-    } = query;
+   * Get a product by ID
+   * @param {String} productId - The ID of the product to retrieve
+   * @returns {Promise<Product|null>} The product or null if not found
+   */
+  static async getProductById(productId) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new Error('Invalid product ID');
+      }
 
-    const filter = {};
-
-    if (keyword) {
-      filter.name = { $regex: keyword, $options: 'i' };
+      const product = await Product.findById(productId);
+      return product;
+    } catch (error) {
+      logger.error('Error retrieving product by ID', {
+        productId,
+        error: error.message,
+      });
+      throw error;
     }
-
-    if (category) filter.category = category;
-    if (brand) filter.brand = brand;
-
-    const sortOptions = {};
-    sortOptions[sortBy] = order === 'asc' ? 1 : -1;
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    // Lấy tổng số sản phẩm
-    const total = await Product.countDocuments(filter);
-
-    // Lấy danh sách sản phẩm phân trang
-    const products = await Product.find(filter)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    return { products, total };
-  } catch (error) {
-    logger.error("Error retrieving filtered products", { error: error.message });
-    throw error;
   }
-}
-/**
- * Update a product by ID
- * @param {String} productId - The ID of the product to update
- * @param {Object} updateData - The product fields to update
- * @returns {Promise<Product|null>} The updated product or null if not found
- */
-static async updateProduct(productId, updateData) {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      throw new Error("Invalid product ID");
+  /**
+   * Get all products with optional filters, sorting and pagination
+   * @param {Object} query - Query parameters for filtering, sorting, and pagination
+   * @returns {Promise<Array<Product>>} List of matching products
+   */
+  static async getAllProducts(query = {}) {
+    try {
+      const {
+        keyword = '',
+        category,
+        brand,
+        sortBy = 'createdAt',
+        order = 'desc',
+        page = 1,
+        limit = 10,
+      } = query;
+
+      const filter = {};
+
+      if (keyword) {
+        filter.name = { $regex: keyword, $options: 'i' };
+      }
+
+      if (category) filter.category = category;
+      if (brand) filter.brand = brand;
+
+      const sortOptions = {};
+      sortOptions[sortBy] = order === 'asc' ? 1 : -1;
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      // Lấy tổng số sản phẩm
+      const total = await Product.countDocuments(filter);
+
+      // Lấy danh sách sản phẩm phân trang
+      const products = await Product.find(filter)
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(parseInt(limit));
+
+      return { products, total };
+    } catch (error) {
+      logger.error('Error retrieving filtered products', { error: error.message });
+      throw error;
     }
-
-    const updatedProduct = await Product.findByIdAndUpdate(
-      productId,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedProduct) {
-      throw new Error("Product not found");
-    }
-
-    logger.info("Product updated successfully", { productId });
-    return updatedProduct;
-  } catch (error) {
-    logger.error("Error updating product", {
-      productId,
-      error: error.message,
-    });
-    throw error;
   }
-}
+  /**
+   * Update a product by ID
+   * @param {String} productId - The ID of the product to update
+   * @param {Object} updateData - The product fields to update
+   * @returns {Promise<Product|null>} The updated product or null if not found
+   */
+  static async updateProduct(productId, updateData) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(productId)) {
+        throw new Error('Invalid product ID');
+      }
+
+      const updatedProduct = await Product.findByIdAndUpdate(
+        productId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedProduct) {
+        throw new Error('Product not found');
+      }
+
+      logger.info('Product updated successfully', { productId });
+      return updatedProduct;
+    } catch (error) {
+      logger.error('Error updating product', {
+        productId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
 }

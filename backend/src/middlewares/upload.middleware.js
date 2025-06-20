@@ -5,15 +5,15 @@
  * @description This file contains middleware functions for handling file uploads in the Kicks Shoes application.
  */
 
-import multer from "multer";
-import { ErrorResponse } from "../utils/errorResponse.js";
-import { storage } from "../config/cloudinary.js";
+import multer from 'multer';
+import { ErrorResponse } from '../utils/errorResponse.js';
+import { storage, productImageStorage } from '../config/cloudinary.js';
 
 // File filter
 const fileFilter = (req, file, cb) => {
   // Accept images only
   if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-    return cb(new ErrorResponse("Only image files are allowed!", 400), false);
+    return cb(new ErrorResponse('Only image files are allowed!', 400), false);
   }
   cb(null, true);
 };
@@ -27,4 +27,11 @@ const upload = multer({
   },
 });
 
+const productImageUpload = multer({
+  storage: productImageStorage,
+  fileFilter: fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
 export default upload;
+export { productImageUpload };

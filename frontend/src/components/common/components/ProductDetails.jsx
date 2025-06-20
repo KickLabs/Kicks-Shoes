@@ -6,7 +6,7 @@ import {
   TagsOutlined,
   PictureOutlined,
   SettingOutlined,
-} from "@ant-design/icons";
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -22,27 +22,27 @@ import {
   Typography,
   Tooltip,
   Form,
-} from "antd";
-import { useContext, useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
-import productImg from "../../../assets/images/nikeproduct.png";
-import { ActiveTabContext } from "./ActiveTabContext";
-import "./order-details.css";
-import "./product-details.css";
-import TabHeader from "./TabHeader";
-import axios from "axios";
+} from 'antd';
+import { useContext, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import productImg from '../../../assets/images/nikeproduct.png';
+import { ActiveTabContext } from './ActiveTabContext';
+import './order-details.css';
+import './product-details.css';
+import TabHeader from './TabHeader';
+import axios from 'axios';
 
 const { TextArea } = Input;
 const { Option } = Select;
 const { Title, Text } = Typography;
 
 const emptyProduct = {
-  name: "",
-  summary: "",
-  description: "",
-  brand: "",
-  category: "",
-  sku: "",
+  name: '',
+  summary: '',
+  description: '',
+  brand: '',
+  category: '',
+  sku: '',
   tags: [],
   status: true,
   price: {
@@ -62,57 +62,36 @@ const emptyProduct = {
   isNew: false,
 };
 
-const brandOptions = [
-  "Nike",
-  "Adidas",
-  "Puma",
-  "Reebok",
-  "New Balance",
-  "Converse",
-  "Vans",
-];
+const brandOptions = ['Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance', 'Converse', 'Vans'];
 
-const sizeOptions = [
-  "35",
-  "36",
-  "37",
-  "38",
-  "39",
-  "40",
-  "41",
-  "42",
-  "43",
-  "44",
-  "45",
-  "46",
-];
+const sizeOptions = ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
 
 const colorOptions = [
-  { label: "Black", value: "#000000" },
-  { label: "White", value: "#FFFFFF" },
-  { label: "Red", value: "#FF0000" },
-  { label: "Blue", value: "#0000FF" },
-  { label: "Green", value: "#008000" },
-  { label: "Yellow", value: "#FFFF00" },
-  { label: "Gray", value: "#808080" },
-  { label: "Brown", value: "#A52A2A" },
+  { label: 'Black', value: '#000000' },
+  { label: 'White', value: '#FFFFFF' },
+  { label: 'Red', value: '#FF0000' },
+  { label: 'Blue', value: '#0000FF' },
+  { label: 'Green', value: '#008000' },
+  { label: 'Yellow', value: '#FFFF00' },
+  { label: 'Gray', value: '#808080' },
+  { label: 'Brown', value: '#A52A2A' },
 ];
 const mockProduct = {
-  name: "Adidas Ultra boost",
-  description: "Long distance running requires a lot from athletes.",
-  category: "Sneaker",
-  brand: "Addidas",
-  sku: "#32A53",
+  name: 'Adidas Ultra boost',
+  description: 'Long distance running requires a lot from athletes.',
+  category: 'Sneaker',
+  brand: 'Addidas',
+  sku: '#32A53',
   stock: 21,
   regularPrice: 110.4,
   salePrice: 450,
-  tags: ["Adidas", "Shoes", "Sneakers", "Ultraboost"],
+  tags: ['Adidas', 'Shoes', 'Sneakers', 'Ultraboost'],
   images: [productImg, productImg, productImg, productImg],
 };
 export default function ProductDetails() {
   const { setActiveTab } = useContext(ActiveTabContext);
   const location = useLocation();
-  const isAddNew = location.pathname.includes("add-new");
+  const isAddNew = location.pathname.includes('add-new');
   const [product, setProduct] = useState(emptyProduct);
   const [fileList, setFileList] = useState(
     isAddNew
@@ -120,36 +99,51 @@ export default function ProductDetails() {
       : mockProduct.images.map((img, idx) => ({
           uid: String(idx),
           name: `Product thumbnail.png`,
-          status: "done",
+          status: 'done',
           url: img,
         }))
   );
   const [categories, setCategories] = useState([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-    useEffect(() => {
-    setActiveTab("2");
+  // Đồng bộ fileList với product.images khi xem chi tiết sản phẩm
+  useEffect(() => {
+    if (!isAddNew && product.images && product.images.length > 0) {
+      setFileList(
+        product.images.map((img, idx) => ({
+          uid: String(idx),
+          name: `Product image ${idx + 1}`,
+          status: 'done',
+          url: img,
+        }))
+      );
+    }
+  }, [product.images, isAddNew]);
+
+  useEffect(() => {
+    setActiveTab('2');
     // Fetch categories
-    axios.get("/api/categories").then((res) => {
+    axios.get('/api/categories').then(res => {
       if (res.data && res.data.data) setCategories(res.data.data);
     });
     // Fetch product details if not add-new
     if (!isAddNew) {
-      const productId = location.pathname.split("/").pop();
+      const productId = location.pathname.split('/').pop();
       axios
         .get(`/api/products/${productId}`)
-        .then((res) => {
+        .then(res => {
           if (res.data && res.data.data) setProduct(res.data.data);
         })
-        .catch(() => message.error("Failed to fetch product details!"));
+        .catch(() => message.error('Failed to fetch product details!'));
     }
   }, [setActiveTab, isAddNew, location.pathname]);
 
   const handleChange = (field, value) => {
-    setProduct((prev) => ({ ...prev, [field]: value }));
+    setProduct(prev => ({ ...prev, [field]: value }));
   };
 
   const handleNestedChange = (parentField, childField, value) => {
-    setProduct((prev) => ({
+    setProduct(prev => ({
       ...prev,
       [parentField]: {
         ...prev[parentField],
@@ -160,16 +154,17 @@ export default function ProductDetails() {
 
   const handleUploadChange = ({ fileList: newFileList }) => {
     setFileList(newFileList);
-    setProduct((prev) => ({
+    setProduct(prev => ({
       ...prev,
-      images: newFileList.map((f) => f.url || f.thumbUrl),
+      images: newFileList.map(f => f.url || f.thumbUrl),
     }));
+    // Reset preview về ảnh đầu tiên khi upload mới
+    setSelectedImageIndex(0);
   };
 
-  
   const handleUpdate = async () => {
     try {
-      const userInfo = localStorage.getItem("userInfo");
+      const userInfo = localStorage.getItem('userInfo');
       const token = userInfo ? JSON.parse(userInfo).token : null;
       const productId = product._id || product.id;
       const payload = {
@@ -196,73 +191,68 @@ export default function ProductDetails() {
       };
       await axios.put(`/api/products/${productId}`, payload, {
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: token ? `Bearer ${token}` : '',
         },
       });
-      message.success("Product updated successfully!");
+      message.success('Product updated successfully!');
     } catch (err) {
-      message.error("Failed to update product!");
+      message.error('Failed to update product!');
     }
   };
 
   const handleDelete = async () => {
     try {
-      const userInfo = localStorage.getItem("userInfo");
+      const userInfo = localStorage.getItem('userInfo');
       const token = userInfo ? JSON.parse(userInfo).token : null;
       const productId = product._id || product.id;
       await axios.delete(`/api/products/${productId}/delete`, {
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: token ? `Bearer ${token}` : '',
         },
       });
-      message.success("Product deleted successfully!");
+      message.success('Product deleted successfully!');
       // Optional: redirect or refresh after delete
     } catch (err) {
-      message.error("Failed to delete product!");
+      message.error('Failed to delete product!');
     }
   };
 
   const handleCancel = () => {
-    message.info("Changes canceled");
+    message.info('Changes canceled');
   };
 
   const handleCreate = async () => {
     try {
-      const userInfo = localStorage.getItem("userInfo");
+      const userInfo = localStorage.getItem('userInfo');
       const token = userInfo ? JSON.parse(userInfo).token : null;
+      const formData = new FormData();
 
-      const payload = {
-        name: product.name,
-        summary: product.summary,
-        description: product.description,
-        brand: product.brand,
-        category: product.category,
-        // sku: product.sku,
-        price: {
-          regular: Number(product.price.regular),
-          discountPercent: Number(product.price.discountPercent),
-          isOnSale: Boolean(product.price.isOnSale),
-        },
-        variants: {
-          sizes: product.variants.sizes,
-          colors: product.variants.colors,
-        },
-        inventory: product.inventory,
-        images: product.images,
-        tags: product.tags,
-        status: product.status,
-        stock: product.stock,
-        isNew: product.isNew,
-      };
+      // Thêm các trường khác
+      Object.entries(product).forEach(([key, value]) => {
+        if (key === 'images') return; // images sẽ thêm riêng
+        if (typeof value === 'object' && value !== null) {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, value);
+        }
+      });
 
-      await axios.post("/api/products/add", payload, {
+      // Thêm ảnh
+      fileList.forEach(file => {
+        if (file.originFileObj) {
+          formData.append('images', file.originFileObj);
+        }
+      });
+
+      await axios.post('/api/products/add', formData, {
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: token ? `Bearer ${token}` : '',
+          'Content-Type': 'multipart/form-data',
         },
       });
-      message.success("Product created successfully!");
+      message.success('Product created successfully!');
     } catch (err) {
-      message.error("Failed to create product!");
+      message.error('Failed to create product!');
     }
   };
 
@@ -277,12 +267,10 @@ export default function ProductDetails() {
     <div>
       <TabHeader
         breadcrumb="All Products"
-        anotherBreadcrumb={isAddNew ? "Add New Product" : "Product Details"}
+        anotherBreadcrumb={isAddNew ? 'Add New Product' : 'Product Details'}
       />
 
-      <div
-        className="product-details-container"
-        style={{ padding: "24px", background: "#f5f5f5" }}>
+      <div className="product-details-container" style={{ padding: '24px', background: '#f5f5f5' }}>
         <Row gutter={[24, 24]}>
           {/* Main Content */}
           <Col xs={24} lg={16}>
@@ -298,23 +286,25 @@ export default function ProductDetails() {
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}>
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            >
               <Row gutter={[16, 24]}>
                 <Col span={24}>
                   <label
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Product Name *
                   </label>
                   <Input
                     size="large"
                     placeholder="Enter product name"
                     value={product.name}
-                    onChange={(e) => handleChange("name", e.target.value)}
+                    onChange={e => handleChange('name', e.target.value)}
                   />
                 </Col>
 
@@ -323,15 +313,16 @@ export default function ProductDetails() {
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Product Summary
                   </label>
                   <Input
                     size="large"
                     placeholder="Brief product summary"
                     value={product.summary}
-                    onChange={(e) => handleChange("summary", e.target.value)}
+                    onChange={e => handleChange('summary', e.target.value)}
                   />
                 </Col>
 
@@ -340,18 +331,17 @@ export default function ProductDetails() {
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Description
                   </label>
                   <TextArea
                     placeholder="Detailed product description"
                     value={product.description}
-                    onChange={(e) =>
-                      handleChange("description", e.target.value)
-                    }
+                    onChange={e => handleChange('description', e.target.value)}
                     rows={4}
-                    style={{ resize: "none" }}
+                    style={{ resize: 'none' }}
                   />
                 </Col>
 
@@ -359,25 +349,23 @@ export default function ProductDetails() {
                   <Form.Item
                     label="Category"
                     name="category"
-                    rules={[
-                      { required: true, message: "Please select a category!" },
-                    ]}
-                    style={{ marginBottom: 16 }}>
+                    rules={[{ required: true, message: 'Please select a category!' }]}
+                    style={{ marginBottom: 16 }}
+                  >
                     <Select
                       size="large"
                       placeholder="Select a category"
                       value={product.category}
-                      onChange={(value) => handleChange("category", value)}
-                      style={{ width: "100%" }}
+                      onChange={value => handleChange('category', value)}
+                      style={{ width: '100%' }}
                       showSearch
                       optionFilterProp="children"
                       filterOption={(input, option) =>
-                        option.children
-                          .toLowerCase()
-                          .includes(input.toLowerCase())
+                        option.children.toLowerCase().includes(input.toLowerCase())
                       }
-                      aria-label="Product category">
-                      {categories.map((cat) => (
+                      aria-label="Product category"
+                    >
+                      {categories.map(cat => (
                         <Option key={cat._id} value={cat._id}>
                           {cat.name}
                         </Option>
@@ -390,25 +378,23 @@ export default function ProductDetails() {
                   <Form.Item
                     label="Brand"
                     name="brand"
-                    rules={[
-                      { required: true, message: "Please select a brand!" },
-                    ]}
-                    style={{ marginBottom: 16 }}>
+                    rules={[{ required: true, message: 'Please select a brand!' }]}
+                    style={{ marginBottom: 16 }}
+                  >
                     <Select
                       size="large"
                       placeholder="Select a brand"
                       value={product.brand}
-                      onChange={(value) => handleChange("brand", value)}
-                      style={{ width: "100%" }}
+                      onChange={value => handleChange('brand', value)}
+                      style={{ width: '100%' }}
                       showSearch
                       optionFilterProp="children"
                       filterOption={(input, option) =>
-                        option.children
-                          .toLowerCase()
-                          .includes(input.toLowerCase())
+                        option.children.toLowerCase().includes(input.toLowerCase())
                       }
-                      aria-label="Product brand">
-                      {brandOptions.map((brand) => (
+                      aria-label="Product brand"
+                    >
+                      {brandOptions.map(brand => (
                         <Option key={brand} value={brand}>
                           {brand}
                         </Option>
@@ -422,8 +408,9 @@ export default function ProductDetails() {
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Stock Quantity *
                   </label>
                   <InputNumber
@@ -431,8 +418,8 @@ export default function ProductDetails() {
                     placeholder="0"
                     min={0}
                     value={product.stock}
-                    onChange={(value) => handleChange("stock", value || 0)}
-                    style={{ width: "100%" }}
+                    onChange={value => handleChange('stock', value || 0)}
+                    style={{ width: '100%' }}
                   />
                 </Col>
               </Row>
@@ -450,16 +437,18 @@ export default function ProductDetails() {
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}>
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            >
               <Row gutter={[16, 24]}>
                 <Col xs={24} sm={12}>
                   <label
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Regular Price * ($)
                   </label>
                   <InputNumber
@@ -468,14 +457,10 @@ export default function ProductDetails() {
                     min={0}
                     step={0.01}
                     value={product.price.regular}
-                    onChange={(value) =>
-                      handleNestedChange("price", "regular", value || 0)
-                    }
-                    style={{ width: "100%" }}
-                    formatter={(value) =>
-                      `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                    }
-                    parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+                    onChange={value => handleNestedChange('price', 'regular', value || 0)}
+                    style={{ width: '100%' }}
+                    formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    parser={value => value.replace(/\$\s?|(,*)/g, '')}
                   />
                 </Col>
 
@@ -484,8 +469,9 @@ export default function ProductDetails() {
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Discount Percentage (%)
                   </label>
                   <InputNumber
@@ -494,30 +480,27 @@ export default function ProductDetails() {
                     min={0}
                     max={100}
                     value={product.price.discountPercent}
-                    onChange={(value) =>
-                      handleNestedChange("price", "discountPercent", value || 0)
-                    }
-                    style={{ width: "100%" }}
-                    formatter={(value) => `${value}%`}
-                    parser={(value) => value.replace("%", "")}
+                    onChange={value => handleNestedChange('price', 'discountPercent', value || 0)}
+                    style={{ width: '100%' }}
+                    formatter={value => `${value}%`}
+                    parser={value => value.replace('%', '')}
                   />
                 </Col>
 
                 <Col xs={24} sm={12}>
-                  <Space direction="vertical" style={{ width: "100%" }}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
                     <label
                       style={{
                         fontWeight: 600,
                         marginBottom: 8,
-                        display: "block",
-                      }}>
+                        display: 'block',
+                      }}
+                    >
                       On Sale
                     </label>
                     <Switch
                       checked={product.price.isOnSale}
-                      onChange={(checked) =>
-                        handleNestedChange("price", "isOnSale", checked)
-                      }
+                      onChange={checked => handleNestedChange('price', 'isOnSale', checked)}
                       checkedChildren="Yes"
                       unCheckedChildren="No"
                     />
@@ -529,19 +512,21 @@ export default function ProductDetails() {
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Sale Price ($)
                   </label>
                   <div
                     style={{
-                      padding: "8px 12px",
-                      background: "#f0f0f0",
-                      borderRadius: "6px",
-                      fontSize: "16px",
+                      padding: '8px 12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontSize: '16px',
                       fontWeight: 600,
-                      color: "#52c41a",
-                    }}>
+                      color: '#52c41a',
+                    }}
+                  >
                     ${calculateSalePrice().toFixed(2)}
                   </div>
                 </Col>
@@ -560,16 +545,18 @@ export default function ProductDetails() {
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}>
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            >
               <Row gutter={[16, 24]}>
                 <Col span={24}>
                   <label
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Available Sizes
                   </label>
                   <Select
@@ -577,11 +564,9 @@ export default function ProductDetails() {
                     size="large"
                     placeholder="Select available sizes"
                     value={product.variants.sizes}
-                    onChange={(sizes) =>
-                      handleNestedChange("variants", "sizes", sizes)
-                    }
-                    style={{ width: "100%" }}
-                    options={sizeOptions.map((size) => ({
+                    onChange={sizes => handleNestedChange('variants', 'sizes', sizes)}
+                    style={{ width: '100%' }}
+                    options={sizeOptions.map(size => ({
                       label: size,
                       value: size,
                     }))}
@@ -593,8 +578,9 @@ export default function ProductDetails() {
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Available Colors
                   </label>
                   <Select
@@ -602,11 +588,10 @@ export default function ProductDetails() {
                     size="large"
                     placeholder="Select available colors"
                     value={product.variants.colors}
-                    onChange={(colors) =>
-                      handleNestedChange("variants", "colors", colors)
-                    }
-                    style={{ width: "100%" }}>
-                    {colorOptions.map((color) => (
+                    onChange={colors => handleNestedChange('variants', 'colors', colors)}
+                    style={{ width: '100%' }}
+                  >
+                    {colorOptions.map(color => (
                       <Option key={color.value} value={color.value}>
                         <Space>
                           <div
@@ -614,7 +599,7 @@ export default function ProductDetails() {
                               width: 16,
                               height: 16,
                               backgroundColor: color.value,
-                              border: "1px solid #d9d9d9",
+                              border: '1px solid #d9d9d9',
                               borderRadius: 2,
                             }}
                           />
@@ -639,16 +624,18 @@ export default function ProductDetails() {
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}>
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            >
               <Row gutter={[16, 24]}>
                 <Col span={24}>
                   <label
                     style={{
                       fontWeight: 600,
                       marginBottom: 8,
-                      display: "block",
-                    }}>
+                      display: 'block',
+                    }}
+                  >
                     Product Tags
                   </label>
                   <Select
@@ -656,24 +643,25 @@ export default function ProductDetails() {
                     size="large"
                     placeholder="Add tags (press Enter to add)"
                     value={product.tags}
-                    onChange={(tags) => handleChange("tags", tags)}
-                    style={{ width: "100%" }}
+                    onChange={tags => handleChange('tags', tags)}
+                    style={{ width: '100%' }}
                   />
                 </Col>
 
                 <Col xs={24} sm={12}>
-                  <Space direction="vertical" style={{ width: "100%" }}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
                     <label
                       style={{
                         fontWeight: 600,
                         marginBottom: 8,
-                        display: "block",
-                      }}>
+                        display: 'block',
+                      }}
+                    >
                       Product Status
                     </label>
                     <Switch
                       checked={product.status}
-                      onChange={(checked) => handleChange("status", checked)}
+                      onChange={checked => handleChange('status', checked)}
                       checkedChildren="Active"
                       unCheckedChildren="Inactive"
                     />
@@ -681,18 +669,19 @@ export default function ProductDetails() {
                 </Col>
 
                 <Col xs={24} sm={12}>
-                  <Space direction="vertical" style={{ width: "100%" }}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
                     <label
                       style={{
                         fontWeight: 600,
                         marginBottom: 8,
-                        display: "block",
-                      }}>
+                        display: 'block',
+                      }}
+                    >
                       New Product
                     </label>
                     <Switch
                       checked={product.isNew}
-                      onChange={(checked) => handleChange("isNew", checked)}
+                      onChange={checked => handleChange('isNew', checked)}
                       checkedChildren="Yes"
                       unCheckedChildren="No"
                     />
@@ -714,23 +703,52 @@ export default function ProductDetails() {
               bordered={false}
               style={{
                 borderRadius: 12,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              }}>
-              {product.images.length > 0 && (
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            >
+              {/* Hiển thị ảnh Cloudinary nếu có, nếu không thì ảnh mặc định */}
+              {((product.images && product.images.length > 0) || fileList.length === 0) && (
                 <div style={{ marginBottom: 16 }}>
                   <img
                     style={{
-                      width: "100%",
-                      borderRadius: "12px",
-                      maxHeight: "200px",
-                      objectFit: "cover",
+                      width: '100%',
+                      borderRadius: '12px',
+                      maxHeight: '200px',
+                      objectFit: 'cover',
                     }}
-                    src={product.images[0] || productImg}
+                    src={
+                      product.images && product.images.length > 0 ? product.images[0] : productImg
+                    }
                     alt="Product Preview"
                   />
                 </div>
               )}
-
+              {/* Danh sách thumbnail */}
+              {fileList.length > 1 && (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  {fileList.map((file, idx) => (
+                    <img
+                      key={file.uid}
+                      src={
+                        file.url ||
+                        file.thumbUrl ||
+                        (file.originFileObj && URL.createObjectURL(file.originFileObj))
+                      }
+                      alt={`thumb-${idx}`}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        objectFit: 'cover',
+                        borderRadius: 4,
+                        border: idx === selectedImageIndex ? '2px solid #1890ff' : '1px solid #eee',
+                        cursor: 'pointer',
+                        boxShadow: idx === selectedImageIndex ? '0 0 4px #1890ff' : 'none',
+                      }}
+                      onClick={() => setSelectedImageIndex(idx)}
+                    />
+                  ))}
+                </div>
+              )}
               <Upload.Dragger
                 fileList={fileList}
                 onChange={handleUploadChange}
@@ -741,20 +759,17 @@ export default function ProductDetails() {
                 beforeUpload={() => false}
                 style={{
                   borderRadius: 8,
-                  border: "2px dashed #d9d9d9",
-                  background: "#fafafa",
-                }}>
+                  border: '2px dashed #d9d9d9',
+                  background: '#fafafa',
+                }}
+              >
                 <p className="ant-upload-drag-icon">
-                  <PlusOutlined style={{ fontSize: 24, color: "#1890ff" }} />
+                  <PlusOutlined style={{ fontSize: 24, color: '#1890ff' }} />
                 </p>
-                <p
-                  className="ant-upload-text"
-                  style={{ fontSize: 16, margin: "8px 0" }}>
+                <p className="ant-upload-text" style={{ fontSize: 16, margin: '8px 0' }}>
                   <strong>Drop images here</strong> or click to browse
                 </p>
-                <p
-                  className="ant-upload-hint"
-                  style={{ color: "#999", fontSize: 14 }}>
+                <p className="ant-upload-hint" style={{ color: '#999', fontSize: 14 }}>
                   Support: JPG, PNG, WEBP (Max 5MB each)
                 </p>
               </Upload.Dragger>
@@ -768,16 +783,18 @@ export default function ProductDetails() {
           style={{
             borderRadius: 12,
             marginTop: 24,
-            textAlign: "center",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-          }}>
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          }}
+        >
           <Space size="large">
             {isAddNew ? (
               <Button
                 type="primary"
                 size="large"
                 onClick={handleCreate}
-                style={{ minWidth: 120, height: 48 }}>
+                style={{ minWidth: 120, height: 48 }}
+              >
                 Create Product
               </Button>
             ) : (
@@ -786,7 +803,8 @@ export default function ProductDetails() {
                   type="primary"
                   size="large"
                   onClick={handleUpdate}
-                  style={{ minWidth: 120, height: 48 }}>
+                  style={{ minWidth: 120, height: 48 }}
+                >
                   Update Product
                 </Button>
                 <Button
@@ -794,15 +812,13 @@ export default function ProductDetails() {
                   size="large"
                   icon={<DeleteOutlined />}
                   onClick={handleDelete}
-                  style={{ minWidth: 120, height: 48 }}>
+                  style={{ minWidth: 120, height: 48 }}
+                >
                   Delete
                 </Button>
               </>
             )}
-            <Button
-              size="large"
-              onClick={handleCancel}
-              style={{ minWidth: 120, height: 48 }}>
+            <Button size="large" onClick={handleCancel} style={{ minWidth: 120, height: 48 }}>
               Cancel
             </Button>
           </Space>

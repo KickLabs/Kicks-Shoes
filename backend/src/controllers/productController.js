@@ -5,35 +5,26 @@
  * @description This controller handles all product-related HTTP requests for the Kicks Shoes application.
  */
 
-import { query, validationResult } from "express-validator";
-import { ProductService } from "../services/product.service.js";
-import { ErrorResponse } from "../utils/errorResponse.js";
-import logger from "../utils/logger.js";
-import { get } from "mongoose";
+import { query, validationResult } from 'express-validator';
+import { ProductService } from '../services/product.service.js';
+import { ErrorResponse } from '../utils/errorResponse.js';
+import logger from '../utils/logger.js';
+import { get } from 'mongoose';
 
 // Validation rules for query parameters only
 const queryValidationRules = [
-  query("page").optional().isInt({ min: 1 }).withMessage("Invalid page number"),
-  query("limit")
+  query('page').optional().isInt({ min: 1 }).withMessage('Invalid page number'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Invalid limit'),
+  query('category').optional().isMongoId().withMessage('Invalid category ID'),
+  query('brand').optional().trim().notEmpty().withMessage('Invalid brand'),
+  query('minPrice').optional().isFloat({ min: 0 }).withMessage('Invalid minimum price'),
+  query('maxPrice').optional().isFloat({ min: 0 }).withMessage('Invalid maximum price'),
+  query('inStock').optional().isBoolean().withMessage('Invalid stock filter'),
+  query('onSale').optional().isBoolean().withMessage('Invalid sale filter'),
+  query('sort')
     .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage("Invalid limit"),
-  query("category").optional().isMongoId().withMessage("Invalid category ID"),
-  query("brand").optional().trim().notEmpty().withMessage("Invalid brand"),
-  query("minPrice")
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage("Invalid minimum price"),
-  query("maxPrice")
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage("Invalid maximum price"),
-  query("inStock").optional().isBoolean().withMessage("Invalid stock filter"),
-  query("onSale").optional().isBoolean().withMessage("Invalid sale filter"),
-  query("sort")
-    .optional()
-    .isIn(["price", "-price", "createdAt", "-createdAt", "rating", "-rating"])
-    .withMessage("Invalid sort field"),
+    .isIn(['price', '-price', 'createdAt', '-createdAt', 'rating', '-rating'])
+    .withMessage('Invalid sort field'),
 ];
 
 // Middleware to validate request data
@@ -55,22 +46,40 @@ const validateRequest = (req, res, next) => {
  */
 export const createProduct = async (req, res, next) => {
   try {
-    logger.info("Creating new product", { productData: req.body });
-    const product = await ProductService.createProduct(req.body);
+    // Log để debug file upload
+    console.log('FILES:', req.files);
+    console.log('BODY:', req.body);
+    logger.info('DEBUG files', { files: req.files });
+    logger.info('DEBUG body', { body: req.body });
+    // Lấy images từ Cloudinary nếu có upload file
+    let images = [];
+    if (req.files && req.files.length > 0) {
+      images = req.files.map(file => file.path);
+    } else if (req.body.images) {
+      images = Array.isArray(req.body.images) ? req.body.images : [req.body.images];
+    }
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No images uploaded. Please select at least one image.',
+      });
+    }
+    logger.info('Creating new product', { productData: req.body });
+    const product = await ProductService.createProduct({ ...req.body, images });
 
-    logger.info("Product created successfully", { productId: product._id });
+    logger.info('Product created successfully', { productId: product._id });
 
     res.status(201).json({
       success: true,
       data: product,
     });
   } catch (error) {
-    logger.error("Error creating product", { error: error.message });
+    logger.error('Error creating product', { error: error.message });
     // Handle Mongoose validation errors
-    if (error.name === "ValidationError") {
+    if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
-        errors: Object.values(error.errors).map((err) => ({
+        errors: Object.values(error.errors).map(err => ({
           field: err.path,
           message: err.message,
         })),
@@ -92,14 +101,14 @@ export const createManyProducts = async (req, res, next) => {
     if (!Array.isArray(products) || products.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Products array is required and must not be empty",
+        message: 'Products array is required and must not be empty',
       });
     }
 
-    logger.info("Creating multiple products", { count: products.length });
+    logger.info('Creating multiple products', { count: products.length });
     const results = await ProductService.createManyProducts(products);
 
-    logger.info("Bulk product creation completed", {
+    logger.info('Bulk product creation completed', {
       successful: results.success.length,
       failed: results.failed.length,
     });
@@ -117,12 +126,12 @@ export const createManyProducts = async (req, res, next) => {
       },
     });
   } catch (error) {
-    logger.error("Error in bulk product creation", { error: error.message });
+    logger.error('Error in bulk product creation', { error: error.message });
     // Handle Mongoose validation errors
-    if (error.name === "ValidationError") {
+    if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
-        errors: Object.values(error.errors).map((err) => ({
+        errors: Object.values(error.errors).map(err => ({
           field: err.path,
           message: err.message,
         })),
@@ -135,23 +144,23 @@ export const createManyProducts = async (req, res, next) => {
 export const deleteProduct = async (req, res, next) => {
   try {
     const productId = req.params.id;
-    logger.info("Deleting product", { productId });
+    logger.info('Deleting product', { productId });
 
     const deletedProduct = await ProductService.deleteProduct(productId);
     if (!deletedProduct) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found',
       });
     }
 
-    logger.info("Product deleted successfully", { productId });
+    logger.info('Product deleted successfully', { productId });
     res.status(200).json({
       success: true,
       data: deletedProduct,
     });
   } catch (error) {
-    logger.error("Error deleting product", { error: error.message });
+    logger.error('Error deleting product', { error: error.message });
     next(new ErrorResponse(error.message, 500));
   }
 };
@@ -159,29 +168,29 @@ export const deleteProduct = async (req, res, next) => {
 export const getProductById = async (req, res, next) => {
   try {
     const productId = req.params.id;
-    logger.info("Fetching product details", { productId });
+    logger.info('Fetching product details', { productId });
 
     const product = await ProductService.getProductById(productId);
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found',
       });
     }
 
-    logger.info("Product details fetched successfully", { productId });
+    logger.info('Product details fetched successfully', { productId });
     res.status(200).json({
       success: true,
       data: product,
     });
   } catch (error) {
-    logger.error("Error fetching product details", { error: error.message });
+    logger.error('Error fetching product details', { error: error.message });
     next(new ErrorResponse(error.message, 500));
   }
-}
+};
 export const getAllProducts = async (req, res, next) => {
   try {
-    logger.info("Fetching all products", { query: req.query });
+    logger.info('Fetching all products', { query: req.query });
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -194,7 +203,7 @@ export const getAllProducts = async (req, res, next) => {
     // Nhận về { products, total }
     const { products, total } = await ProductService.getAllProducts(req.query);
 
-    logger.info("Products fetched successfully", { count: products.length });
+    logger.info('Products fetched successfully', { count: products.length });
     res.status(200).json({
       success: true,
       data: {
@@ -203,7 +212,7 @@ export const getAllProducts = async (req, res, next) => {
       },
     });
   } catch (error) {
-    logger.error("Error fetching products", { error: error.message });
+    logger.error('Error fetching products', { error: error.message });
     next(new ErrorResponse(error.message, 500));
   }
 };
@@ -211,23 +220,23 @@ export const getAllProducts = async (req, res, next) => {
 export const updateProduct = async (req, res, next) => {
   try {
     const productId = req.params.id;
-    logger.info("Updating product", { productId, updateData: req.body });
+    logger.info('Updating product', { productId, updateData: req.body });
 
     const updatedProduct = await ProductService.updateProduct(productId, req.body);
     if (!updatedProduct) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found',
       });
     }
 
-    logger.info("Product updated successfully", { productId });
+    logger.info('Product updated successfully', { productId });
     res.status(200).json({
       success: true,
       data: updatedProduct,
     });
   } catch (error) {
-    logger.error("Error updating product", { error: error.message });
+    logger.error('Error updating product', { error: error.message });
     next(new ErrorResponse(error.message, 500));
   }
 };
@@ -239,5 +248,5 @@ export const productRoutes = {
   deleteProduct,
   getProductById,
   getAllProducts,
-  updateProduct
+  updateProduct,
 };
