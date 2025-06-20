@@ -41,7 +41,7 @@ class AuthService {
           name: !!name,
           email: !!email,
           phone: !!phone,
-          password: !!password,
+          password: !!password
         });
         throw new Error(
           "Missing required fields: name, email, phone, password"
@@ -59,7 +59,7 @@ class AuthService {
           street: !!address?.street,
           ward: !!address?.ward,
           district: !!address?.district,
-          city: !!address?.city,
+          city: !!address?.city
         });
         throw new Error(
           "Missing required address fields: street, ward, district, city"
@@ -99,7 +99,7 @@ class AuthService {
         avatar: "https://example.com/default-avatar.png",
         isVerified: false,
         isBanned: false,
-        rating: 0,
+        rating: 0
       });
 
       logger.info("Saving new user");
@@ -114,7 +114,7 @@ class AuthService {
         { userId: newUser._id },
         process.env.JWT_SECRET,
         {
-          expiresIn: "1h",
+          expiresIn: "1h"
         }
       );
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -122,20 +122,20 @@ class AuthService {
 
       await EmailService.sendTemplatedEmail(email, "REGISTRATION", {
         name: newUser.name,
-        verificationLink,
+        verificationLink
       });
 
       return {
         user: this.formatUserResponse(newUser),
         token,
-        refreshToken,
+        refreshToken
       };
     } catch (error) {
       logger.error("Registration error:", {
         error: error.message,
         stack: error.stack,
         code: error.code,
-        name: error.name,
+        name: error.name
       });
       throw error;
     }
@@ -168,7 +168,7 @@ class AuthService {
       logger.error("Profile update error:", {
         userId,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -181,7 +181,7 @@ class AuthService {
    */
   static generateToken(userId) {
     return jwt.sign({ userId }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
+      expiresIn: process.env.JWT_EXPIRES_IN
     });
   }
 
@@ -192,7 +192,7 @@ class AuthService {
    */
   static generateRefreshToken(userId) {
     return jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
-      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN
     });
   }
 
@@ -236,13 +236,13 @@ class AuthService {
       return {
         user: this.formatUserResponse(user),
         token,
-        refreshToken,
+        refreshToken
       };
     } catch (error) {
       logger.error("Login error:", {
         email,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -264,7 +264,7 @@ class AuthService {
       logger.error("Get profile error:", {
         userId,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -289,7 +289,7 @@ class AuthService {
     } catch (error) {
       logger.error("Email verification error:", {
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -315,7 +315,7 @@ class AuthService {
 
       await TokenBlacklist.create({
         token,
-        expiresAt: new Date(decoded.exp * 1000),
+        expiresAt: new Date(decoded.exp * 1000)
       });
 
       return { success: true };
@@ -323,7 +323,7 @@ class AuthService {
       logger.error("Logout error:", {
         userId,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -341,7 +341,7 @@ class AuthService {
     } catch (error) {
       logger.error("Token blacklist check error:", {
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -368,7 +368,7 @@ class AuthService {
         { userId: user._id },
         process.env.JWT_SECRET,
         {
-          expiresIn: "1h",
+          expiresIn: "1h"
         }
       );
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -376,7 +376,7 @@ class AuthService {
 
       await EmailService.sendTemplatedEmail(email, "REGISTRATION", {
         name: user.name,
-        verificationLink,
+        verificationLink
       });
 
       return { success: true };
@@ -384,7 +384,7 @@ class AuthService {
       logger.error("Send verification email error:", {
         email,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -411,7 +411,7 @@ class AuthService {
         { userId: user._id },
         process.env.JWT_SECRET,
         {
-          expiresIn: "1h",
+          expiresIn: "1h"
         }
       );
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -419,7 +419,7 @@ class AuthService {
 
       await EmailService.sendTemplatedEmail(email, "VERIFICATION", {
         name: user.name,
-        verificationLink,
+        verificationLink
       });
 
       return { success: true };
@@ -427,7 +427,7 @@ class AuthService {
       logger.error("Resend verification email error:", {
         email,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -456,7 +456,7 @@ class AuthService {
       logger.error("Change password error:", {
         email,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -479,7 +479,7 @@ class AuthService {
         { userId: user._id },
         process.env.JWT_SECRET,
         {
-          expiresIn: "1h",
+          expiresIn: "1h"
         }
       );
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -487,7 +487,7 @@ class AuthService {
 
       await EmailService.sendTemplatedEmail(email, "PASSWORD_RESET", {
         name: user.name,
-        resetLink,
+        resetLink
       });
 
       return { success: true };
@@ -495,7 +495,7 @@ class AuthService {
       logger.error("Forgot password error:", {
         email,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw error;
     }
@@ -533,7 +533,7 @@ class AuthService {
     } catch (error) {
       logger.error("Reset password error:", {
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       if (error.name === "JsonWebTokenError") {
         throw new Error("Invalid or expired reset token");
@@ -560,7 +560,7 @@ class AuthService {
     } catch (error) {
       logger.error("Refresh token error:", {
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw new Error("Failed to refresh token: " + error.message);
     }
@@ -581,14 +581,14 @@ class AuthService {
 
       await TokenBlacklist.create({
         token,
-        expiresAt: new Date(decoded.exp * 1000),
+        expiresAt: new Date(decoded.exp * 1000)
       });
 
       return { success: true };
     } catch (error) {
       logger.error("Revoke token error:", {
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       throw new Error("Failed to revoke token: " + error.message);
     }

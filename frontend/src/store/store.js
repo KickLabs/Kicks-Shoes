@@ -1,5 +1,5 @@
-import { configureStore } from "@reduxjs/toolkit";
-import cartReducer from "../components/pages/cart/cartSlice"
+import { configureStore } from '@reduxjs/toolkit';
+import cartReducer from '../components/pages/cart/cartSlice';
 import storage from 'redux-persist/lib/storage';
 import { persistReducer, persistStore } from 'redux-persist';
 import { combineReducers } from 'redux';
@@ -7,13 +7,13 @@ import { combineReducers } from 'redux';
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['cart'] ,
-  
+  whitelist: ['cart'],
+
   // blacklist: ['booking']
 };
 
 const rootReducer = combineReducers({
-  cart: cartReducer
+  cart: cartReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

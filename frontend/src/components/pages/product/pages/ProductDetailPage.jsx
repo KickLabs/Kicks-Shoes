@@ -5,6 +5,7 @@ import "./ProductDetailPage.css";
 import { RecommendSection } from "../../cart/components/RecommendSection";
 import ProductImageGallery from "../components/ProductImageGallery";
 import ProductInfoSection from "../components/ProductInfoSection";
+import CommentSection from "../components/CommentSection";
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -24,6 +25,7 @@ const ProductDetailPage = () => {
           </Col>
         </Row>
         <RecommendSection />
+        <CommentSection />
       </div>
     </>
   );
