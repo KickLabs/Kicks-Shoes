@@ -16,6 +16,7 @@ import {
   getUserProfile,
   updateUserProfile,
   getUsersIsActive,
+  toggleUserStatus,
 } from "../controllers/userController.js";
 import { protect, optionalAuth } from "../middlewares/auth.middleware.js";
 import { requireAdmin, requireShop } from "../middlewares/role.middleware.js";
@@ -49,5 +50,7 @@ router
   .get(protect, requireShop || requireAdmin, getUser)
   .put(protect, requireShop || requireAdmin, updateUser)
   .delete(protect, requireShop || requireAdmin, deleteUser);
+
+  router.patch("/:id/status", protect, requireAdmin, toggleUserStatus); 
 
 export default router;

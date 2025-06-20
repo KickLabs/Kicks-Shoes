@@ -50,6 +50,7 @@ import EmailVerified from './components/pages/authentication/pages/EmailVerified
 import EmailVerification from './components/pages/authentication/pages/EmailVerification';
 import ResetPasswordForm from './components/pages/authentication/pages/ResetPasswordForm';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { useAuth } from "./contexts/AuthContext";
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
