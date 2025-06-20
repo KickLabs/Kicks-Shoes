@@ -25,5 +25,8 @@
     "*.{js,jsx,ts,tsx,json,css,scss,md}": [
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "redux-persist": "^6.0.0"
   }
 }

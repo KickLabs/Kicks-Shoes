@@ -1,11 +1,11 @@
-import "./OrderSummary.css";
-import { useSelector } from "react-redux";
-import { Button } from "antd";
-import { useNavigate } from "react-router-dom";
+import './OrderSummary.css';
+import { useSelector } from 'react-redux';
+import { Button } from 'antd';
+import { useNavigate } from 'react-router-dom';
 
 export const OrderSummary = () => {
   const navigate = useNavigate();
- const { items, totalPrice, status, error } = useSelector((state) => state.cart);
+  const { items, totalPrice, status, error } = useSelector(state => state.cart);
 
   const quantity = items.reduce((acc, item) => acc + item.quantity, 0);
   const totalAmount = items.reduce(
@@ -23,7 +23,9 @@ export const OrderSummary = () => {
         <h4>Order Summary</h4>
         <div className="table-body">
           <div className="item-info">
-            <p>{quantity} item{quantity > 1 ? "s" : ""}</p>
+            <p>
+              {quantity} item{quantity > 1 ? 's' : ''}
+            </p>
             <p>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
           </div>
           <div className="item-info">
@@ -40,9 +42,9 @@ export const OrderSummary = () => {
           </div>
         </div>
         <Button
-          style={{ height: 48, width: "100%", marginTop: 16 }}
+          style={{ height: 48, width: '100%', marginTop: 16 }}
           type="default"
-          onClick={() => navigate("/checkout")}
+          onClick={() => navigate('/checkout')}
         >
           Checkout
         </Button>

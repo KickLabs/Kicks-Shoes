@@ -92,6 +92,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
+    setUser,
     login,
     register,
     logout,
@@ -99,7 +100,7 @@ export const AuthProvider = ({ children }) => {
     changePassword,
     requestPasswordReset,
     resetPassword,
-    resendVerification,
+    resendVerification
   };
 
   return (

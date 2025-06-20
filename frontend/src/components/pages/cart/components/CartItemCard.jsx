@@ -1,7 +1,7 @@
-import React from "react";
-import "./CartItemCard.css";
-import { updateCartItem, removeCartItem, getCart } from "../cartService";
-import { useDispatch } from "react-redux";
+import React from 'react';
+import './CartItemCard.css';
+import { updateCartItem, removeCartItem, getCart } from '../cartService';
+import { useDispatch } from 'react-redux';
 
 const CartItemCard = ({ item }) => {
   const dispatch = useDispatch();
@@ -28,47 +28,36 @@ const CartItemCard = ({ item }) => {
     });
   };
 
-  const handleRemove = (itemId) => {
+  const handleRemove = itemId => {
     dispatch(removeCartItem(itemId)).then(() => {
       dispatch(getCart());
     });
   };
-  
 
   if (!item.product || !Array.isArray(item.product.images)) {
     return <div className="cart-item-card">Invalid product data</div>;
   }
   return (
     <div className="cart-item-card">
-      <img
-        src={item.product.images[0]}
-        alt={item.product.name}
-        className="item-image"
-      />
+      <img src={item.product.images[0]} alt={item.product.name} className="item-image" />
       <div className="item-details">
         <div className="item-header">
           <h3>{item.product.name}</h3>
-          <span className="item-price">
-            ${item.product.discountedPrice.toFixed(2)}
-          </span>
+          <span className="item-price">${item.product.discountedPrice.toFixed(2)}</span>
         </div>
-        <p className="item-category">
-          {item.product.brand} - Men’s Road Running Shoes
-        </p>
+        <p className="item-category">{item.product.brand} - Men’s Road Running Shoes</p>
         <p className="item-color">{item.color}</p>
         <div className="item-options">
           <div className="select-group">
             <label>Size</label>
             <select
               value={Number(item.size)}
-              onChange={(e) =>
-                handleSizeChange(item._id, Number(e.target.value))
-              }
+              onChange={e => handleSizeChange(item._id, Number(e.target.value))}
             >
               <option value="" disabled>
                 Choose size
               </option>
-              {item.product.variants.sizes.map((size) => (
+              {item.product.variants.sizes.map(size => (
                 <option key={size} value={Number(size)}>
                   {size}
                 </option>
@@ -80,18 +69,13 @@ const CartItemCard = ({ item }) => {
             <label>Quantity</label>
             <select
               value={item.quantity}
-              onChange={(e) =>
-                handleQuantityChange(item._id, Number(e.target.value))
-              }
+              onChange={e => handleQuantityChange(item._id, Number(e.target.value))}
             >
-              {Array.from(
-                { length: Math.min(10, item.product.stock) },
-                (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1}
-                  </option>
-                )
-              )}
+              {Array.from({ length: Math.min(10, item.product.stock) }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -117,9 +101,7 @@ const CartItemCard = ({ item }) => {
           <button
             className="icon-button"
             onClick={() => {
-              if (
-                window.confirm("Are you sure you want to remove this item?")
-              ) {
+              if (window.confirm('Are you sure you want to remove this item?')) {
                 handleRemove(item._id);
               }
             }}
