@@ -26,7 +26,7 @@ const SocialButtons = () => {
         if (!data?.email) {
           return notification.error({
             message: 'Google Login',
-            description: 'Không thể lấy email từ Google',
+            description: 'Cannot get email from Google',
           });
         }
 
@@ -52,7 +52,7 @@ const SocialButtons = () => {
           localStorage.setItem('accessToken', result.token);
           localStorage.setItem('refreshToken', result.refreshToken);
 
-          message.success('Đăng nhập thành công!');
+          message.success('Login successfully!');
 
           if (result.isNewUser) {
             navigate('/set-password');
@@ -62,12 +62,12 @@ const SocialButtons = () => {
         } else {
           notification.error({
             message: 'Lỗi',
-            description: result.message || 'Đăng nhập thất bại',
+            description: result.message || 'Login failed',
           });
         }
       } catch (err) {
         notification.error({
-          message: 'Lỗi đăng nhập Google',
+          message: 'Login Google failed',
           description: err?.response?.data?.message || err.message,
         });
       }
@@ -80,7 +80,7 @@ const SocialButtons = () => {
       if (!response.email) {
         return notification.error({
           message: 'Facebook Login',
-          description: 'Không lấy được email từ Facebook',
+          description: 'Cannot get email from Facebook',
         });
       }
 
@@ -106,7 +106,7 @@ const SocialButtons = () => {
         localStorage.setItem('accessToken', result.token);
         localStorage.setItem('refreshToken', result.refreshToken);
 
-        message.success('Đăng nhập thành công!');
+        message.success('Login successfully!');
 
         if (result.isNewUser) {
           navigate('/set-password');
@@ -116,12 +116,12 @@ const SocialButtons = () => {
       } else {
         notification.error({
           message: 'Lỗi',
-          description: result.message || 'Đăng nhập Facebook thất bại',
+          description: result.message || 'Login Facebook failed',
         });
       }
     } catch (error) {
       notification.error({
-        message: 'Lỗi đăng nhập Facebook',
+        message: 'Login Facebook failed',
         description: error?.response?.data?.message || error.message,
       });
     }
