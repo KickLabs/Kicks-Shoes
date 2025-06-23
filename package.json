@@ -21,7 +21,13 @@
     "lint-staged": "^16.1.2",
     "prettier": "^3.5.3"
   },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,scss,md}": [
+      "prettier --write"
+    ]
+  },
   "dependencies": {
+    "redux-persist": "^6.0.0",
     "@ant-design/charts": "^2.3.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.1.1",

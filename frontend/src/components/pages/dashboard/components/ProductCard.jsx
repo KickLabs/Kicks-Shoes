@@ -1,22 +1,20 @@
-import React from "react";
-import { EllipsisOutlined } from "@ant-design/icons";
-import nikeproduct from "../../../../assets/images/nikeproduct.png";
+import React from 'react';
+import { EllipsisOutlined } from '@ant-design/icons';
+import nikeproduct from '../../../../assets/images/nikeproduct.png';
 
 const ProductCard = ({ product }) => {
   return (
     <div className="custom-product-card">
       <div className="custom-product-card-header">
         <div className="custom-product-image">
-          <img src={nikeproduct} alt={product.name} />
+          <img src={product.images[0]} alt={product.name} />
         </div>
         <div className="custom-product-info">
           <div className="custom-product-title-row">
             <div>
               <div className="custom-product-name">{product.name}</div>
               <div className="custom-product-type">{product.type}</div>
-              <div className="custom-product-price">
-                ${product.price.regular.toFixed(2)}
-              </div>
+              <div className="custom-product-price">${product.price.regular.toFixed(2)}</div>
             </div>
           </div>
         </div>
@@ -47,9 +45,7 @@ const ProductCard = ({ product }) => {
           <div className="custom-product-stats-label">Remaining Products</div>
           <div className="custom-product-progress-bar">
             <div className="custom-product-progress-inner" />
-            <span className="custom-product-progress-value">
-              {product.remaining}
-            </span>
+            <span className="custom-product-progress-value">{product.remaining}</span>
           </div>
         </div>
       </div>

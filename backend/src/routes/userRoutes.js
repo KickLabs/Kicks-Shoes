@@ -6,7 +6,7 @@
  * It maps HTTP endpoints to their corresponding controller functions and applies necessary middleware.
  */
 
-import express from "express";
+import express from 'express';
 import {
   getUsers,
   getUser,
@@ -16,38 +16,35 @@ import {
   getUserProfile,
   updateUserProfile,
   getUsersIsActive,
-} from "../controllers/userController.js";
-import { protect, optionalAuth } from "../middlewares/auth.middleware.js";
-import { requireAdmin, requireShop } from "../middlewares/role.middleware.js";
-import upload from "../middlewares/upload.middleware.js";
-import { handleUpload } from "../config/cloudinary.js";
+  toggleUserStatus,
+} from '../controllers/userController.js';
+import { protect, optionalAuth } from '../middlewares/auth.middleware.js';
+import { requireAdmin, requireShop } from '../middlewares/role.middleware.js';
+import upload from '../middlewares/upload.middleware.js';
+import { handleUpload } from '../config/cloudinary.js';
 
 const router = express.Router();
 
 // Public routes (optional auth)
-router.get("/profile/:username", optionalAuth, getUserProfile);
+router.get('/profile/:username', optionalAuth, getUserProfile);
 
 // Protected routes
-router.put(
-  "/profile", 
-  protect, 
-  upload.single("avatar"),
-  handleUpload,
-  updateUserProfile
-);
+router.put('/profile', protect, upload.single('avatar'), handleUpload, updateUserProfile);
 
 // Admin only routes
 router
-  .route("/")
+  .route('/')
   .get(protect, requireShop || requireAdmin, getUsers)
   .post(protect, requireShop || requireAdmin, createUser);
 
-router.get("/active", protect, requireShop, getUsersIsActive);
+router.get('/active', protect, requireShop, getUsersIsActive);
 
 router
-  .route("/:id")
+  .route('/:id')
   .get(protect, requireShop || requireAdmin, getUser)
   .put(protect, requireShop || requireAdmin, updateUser)
   .delete(protect, requireShop || requireAdmin, deleteUser);
+
+router.patch('/:id/status', protect, requireAdmin, toggleUserStatus);
 
 export default router;

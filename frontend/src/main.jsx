@@ -1,15 +1,14 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { AuthProvider } from "./contexts/AuthContext";
-import { CartProvider } from "./contexts/CartContext";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
 import { store, persistor } from './store/store';
-import { Provider } from "react-redux";
+import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
-import { useAuth } from "./contexts/AuthContext";
-
+import { useAuth } from './contexts/AuthContext';
 
 // Common Components
 import ChatPage from './components/common/components/ChatPage';
@@ -51,6 +50,8 @@ import EmailVerificationFailed from './components/pages/authentication/pages/Ema
 import EmailVerified from './components/pages/authentication/pages/EmailVerified';
 import EmailVerification from './components/pages/authentication/pages/EmailVerification';
 import ResetPasswordForm from './components/pages/authentication/pages/ResetPasswordForm';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import { useAuth } from './contexts/AuthContext';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -69,7 +70,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
-    // errorElement: <ErrorPage />,
+    errorElement: <ErrorPage />,
     children: [
       {
         path: '',
@@ -227,24 +228,25 @@ const Root = () => (
   <React.StrictMode>
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-    <AuthProvider>
-      <CartProvider>
-        <ToastContainer
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="light"
-        />
-        <RouterProvider router={router} />
-      </CartProvider>
-    </AuthProvider>
-    
+        <AuthProvider>
+          <CartProvider>
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+            <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+              <RouterProvider router={router} />
+            </GoogleOAuthProvider>
+          </CartProvider>
+        </AuthProvider>
       </PersistGate>
     </Provider>
   </React.StrictMode>

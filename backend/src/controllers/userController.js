@@ -8,24 +8,27 @@
  * and error management.
  */
 
-import User from "../models/User.js";
-import { ErrorResponse } from "../utils/errorResponse.js";
-import logger from "../utils/logger.js";
+import User from '../models/User.js';
+import { ErrorResponse } from '../utils/errorResponse.js';
+import logger from '../utils/logger.js';
+import { UserService } from '../services/user.service.js';
 
-// Get all users
+// Get all users with pagination
 export const getUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
-    res.json(users);
+    const { users, total } = await UserService.getAllUsers(req.query);
+    res.json({ success: true, data: users, total });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// Get all users
+
 // Get all users is active
 export const getUsersIsActive = async (req, res) => {
   try {
-    const users = await User.find({ status: true }).select("-password");
+    const users = await User.find({ status: true }).select('-password');
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -35,9 +38,9 @@ export const getUsersIsActive = async (req, res) => {
 // Get single user
 export const getUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findById(req.params.id).select('-password');
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found' });
     }
     res.json(user);
   } catch (error) {
@@ -61,9 +64,9 @@ export const updateUser = async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-    }).select("-password");
+    }).select('-password');
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found' });
     }
     res.json(user);
   } catch (error) {
@@ -76,9 +79,9 @@ export const deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found' });
     }
-    res.json({ message: "User deleted successfully" });
+    res.json({ message: 'User deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -92,11 +95,11 @@ export const deleteUser = async (req, res) => {
 export const getUserProfile = async (req, res, next) => {
   try {
     const user = await User.findOne({ username: req.params.username })
-      .select("-password -verificationToken -verificationTokenExpires")
-      .populate("role", "name");
+      .select('-password -verificationToken -verificationTokenExpires')
+      .populate('role', 'name');
 
     if (!user) {
-      return next(new ErrorResponse("User not found", 404));
+      return next(new ErrorResponse('User not found', 404));
     }
 
     // If user is not verified, only show limited information
@@ -110,7 +113,7 @@ export const getUserProfile = async (req, res, next) => {
 
     res.json(user);
   } catch (error) {
-    logger.error("Error in getUserProfile", {
+    logger.error('Error in getUserProfile', {
       error: error.message,
       stack: error.stack,
     });
@@ -127,28 +130,30 @@ export const updateUserProfile = async (req, res, next) => {
   try {
     logger.info('Starting profile update', {
       hasFile: !!req.file,
-      fileDetails: req.file ? {
-        fieldname: req.file.fieldname,
-        originalname: req.file.originalname,
-        path: req.file.path,
-        filename: req.file.filename,
-        mimetype: req.file.mimetype,
-      } : null
+      fileDetails: req.file
+        ? {
+            fieldname: req.file.fieldname,
+            originalname: req.file.originalname,
+            path: req.file.path,
+            filename: req.file.filename,
+            mimetype: req.file.mimetype,
+          }
+        : null,
     });
 
     const allowedUpdates = [
-      "fullName",
-      "aboutMe",
-      "avatar",
-      "address",
-      "phone",
-      "dateOfBirth",
-      "gender",
+      'fullName',
+      'aboutMe',
+      'avatar',
+      'address',
+      'phone',
+      'dateOfBirth',
+      'gender',
     ];
 
     // Filter out fields that are not allowed to be updated
     const updates = Object.keys(req.body)
-      .filter((key) => allowedUpdates.includes(key))
+      .filter(key => allowedUpdates.includes(key))
       .reduce((obj, key) => {
         obj[key] = req.body[key];
         return obj;
@@ -164,24 +169,51 @@ export const updateUserProfile = async (req, res, next) => {
       req.user._id,
       { $set: updates },
       { new: true, runValidators: true }
-    ).select("-password -verificationToken -verificationTokenExpires");
+    ).select('-password -verificationToken -verificationTokenExpires');
 
     if (!user) {
-      return next(new ErrorResponse("User not found", 404));
+      return next(new ErrorResponse('User not found', 404));
     }
 
     logger.info('Profile updated successfully', {
       userId: user._id,
       avatar: user.avatar,
-      updates
+      updates,
     });
 
     res.json(user);
   } catch (error) {
-    logger.error("Error in updateUserProfile", {
+    logger.error('Error in updateUserProfile', {
       error: error.message,
       stack: error.stack,
     });
     next(error);
+  }
+};
+
+/**
+ * Toggle user status (ban or unban)
+ * @route PATCH /api/users/:id/status
+ * @access Admin
+ */
+export const toggleUserStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Toggle status
+    user.status = !user.status;
+
+    await user.save();
+
+    res.json({
+      message: `User has been ${user.status ? 'unbanned' : 'banned'}`,
+      status: user.status,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

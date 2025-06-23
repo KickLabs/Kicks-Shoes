@@ -7,13 +7,13 @@
  * and token handling. The service acts as an intermediary between controllers and the database,
  * implementing business rules and data validation.
  */
-const User = require("../models/user.model");
-const TokenBlacklist = require("../models/token-blacklist.model");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
-const { validateEmail, validatePhone } = require("../validations/validation");
-const EmailService = require("./email.service");
-const logger = require("../utils/logger");
+const User = require('../models/user.model');
+const TokenBlacklist = require('../models/token-blacklist.model');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { validateEmail, validatePhone } = require('../validations/validation');
+const EmailService = require('./email.service');
+const logger = require('../utils/logger');
 
 /**
  * Service class for handling authentication operations
@@ -32,95 +32,81 @@ class AuthService {
    */
   static async register(userData) {
     try {
-      logger.info("Starting registration process:", { email: userData.email });
+      logger.info('Starting registration process:', { email: userData.email });
 
       const { name, email, phone, password, address } = userData;
 
       if (!name || !email || !phone || !password) {
-        logger.error("Missing required fields:", {
+        logger.error('Missing required fields:', {
           name: !!name,
           email: !!email,
           phone: !!phone,
           password: !!password,
         });
-        throw new Error(
-          "Missing required fields: name, email, phone, password"
-        );
+        throw new Error('Missing required fields: name, email, phone, password');
       }
 
-      if (
-        !address ||
-        !address.street ||
-        !address.ward ||
-        !address.district ||
-        !address.city
-      ) {
-        logger.error("Missing required address fields:", {
+      if (!address || !address.street || !address.ward || !address.district || !address.city) {
+        logger.error('Missing required address fields:', {
           street: !!address?.street,
           ward: !!address?.ward,
           district: !!address?.district,
           city: !!address?.city,
         });
-        throw new Error(
-          "Missing required address fields: street, ward, district, city"
-        );
+        throw new Error('Missing required address fields: street, ward, district, city');
       }
 
-      logger.info("Validating email and phone");
+      logger.info('Validating email and phone');
       if (!validateEmail(email)) {
-        logger.error("Invalid email format:", { email });
-        throw new Error("Invalid email format");
+        logger.error('Invalid email format:', { email });
+        throw new Error('Invalid email format');
       }
       if (!validatePhone(phone)) {
-        logger.error("Invalid phone format:", { phone });
-        throw new Error("Invalid phone format");
+        logger.error('Invalid phone format:', { phone });
+        throw new Error('Invalid phone format');
       }
 
-      logger.info("Checking for existing user");
+      logger.info('Checking for existing user');
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        logger.error("User already exists:", { email });
-        throw new Error("User already exists");
+        logger.error('User already exists:', { email });
+        throw new Error('User already exists');
       }
 
-      logger.info("Hashing password");
+      logger.info('Hashing password');
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
 
-      logger.info("Creating new user");
+      logger.info('Creating new user');
       const newUser = new User({
         name,
         email,
         phone,
         password: hashedPassword,
         address,
-        role: "customer",
-        gender: "other",
-        avatar: "https://example.com/default-avatar.png",
+        role: 'customer',
+        gender: 'other',
+        avatar: 'https://example.com/default-avatar.png',
         isVerified: false,
         isBanned: false,
         rating: 0,
       });
 
-      logger.info("Saving new user");
+      logger.info('Saving new user');
       await newUser.save();
 
-      logger.info("Generating tokens");
+      logger.info('Generating tokens');
       const token = this.generateToken(newUser._id);
       const refreshToken = this.generateRefreshToken(newUser._id);
 
-      logger.info("Registration successful");
-      const verificationToken = jwt.sign(
-        { userId: newUser._id },
-        process.env.JWT_SECRET,
-        {
-          expiresIn: "1h",
-        }
-      );
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      logger.info('Registration successful');
+      const verificationToken = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const verificationLink = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
 
-      await EmailService.sendTemplatedEmail(email, "REGISTRATION", {
+      await EmailService.sendTemplatedEmail(email, 'REGISTRATION', {
         name: newUser.name,
         verificationLink,
       });
@@ -131,7 +117,7 @@ class AuthService {
         refreshToken,
       };
     } catch (error) {
-      logger.error("Registration error:", {
+      logger.error('Registration error:', {
         error: error.message,
         stack: error.stack,
         code: error.code,
@@ -151,12 +137,12 @@ class AuthService {
     try {
       const user = await User.findById(userId);
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
-      const allowedUpdates = ["dob", "gender", "avatar", "address", "phone"];
+      const allowedUpdates = ['dob', 'gender', 'avatar', 'address', 'phone'];
 
-      Object.keys(updateData).forEach((key) => {
+      Object.keys(updateData).forEach(key => {
         if (allowedUpdates.includes(key)) {
           user[key] = updateData[key];
         }
@@ -165,7 +151,7 @@ class AuthService {
       await user.save();
       return this.formatUserResponse(user);
     } catch (error) {
-      logger.error("Profile update error:", {
+      logger.error('Profile update error:', {
         userId,
         error: error.message,
         stack: error.stack,
@@ -216,18 +202,18 @@ class AuthService {
    */
   static async login(email, password) {
     try {
-      const user = await User.findOne({ email }).select("+password");
+      const user = await User.findOne({ email }).select('+password');
       if (!user) {
-        throw new Error("Invalid credentials");
+        throw new Error('Invalid credentials');
       }
 
       if (user.isBanned) {
-        throw new Error("Account has been banned");
+        throw new Error('Account has been banned');
       }
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        throw new Error("Invalid credentials");
+        throw new Error('Invalid credentials');
       }
 
       const token = this.generateToken(user._id);
@@ -239,7 +225,7 @@ class AuthService {
         refreshToken,
       };
     } catch (error) {
-      logger.error("Login error:", {
+      logger.error('Login error:', {
         email,
         error: error.message,
         stack: error.stack,
@@ -255,13 +241,13 @@ class AuthService {
    */
   static async getUserProfile(userId) {
     try {
-      const user = await User.findById(userId).select("-password");
+      const user = await User.findById(userId).select('-password');
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
       return this.formatUserResponse(user);
     } catch (error) {
-      logger.error("Get profile error:", {
+      logger.error('Get profile error:', {
         userId,
         error: error.message,
         stack: error.stack,
@@ -281,13 +267,13 @@ class AuthService {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId);
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
       user.isVerified = true;
       await user.save();
       return this.formatUserResponse(user);
     } catch (error) {
-      logger.error("Email verification error:", {
+      logger.error('Email verification error:', {
         error: error.message,
         stack: error.stack,
       });
@@ -305,12 +291,12 @@ class AuthService {
     try {
       const user = await User.findById(userId);
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
       const decoded = jwt.decode(token);
       if (!decoded || !decoded.exp) {
-        throw new Error("Invalid token");
+        throw new Error('Invalid token');
       }
 
       await TokenBlacklist.create({
@@ -320,7 +306,7 @@ class AuthService {
 
       return { success: true };
     } catch (error) {
-      logger.error("Logout error:", {
+      logger.error('Logout error:', {
         userId,
         error: error.message,
         stack: error.stack,
@@ -339,7 +325,7 @@ class AuthService {
       const blacklistedToken = await TokenBlacklist.findOne({ token });
       return !!blacklistedToken;
     } catch (error) {
-      logger.error("Token blacklist check error:", {
+      logger.error('Token blacklist check error:', {
         error: error.message,
         stack: error.stack,
       });
@@ -357,31 +343,27 @@ class AuthService {
     try {
       const user = await User.findOne({ email });
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
       if (user.isVerified) {
-        throw new Error("User already verified");
+        throw new Error('User already verified');
       }
 
-      const verificationToken = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_SECRET,
-        {
-          expiresIn: "1h",
-        }
-      );
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      const verificationToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const verificationLink = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
 
-      await EmailService.sendTemplatedEmail(email, "REGISTRATION", {
+      await EmailService.sendTemplatedEmail(email, 'REGISTRATION', {
         name: user.name,
         verificationLink,
       });
 
       return { success: true };
     } catch (error) {
-      logger.error("Send verification email error:", {
+      logger.error('Send verification email error:', {
         email,
         error: error.message,
         stack: error.stack,
@@ -400,31 +382,27 @@ class AuthService {
     try {
       const user = await User.findOne({ email });
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
       if (user.isVerified) {
-        throw new Error("User already verified");
+        throw new Error('User already verified');
       }
 
-      const verificationToken = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_SECRET,
-        {
-          expiresIn: "1h",
-        }
-      );
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      const verificationToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const verificationLink = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
 
-      await EmailService.sendTemplatedEmail(email, "VERIFICATION", {
+      await EmailService.sendTemplatedEmail(email, 'VERIFICATION', {
         name: user.name,
         verificationLink,
       });
 
       return { success: true };
     } catch (error) {
-      logger.error("Resend verification email error:", {
+      logger.error('Resend verification email error:', {
         email,
         error: error.message,
         stack: error.stack,
@@ -443,7 +421,7 @@ class AuthService {
     try {
       const user = await User.findOne({ email });
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
       const salt = await bcrypt.genSalt(10);
@@ -453,7 +431,7 @@ class AuthService {
 
       return { success: true };
     } catch (error) {
-      logger.error("Change password error:", {
+      logger.error('Change password error:', {
         email,
         error: error.message,
         stack: error.stack,
@@ -472,27 +450,23 @@ class AuthService {
     try {
       const user = await User.findOne({ email });
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
-      const resetToken = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_SECRET,
-        {
-          expiresIn: "1h",
-        }
-      );
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      const resetToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
 
-      await EmailService.sendTemplatedEmail(email, "PASSWORD_RESET", {
+      await EmailService.sendTemplatedEmail(email, 'PASSWORD_RESET', {
         name: user.name,
         resetLink,
       });
 
       return { success: true };
     } catch (error) {
-      logger.error("Forgot password error:", {
+      logger.error('Forgot password error:', {
         email,
         error: error.message,
         stack: error.stack,
@@ -510,18 +484,18 @@ class AuthService {
   static async resetPassword(token, newPassword) {
     try {
       if (!token || !newPassword) {
-        throw new Error("Token and new password are required");
+        throw new Error('Token and new password are required');
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId);
 
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
       if (newPassword.length < 8) {
-        throw new Error("Password must be at least 8 characters long");
+        throw new Error('Password must be at least 8 characters long');
       }
 
       const salt = await bcrypt.genSalt(10);
@@ -529,14 +503,14 @@ class AuthService {
       user.password = hashedPassword;
       await user.save();
 
-      return { success: true, message: "Password reset successfully" };
+      return { success: true, message: 'Password reset successfully' };
     } catch (error) {
-      logger.error("Reset password error:", {
+      logger.error('Reset password error:', {
         error: error.message,
         stack: error.stack,
       });
-      if (error.name === "JsonWebTokenError") {
-        throw new Error("Invalid or expired reset token");
+      if (error.name === 'JsonWebTokenError') {
+        throw new Error('Invalid or expired reset token');
       }
       throw error;
     }
@@ -552,17 +526,17 @@ class AuthService {
       const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
       const user = await User.findById(decoded.userId);
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
       const newAccessToken = this.generateToken(user._id);
       return { token: newAccessToken };
     } catch (error) {
-      logger.error("Refresh token error:", {
+      logger.error('Refresh token error:', {
         error: error.message,
         stack: error.stack,
       });
-      throw new Error("Failed to refresh token: " + error.message);
+      throw new Error('Failed to refresh token: ' + error.message);
     }
   }
 
@@ -576,7 +550,7 @@ class AuthService {
       const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
       const user = await User.findById(decoded.userId);
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
       await TokenBlacklist.create({
@@ -586,11 +560,11 @@ class AuthService {
 
       return { success: true };
     } catch (error) {
-      logger.error("Revoke token error:", {
+      logger.error('Revoke token error:', {
         error: error.message,
         stack: error.stack,
       });
-      throw new Error("Failed to revoke token: " + error.message);
+      throw new Error('Failed to revoke token: ' + error.message);
     }
   }
 }
