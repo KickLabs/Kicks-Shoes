@@ -261,7 +261,9 @@
   height: 48px;
   align-self: center;
   box-shadow: 0 2px 8px rgba(74, 105, 226, 0.1);
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
   height: 50px;
 }
 .profile-tab-container .save-btn:hover {
@@ -304,21 +306,4 @@
   font-size: 16px;
   font-weight: 500;
   border-radius: 25px;
-}
-
-.point {
-  display: flex;
-  align-items: center;
-  margin-top: 8px;
-  font-size: 16px;
-  color: #333;
-}
-
-.point .anticon-gift {
-  font-size: 20px;
-  transition: transform 0.3s ease;
-}
-
-.point:hover .anticon-gift {
-  transform: scale(1.1);
 }
