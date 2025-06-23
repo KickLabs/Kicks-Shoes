@@ -8,12 +8,10 @@
  * and error management.
  */
 import { query, validationResult } from "express-validator";
-import e from "express";
 import Product from "../models/Product.js";
+import { StoreService } from "../services/store.service.js";
 import { ErrorResponse } from "../utils/errorResponse.js";
 import logger from "../utils/logger.js";
-import Store from "../models/Store.js";
-import { StoreService } from "../services/store.service.js";
 
 const storeQueryValidationRules = [
   query("page").optional().isInt({ min: 1 }).withMessage("Invalid page number"),
@@ -96,9 +94,42 @@ export const getStoreProducts = async (req, res, next) => {
 // Add shop product
 export const addStoreProduct = async (req, res, next) => {
   try {
+    // Parse inventory từ form-data
+    let inventory = [];
+    if (req.body.inventory) {
+      try {
+        inventory = JSON.parse(req.body.inventory);
+      } catch (e) {
+        inventory = [];
+      }
+    }
+
+    // Xử lý inventory images
+    for (let i = 0; i < inventory.length; i++) {
+      const files = [];
+      // Tìm các file inventoryImages_{i}
+      if (req.files) {
+        req.files.forEach((file) => {
+          if (file.fieldname === `inventoryImages_${i}`) {
+            files.push(file.path);
+          }
+        });
+      }
+      // Nếu có file, gán vào images, nếu không giữ nguyên (có thể là url cũ)
+      if (files.length > 0) {
+        inventory[i].images = files;
+      }
+    }
+
+    // Xử lý images cho product
+    const productImages = req.files
+      ? req.files.filter((file) => file.fieldname === "images").map((file) => file.path)
+      : [];
+
     const productData = {
       ...req.body,
-      images: req.files ? req.files.map((file) => file.path) : [],
+      images: productImages,
+      inventory,
     };
 
     const product = await Product.create(productData);
@@ -124,10 +155,38 @@ export const updateStoreProduct = async (req, res, next) => {
       return next(new ErrorResponse("Product not found", 404));
     }
 
-    const updates = { ...req.body };
-    if (req.files && req.files.length > 0) {
-      updates.images = req.files.map((file) => file.path);
+    let inventory = [];
+    if (req.body.inventory) {
+      try {
+        inventory = JSON.parse(req.body.inventory);
+      } catch (e) {
+        inventory = [];
+      }
     }
+
+    for (let i = 0; i < inventory.length; i++) {
+      const files = [];
+      if (req.files) {
+        req.files.forEach((file) => {
+          if (file.fieldname === `inventoryImages_${i}`) {
+            files.push(file.path);
+          }
+        });
+      }
+      if (files.length > 0) {
+        inventory[i].images = files;
+      }
+    }
+
+    const productImages = req.files
+      ? req.files.filter((file) => file.fieldname === "images").map((file) => file.path)
+      : [];
+
+    const updates = {
+      ...req.body,
+      images: productImages.length > 0 ? productImages : product.images,
+      inventory,
+    };
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.productId,
