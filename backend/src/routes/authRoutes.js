@@ -1,10 +1,13 @@
 /**
- * @fileoverview Authentication Routes
+ * @fileoverview Authentication Routes for Kicks Shoes application.
  * @created 2025-05-31
  * @file authRoutes.js
  * @description This file defines all authentication-related routes for the Kicks Shoes application.
  * It maps HTTP endpoints to their corresponding controller functions and applies necessary middleware.
  * The routes are organized by functionality and access level (public/private).
+ *
+ * Public routes: Register, Login, Email Verification, Password Reset, Token Refresh, Social Logins, etc.
+ * Protected routes: Get Profile, Update Profile, Change Password, Logout, Set Password, etc.
  */
 
 import express from 'express';
@@ -112,12 +115,47 @@ router.put('/change-password', protect, changePassword);
  * @access  Private
  */
 router.post('/logout', protect, logout);
+
+/**
+ * @route   POST /api/auth/google-login
+ * @desc    Login with Google
+ * @access  Public
+ */
 router.post('/google-login', loginWithGoogle);
+
+/**
+ * @route   POST /api/auth/facebook-login
+ * @desc    Login with Facebook
+ * @access  Public
+ */
 router.post('/facebook-login', loginWithFacebook);
+
+/**
+ * @route   POST /api/auth/set-password
+ * @desc    Set password
+ * @access  Private
+ */
 router.post('/set-password', protect, setPassword);
 
+/**
+ * @route   POST /api/auth/register-app
+ * @desc    Register app user
+ * @access  Public
+ */
 router.post('/register-app', registerApp);
+
+/**
+ * @route   POST /api/auth/verify-otp
+ * @desc    Verify OTP
+ * @access  Public
+ */
 router.post('/verify-otp', verifyOtp);
+
+/**
+ * @route   POST /api/auth/resend-otp
+ * @desc    Resend OTP
+ * @access  Public
+ */
 router.post('/resend-otp', resendOtp);
 
 export default router;

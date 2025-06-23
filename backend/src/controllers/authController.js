@@ -349,7 +349,14 @@ export const login = async (req, res, next) => {
   }
 };
 
-// Helper tạo token
+/**
+ * @desc    Create tokens
+ * @route   POST /api/auth/create-tokens
+ * @access  Private
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} Response with success message
+ */
 const createTokens = userId => {
   const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: '1h',
@@ -360,11 +367,18 @@ const createTokens = userId => {
   return { token, refreshToken };
 };
 
-// Login với Google
+/**
+ * @desc    Login with Google
+ * @route   POST /api/auth/login-with-google
+ * @access  Public
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} Response with success message
+ */
 export const loginWithGoogle = async (req, res) => {
   try {
     const { email, name, picture } = req.body;
-    if (!email) return res.status(400).json({ message: 'Thiếu email từ Google' });
+    if (!email) return res.status(400).json({ message: 'Missing email from Google' });
 
     let user = await User.findOne({ email });
     let isNewUser = false;
@@ -380,7 +394,7 @@ export const loginWithGoogle = async (req, res) => {
       }
 
       user = new User({
-        fullName: name || 'Facebook User',
+        fullName: name || 'Google User',
         email,
         username,
         password: fakePassword,
@@ -408,8 +422,8 @@ export const loginWithGoogle = async (req, res) => {
     res.status(200).json({
       success: true,
       message: isNewUser
-        ? 'Tạo tài khoản & đăng nhập Google thành công'
-        : 'Đăng nhập Google thành công',
+        ? 'Create account & login Google successfully'
+        : 'Login Google successfully',
       user: userObj,
       token,
       refreshToken,
@@ -417,15 +431,22 @@ export const loginWithGoogle = async (req, res) => {
     });
   } catch (error) {
     console.error('Google login error:', error);
-    res.status(500).json({ success: false, message: 'Đăng nhập Google thất bại' });
+    res.status(500).json({ success: false, message: 'Login Google failed' });
   }
 };
 
-// Login với Facebook
+/**
+ * @desc    Login with Facebook
+ * @route   POST /api/auth/login-with-facebook
+ * @access  Public
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} Response with success message
+ */
 export const loginWithFacebook = async (req, res) => {
   try {
     const { email, name, picture } = req.body;
-    if (!email) return res.status(400).json({ message: 'Thiếu email từ Facebook' });
+    if (!email) return res.status(400).json({ message: 'Missing email from Facebook' });
 
     let user = await User.findOne({ email });
     let isNewUser = false;
@@ -469,8 +490,8 @@ export const loginWithFacebook = async (req, res) => {
     res.status(200).json({
       success: true,
       message: isNewUser
-        ? 'Tạo tài khoản & đăng nhập Facebook thành công'
-        : 'Đăng nhập Facebook thành công',
+        ? 'Create account & login Facebook successfully'
+        : 'Login Facebook successfully',
       user: userObj,
       token,
       refreshToken,
@@ -478,26 +499,33 @@ export const loginWithFacebook = async (req, res) => {
     });
   } catch (error) {
     console.error('Facebook login error:', error);
-    res.status(500).json({ success: false, message: 'Đăng nhập Facebook thất bại' });
+    res.status(500).json({ success: false, message: 'Login Facebook failed' });
   }
 };
 
-// Set password API
+/**
+ * @desc    Set password
+ * @route   POST /api/auth/set-password
+ * @access  Private
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} Response with success message
+ */
 export const setPassword = async (req, res) => {
   try {
     const { password } = req.body;
     if (!password || password.length < 6) {
-      return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
     const user = req.user;
     user.password = password;
     await user.save();
 
-    res.status(200).json({ success: true, message: 'Đặt mật khẩu thành công' });
+    res.status(200).json({ success: true, message: 'Set password successfully' });
   } catch (error) {
     console.error('Set password error:', error);
-    res.status(500).json({ message: 'Đặt mật khẩu thất bại' });
+    res.status(500).json({ message: 'Set password failed' });
   }
 };
 
