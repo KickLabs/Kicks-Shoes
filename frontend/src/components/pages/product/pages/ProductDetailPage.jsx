@@ -18,7 +18,7 @@ const ProductDetailPage = () => {
       <div className="product-detail-container">
         <Row gutter={[32, 32]}>
           <Col span={14}>
-            <ProductImageGallery images={product.images} />
+            <ProductImageGallery images={product.mainImage} />
           </Col>
           <Col span={10}>
             <ProductInfoSection product={product} />

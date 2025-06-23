@@ -1,13 +1,11 @@
-import React from 'react';
 import { EllipsisOutlined } from '@ant-design/icons';
-import nikeproduct from '../../../../assets/images/nikeproduct.png';
 
 const ProductCard = ({ product }) => {
   return (
     <div className="custom-product-card">
       <div className="custom-product-card-header">
         <div className="custom-product-image">
-          <img src={product.images[0]} alt={product.name} />
+          <img src={product.mainImage ? product.mainImage : nikeproduct} alt={product.name} />
         </div>
         <div className="custom-product-info">
           <div className="custom-product-title-row">

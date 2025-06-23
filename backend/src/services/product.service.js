@@ -1,268 +1,3 @@
-// /**
-//  * @fileoverview Product Service
-//  * @created 2025-06-08
-//  * @file product.service.js
-//  * @description This service handles all product-related business logic for the Kicks Shoes application.
-//  * It provides methods for creating, updating, and deleting products.
-//  */
-
-// import Product from "../models/Product.js";
-// import mongoose from "mongoose";
-// import logger from "../utils/logger.js";
-
-// /**
-//  * Service class for handling product operations
-//  */
-// export class ProductService {
-//   /**
-//    * Create a new product
-//    * @param {Object} productData - Product data
-//    * @returns {Promise<Product>} The created product
-//    */
-//   static async createProduct(productData) {
-//     try {
-//       const {
-//         name,
-//         description,
-//         price,
-//         category,
-//         brand,
-//         images,
-//         variants,
-//         tags,
-//         status,
-//         stock,
-//         sales,
-//         rating,
-//       } = productData;
-
-//       // Validate required fields
-//       if (
-//         !name ||
-//         !description ||
-//         !price?.regular ||
-//         !category ||
-//         !brand ||
-//         !images ||
-//         !variants
-//       ) {
-//         throw new Error("Missing required fields");
-//       }
-
-//       const isNew = true;
-//       const product = new Product({
-//         name,
-//         description,
-//         price: {
-//           regular: price.regular,
-//           discountPercent: price.discountPercent || 0,
-//           isOnSale: price.isOnSale || false,
-//         },
-//         category,
-//         brand,
-//         images,
-//         variants,
-//         tags: tags || [],
-//         status: status ?? true,
-//         stock: stock || 0,
-//         sales: sales || 0,
-//         rating: rating || 0,
-//         isNew,
-//       });
-
-//       await product.save();
-
-//       logger.info("Product created successfully", { productId: product._id });
-//       return product;
-//     } catch (error) {
-//       logger.error("Error creating product", { error: error.message });
-//       throw error;
-//     }
-//   }
-
-//   /**
-//    * Create multiple products at once
-//    * @param {Array<Object>} productsData - Array of product data
-//    * @returns {Promise<{success: Array<Product>, failed: Array<{data: Object, error: string}>}>} Created products and failed products
-//    */
-//   static async createManyProducts(productsData) {
-//     try {
-//       const results = {
-//         success: [],
-//         failed: [],
-//       };
-
-//       for (const productData of productsData) {
-//         try {
-//           // Validate required fields
-//           if (
-//             !productData.name ||
-//             !productData.brand ||
-//             !productData.category ||
-//             !productData.price
-//           ) {
-//             throw new Error("Missing required fields");
-//           }
-//           if (
-//             !productData.inventory ||
-//             !Array.isArray(productData.inventory) ||
-//             productData.inventory.length === 0
-//           ) {
-//             throw new Error("Invalid inventory data");
-//           }
-//           if (
-//             !productData.variants ||
-//             !productData.variants.sizes ||
-//             !productData.variants.colors
-//           ) {
-//             throw new Error("Invalid variants data");
-//           }
-
-//           const newProduct = new Product(productData);
-//           const savedProduct = await newProduct.save();
-//           results.success.push(savedProduct);
-//         } catch (error) {
-//           results.failed.push({
-//             data: productData,
-//             error: error.message,
-//           });
-//         }
-//       }
-
-//       logger.info("Bulk product creation completed", {
-//         successful: results.success.length,
-//         failed: results.failed.length,
-//       });
-
-//       return results;
-//     } catch (error) {
-//       logger.error("Error in bulk product creation", { error: error.message });
-//       throw error;
-//     }
-//   }
-//   /**
-//  * Delete a product by ID
-//  * @param {String} productId - The ID of the product to delete
-//  * @returns {Promise<Product|null>} The deleted product or null if not found
-//  */
-// static async deleteProduct(productId) {
-//   try {
-//     if (!mongoose.Types.ObjectId.isValid(productId)) {
-//       throw new Error("Invalid product ID");
-//     }
-
-//     const deletedProduct = await Product.findByIdAndDelete(productId);
-//     if (!deletedProduct) {
-//       throw new Error("Product not found");
-//     }
-
-//     logger.info("Product deleted successfully", { productId });
-//     return deletedProduct;
-//   } catch (error) {
-//     logger.error("Error deleting product", { error: error.message });
-//     throw error;
-//   }
-// }
-// /**
-//  * Get a product by ID
-//  * @param {String} productId - The ID of the product to retrieve
-//  * @returns {Promise<Product|null>} The product or null if not found
-//  */
-// static async getProductById(productId) {
-//   try {
-//     if (!mongoose.Types.ObjectId.isValid(productId)) {
-//       throw new Error("Invalid product ID");
-//     }
-
-//     const product = await Product.findById(productId);
-//     return product;
-//   } catch (error) {
-//     logger.error("Error retrieving product by ID", {
-//       productId,
-//       error: error.message,
-//     });
-//     throw error;
-//   }
-// }
-//   /**
-//  * Get all products with optional filters, sorting and pagination
-//  * @param {Object} query - Query parameters for filtering, sorting, and pagination
-//  * @returns {Promise<Array<Product>>} List of matching products
-//  */
-// static async getAllProducts(query = {}) {
-//   try {
-//     const {
-//       keyword = '',
-//       category,
-//       brand,
-//       sortBy = 'createdAt',
-//       order = 'desc',
-//       page = 1,
-//       limit = 10,
-//     } = query;
-
-//     const filter = {};
-
-//     if (keyword) {
-//       filter.name = { $regex: keyword, $options: 'i' };
-//     }
-
-//     if (category) filter.category = category;
-//     if (brand) filter.brand = brand;
-
-//     const sortOptions = {};
-//     sortOptions[sortBy] = order === 'asc' ? 1 : -1;
-
-//     const skip = (parseInt(page) - 1) * parseInt(limit);
-
-//     // Lấy tổng số sản phẩm
-//     const total = await Product.countDocuments(filter);
-
-//     // Lấy danh sách sản phẩm phân trang
-//     const products = await Product.find(filter)
-//       .sort(sortOptions)
-//       .skip(skip)
-//       .limit(parseInt(limit));
-
-//     return { products, total };
-//   } catch (error) {
-//     logger.error("Error retrieving filtered products", { error: error.message });
-//     throw error;
-//   }
-// }
-// /**
-//  * Update a product by ID
-//  * @param {String} productId - The ID of the product to update
-//  * @param {Object} updateData - The product fields to update
-//  * @returns {Promise<Product|null>} The updated product or null if not found
-//  */
-// static async updateProduct(productId, updateData) {
-//   try {
-//     if (!mongoose.Types.ObjectId.isValid(productId)) {
-//       throw new Error("Invalid product ID");
-//     }
-
-//     const updatedProduct = await Product.findByIdAndUpdate(
-//       productId,
-//       { $set: updateData },
-//       { new: true, runValidators: true }
-//     );
-
-//     if (!updatedProduct) {
-//       throw new Error("Product not found");
-//     }
-
-//     logger.info("Product updated successfully", { productId });
-//     return updatedProduct;
-//   } catch (error) {
-//     logger.error("Error updating product", {
-//       productId,
-//       error: error.message,
-//     });
-//     throw error;
-//   }
-// }
-// }
 /**
  * @fileoverview Fixed Product Service
  * @created 2025-06-08
@@ -270,9 +5,9 @@
  * @description Fixed service to match frontend data structure
  */
 
-import Product from "../models/Product.js"
-import mongoose from "mongoose"
-import logger from "../utils/logger.js"
+import Product from '../models/Product.js';
+import mongoose from 'mongoose';
+import logger from '../utils/logger.js';
 
 /**
  * Service class for handling product operations
@@ -285,7 +20,7 @@ export class ProductService {
    */
   static async createProduct(productData) {
     try {
-      console.log("ProductService.createProduct received:", JSON.stringify(productData, null, 2))
+      console.log('ProductService.createProduct received:', JSON.stringify(productData, null, 2));
 
       const {
         name,
@@ -304,23 +39,23 @@ export class ProductService {
         sales,
         rating,
         isNew, // Add isNew support
-      } = productData
+      } = productData;
 
       // FIXED: Only validate truly required fields
       if (!name || !category || !brand) {
-        throw new Error("Missing required fields: name, category, brand")
+        throw new Error('Missing required fields: name, category, brand');
       }
 
       // FIXED: Validate price structure
-      if (!price || typeof price !== "object" || price.regular === undefined) {
-        throw new Error("Invalid price structure")
+      if (!price || typeof price !== 'object' || price.regular === undefined) {
+        throw new Error('Invalid price structure');
       }
 
       // FIXED: Create product with all frontend fields
       const product = new Product({
         name: name.trim(),
-        summary: summary?.trim() || "", // Use summary from frontend
-        description: description?.trim() || "", // Optional description
+        summary: summary?.trim() || '', // Use summary from frontend
+        description: description?.trim() || '', // Optional description
         price: {
           regular: Number(price.regular) || 0,
           discountPercent: Number(price.discountPercent) || 0,
@@ -329,7 +64,7 @@ export class ProductService {
         category,
         brand,
         images: Array.isArray(images) ? images : [], // Handle empty arrays
-        mainImage: mainImage || "", // Add mainImage
+        mainImage: mainImage || '', // Add mainImage
         variants: {
           sizes: variants?.sizes || [], // Handle auto-generated variants
           colors: variants?.colors || [],
@@ -341,19 +76,19 @@ export class ProductService {
         sales: Number(sales) || 0,
         rating: Number(rating) || 0,
         isNew: Boolean(isNew), // Add isNew
-      })
+      });
 
-      const savedProduct = await product.save()
+      const savedProduct = await product.save();
 
-      logger.info("Product created successfully", { productId: savedProduct._id })
-      return savedProduct
+      logger.info('Product created successfully', { productId: savedProduct._id });
+      return savedProduct;
     } catch (error) {
-      logger.error("Error creating product", {
+      logger.error('Error creating product', {
         error: error.message,
         stack: error.stack,
         productData: JSON.stringify(productData, null, 2),
-      })
-      throw error
+      });
+      throw error;
     }
   }
 
@@ -365,76 +100,78 @@ export class ProductService {
    */
   static async updateProduct(productId, updateData) {
     try {
-      console.log("ProductService.updateProduct received:", JSON.stringify(updateData, null, 2))
+      console.log('ProductService.updateProduct received:', JSON.stringify(updateData, null, 2));
 
       if (!mongoose.Types.ObjectId.isValid(productId)) {
-        throw new Error("Invalid product ID")
+        throw new Error('Invalid product ID');
       }
 
       // Clean and validate update data
-      const cleanUpdateData = {}
+      const cleanUpdateData = {};
 
-      if (updateData.name) cleanUpdateData.name = updateData.name.trim()
-      if (updateData.summary !== undefined) cleanUpdateData.summary = updateData.summary?.trim() || ""
-      if (updateData.description !== undefined) cleanUpdateData.description = updateData.description?.trim() || ""
-      if (updateData.brand) cleanUpdateData.brand = updateData.brand
-      if (updateData.category) cleanUpdateData.category = updateData.category
+      if (updateData.name) cleanUpdateData.name = updateData.name.trim();
+      if (updateData.summary !== undefined)
+        cleanUpdateData.summary = updateData.summary?.trim() || '';
+      if (updateData.description !== undefined)
+        cleanUpdateData.description = updateData.description?.trim() || '';
+      if (updateData.brand) cleanUpdateData.brand = updateData.brand;
+      if (updateData.category) cleanUpdateData.category = updateData.category;
 
       if (updateData.price) {
         cleanUpdateData.price = {
           regular: Number(updateData.price.regular) || 0,
           discountPercent: Number(updateData.price.discountPercent) || 0,
           isOnSale: Boolean(updateData.price.isOnSale),
-        }
+        };
       }
 
       if (updateData.variants) {
         cleanUpdateData.variants = {
           sizes: updateData.variants.sizes || [],
           colors: updateData.variants.colors || [],
-        }
+        };
       }
 
       if (updateData.inventory !== undefined) {
-        cleanUpdateData.inventory = Array.isArray(updateData.inventory) ? updateData.inventory : []
+        cleanUpdateData.inventory = Array.isArray(updateData.inventory) ? updateData.inventory : [];
       }
 
       if (updateData.images !== undefined) {
-        cleanUpdateData.images = Array.isArray(updateData.images) ? updateData.images : []
+        cleanUpdateData.images = Array.isArray(updateData.images) ? updateData.images : [];
       }
 
       if (updateData.mainImage !== undefined) {
-        cleanUpdateData.mainImage = updateData.mainImage || ""
+        cleanUpdateData.mainImage = updateData.mainImage || '';
       }
 
       if (updateData.tags !== undefined) {
-        cleanUpdateData.tags = Array.isArray(updateData.tags) ? updateData.tags : []
+        cleanUpdateData.tags = Array.isArray(updateData.tags) ? updateData.tags : [];
       }
 
-      if (updateData.status !== undefined) cleanUpdateData.status = Boolean(updateData.status)
-      if (updateData.stock !== undefined) cleanUpdateData.stock = Number(updateData.stock) || 0
-      if (updateData.isNew !== undefined) cleanUpdateData.isNew = Boolean(updateData.isNew)
+      if (updateData.status !== undefined) cleanUpdateData.status = Boolean(updateData.status);
+      if (updateData.stock !== undefined) cleanUpdateData.stock = Number(updateData.stock) || 0;
+      if (updateData.isNew !== undefined) cleanUpdateData.isNew = Boolean(updateData.isNew);
 
       const updatedProduct = await Product.findByIdAndUpdate(
         productId,
         { $set: cleanUpdateData },
-        { new: true, runValidators: true },
-      )
+        { new: true, runValidators: true }
+      );
 
       if (!updatedProduct) {
-        throw new Error("Product not found")
+        throw new Error('Product not found');
       }
 
-      logger.info("Product updated successfully", { productId })
-      return updatedProduct
+      logger.info('Product updated successfully', { productId });
+      return updatedProduct;
     } catch (error) {
-      logger.error("Error updating product", {
+      logger.error('Error updating product', {
         productId,
         error: error.message,
         stack: error.stack,
         updateData: JSON.stringify(updateData, null, 2),
-      })
-      throw error
+      });
+      throw error;
     }
   }
 
@@ -448,23 +185,23 @@ export class ProductService {
       const results = {
         success: [],
         failed: [],
-      }
+      };
 
       for (const productData of productsData) {
         try {
           // Use the same validation as createProduct
           if (!productData.name || !productData.brand || !productData.category) {
-            throw new Error("Missing required fields: name, brand, category")
+            throw new Error('Missing required fields: name, brand, category');
           }
 
-          if (!productData.price || typeof productData.price !== "object") {
-            throw new Error("Invalid price structure")
+          if (!productData.price || typeof productData.price !== 'object') {
+            throw new Error('Invalid price structure');
           }
 
           const newProduct = new Product({
             name: productData.name.trim(),
-            summary: productData.summary?.trim() || "",
-            description: productData.description?.trim() || "",
+            summary: productData.summary?.trim() || '',
+            description: productData.description?.trim() || '',
             price: {
               regular: Number(productData.price.regular) || 0,
               discountPercent: Number(productData.price.discountPercent) || 0,
@@ -473,7 +210,7 @@ export class ProductService {
             category: productData.category,
             brand: productData.brand,
             images: Array.isArray(productData.images) ? productData.images : [],
-            mainImage: productData.mainImage || "",
+            mainImage: productData.mainImage || '',
             variants: {
               sizes: productData.variants?.sizes || [],
               colors: productData.variants?.colors || [],
@@ -485,27 +222,27 @@ export class ProductService {
             sales: Number(productData.sales) || 0,
             rating: Number(productData.rating) || 0,
             isNew: Boolean(productData.isNew),
-          })
+          });
 
-          const savedProduct = await newProduct.save()
-          results.success.push(savedProduct)
+          const savedProduct = await newProduct.save();
+          results.success.push(savedProduct);
         } catch (error) {
           results.failed.push({
             data: productData,
             error: error.message,
-          })
+          });
         }
       }
 
-      logger.info("Bulk product creation completed", {
+      logger.info('Bulk product creation completed', {
         successful: results.success.length,
         failed: results.failed.length,
-      })
+      });
 
-      return results
+      return results;
     } catch (error) {
-      logger.error("Error in bulk product creation", { error: error.message })
-      throw error
+      logger.error('Error in bulk product creation', { error: error.message });
+      throw error;
     }
   }
 
@@ -517,19 +254,19 @@ export class ProductService {
   static async deleteProduct(productId) {
     try {
       if (!mongoose.Types.ObjectId.isValid(productId)) {
-        throw new Error("Invalid product ID")
+        throw new Error('Invalid product ID');
       }
 
-      const deletedProduct = await Product.findByIdAndDelete(productId)
+      const deletedProduct = await Product.findByIdAndDelete(productId);
       if (!deletedProduct) {
-        throw new Error("Product not found")
+        throw new Error('Product not found');
       }
 
-      logger.info("Product deleted successfully", { productId })
-      return deletedProduct
+      logger.info('Product deleted successfully', { productId });
+      return deletedProduct;
     } catch (error) {
-      logger.error("Error deleting product", { error: error.message })
-      throw error
+      logger.error('Error deleting product', { error: error.message });
+      throw error;
     }
   }
 
@@ -541,17 +278,17 @@ export class ProductService {
   static async getProductById(productId) {
     try {
       if (!mongoose.Types.ObjectId.isValid(productId)) {
-        throw new Error("Invalid product ID")
+        throw new Error('Invalid product ID');
       }
 
-      const product = await Product.findById(productId).populate("category")
-      return product
+      const product = await Product.findById(productId).populate('category');
+      return product;
     } catch (error) {
-      logger.error("Error retrieving product by ID", {
+      logger.error('Error retrieving product by ID', {
         productId,
         error: error.message,
-      })
-      throw error
+      });
+      throw error;
     }
   }
 
@@ -562,40 +299,68 @@ export class ProductService {
    */
   static async getAllProducts(query = {}) {
     try {
-      const { keyword = "", category, brand, sortBy = "createdAt", order = "desc", page = 1, limit = 10 } = query
+      const {
+        keyword = '',
+        category,
+        brand,
+        size,
+        color,
+        minPrice,
+        maxPrice,
+        sortBy = 'createdAt',
+        order = 'desc',
+        page = 1,
+        limit = 10,
+      } = query;
 
-      const filter = {}
+      const filter = {};
 
+      // 🔎 Fulltext search
       if (keyword) {
         filter.$or = [
-          { name: { $regex: keyword, $options: "i" } },
-          { summary: { $regex: keyword, $options: "i" } },
-          { description: { $regex: keyword, $options: "i" } },
-        ]
+          { name: { $regex: keyword, $options: 'i' } },
+          { summary: { $regex: keyword, $options: 'i' } },
+          { description: { $regex: keyword, $options: 'i' } },
+        ];
       }
 
-      if (category) filter.category = category
-      if (brand) filter.brand = brand
+      // 📁 Category & brand
+      if (category) filter.category = category;
+      if (brand) filter.brand = brand;
 
-      const sortOptions = {}
-      sortOptions[sortBy] = order === "asc" ? 1 : -1
+      // 🎨 Size & Color in inventory array
+      if (size || color) {
+        filter.inventory = { $elemMatch: {} };
+        if (size) filter.inventory.$elemMatch.size = Number(size);
+        if (color) filter.inventory.$elemMatch.color = color;
+      }
 
-      const skip = (Number.parseInt(page) - 1) * Number.parseInt(limit)
+      // 💰 Price range (applied to regular price)
+      if (minPrice || maxPrice) {
+        filter['price.regular'] = {};
+        if (minPrice) filter['price.regular'].$gte = Number(minPrice);
+        if (maxPrice) filter['price.regular'].$lte = Number(maxPrice);
+      }
 
-      // Get total count
-      const total = await Product.countDocuments(filter)
+      // 🧭 Sort
+      const sortOptions = {};
+      sortOptions[sortBy] = order === 'asc' ? 1 : -1;
 
-      // Get paginated products
+      // 📄 Pagination
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      // 🧾 Query
+      const total = await Product.countDocuments(filter);
       const products = await Product.find(filter)
-        .populate("category")
+        .populate('category')
         .sort(sortOptions)
         .skip(skip)
-        .limit(Number.parseInt(limit))
+        .limit(parseInt(limit));
 
-      return { products, total }
+      return { products, total };
     } catch (error) {
-      logger.error("Error retrieving filtered products", { error: error.message })
-      throw error
+      logger.error('Error retrieving filtered products', { error: error.message });
+      throw error;
     }
   }
 }
