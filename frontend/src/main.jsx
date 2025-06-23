@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -8,6 +8,8 @@ import { CartProvider } from "./contexts/CartContext";
 import { store, persistor } from './store/store';
 import { Provider } from "react-redux";
 import { PersistGate } from 'redux-persist/integration/react';
+import { useAuth } from "./contexts/AuthContext";
+
 
 // Common Components
 import ChatPage from './components/common/components/ChatPage';
