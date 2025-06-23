@@ -51,6 +51,7 @@ import EmailVerified from './components/pages/authentication/pages/EmailVerified
 import EmailVerification from './components/pages/authentication/pages/EmailVerification';
 import ResetPasswordForm from './components/pages/authentication/pages/ResetPasswordForm';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import SetPassword from './components/pages/authentication/pages/SetPassword';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -69,7 +70,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
-    // errorElement: <ErrorPage />,
+    errorElement: <ErrorPage />,
     children: [
       {
         path: '',
@@ -218,6 +219,10 @@ const router = createBrowserRouter([
       {
         path: 'reset-password',
         element: <ResetPasswordForm />,
+      },
+      {
+        path: 'set-password',
+        element: <SetPassword />,
       },
     ],
   },
