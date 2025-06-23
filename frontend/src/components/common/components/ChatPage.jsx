@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
-import { Input, Button, List, Avatar, Typography, Badge } from "antd";
-import { SendOutlined, UserOutlined, SearchOutlined } from "@ant-design/icons";
-import TabHeader from "./TabHeader";
-import { ActiveTabContext } from "./ActiveTabContext";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import ReactMarkdown from "react-markdown";
-import { useLocation } from "react-router-dom";
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import { Input, Button, List, Avatar, Typography, Badge } from 'antd';
+import { SendOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons';
+import TabHeader from './TabHeader';
+import { ActiveTabContext } from './ActiveTabContext';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import ReactMarkdown from 'react-markdown';
+import { useLocation } from 'react-router-dom';
 
 const { Text } = Typography;
 
@@ -14,32 +14,32 @@ const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 const ChatPage = () => {
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
+  const [newMessage, setNewMessage] = useState('');
   const [selectedChat, setSelectedChat] = useState(null);
-  const [searchText, setSearchText] = useState("");
+  const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { setActiveTab } = useContext(ActiveTabContext);
   const messagesEndRef = useRef(null);
   const location = useLocation();
-  const isDashboard = location.pathname.startsWith("/dashboard");
+  const isDashboard = location.pathname.startsWith('/dashboard');
 
   // Mock data for chat list
   const chatList = [
     {
       id: 1,
-      name: "AI Assistant",
-      lastMessage: "How can I help you today?",
-      time: "Just now",
+      name: 'AI Assistant',
+      lastMessage: 'How can I help you today?',
+      time: 'Just now',
       unread: 0,
-      avatar: null
-    }
+      avatar: null,
+    },
   ];
 
   useEffect(() => {
     if (isDashboard) {
-      setActiveTab("7");
+      setActiveTab('8');
     } else {
-      setActiveTab("4");
+      setActiveTab('4');
     }
 
     // Set default chat to AI Assistant
@@ -48,31 +48,31 @@ const ChatPage = () => {
 
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
-  const generateAIResponse = async (userMessage) => {
+  const generateAIResponse = async userMessage => {
     try {
       setIsLoading(true);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
       const result = await model.generateContent({
         contents: [
           {
             parts: [
               {
-                text: userMessage
-              }
-            ]
-          }
-        ]
+                text: userMessage,
+              },
+            ],
+          },
+        ],
       });
 
       const response = await result.response;
       return response.text();
     } catch (error) {
-      console.error("Error generating AI response:", error);
+      console.error('Error generating AI response:', error);
       return "I apologize, but I'm having trouble processing your request right now.";
     } finally {
       setIsLoading(false);
@@ -85,31 +85,31 @@ const ChatPage = () => {
       const userMessage = {
         id: Date.now(),
         content: newMessage,
-        sender: "user",
-        timestamp: new Date().toLocaleTimeString()
+        sender: 'user',
+        timestamp: new Date().toLocaleTimeString(),
       };
-      setMessages((prev) => [...prev, userMessage]);
-      setNewMessage("");
+      setMessages(prev => [...prev, userMessage]);
+      setNewMessage('');
 
       // Generate and add AI response
       const aiResponse = await generateAIResponse(newMessage);
       const aiMessage = {
         id: Date.now() + 1,
         content: aiResponse,
-        sender: "ai",
-        timestamp: new Date().toLocaleTimeString()
+        sender: 'ai',
+        timestamp: new Date().toLocaleTimeString(),
       };
-      setMessages((prev) => [...prev, aiMessage]);
+      setMessages(prev => [...prev, aiMessage]);
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !isLoading) {
+  const handleKeyPress = e => {
+    if (e.key === 'Enter' && !isLoading) {
       handleSendMessage();
     }
   };
 
-  const filteredChatList = chatList.filter((chat) =>
+  const filteredChatList = chatList.filter(chat =>
     chat.name.toLowerCase().includes(searchText.toLowerCase())
   );
 
@@ -127,18 +127,16 @@ const ChatPage = () => {
               placeholder="Search chats..."
               prefix={<SearchOutlined />}
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={e => setSearchText(e.target.value)}
             />
           </div>
           <List
             className="chat-list"
             itemLayout="horizontal"
             dataSource={filteredChatList}
-            renderItem={(chat) => (
+            renderItem={chat => (
               <List.Item
-                className={`chat-list-item ${
-                  selectedChat?.id === chat.id ? "selected" : ""
-                }`}
+                className={`chat-list-item ${selectedChat?.id === chat.id ? 'selected' : ''}`}
                 onClick={() => setSelectedChat(chat)}
               >
                 <List.Item.Meta
@@ -155,9 +153,7 @@ const ChatPage = () => {
                   }
                   description={
                     <div className="chat-list-item-content">
-                      <Text className="chat-last-message">
-                        {chat.lastMessage}
-                      </Text>
+                      <Text className="chat-last-message">{chat.lastMessage}</Text>
                     </div>
                   }
                 />
@@ -174,42 +170,32 @@ const ChatPage = () => {
                 <List
                   itemLayout="horizontal"
                   dataSource={messages}
-                  renderItem={(message) => (
+                  renderItem={message => (
                     <List.Item
                       className={`message-item ${
-                        message.sender === "user"
-                          ? "user-message"
-                          : "admin-message"
+                        message.sender === 'user' ? 'user-message' : 'admin-message'
                       }`}
                     >
                       <List.Item.Meta
                         avatar={
                           <Avatar
                             icon={<UserOutlined />}
-                            className={
-                              message.sender === "user"
-                                ? "user-avatar"
-                                : "admin-avatar"
-                            }
+                            className={message.sender === 'user' ? 'user-avatar' : 'admin-avatar'}
                           />
                         }
                         title={
-                          <Text strong>
-                            {message.sender === "user" ? "You" : "AI Assistant"}
-                          </Text>
+                          <Text strong>{message.sender === 'user' ? 'You' : 'AI Assistant'}</Text>
                         }
                         description={
                           <div className="message-content">
                             <div className="message-text">
-                              {message.sender === "ai" ? (
+                              {message.sender === 'ai' ? (
                                 <ReactMarkdown>{message.content}</ReactMarkdown>
                               ) : (
                                 message.content
                               )}
                             </div>
-                            <div className="message-time">
-                              {message.timestamp}
-                            </div>
+                            <div className="message-time">{message.timestamp}</div>
                           </div>
                         }
                       />
@@ -222,7 +208,7 @@ const ChatPage = () => {
               <div className="chat-input">
                 <Input
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={e => setNewMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Type your message..."
                   disabled={isLoading}

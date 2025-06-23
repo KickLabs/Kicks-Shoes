@@ -38,6 +38,7 @@ import cartRoutes from './routes/cartRoutes.js'; // Added from feature/HueSuong/
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -86,6 +87,7 @@ app.use('/api/reward-points', rewardPointRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/favourites', favouriteRoutes);
+app.use('/api/feedbacks', feedbackRoutes);
 
 // Start cron jobs
 startDiscountStatusUpdateCron();

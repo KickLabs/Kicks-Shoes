@@ -42,6 +42,7 @@ import ProfileTab from './components/pages/account/components/ProfileTab';
 import RewardPointsDetail from './components/pages/account/components/RewardPointsDetail';
 import FavouritesTab from './components/pages/account/components/FavouritesTab';
 import AllCategories from './components/pages/categories/AllCategories';
+import FeedbackManagementPage from './components/pages/dashboard/FeedbackManagermentPage';
 
 // Styles
 import './styles/index.css';
@@ -50,7 +51,7 @@ import EmailVerified from './components/pages/authentication/pages/EmailVerified
 import EmailVerification from './components/pages/authentication/pages/EmailVerification';
 import ResetPasswordForm from './components/pages/authentication/pages/ResetPasswordForm';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { useAuth } from "./contexts/AuthContext";
+import { useAuth } from './contexts/AuthContext';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -170,6 +171,10 @@ const router = createBrowserRouter([
           {
             path: 'users',
             element: <UserManagementPage />,
+          },
+          {
+            path: 'feedbacks',
+            element: <FeedbackManagementPage />,
           },
         ],
       },
