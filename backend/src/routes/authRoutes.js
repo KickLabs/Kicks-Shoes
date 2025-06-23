@@ -25,6 +25,7 @@ import {
   loginWithGoogle,
   loginWithFacebook,
   resendOtp,
+  setPassword,
 } from '../controllers/authController.js';
 import { protect, optionalAuth } from '../middlewares/auth.middleware.js';
 import { requireCustomer, requireShop, requireAdmin } from '../middlewares/role.middleware.js';
@@ -113,6 +114,7 @@ router.put('/change-password', protect, changePassword);
 router.post('/logout', protect, logout);
 router.post('/google-login', loginWithGoogle);
 router.post('/facebook-login', loginWithFacebook);
+router.post('/set-password', protect, setPassword);
 
 router.post('/register-app', registerApp);
 router.post('/verify-otp', verifyOtp);

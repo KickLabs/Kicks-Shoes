@@ -349,152 +349,155 @@ export const login = async (req, res, next) => {
   }
 };
 
+// Helper tạo token
+const createTokens = userId => {
+  const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: '1h',
+  });
+  const refreshToken = jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: '7d',
+  });
+  return { token, refreshToken };
+};
+
+// Login với Google
 export const loginWithGoogle = async (req, res) => {
   try {
     const { email, name, picture } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ message: 'Thiếu email từ Google' });
-    }
+    if (!email) return res.status(400).json({ message: 'Thiếu email từ Google' });
 
     let user = await User.findOne({ email });
+    let isNewUser = false;
 
     if (!user) {
-      // Tạo password giả
+      isNewUser = true;
       const fakePassword = Math.random().toString(36).slice(-8);
-
-      // Đảm bảo username là duy nhất
-      let baseUsername = email.split('@')[0];
-      let username = baseUsername;
-      let counter = 1;
+      let baseUsername = email.split('@')[0],
+        username = baseUsername,
+        counter = 1;
       while (await User.exists({ username })) {
         username = `${baseUsername}${counter++}`;
       }
-
-      // Tạo verification token và thời hạn
-      const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, {
-        expiresIn: '1h',
-      });
-      const verificationTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 giờ
-
-      user = new User({
-        fullName: name || 'Google User',
-        email,
-        username,
-        password: fakePassword,
-        avatar: picture || undefined,
-        isVerified: true,
-        role: 'customer',
-        address: '',
-        phone: '',
-        reward_point: 0,
-        gender: 'other',
-        verificationToken,
-        verificationTokenExpires,
-      });
-
-      await user.save();
-    }
-
-    // Tạo access token & refresh token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
-    });
-
-    const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
-      expiresIn: '7d',
-    });
-
-    const userObj = user.toObject();
-    delete userObj.password;
-    delete userObj.__v;
-
-    res.status(200).json({
-      success: true,
-      message: 'Đăng nhập thành công',
-      user: userObj,
-      token,
-      refreshToken,
-    });
-  } catch (error) {
-    console.error('Google login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Đăng nhập Google thất bại',
-    });
-  }
-};
-
-export const loginWithFacebook = async (req, res) => {
-  try {
-    const { email, name, picture } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ message: 'Thiếu email từ Facebook' });
-    }
-
-    let user = await User.findOne({ email });
-
-    if (!user) {
-      const fakePassword = Math.random().toString(36).slice(-8);
-
-      let baseUsername = email.split('@')[0];
-      let username = baseUsername;
-      let counter = 1;
-      while (await User.exists({ username })) {
-        username = `${baseUsername}${counter++}`;
-      }
-
-      const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, {
-        expiresIn: '1h',
-      });
-
-      const verificationTokenExpires = new Date(Date.now() + 60 * 60 * 1000);
 
       user = new User({
         fullName: name || 'Facebook User',
         email,
         username,
         password: fakePassword,
-        avatar: picture || undefined,
+        avatar: picture?.data?.url,
         isVerified: true,
         role: 'customer',
         address: '',
         phone: '',
         reward_point: 0,
         gender: 'other',
-        verificationToken,
-        verificationTokenExpires,
       });
-
       await user.save();
+    } else {
+      if (picture?.data?.url && user.avatar !== picture.data.url) {
+        user.avatar = picture.data.url;
+        await user.save();
+      }
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
-    });
-
-    const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
-      expiresIn: '7d',
-    });
-
+    const { token, refreshToken } = createTokens(user._id);
     const userObj = user.toObject();
     delete userObj.password;
     delete userObj.__v;
 
     res.status(200).json({
       success: true,
-      message: 'Đăng nhập Facebook thành công',
+      message: isNewUser
+        ? 'Tạo tài khoản & đăng nhập Google thành công'
+        : 'Đăng nhập Google thành công',
       user: userObj,
       token,
       refreshToken,
+      isNewUser,
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ success: false, message: 'Đăng nhập Google thất bại' });
+  }
+};
+
+// Login với Facebook
+export const loginWithFacebook = async (req, res) => {
+  try {
+    const { email, name, picture } = req.body;
+    if (!email) return res.status(400).json({ message: 'Thiếu email từ Facebook' });
+
+    let user = await User.findOne({ email });
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+      const fakePassword = Math.random().toString(36).slice(-8);
+      let baseUsername = email.split('@')[0],
+        username = baseUsername,
+        counter = 1;
+      while (await User.exists({ username })) {
+        username = `${baseUsername}${counter++}`;
+      }
+
+      user = new User({
+        fullName: name || 'Facebook User',
+        email,
+        username,
+        password: fakePassword,
+        avatar: picture?.data?.url,
+        isVerified: true,
+        role: 'customer',
+        address: '',
+        phone: '',
+        reward_point: 0,
+        gender: 'other',
+      });
+      await user.save();
+    } else {
+      if (picture?.data?.url && user.avatar !== picture.data.url) {
+        user.avatar = picture.data.url;
+        await user.save();
+      }
+    }
+
+    const { token, refreshToken } = createTokens(user._id);
+    const userObj = user.toObject();
+    delete userObj.password;
+    delete userObj.__v;
+
+    res.status(200).json({
+      success: true,
+      message: isNewUser
+        ? 'Tạo tài khoản & đăng nhập Facebook thành công'
+        : 'Đăng nhập Facebook thành công',
+      user: userObj,
+      token,
+      refreshToken,
+      isNewUser,
     });
   } catch (error) {
     console.error('Facebook login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Đăng nhập Facebook thất bại',
-    });
+    res.status(500).json({ success: false, message: 'Đăng nhập Facebook thất bại' });
+  }
+};
+
+// Set password API
+export const setPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+    }
+
+    const user = req.user;
+    user.password = password;
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Đặt mật khẩu thành công' });
+  } catch (error) {
+    console.error('Set password error:', error);
+    res.status(500).json({ message: 'Đặt mật khẩu thất bại' });
   }
 };
 
