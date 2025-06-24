@@ -1,31 +1,40 @@
 .order-card-title {
   margin-top: 0;
-  margin-bottom: 16px;
+  color: #232321;
+  font-family: Rubik;
+  font-size: 32px !important;
+  font-style: normal;
 }
 
 .order-image {
-  background: #f0f0f0;
-  border-radius: 4px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  width: 100%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .order-product-name {
-  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: #232321;
+  margin-bottom: 4px;
 }
 
-.order-product-description {
-  display: block;
-}
-
+.order-product-description,
 .order-product-color {
-  display: block;
+  color: #757575;
+  font-size: 14px;
+  margin-bottom: 2px;
 }
 
 .order-product-info {
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin: 8px 0;
 }
 
 .order-product-price {
-  display: block;
-  color: #4a69e2;
+  font-size: 18px;
+  color: #e53935;
+  font-weight: 700;
+  margin-top: 4px;
 }

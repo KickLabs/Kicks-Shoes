@@ -1,27 +1,38 @@
 .checkout-layout {
-  background: #e7e7e3;
-  padding: 24px;
+  padding: 48px 40px 48px 40px;
+  min-height: 100vh;
+  background: none;
+}
+
+@media (max-width: 1200px) {
+  .checkout-layout {
+    padding: 32px 16px 32px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .checkout-layout {
+    padding: 16px 4px 16px 4px;
+  }
 }
 
 .checkout-right-col {
   display: flex;
   flex-direction: column;
-  /* gap: 24px; */
+  gap: 32px;
 }
 
 .checkout-form-title {
-  font-size: 20px;
-  font-style: normal;
-  font-weight: 600;
-  line-height: normal;
-  text-decoration-line: underline;
-  text-decoration-style: solid;
-  text-decoration-skip-ink: none;
-  text-decoration-thickness: auto;
-  text-underline-offset: auto;
-  text-underline-position: from-font;
-  color: rgba(0, 0, 0, 0.88);
-  opacity: 0.8;
+  font-size: 24px;
+  font-weight: 700;
+  color: #232321;
+  margin-bottom: 32px;
+  letter-spacing: 0.5px;
+  text-align: left;
+}
+
+.checkout-section {
+  margin-bottom: 32px;
 }
 
 .order-product-description,
@@ -33,4 +44,12 @@
   font-weight: 600;
   line-height: normal;
   opacity: 0.8;
+}
+
+/* Đảm bảo các box có margin trái/phải lớn hơn */
+.ant-card,
+.contact-card,
+.shipping-address-card {
+  margin-left: 8px;
+  margin-right: 8px;
 }

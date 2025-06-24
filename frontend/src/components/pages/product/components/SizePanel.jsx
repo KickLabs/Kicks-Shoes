@@ -10,7 +10,8 @@ const SizePanel = ({ sizes, selectedSize, onSizeSelect }) => {
           <button
             key={value}
             className={`size-btn ${selectedSize === value ? 'active' : ''}`}
-            disabled={disabled}
+            disabled={!!disabled}
+            value={value}
             onClick={() => {
               if (!disabled) onSizeSelect(value);
             }}
