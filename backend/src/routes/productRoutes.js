@@ -48,5 +48,11 @@ router.get('/:id', protect, requireRoles('admin', 'shop'), getProductById);
  * @access  Private
  */
 router.put('/:id', protect, requireRoles('admin', 'shop'), updateProduct);
+/**
+ * @route   GET /api/products/public/:id
+ * @desc    Get product by ID
+ * @access  Public
+ */
+router.get('/public/:id', getProductById);
 
 export default router;
