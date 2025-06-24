@@ -1,13 +1,12 @@
 .shipping-address-card {
-  background: #e7e7e3;
   border: none;
-  margin-bottom: -24px !important;
-  margin-top: -24px !important;
 }
 
 .shipping-address-title {
-  margin-top: 0;
-  margin-bottom: 16px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #232321;
+  margin-bottom: 14px;
 }
 
 .shipping-address-item {
@@ -15,8 +14,19 @@
 }
 
 .shipping-address-input {
-  border-color: black;
-  background-color: #e7e7e3;
+  border-radius: 6px;
+  border: 1.2px solid #e0e0e0;
+  background: #fff;
+  height: 40px;
+  font-size: 15px;
+  padding: 0 12px;
+  color: #232321;
+  transition: border 0.2s;
+}
+.shipping-address-input:focus {
+  border-color: #4a69e2;
+  background: #fff;
+  color: #232321;
 }
 
 .shipping-address-note {
@@ -24,4 +34,15 @@
   margin-top: -12px;
   margin-bottom: 16px;
   font-size: 12px;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+  box-shadow: 0 0 0 1000px #fff inset !important;
+  -webkit-text-fill-color: #232321 !important;
+  color: #232321 !important;
+  transition: background-color 5000s ease-in-out 0s;
 }

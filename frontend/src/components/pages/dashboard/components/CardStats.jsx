@@ -1,22 +1,18 @@
-import React from "react";
-import { Card } from "antd";
-import {
-  ShoppingOutlined,
-  MoreOutlined,
-  ArrowUpOutlined,
-} from "@ant-design/icons";
+import React from 'react';
+import { Card } from 'antd';
+import { ShoppingOutlined, MoreOutlined, ArrowUpOutlined } from '@ant-design/icons';
 
 const stats = [
-  { title: "Total Orders", value: "$126.500", percent: 34.7 },
-  { title: "Active Orders", value: "$126.500", percent: 34.7 },
-  { title: "Shipped Orders", value: "$126.500", percent: 34.7 },
+  { title: 'Total Orders', value: '$126.500', percent: 34.7 },
+  { title: 'Active Orders', value: '$126.500', percent: 34.7 },
+  { title: 'Shipped Orders', value: '$126.500', percent: 34.7 },
 ];
 
 export default function CardStats() {
   return (
     <div className="card-stats">
       {stats.map((s, i) => (
-        <Card className="stat-card" key={i} bordered={false}>
+        <Card className="stat-card" key={i} variant="outlined">
           <div className="stat-card-row">
             <div className="stat-card-icon">
               <ShoppingOutlined />
