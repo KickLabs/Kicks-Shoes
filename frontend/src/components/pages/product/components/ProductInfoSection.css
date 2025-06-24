@@ -41,8 +41,8 @@
 }
 
 .color-swatch {
-  width: 32px;
-  height: 32px;
+  width: 25px;
+  height: 25px;
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
@@ -102,7 +102,7 @@
   position: absolute;
   background: #4a69e2;
   color: #fff;
-  font-family: "Rubik", sans-serif;
+  font-family: 'Rubik', sans-serif;
   font-size: 14px;
   font-weight: 600;
   width: 47px;
@@ -146,7 +146,7 @@
 .product-card__badge {
   background: #4a69e2;
   color: #fff;
-  font-family: "Rubik", sans-serif;
+  font-family: 'Rubik', sans-serif;
   font-size: 14px;
   font-weight: 600;
   padding: 7px 14px;
@@ -213,3 +213,10 @@
   cursor: pointer;
 }
 
+.size-btn:disabled {
+  background-color: #f5f5f5;
+  color: #aaa;
+  cursor: not-allowed;
+  border: 1px solid #ddd;
+  opacity: 0.6;
+}
