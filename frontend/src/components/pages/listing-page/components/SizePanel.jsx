@@ -1,21 +1,37 @@
-// SizePanel.jsx
-import React from "react";
+import React, { useState } from 'react';
+import axios from 'axios';
 
-const SizePanel = ({ sizes, selectedSize, onSizeSelect }) => {
+const SizePanel = ({ sizes }) => {
+  const [selectedSize, setSelectedSize] = useState(null);
+
+  const handleSelectSize = async size => {
+    const newSize = selectedSize === size ? null : size;
+    setSelectedSize(newSize);
+
+    try {
+      const response = await axios.get('/api/products', {
+        params: { size: newSize },
+      });
+      console.log('Filtered by size:', response.data);
+    } catch (err) {
+      console.error('Error filtering by size', err);
+    }
+  };
+
   return (
     <div className="filter-size-grid">
-      {sizes.map((size) => (
-        <button
-          key={size.value}
-          className={`size-button ${
-            selectedSize === size.value ? "active" : ""
-          }`}
-          onClick={() => onSizeSelect(size.value)}
-          disabled={size.disabled}
-        >
-          {size.value}
-        </button>
-      ))}
+      {sizes.map((item, index) => {
+        const value = typeof item === 'object' ? item.value : item;
+        return (
+          <button
+            key={value ?? index}
+            className={`size-button ${selectedSize === value ? 'active' : ''}`}
+            onClick={() => handleSelectSize(value)}
+          >
+            {value}
+          </button>
+        );
+      })}
     </div>
   );
 };
