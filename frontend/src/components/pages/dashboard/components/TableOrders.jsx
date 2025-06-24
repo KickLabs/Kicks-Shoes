@@ -2,37 +2,36 @@ import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Table, Tag } from 'antd';
 
-const StatusTag = React.memo(({ status }) => (
-  <Tag
-    color={
-      status === 'delivered'
-        ? 'rgb(59 130 246 / 30%)'
-        : status === 'cancelled' || status === 'refunded'
-          ? 'rgb(239 68 68 / 30%)'
-          : 'rgb(245 158 66 / 30%)'
-    }
-    style={{ borderRadius: 10, fontWeight: 500 }}
-  >
-    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-      <span
-        style={{
-          display: 'inline-block',
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
-          background:
-            status === 'delivered'
-              ? '#3b82f6'
-              : status === 'cancelled' || status === 'refunded'
-                ? '#ef4444'
-                : '#f59e42',
-          marginRight: 6,
-        }}
-      />
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  </Tag>
-));
+const statusColorMap = {
+  pending: { tag: 'rgb(245 158 66 / 30%)', dot: '#f59e42' },
+  processing: { tag: 'rgb(59 130 246 / 30%)', dot: '#3b82f6' },
+  shipped: { tag: 'rgb(139 92 246 / 30%)', dot: '#8b5cf6' },
+  delivered: { tag: 'rgb(34 197 94 / 30%)', dot: '#22c55e' },
+  cancelled: { tag: 'rgb(239 68 68 / 30%)', dot: '#ef4444' },
+  refunded: { tag: 'rgb(156 163 175 / 30%)', dot: '#9ca3af' },
+};
+
+const StatusTag = React.memo(({ status }) => {
+  const color = statusColorMap[status]?.tag || 'rgb(245 158 66 / 30%)';
+  const dot = statusColorMap[status]?.dot || '#f59e42';
+  return (
+    <Tag color={color} style={{ borderRadius: 10, fontWeight: 500 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+        <span
+          style={{
+            display: 'inline-block',
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: dot,
+            marginRight: 6,
+          }}
+        />
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    </Tag>
+  );
+});
 
 StatusTag.propTypes = {
   status: PropTypes.string.isRequired,

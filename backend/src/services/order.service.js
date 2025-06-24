@@ -147,7 +147,7 @@ export class OrderService {
               path: 'items',
               populate: {
                 path: 'product',
-                select: 'name images price',
+                select: 'name mainImage price inventory',
               },
             }),
           Order.countDocuments(query),
@@ -214,7 +214,7 @@ export class OrderService {
             path: 'items',
             populate: {
               path: 'product',
-              select: 'name images price',
+              select: 'name mainImage price inventory',
             },
           });
 
@@ -282,7 +282,7 @@ export class OrderService {
               path: 'items',
               populate: {
                 path: 'product',
-                select: 'name image price',
+                select: 'name mainImage price inventory',
               },
             }),
           Order.countDocuments({ user: userId }),

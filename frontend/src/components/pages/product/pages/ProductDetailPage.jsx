@@ -21,7 +21,7 @@ const ProductDetailPage = () => {
         const response = await axios.get(`/api/products/public/${id}`);
         setProduct(response.data.data);
       } catch (err) {
-        setError(err?.response?.data?.message || 'Không thể tải sản phẩm');
+        setError(err?.response?.data?.message || 'No product found');
       } finally {
         setLoading(false);
       }
@@ -38,7 +38,7 @@ const ProductDetailPage = () => {
 
   if (loading) return <Spin size="large" />;
   if (error) return <Alert type="error" message={error} />;
-  if (!product) return <div>Product is not exist</div>;
+  if (!product) return <div>Product not found</div>;
 
   return (
     <div className="product-detail-container">

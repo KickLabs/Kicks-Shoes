@@ -11,7 +11,6 @@ const ListingPage = () => {
   const [filters, setFilters] = useState({});
   const pageSize = 9;
 
-  // Fetch products based on filters and page
   const fetchProducts = async (newFilters, newPage = 1) => {
     try {
       const response = await axios.get('/api/products', {
