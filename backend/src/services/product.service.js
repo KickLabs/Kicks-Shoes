@@ -303,10 +303,6 @@ export class ProductService {
         keyword = '',
         category,
         brand,
-        size,
-        color,
-        minPrice,
-        maxPrice,
         sortBy = 'createdAt',
         order = 'desc',
         page = 1,
@@ -315,7 +311,6 @@ export class ProductService {
 
       const filter = {};
 
-      // 🔎 Fulltext search
       if (keyword) {
         filter.$or = [
           { name: { $regex: keyword, $options: 'i' } },
@@ -324,38 +319,23 @@ export class ProductService {
         ];
       }
 
-      // 📁 Category & brand
       if (category) filter.category = category;
       if (brand) filter.brand = brand;
 
-      // 🎨 Size & Color in inventory array
-      if (size || color) {
-        filter.inventory = { $elemMatch: {} };
-        if (size) filter.inventory.$elemMatch.size = Number(size);
-        if (color) filter.inventory.$elemMatch.color = color;
-      }
-
-      // 💰 Price range (applied to regular price)
-      if (minPrice || maxPrice) {
-        filter['price.regular'] = {};
-        if (minPrice) filter['price.regular'].$gte = Number(minPrice);
-        if (maxPrice) filter['price.regular'].$lte = Number(maxPrice);
-      }
-
-      // 🧭 Sort
       const sortOptions = {};
       sortOptions[sortBy] = order === 'asc' ? 1 : -1;
 
-      // 📄 Pagination
-      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const skip = (Number.parseInt(page) - 1) * Number.parseInt(limit);
 
-      // 🧾 Query
+      // Get total count
       const total = await Product.countDocuments(filter);
+
+      // Get paginated products
       const products = await Product.find(filter)
         .populate('category')
         .sort(sortOptions)
         .skip(skip)
-        .limit(parseInt(limit));
+        .limit(Number.parseInt(limit));
 
       return { products, total };
     } catch (error) {
