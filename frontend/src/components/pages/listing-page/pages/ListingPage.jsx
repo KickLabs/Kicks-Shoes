@@ -11,6 +11,7 @@ const ListingPage = () => {
   const [filters, setFilters] = useState({});
   const pageSize = 9;
 
+  // Fetch products based on filters and page
   const fetchProducts = async (newFilters, newPage = 1) => {
     try {
       const response = await axios.get('/api/products', {
@@ -33,7 +34,7 @@ const ListingPage = () => {
 
   const handleFilterChange = newFilters => {
     setFilters(newFilters);
-    setCurrentPage(1); // Reset về trang 1 khi filter thay đổi
+    setCurrentPage(1); // Reset to page 1 when filters change
   };
 
   return (

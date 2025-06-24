@@ -221,23 +221,35 @@ export const getProductById = async (req, res, next) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const { size, color, brand, category, minPrice, maxPrice, page = 1, limit = 9 } = req.query;
+    // Destructure all possible filters from query
+    const {
+      size,
+      color,
+      brand,
+      category,
+      minPrice,
+      maxPrice,
+      sortBy = 'createdAt',
+      order = 'desc',
+      page = 1,
+      limit = 9,
+    } = req.query;
 
-    // Only include filters that are defined and not empty
-    const filter = {};
-    if (size) filter.size = size;
-    if (color) filter.color = color;
-    if (brand) filter.brand = brand;
-    if (category) filter.category = category;
-    if (minPrice) filter.minPrice = minPrice;
-    if (maxPrice) filter.maxPrice = maxPrice;
-
-    const pagination = {
+    // Build a single query object for the service
+    const query = {
+      size: size ? Number(size) : undefined,
+      color: color || undefined,
+      brand: brand || undefined,
+      category: category || undefined,
+      minPrice: minPrice ? Number(minPrice) : undefined,
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      sortBy,
+      order,
       page: Number(page),
       limit: Number(limit),
     };
 
-    const { products, total } = await ProductService.getAllProducts(filter, pagination);
+    const { products, total } = await ProductService.getAllProducts(query);
 
     res.status(200).json({
       success: true,

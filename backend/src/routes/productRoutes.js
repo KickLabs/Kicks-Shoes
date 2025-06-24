@@ -54,5 +54,6 @@ router.put('/:id', protect, requireRoles('admin', 'shop'), updateProduct);
  * @access  Public
  */
 router.get('/public/:id', getProductById);
+router.get('/products', getAllProducts);
 
 export default router;

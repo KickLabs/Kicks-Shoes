@@ -1,23 +1,4 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-
-const ColorPanel = ({ colors }) => {
-  const [selectedColor, setSelectedColor] = useState(null);
-
-  const handleSelectColor = async color => {
-    const newColor = selectedColor === color ? null : color;
-    setSelectedColor(newColor);
-
-    try {
-      const response = await axios.get('/api/products', {
-        params: { color: newColor },
-      });
-      console.log('Filtered by color:', response.data);
-    } catch (err) {
-      console.error('Error filtering by color', err);
-    }
-  };
-
+const ColorPanel = ({ colors, selectedColor, onColorSelect }) => {
   return (
     <div className="filter-color-grid">
       {colors.map((item, index) => {
@@ -32,7 +13,7 @@ const ColorPanel = ({ colors }) => {
               backgroundColor: hex,
               borderColor: value === 'White' ? '#ccc' : selectedColor === value ? 'black' : '#ccc',
             }}
-            onClick={() => handleSelectColor(value)}
+            onClick={() => onColorSelect(value === selectedColor ? null : value)}
           />
         );
       })}

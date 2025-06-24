@@ -28,7 +28,6 @@ import {
   loginWithGoogle,
   loginWithFacebook,
   resendOtp,
-  setPassword,
 } from '../controllers/authController.js';
 import { protect, optionalAuth } from '../middlewares/auth.middleware.js';
 import { requireCustomer, requireShop, requireAdmin } from '../middlewares/role.middleware.js';

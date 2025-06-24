@@ -38,7 +38,7 @@ const ProductDetailPage = () => {
 
   if (loading) return <Spin size="large" />;
   if (error) return <Alert type="error" message={error} />;
-  if (!product) return <div>Sản phẩm không tồn tại</div>;
+  if (!product) return <div>Product is not exist</div>;
 
   return (
     <div className="product-detail-container">
