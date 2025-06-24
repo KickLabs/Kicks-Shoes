@@ -378,7 +378,10 @@ const createTokens = userId => {
 export const loginWithGoogle = async (req, res) => {
   try {
     const { email, name, picture } = req.body;
-    if (!email) return res.status(400).json({ message: 'Missing email from Google' });
+
+    if (!email) {
+      return res.status(400).json({ message: 'Thiếu email từ Google' });
+    }
 
     let user = await User.findOne({ email });
     let isNewUser = false;
@@ -386,12 +389,20 @@ export const loginWithGoogle = async (req, res) => {
     if (!user) {
       isNewUser = true;
       const fakePassword = Math.random().toString(36).slice(-8);
-      let baseUsername = email.split('@')[0],
-        username = baseUsername,
-        counter = 1;
+
+      // Đảm bảo username là duy nhất
+      let baseUsername = email.split('@')[0];
+      let username = baseUsername;
+      let counter = 1;
       while (await User.exists({ username })) {
         username = `${baseUsername}${counter++}`;
       }
+
+      // Tạo verification token và thời hạn
+      const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
+      const verificationTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 giờ
 
       user = new User({
         fullName: name || 'Google User',
@@ -405,6 +416,8 @@ export const loginWithGoogle = async (req, res) => {
         phone: '',
         reward_point: 0,
         gender: 'other',
+        verificationToken,
+        verificationTokenExpires,
       });
       await user.save();
     } else {
@@ -414,24 +427,32 @@ export const loginWithGoogle = async (req, res) => {
       }
     }
 
-    const { token, refreshToken } = createTokens(user._id);
+    // Tạo access token & refresh token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    });
+
+    const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
+      expiresIn: '7d',
+    });
+
     const userObj = user.toObject();
     delete userObj.password;
     delete userObj.__v;
 
     res.status(200).json({
       success: true,
-      message: isNewUser
-        ? 'Create account & login Google successfully'
-        : 'Login Google successfully',
+      message: 'Đăng nhập thành công',
       user: userObj,
       token,
       refreshToken,
-      isNewUser,
     });
   } catch (error) {
     console.error('Google login error:', error);
-    res.status(500).json({ success: false, message: 'Login Google failed' });
+    res.status(500).json({
+      success: false,
+      message: 'Đăng nhập Google thất bại',
+    });
   }
 };
 
@@ -446,7 +467,10 @@ export const loginWithGoogle = async (req, res) => {
 export const loginWithFacebook = async (req, res) => {
   try {
     const { email, name, picture } = req.body;
-    if (!email) return res.status(400).json({ message: 'Missing email from Facebook' });
+
+    if (!email) {
+      return res.status(400).json({ message: 'Thiếu email từ Facebook' });
+    }
 
     let user = await User.findOne({ email });
     let isNewUser = false;
@@ -454,12 +478,19 @@ export const loginWithFacebook = async (req, res) => {
     if (!user) {
       isNewUser = true;
       const fakePassword = Math.random().toString(36).slice(-8);
-      let baseUsername = email.split('@')[0],
-        username = baseUsername,
-        counter = 1;
+
+      let baseUsername = email.split('@')[0];
+      let username = baseUsername;
+      let counter = 1;
       while (await User.exists({ username })) {
         username = `${baseUsername}${counter++}`;
       }
+
+      const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
+
+      const verificationTokenExpires = new Date(Date.now() + 60 * 60 * 1000);
 
       user = new User({
         fullName: name || 'Facebook User',
@@ -473,6 +504,8 @@ export const loginWithFacebook = async (req, res) => {
         phone: '',
         reward_point: 0,
         gender: 'other',
+        verificationToken,
+        verificationTokenExpires,
       });
       await user.save();
     } else {
@@ -482,50 +515,31 @@ export const loginWithFacebook = async (req, res) => {
       }
     }
 
-    const { token, refreshToken } = createTokens(user._id);
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    });
+
+    const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
+      expiresIn: '7d',
+    });
+
     const userObj = user.toObject();
     delete userObj.password;
     delete userObj.__v;
 
     res.status(200).json({
       success: true,
-      message: isNewUser
-        ? 'Create account & login Facebook successfully'
-        : 'Login Facebook successfully',
+      message: 'Đăng nhập Facebook thành công',
       user: userObj,
       token,
       refreshToken,
-      isNewUser,
     });
   } catch (error) {
     console.error('Facebook login error:', error);
-    res.status(500).json({ success: false, message: 'Login Facebook failed' });
-  }
-};
-
-/**
- * @desc    Set password
- * @route   POST /api/auth/set-password
- * @access  Private
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} Response with success message
- */
-export const setPassword = async (req, res) => {
-  try {
-    const { password } = req.body;
-    if (!password || password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    }
-
-    const user = req.user;
-    user.password = password;
-    await user.save();
-
-    res.status(200).json({ success: true, message: 'Set password successfully' });
-  } catch (error) {
-    console.error('Set password error:', error);
-    res.status(500).json({ message: 'Set password failed' });
+    res.status(500).json({
+      success: false,
+      message: 'Đăng nhập Facebook thất bại',
+    });
   }
 };
 

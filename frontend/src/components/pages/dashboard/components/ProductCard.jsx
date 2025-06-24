@@ -1,6 +1,4 @@
-import React from 'react';
 import { EllipsisOutlined } from '@ant-design/icons';
-import nikeproduct from '../../../../assets/images/nikeproduct.png';
 
 const ProductCard = ({ product }) => {
   return (
