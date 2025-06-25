@@ -8,6 +8,7 @@
 import Product from '../models/Product.js';
 import mongoose from 'mongoose';
 import logger from '../utils/logger.js';
+import Category from '../models/Category.js';
 
 /**
  * Service class for handling product operations
@@ -297,50 +298,40 @@ export class ProductService {
    * @param {Object} query - Query parameters for filtering, sorting, and pagination
    * @returns {Promise<{products: Array<Product>, total: number}>} List of matching products and total count
    */
-  static async getAllProducts(query = {}) {
-    try {
-      const {
-        keyword = '',
-        category,
-        brand,
-        sortBy = 'createdAt',
-        order = 'desc',
-        page = 1,
-        limit = 10,
-      } = query;
+  static async getAllProducts({
+    size,
+    color,
+    brand, // brand filter added
+    category,
+    minPrice,
+    maxPrice,
+    sortBy = 'createdAt',
+    order = 'desc',
+    page = 1,
+    limit = 10,
+  }) {
+    const filter = {};
 
-      const filter = {};
+    // Filter by brand
+    if (brand) filter.brand = brand; // Apply brand filter
 
-      if (keyword) {
-        filter.$or = [
-          { name: { $regex: keyword, $options: 'i' } },
-          { summary: { $regex: keyword, $options: 'i' } },
-          { description: { $regex: keyword, $options: 'i' } },
-        ];
-      }
+    // Other filters
+    if (category) filter.category = category;
+    if (size) filter['variants.sizes'] = { $in: [size] };
+    if (color) filter['variants.colors'] = { $in: [color] };
+    if (minPrice) filter['price.regular'] = { $gte: minPrice };
+    if (maxPrice) filter['price.regular'] = { $lte: maxPrice };
 
-      if (category) filter.category = category;
-      if (brand) filter.brand = brand;
+    const sortOptions = { [sortBy]: order === 'asc' ? 1 : -1 };
+    const skip = (page - 1) * limit;
 
-      const sortOptions = {};
-      sortOptions[sortBy] = order === 'asc' ? 1 : -1;
+    const total = await Product.countDocuments(filter);
+    const products = await Product.find(filter)
+      .populate('category')
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit);
 
-      const skip = (Number.parseInt(page) - 1) * Number.parseInt(limit);
-
-      // Get total count
-      const total = await Product.countDocuments(filter);
-
-      // Get paginated products
-      const products = await Product.find(filter)
-        .populate('category')
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(Number.parseInt(limit));
-
-      return { products, total };
-    } catch (error) {
-      logger.error('Error retrieving filtered products', { error: error.message });
-      throw error;
-    }
+    return { products, total };
   }
 }
