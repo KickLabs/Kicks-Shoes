@@ -1,12 +1,12 @@
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../../../contexts/AuthContext';
-import axios from 'axios';
+import axios from 'axios'; // ✅ Dùng axios riêng, KHÔNG dùng api.js
 import { useNavigate } from 'react-router-dom';
 import { Button, message, notification } from 'antd';
 import google from '../../../../assets/images/google-logo.png';
-import facebook from '../../../../assets/images/facebook-logo.png';
 import apple from '../../../../assets/images/apple-logo.png';
 import appleWhite from '../../../../assets/images/apple-logo-white.png';
+import facebook from '../../../../assets/images/facebook-logo.png';
 import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
 
 const SocialButtons = () => {
@@ -17,6 +17,7 @@ const SocialButtons = () => {
   const loginGoogle = useGoogleLogin({
     onSuccess: async tokenResponse => {
       try {
+        // B1: Lấy thông tin user từ Google
         const { data } = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: {
             Authorization: `Bearer ${tokenResponse.access_token}`,
@@ -24,12 +25,13 @@ const SocialButtons = () => {
         });
 
         if (!data?.email) {
-          return notification.error({
+          notification.error({
             message: 'Google Login',
-            description: 'Cannot get email from Google',
+            description: 'Không thể lấy email từ Google',
           });
         }
 
+        // B2: Gửi dữ liệu về server để login
         const res = await axios.post('/api/auth/google-login', {
           email: data.email,
           name: data.name,
@@ -49,38 +51,32 @@ const SocialButtons = () => {
 
           setUser(userInfo);
           localStorage.setItem('userInfo', JSON.stringify(userInfo));
-          localStorage.setItem('accessToken', result.token);
+          localStorage.setItem('accessToken', result.token); // ✅ key đúng với api.js
           localStorage.setItem('refreshToken', result.refreshToken);
 
-          message.success('Login successfully!');
-
-          if (result.isNewUser) {
-            navigate('/set-password');
-          } else {
-            navigate('/');
-          }
+          message.success('Đăng nhập thành công!');
+          navigate('/');
         } else {
           notification.error({
             message: 'Lỗi',
-            description: result.message || 'Login failed',
+            description: result.message || 'Đăng nhập thất bại',
           });
         }
       } catch (err) {
         notification.error({
-          message: 'Login Google failed',
+          message: 'Lỗi đăng nhập Google',
           description: err?.response?.data?.message || err.message,
         });
       }
     },
   });
 
-  // -------- FACEBOOK LOGIN --------
   const handleFacebookResponse = async response => {
     try {
       if (!response.email) {
         return notification.error({
           message: 'Facebook Login',
-          description: 'Cannot get email from Facebook',
+          description: 'Không lấy được email từ Facebook',
         });
       }
 
@@ -105,23 +101,12 @@ const SocialButtons = () => {
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
         localStorage.setItem('accessToken', result.token);
         localStorage.setItem('refreshToken', result.refreshToken);
-
-        message.success('Login successfully!');
-
-        if (result.isNewUser) {
-          navigate('/set-password');
-        } else {
-          navigate('/');
-        }
-      } else {
-        notification.error({
-          message: 'Lỗi',
-          description: result.message || 'Login Facebook failed',
-        });
+        message.success('Đăng nhập thành công!');
+        navigate('/');
       }
     } catch (error) {
       notification.error({
-        message: 'Login Facebook failed',
+        message: 'Lỗi đăng nhập Facebook',
         description: error?.response?.data?.message || error.message,
       });
     }
@@ -142,6 +127,7 @@ const SocialButtons = () => {
         </Button>
       </div>
 
+      {/* Facebook Login (dùng thư viện) */}
       <div style={{ width: '100%' }}>
         <FacebookLogin
           appId={import.meta.env.VITE_FACEBOOK_APP_ID}

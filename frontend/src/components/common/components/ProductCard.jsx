@@ -40,7 +40,7 @@ const ProductCard = ({ product }) => {
         <button className="product-card__button">
           <div
             className="product-card__button-inner"
-            onClick={() => navigate(`/product/${product.id}`)}
+            onClick={() => navigate(`/product/${product._id}`)}
           >
             <span>VIEW PRODUCT -</span>
             <span className="product-card__price">{formatPrice(displayPrice)}</span>
