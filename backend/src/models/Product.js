@@ -162,14 +162,14 @@ const productSchema = new Schema(
   {
     timestamps: true,
     toJSON: { virtuals: true },
-toObject: { virtuals: true },
+    toObject: { virtuals: true },
     suppressReservedKeysWarning: true,
   }
 );
 
 // Indexes
-productSchema.index({ name: "text", brand: "text", description: "text" });
-productSchema.index({ "inventory.size": 1, "inventory.color": 1 });
+productSchema.index({ name: 'text', brand: 'text', description: 'text' });
+productSchema.index({ 'inventory.size': 1, 'inventory.color': 1 });
 
 // --- Virtuals ---
 productSchema.virtual('discountedPrice').get(function () {
