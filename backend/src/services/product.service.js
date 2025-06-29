@@ -305,6 +305,7 @@ export class ProductService {
     category,
     minPrice,
     maxPrice,
+    isNew,
     sortBy = 'createdAt',
     order = 'desc',
     page = 1,
@@ -321,6 +322,7 @@ export class ProductService {
     if (color) filter['variants.colors'] = { $in: [color] };
     if (minPrice) filter['price.regular'] = { $gte: minPrice };
     if (maxPrice) filter['price.regular'] = { $lte: maxPrice };
+    if (isNew !== undefined) filter.isNew = isNew;
 
     const sortOptions = { [sortBy]: order === 'asc' ? 1 : -1 };
     const skip = (page - 1) * limit;

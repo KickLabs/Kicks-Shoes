@@ -55,9 +55,11 @@
   justify-content: space-between;
   gap: 16px;
 }
-/* .card-wrapper {
-    min-width: 160px;
-} */
+.card-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 45px;
+}
 
 @media (max-width: 768px) {
   .new-drops-list {
@@ -83,4 +85,16 @@
   .card-wrapper .product-card {
     width: 40vw !important;
   }
+}
+
+.product-card {
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
 }
