@@ -30,85 +30,79 @@ StatusTag.propTypes = {
 
 const TableUsers = ({ title, users, onReload }) => {
   const columns = useMemo(
-  () => [
-    {
-      title: 'User ID',
-      dataIndex: 'id',
-      key: 'id',
-  render: (id) => (
-    <span title={id}>
-      {id.length > 8 ? `${id.slice(0, 8)}...` : id}
-    </span>
-  ),
-    },
-    {
-      title: 'Full Name',
-      dataIndex: 'fullName',
-      key: 'fullName',
-    },
-    {
-      title: 'Username',
-      dataIndex: 'username',
-      key: 'username',
-    },
-    {
-      title: 'Email',
-      dataIndex: 'email',
-      key: 'email',
-    },
-    {
-      title: 'Phone',
-      dataIndex: 'phone',
-      key: 'phone',
-    },
-    {
-      title: 'Role',
-      dataIndex: 'role',
-      key: 'role',
-      render: role => <Tag color={role === 'admin' ? 'blue' : 'green'}>{role}</Tag>,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: status => <StatusTag status={status ? 'Active' : 'Inactive'} />,
-    },
-    {
-      title: 'Action',
-      key: 'action',
-      render: (_, record) => (
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button
-        type="link"
-        danger={record.status === true}
-        onClick={() => handleToggleStatus(record.id, !record.status)}
-      >
-        {record.status ? "Ban" : "Unban"}
-         </Button>
-          <Button type="link" danger onClick={() => handleDelete(record.id)}>
-            <DeleteOutlined />
-          </Button>
-        </div>
-      ),
-    },
-  ],
-  []
-);
-
+    () => [
+      {
+        title: 'User ID',
+        dataIndex: 'id',
+        key: 'id',
+        render: id => <span title={id}>{id.length > 8 ? `${id.slice(0, 8)}...` : id}</span>,
+      },
+      {
+        title: 'Full Name',
+        dataIndex: 'fullName',
+        key: 'fullName',
+      },
+      {
+        title: 'Username',
+        dataIndex: 'username',
+        key: 'username',
+      },
+      {
+        title: 'Email',
+        dataIndex: 'email',
+        key: 'email',
+      },
+      {
+        title: 'Phone',
+        dataIndex: 'phone',
+        key: 'phone',
+      },
+      {
+        title: 'Role',
+        dataIndex: 'role',
+        key: 'role',
+        render: role => <Tag color={role === 'admin' ? 'blue' : 'green'}>{role}</Tag>,
+      },
+      {
+        title: 'Status',
+        dataIndex: 'status',
+        key: 'status',
+        render: status => <StatusTag status={status ? 'Active' : 'Inactive'} />,
+      },
+      {
+        title: 'Action',
+        key: 'action',
+        render: (_, record) => (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button
+              type="link"
+              danger={record.status === true}
+              onClick={() => handleToggleStatus(record.id, !record.status)}
+            >
+              {record.status ? 'Ban' : 'Unban'}
+            </Button>
+            <Button type="link" danger onClick={() => handleDelete(record.id)}>
+              <DeleteOutlined />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   const handleToggleStatus = (userId, currentStatus) => {
-  axios
-    .patch(`/api/users/${userId}/status`, { status: !currentStatus })
-    .then((res) => {
-      console.log("User status updated:", res.data);
-      // Ví dụ: reload lại danh sách nếu cần
-      onReload()
-    })
-    .catch((err) => {
-      console.error("Failed to update status:", err);
-    });
-};
-
+    axios
+      .patch(`/api/users/${userId}/status`, { status: !currentStatus })
+      .then(res => {
+        console.log('User status updated:', res.data);
+        // Ví dụ: reload lại danh sách nếu cần
+        onReload();
+      })
+      .catch(err => {
+        console.error('Failed to update status:', err);
+      });
+  };
 
   const handleDelete = id => {
     // Handle delete action
@@ -118,7 +112,13 @@ const TableUsers = ({ title, users, onReload }) => {
   return (
     <div className="recent-orders" style={{ marginTop: 24 }}>
       <h4>{title}</h4>
-      <Table columns={columns} dataSource={users} pagination={false} rowKey="id" scroll={{ x: 'max-content' }}/>
+      <Table
+        columns={columns}
+        dataSource={users}
+        pagination={false}
+        rowKey="id"
+        scroll={{ x: 'max-content' }}
+      />
     </div>
   );
 };

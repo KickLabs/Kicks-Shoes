@@ -8,7 +8,7 @@
 
 export const emailTemplates = {
   REGISTRATION: {
-    subject: "Welcome to Kicks Shoes - Verify Your Email",
+    subject: 'Welcome to Kicks Shoes - Verify Your Email',
     getContent: ({ name, verificationLink }) => `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -27,11 +27,11 @@ export const emailTemplates = {
           <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
         </div>
       </div>
-    `
+    `,
   },
 
   VERIFICATION: {
-    subject: "Verify Your Email - Kicks Shoes",
+    subject: 'Verify Your Email - Kicks Shoes',
     getContent: ({ name, verificationLink }) => `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -50,11 +50,11 @@ export const emailTemplates = {
           <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
         </div>
       </div>
-    `
+    `,
   },
 
   PASSWORD_RESET: {
-    subject: "Reset Your Password - Kicks Shoes",
+    subject: 'Reset Your Password - Kicks Shoes',
     getContent: ({ name, resetLink }) => `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -74,11 +74,11 @@ export const emailTemplates = {
           <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
         </div>
       </div>
-    `
+    `,
   },
 
   ORDER_CONFIRMATION: {
-    subject: "Order Confirmation - Kicks Shoes",
+    subject: 'Order Confirmation - Kicks Shoes',
     getContent: ({ name, orderNumber, orderDetails }) => `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -95,11 +95,11 @@ export const emailTemplates = {
           <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
         </div>
       </div>
-    `
+    `,
   },
 
   ORDER_SHIPPED: {
-    subject: "Your Order Has Shipped - Kicks Shoes",
+    subject: 'Your Order Has Shipped - Kicks Shoes',
     getContent: ({ name, orderNumber, trackingNumber }) => `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -115,11 +115,11 @@ export const emailTemplates = {
           <p style="margin: 0;">Best regards,<br>Kicks Shoes Team</p>
         </div>
       </div>
-    `
+    `,
   },
 
   OTP: {
-    subject: "Your OTP Code - Kicks Shoes",
+    subject: 'Your OTP Code - Kicks Shoes',
     getContent: ({ name, otp }) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
       <div style="text-align: center; margin-bottom: 30px;">
@@ -137,6 +137,6 @@ export const emailTemplates = {
         <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
       </div>
     </div>
-  `
-  }
+  `,
+  },
 };

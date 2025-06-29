@@ -1,9 +1,29 @@
-import { Card, Col, Divider, Row, Typography } from "antd";
-import "./OrderSummary.css";
+import { Card, Col, Divider, Row, Typography, Input, Button, Space } from 'antd';
+import { useState } from 'react';
+import './OrderSummary.css';
 
 const { Title, Text } = Typography;
 
-export default function OrderSummary() {
+export default function OrderSummary({
+  subtotal,
+  deliveryCost,
+  discount,
+  tax,
+  total,
+  onApplyCoupon,
+}) {
+  const [coupon, setCoupon] = useState('');
+  const [applying, setApplying] = useState(false);
+
+  const handleApplyCoupon = async () => {
+    if (!coupon.trim()) return;
+    setApplying(true);
+    if (onApplyCoupon) {
+      await onApplyCoupon(coupon.trim());
+    }
+    setApplying(false);
+  };
+
   return (
     <Card className="order-summary-card">
       <Title level={4} className="order-summary-title">
@@ -12,10 +32,12 @@ export default function OrderSummary() {
 
       <Row justify="space-between" className="order-summary-row">
         <Col>
-          <Text className="order-summary-text">1 ITEM</Text>
+          <Text className="order-summary-text">Subtotal</Text>
         </Col>
         <Col>
-          <Text strong>$130.00</Text>
+          <Text strong style={{ fontSize: 16 }}>
+            ${subtotal.toFixed(2)}
+          </Text>
         </Col>
       </Row>
 
@@ -24,27 +46,57 @@ export default function OrderSummary() {
           <Text className="order-summary-text">Delivery</Text>
         </Col>
         <Col>
-          <Text>$6.99</Text>
+          <Text strong style={{ fontSize: 16 }}>
+            ${deliveryCost ? deliveryCost.toFixed(2) : 'Free'}
+          </Text>
         </Col>
       </Row>
+
+      {discount > 0 && (
+        <Row justify="space-between" className="order-summary-row">
+          <Col>
+            <Text className="order-summary-text">Discount</Text>
+          </Col>
+          <Col>
+            <Text strong style={{ fontSize: 16, color: 'rgb(74, 105, 226)' }}>
+              - ${discount.toFixed(2)}
+            </Text>
+          </Col>
+        </Row>
+      )}
 
       <Row justify="space-between" className="order-summary-row">
         <Col>
           <Text className="order-summary-text">Sales Tax</Text>
         </Col>
         <Col>
-          <Text>-</Text>
+          <Text style={{ fontSize: 16 }}>{tax > 0 ? `$${tax.toFixed(2)}` : '-'}</Text>
         </Col>
       </Row>
-
+      {/* Coupon input */}
+      <div className="coupon-row">
+        <Input
+          placeholder="Enter coupon code"
+          value={coupon}
+          onChange={e => setCoupon(e.target.value)}
+          size="large"
+        />
+        <Button type="default" size="large" loading={applying} onClick={handleApplyCoupon}>
+          Apply
+        </Button>
+      </div>
       <Divider className="order-summary-divider" />
 
       <Row justify="space-between">
         <Col>
-          <Text strong>Total</Text>
+          <Text style={{ fontSize: 24 }} strong>
+            Total
+          </Text>
         </Col>
         <Col>
-          <Text style={{ fontSize: "18px" }}>$130.00</Text>
+          <Text strong style={{ fontSize: 24 }}>
+            ${total.toFixed(2)}
+          </Text>
         </Col>
       </Row>
     </Card>

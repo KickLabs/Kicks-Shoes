@@ -13,6 +13,6 @@ export const verifyOtpCode = (email, inputOtp) => {
   return record.otp === inputOtp;
 };
 
-export const deleteOtp = (email) => {
+export const deleteOtp = email => {
   otpStore.delete(email);
 };

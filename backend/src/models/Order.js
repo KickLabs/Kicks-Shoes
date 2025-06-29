@@ -40,7 +40,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['credit_card', 'paypal', 'bank_transfer', 'cash_on_delivery'],
+      enum: ['vnpay', 'cash_on_delivery'],
       required: [true, 'Payment method is required'],
     },
     paymentStatus: {
@@ -261,7 +261,7 @@ orderSchema.methods.getOrderDetails = async function () {
       path: 'items',
       populate: {
         path: 'product',
-        select: 'name image price',
+        select: 'name mainImage price inventory',
       },
     },
   ]);

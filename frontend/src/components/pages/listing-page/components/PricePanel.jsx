@@ -1,13 +1,9 @@
-import { Slider } from "antd";
+import { Slider } from 'antd';
 
-const PricePanel = ({ priceRange, isOpen }) => (
-  <Slider
-    range
-    defaultValue={priceRange}
-    min={0}
-    max={1000}
-    tooltip={{ open: isOpen }}
-  />
-);
+const PricePanel = ({ priceRange = [0, 1000], onPriceChange }) => {
+  return (
+    <Slider range defaultValue={priceRange} min={0} max={1000} onAfterChange={onPriceChange} />
+  );
+};
 
 export default PricePanel;

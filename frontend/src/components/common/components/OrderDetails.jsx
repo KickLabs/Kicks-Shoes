@@ -3,6 +3,7 @@ import {
   DownloadOutlined,
   HomeOutlined,
   UserOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import {
   Avatar,
@@ -42,27 +43,32 @@ export default function OrderDetails() {
 
   const columns = [
     {
-      title: '',
-      dataIndex: 'checkbox',
-      key: 'checkbox',
-      render: () => <input type="checkbox" />,
-      width: 40,
-    },
-    {
       title: 'Product Name',
       dataIndex: 'product',
       key: 'product',
-      render: product => (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar src={product?.images[0]} shape="square" size={32} /> {product?.name}
-        </span>
-      ),
+      render: (product, record) => {
+        const inventoryItem = product?.inventory?.find(
+          inv => inv.size === record.size && inv.color === record.color
+        );
+        const imageSrc = inventoryItem?.images?.[0] || product?.mainImage || '';
+        return (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Avatar src={imageSrc} shape="square" size={32} /> {product?.name || 'N/A'}
+          </span>
+        );
+      },
     },
     {
       title: 'Order ID',
       dataIndex: 'orderNumber',
       key: 'orderNumber',
       render: () => <b style={{ color: '#232321' }}>#{order?.orderNumber}</b>,
+    },
+    {
+      title: 'Size / Color',
+      dataIndex: 'sizeColor',
+      key: 'sizeColor',
+      render: (_, record) => `${record.size || '-'} / ${record.color || '-'}`,
     },
     {
       title: 'Quantity',
@@ -73,7 +79,7 @@ export default function OrderDetails() {
       title: 'Total',
       dataIndex: 'subtotal',
       key: 'subtotal',
-      render: val => `$${val?.toFixed(2) || '0.00'}`,
+      render: val => `$${val?.toFixed ? val.toFixed(2) : '0.00'}`,
     },
   ];
 
@@ -156,6 +162,22 @@ export default function OrderDetails() {
     setNote(e.target.value);
   };
 
+  const canCancel =
+    user?.role === 'customer' && order?.user?._id === user?._id && order?.status === 'pending';
+
+  const handleCancelOrder = () => {
+    message.info('Cancel order');
+  };
+
+  const statusColorMap = {
+    pending: 'orange',
+    processing: 'blue',
+    shipped: 'purple',
+    delivered: 'green',
+    cancelled: 'red',
+    refunded: 'default',
+  };
+
   if (error) {
     return <div className="error-message">{error}</div>;
   }
@@ -182,7 +204,11 @@ export default function OrderDetails() {
                 <span className="order-details-title">
                   Orders ID: <span className="order-details-id">#{order.orderNumber}</span>
                 </span>
-                <Tag color="orange" className="order-details-status">
+
+                <Tag
+                  color={statusColorMap[order.status] || 'orange'}
+                  className="order-details-status"
+                >
                   {order.status?.toUpperCase()}
                 </Tag>
                 <DatePicker.RangePicker
@@ -193,6 +219,19 @@ export default function OrderDetails() {
                   disabled
                 />
               </div>
+              {canCancel && (
+                <div className="order-details-actions">
+                  <Button
+                    danger
+                    block
+                    onClick={handleCancelOrder}
+                    className="order-cancel-btn"
+                    icon={<ExclamationCircleOutlined className="order-cancel-btn-icon" />}
+                  >
+                    Cancel Order
+                  </Button>
+                </div>
+              )}
               {showActions && (
                 <div className="order-details-header-actions">
                   <Select
@@ -232,7 +271,10 @@ export default function OrderDetails() {
                   <div>Shipping: {order.shippingMethod}</div>
                   <div>Payment Method: {order.paymentMethod}</div>
                   <div>
-                    Status: <Tag color="orange">{order.status?.toUpperCase()}</Tag>
+                    Status:{' '}
+                    <Tag color={statusColorMap[order.status] || 'orange'}>
+                      {order.status?.toUpperCase()}
+                    </Tag>
                   </div>
                 </Card>
               </Col>
@@ -303,7 +345,7 @@ export default function OrderDetails() {
                   <span>${order.subtotal?.toFixed(2) || '0.00'}</span>
                 </div>
                 <div className="order-details-summary-row">
-                  <span>Tax (20%)</span>
+                  <span>Tax</span>
                   <span>${order.tax?.toFixed(2) || '0.00'}</span>
                 </div>
                 <div className="order-details-summary-row">
