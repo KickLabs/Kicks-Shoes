@@ -2,7 +2,6 @@
   background: #fafbfc;
   padding: 24px;
   border-radius: 12px;
-  min-height: 100vh;
 }
 
 .order-details-header {
@@ -62,7 +61,6 @@
 .order-details-actions {
   display: flex;
   gap: 16px;
-  margin: 16px 0;
 }
 
 .order-details-products {
@@ -112,4 +110,29 @@
   color: #232321;
   font-size: 26px;
   font-weight: 700;
+}
+
+.order-cancel-btn {
+  margin-top: 16px;
+  color: #ff5858 !important;
+  border: 1px solid #ff5858;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  padding: 14px 0;
+  box-shadow: 0 2px 8px rgba(255, 88, 88, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    filter 0.2s,
+    background 0.2s;
+  width: fit-content !important;
+  padding: 20px 30px;
+}
+.order-cancel-btn:hover {
+  filter: brightness(1.08);
+  background: #ff5858 !important;
+  color: #fff !important;
 }

@@ -8,14 +8,14 @@
  * and error management.
  */
 
-import User from "../models/User.js";
-import TokenBlacklist from "../models/TokenBlacklist.js";
-import { asyncHandler } from "../middlewares/async.middleware.js";
-import { ErrorResponse } from "../utils/errorResponse.js";
-import jwt from "jsonwebtoken";
-import { sendTemplatedEmail } from "../utils/sendEmail.js";
-import logger from "../utils/logger.js";
-import { generateToken } from "../utils/jwt.js";
+import User from '../models/User.js';
+import TokenBlacklist from '../models/TokenBlacklist.js';
+import { asyncHandler } from '../middlewares/async.middleware.js';
+import { ErrorResponse } from '../utils/errorResponse.js';
+import jwt from 'jsonwebtoken';
+import { sendTemplatedEmail } from '../utils/sendEmail.js';
+import logger from '../utils/logger.js';
+import { generateToken } from '../utils/jwt.js';
 
 const otpStore = new Map();
 
@@ -36,7 +36,7 @@ export const register = async (req, res, next) => {
     if (!fullName || !username || !email || !password || !phone || !address) {
       return next(
         new ErrorResponse(
-          "Please provide full name, username, email, password, phone and address",
+          'Please provide full name, username, email, password, phone and address',
           400
         )
       );
@@ -45,14 +45,11 @@ export const register = async (req, res, next) => {
     // Check if user exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return next(new ErrorResponse("User already exists", 400));
+      return next(new ErrorResponse('User already exists', 400));
     }
 
     // Generate verification token
-    const verificationToken = generateToken(
-      { email },
-      process.env.JWT_VERIFY_EXPIRES_IN || "1h"
-    );
+    const verificationToken = generateToken({ email }, process.env.JWT_VERIFY_EXPIRES_IN || '1h');
 
     // Create user
     const user = await User.create({
@@ -62,32 +59,29 @@ export const register = async (req, res, next) => {
       password,
       phone,
       address,
-      role: "customer",
+      role: 'customer',
       isVerified: false,
       verificationToken,
-      verificationTokenExpires: new Date(Date.now() + 3600000) // 1 hour
+      verificationTokenExpires: new Date(Date.now() + 3600000), // 1 hour
     });
 
     // Send verification email
     await sendTemplatedEmail({
       email: user.email,
-      templateType: "VERIFICATION",
+      templateType: 'VERIFICATION',
       templateData: {
         name: user.fullName,
         verificationLink: `${
-          process.env.FRONTEND_URL || "http://localhost:5000"
-        }/verify-email?token=${verificationToken}`
-      }
+          process.env.FRONTEND_URL || 'http://localhost:5000'
+        }/verify-email?token=${verificationToken}`,
+      },
     });
 
     // Generate tokens
-    const accessToken = generateToken(
-      { id: user._id },
-      process.env.JWT_EXPIRES_IN || "1d"
-    );
+    const accessToken = generateToken({ id: user._id }, process.env.JWT_EXPIRES_IN || '1d');
     const refreshToken = generateToken(
       { id: user._id },
-      process.env.JWT_REFRESH_EXPIRES_IN || "7d"
+      process.env.JWT_REFRESH_EXPIRES_IN || '7d'
     );
 
     // Remove sensitive data from response
@@ -95,7 +89,7 @@ export const register = async (req, res, next) => {
     user.verificationToken = undefined;
     user.verificationTokenExpires = undefined;
 
-    logger.info("User registered successfully", { userId: user._id });
+    logger.info('User registered successfully', { userId: user._id });
 
     res.status(201).json({
       success: true,
@@ -103,14 +97,14 @@ export const register = async (req, res, next) => {
         user,
         tokens: {
           accessToken,
-          refreshToken
-        }
-      }
+          refreshToken,
+        },
+      },
     });
   } catch (error) {
-    logger.error("Error in register controller", {
+    logger.error('Error in register controller', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
@@ -126,11 +120,11 @@ export const registerApp = async (req, res, next) => {
     const { fullName, username, email, password, phone, address } = req.body;
 
     if (!fullName || !username || !email || !password || !phone || !address) {
-      return next(new ErrorResponse("Missing required fields", 400));
+      return next(new ErrorResponse('Missing required fields', 400));
     }
 
     const userExists = await User.findOne({ email });
-    if (userExists) return next(new ErrorResponse("User already exists", 400));
+    if (userExists) return next(new ErrorResponse('User already exists', 400));
 
     const user = await User.create({
       fullName,
@@ -139,8 +133,8 @@ export const registerApp = async (req, res, next) => {
       password,
       phone,
       address,
-      role: "customer",
-      isVerified: false
+      role: 'customer',
+      isVerified: false,
     });
 
     // Generate OTP
@@ -151,32 +145,32 @@ export const registerApp = async (req, res, next) => {
     // Send email
     await sendTemplatedEmail({
       email,
-      templateType: "OTP",
+      templateType: 'OTP',
       templateData: {
         name: fullName,
-        otp
-      }
+        otp,
+      },
     });
 
-    const accessToken = generateToken({ id: user._id }, "1d");
-    const refreshToken = generateToken({ id: user._id }, "7d");
+    const accessToken = generateToken({ id: user._id }, '1d');
+    const refreshToken = generateToken({ id: user._id }, '7d');
 
     user.password = undefined;
 
     res.status(201).json({
       success: true,
-      message: "User registered. OTP sent to email.",
+      message: 'User registered. OTP sent to email.',
       data: {
         user,
         tokens: {
           accessToken,
-          refreshToken
+          refreshToken,
         },
-        otpExpiresAt: new Date(expiresAt)
-      }
+        otpExpiresAt: new Date(expiresAt),
+      },
     });
   } catch (error) {
-    logger.error("Error in registerApp controller", { error: error.message });
+    logger.error('Error in registerApp controller', { error: error.message });
     next(error);
   }
 };
@@ -191,42 +185,38 @@ export const verifyOtp = async (req, res, next) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      return next(new ErrorResponse("Email and OTP are required", 400));
+      return next(new ErrorResponse('Email and OTP are required', 400));
     }
 
     const record = otpStore.get(email);
     if (!record || record.otp !== otp || Date.now() > record.expiresAt) {
-      return next(new ErrorResponse("Invalid or expired OTP", 400));
+      return next(new ErrorResponse('Invalid or expired OTP', 400));
     }
 
-    const user = await User.findOneAndUpdate(
-      { email },
-      { isVerified: true },
-      { new: true }
-    );
+    const user = await User.findOneAndUpdate({ email }, { isVerified: true }, { new: true });
 
-    if (!user) return next(new ErrorResponse("User not found", 404));
+    if (!user) return next(new ErrorResponse('User not found', 404));
 
     otpStore.delete(email);
 
-    const accessToken = generateToken({ id: user._id }, "1d");
-    const refreshToken = generateToken({ id: user._id }, "7d");
+    const accessToken = generateToken({ id: user._id }, '1d');
+    const refreshToken = generateToken({ id: user._id }, '7d');
 
     user.password = undefined;
 
     res.status(200).json({
       success: true,
-      message: "OTP verified. Account activated.",
+      message: 'OTP verified. Account activated.',
       data: {
         user,
         tokens: {
           accessToken,
-          refreshToken
-        }
-      }
+          refreshToken,
+        },
+      },
     });
   } catch (error) {
-    logger.error("Error in verifyOtp controller", { error: error.message });
+    logger.error('Error in verifyOtp controller', { error: error.message });
     next(error);
   }
 };
@@ -241,10 +231,10 @@ export const resendOtp = async (req, res, next) => {
     const { email } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return next(new ErrorResponse("User not found", 404));
+    if (!user) return next(new ErrorResponse('User not found', 404));
 
     if (user.isVerified) {
-      return next(new ErrorResponse("User already verified", 400));
+      return next(new ErrorResponse('User already verified', 400));
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -253,23 +243,23 @@ export const resendOtp = async (req, res, next) => {
 
     await sendTemplatedEmail({
       email,
-      templateType: "OTP",
+      templateType: 'OTP',
       templateData: {
         name: user.fullName,
-        otp
-      }
+        otp,
+      },
     });
 
     res.status(200).json({
       success: true,
-      message: "OTP resent successfully.",
+      message: 'OTP resent successfully.',
       data: {
         email,
-        otpExpiresAt: new Date(expiresAt)
-      }
+        otpExpiresAt: new Date(expiresAt),
+      },
     });
   } catch (error) {
-    logger.error("Error in resendOtp controller", { error: error.message });
+    logger.error('Error in resendOtp controller', { error: error.message });
     next(error);
   }
 };
@@ -288,15 +278,15 @@ export const login = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return next(new ErrorResponse("Please provide email and password", 400));
+      return next(new ErrorResponse('Please provide email and password', 400));
     }
 
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
       return next(
         new ErrorResponse(
-          "Email not found. Please check your email or register a new account.",
+          'Email not found. Please check your email or register a new account.',
           401
         )
       );
@@ -315,7 +305,7 @@ export const login = async (req, res, next) => {
     if (!user.isVerified) {
       return next(
         new ErrorResponse(
-          "Please verify your email before logging in. Check your inbox for the verification link.",
+          'Please verify your email before logging in. Check your inbox for the verification link.',
           401
         )
       );
@@ -324,24 +314,21 @@ export const login = async (req, res, next) => {
     if (!user.status) {
       return next(
         new ErrorResponse(
-          "Your account has been deactivated. Please contact support for assistance.",
+          'Your account has been deactivated. Please contact support for assistance.',
           401
         )
       );
     }
 
-    const accessToken = generateToken(
-      { id: user._id },
-      process.env.JWT_EXPIRES_IN || "1d"
-    );
+    const accessToken = generateToken({ id: user._id }, process.env.JWT_EXPIRES_IN || '1d');
     const refreshToken = generateToken(
       { id: user._id },
-      process.env.JWT_REFRESH_EXPIRES_IN || "7d"
+      process.env.JWT_REFRESH_EXPIRES_IN || '7d'
     );
 
     user.password = undefined;
 
-    logger.info("User logged in successfully", { userId: user._id });
+    logger.info('User logged in successfully', { userId: user._id });
 
     res.status(200).json({
       success: true,
@@ -349,35 +336,62 @@ export const login = async (req, res, next) => {
         user,
         tokens: {
           accessToken,
-          refreshToken
-        }
-      }
+          refreshToken,
+        },
+      },
     });
   } catch (error) {
-    logger.error("Error in login controller", {
+    logger.error('Error in login controller', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
 };
 
+/**
+ * @desc    Create tokens
+ * @route   POST /api/auth/create-tokens
+ * @access  Private
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} Response with success message
+ */
+const createTokens = userId => {
+  const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: '1h',
+  });
+  const refreshToken = jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: '7d',
+  });
+  return { token, refreshToken };
+};
+
+/**
+ * @desc    Login with Google
+ * @route   POST /api/auth/login-with-google
+ * @access  Public
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} Response with success message
+ */
 export const loginWithGoogle = async (req, res) => {
   try {
     const { email, name, picture } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: "Thiếu email từ Google" });
+      return res.status(400).json({ message: 'Thiếu email từ Google' });
     }
 
     let user = await User.findOne({ email });
+    let isNewUser = false;
 
     if (!user) {
-      // Tạo password giả
+      isNewUser = true;
       const fakePassword = Math.random().toString(36).slice(-8);
 
       // Đảm bảo username là duy nhất
-      let baseUsername = email.split("@")[0];
+      let baseUsername = email.split('@')[0];
       let username = baseUsername;
       let counter = 1;
       while (await User.exists({ username })) {
@@ -386,39 +400,41 @@ export const loginWithGoogle = async (req, res) => {
 
       // Tạo verification token và thời hạn
       const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, {
-        expiresIn: "1h"
+        expiresIn: '1h',
       });
       const verificationTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 giờ
 
       user = new User({
-        fullName: name || "Google User",
+        fullName: name || 'Google User',
         email,
         username,
         password: fakePassword,
-        avatar: picture || undefined,
+        avatar: picture?.data?.url,
         isVerified: true,
-        role: "customer",
-        address: "",
-        phone: "",
+        role: 'customer',
+        address: '',
+        phone: '',
         reward_point: 0,
-        gender: "other",
+        gender: 'other',
         verificationToken,
-        verificationTokenExpires
+        verificationTokenExpires,
       });
-
       await user.save();
+    } else {
+      if (picture?.data?.url && user.avatar !== picture.data.url) {
+        user.avatar = picture.data.url;
+        await user.save();
+      }
     }
 
     // Tạo access token & refresh token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h"
+      expiresIn: '1h',
     });
 
-    const refreshToken = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_REFRESH_SECRET,
-      { expiresIn: "7d" }
-    );
+    const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
+      expiresIn: '7d',
+    });
 
     const userObj = user.toObject();
     delete userObj.password;
@@ -426,34 +442,44 @@ export const loginWithGoogle = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Đăng nhập thành công",
+      message: 'Đăng nhập thành công',
       user: userObj,
       token,
-      refreshToken
+      refreshToken,
     });
   } catch (error) {
-    console.error("Google login error:", error);
+    console.error('Google login error:', error);
     res.status(500).json({
       success: false,
-      message: "Đăng nhập Google thất bại"
+      message: 'Đăng nhập Google thất bại',
     });
   }
 };
 
+/**
+ * @desc    Login with Facebook
+ * @route   POST /api/auth/login-with-facebook
+ * @access  Public
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} Response with success message
+ */
 export const loginWithFacebook = async (req, res) => {
   try {
     const { email, name, picture } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: "Thiếu email từ Facebook" });
+      return res.status(400).json({ message: 'Thiếu email từ Facebook' });
     }
 
     let user = await User.findOne({ email });
+    let isNewUser = false;
 
     if (!user) {
+      isNewUser = true;
       const fakePassword = Math.random().toString(36).slice(-8);
 
-      let baseUsername = email.split("@")[0];
+      let baseUsername = email.split('@')[0];
       let username = baseUsername;
       let counter = 1;
       while (await User.exists({ username })) {
@@ -461,39 +487,41 @@ export const loginWithFacebook = async (req, res) => {
       }
 
       const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, {
-        expiresIn: "1h"
+        expiresIn: '1h',
       });
 
       const verificationTokenExpires = new Date(Date.now() + 60 * 60 * 1000);
 
       user = new User({
-        fullName: name || "Facebook User",
+        fullName: name || 'Facebook User',
         email,
         username,
         password: fakePassword,
-        avatar: picture || undefined,
+        avatar: picture?.data?.url,
         isVerified: true,
-        role: "customer",
-        address: "",
-        phone: "",
+        role: 'customer',
+        address: '',
+        phone: '',
         reward_point: 0,
-        gender: "other",
+        gender: 'other',
         verificationToken,
-        verificationTokenExpires
+        verificationTokenExpires,
       });
-
       await user.save();
+    } else {
+      if (picture?.data?.url && user.avatar !== picture.data.url) {
+        user.avatar = picture.data.url;
+        await user.save();
+      }
     }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h"
+      expiresIn: '1h',
     });
 
-    const refreshToken = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_REFRESH_SECRET,
-      { expiresIn: "7d" }
-    );
+    const refreshToken = jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
+      expiresIn: '7d',
+    });
 
     const userObj = user.toObject();
     delete userObj.password;
@@ -501,16 +529,16 @@ export const loginWithFacebook = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Đăng nhập Facebook thành công",
+      message: 'Đăng nhập Facebook thành công',
       user: userObj,
       token,
-      refreshToken
+      refreshToken,
     });
   } catch (error) {
-    console.error("Facebook login error:", error);
+    console.error('Facebook login error:', error);
     res.status(500).json({
       success: false,
-      message: "Đăng nhập Facebook thất bại"
+      message: 'Đăng nhập Facebook thất bại',
     });
   }
 };
@@ -529,19 +557,19 @@ export const getMe = async (req, res, next) => {
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return next(new ErrorResponse("User not found", 404));
+      return next(new ErrorResponse('User not found', 404));
     }
 
-    logger.info("User profile retrieved successfully", { userId: user._id });
+    logger.info('User profile retrieved successfully', { userId: user._id });
 
     res.status(200).json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
-    logger.error("Error in getMe controller", {
+    logger.error('Error in getMe controller', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
@@ -558,16 +586,7 @@ export const getMe = async (req, res, next) => {
  */
 export const updateProfile = async (req, res, next) => {
   try {
-    const {
-      fullName,
-      username,
-      email,
-      phone,
-      address,
-      dateOfBirth,
-      gender,
-      aboutMe
-    } = req.body;
+    const { fullName, username, email, phone, address, dateOfBirth, gender, aboutMe } = req.body;
 
     // Build update object
     const updateFields = {};
@@ -590,24 +609,24 @@ export const updateProfile = async (req, res, next) => {
       { $set: updateFields },
       {
         new: true,
-        runValidators: true
+        runValidators: true,
       }
     );
 
     if (!user) {
-      return next(new ErrorResponse("User not found", 404));
+      return next(new ErrorResponse('User not found', 404));
     }
 
-    logger.info("User profile updated successfully", { userId: user._id });
+    logger.info('User profile updated successfully', { userId: user._id });
 
     res.status(200).json({
       success: true,
-      data: user
+      data: user,
     });
   } catch (error) {
-    logger.error("Error in updateProfile controller", {
+    logger.error('Error in updateProfile controller', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
@@ -625,43 +644,38 @@ export const updateProfile = async (req, res, next) => {
 export const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    logger.info("Change password request", req.body);
+    logger.info('Change password request', req.body);
 
     if (!currentPassword || !newPassword) {
-      return next(
-        new ErrorResponse(
-          "Please provide current password and new password",
-          400
-        )
-      );
+      return next(new ErrorResponse('Please provide current password and new password', 400));
     }
 
-    const user = await User.findById(req.user.id).select("+password");
+    const user = await User.findById(req.user.id).select('+password');
 
     if (!user) {
-      return next(new ErrorResponse("User not found", 404));
+      return next(new ErrorResponse('User not found', 404));
     }
 
     // Check current password
     const isMatch = await user.matchPassword(currentPassword);
     if (!isMatch) {
-      return next(new ErrorResponse("Current password is incorrect", 401));
+      return next(new ErrorResponse('Current password is incorrect', 401));
     }
 
     // Update password
     user.password = newPassword;
     await user.save();
 
-    logger.info("User password changed successfully", { userId: user._id });
+    logger.info('User password changed successfully', { userId: user._id });
 
     res.status(200).json({
       success: true,
-      message: "Password changed successfully"
+      message: 'Password changed successfully',
     });
   } catch (error) {
-    logger.error("Error in changePassword controller", {
+    logger.error('Error in changePassword controller', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
@@ -681,41 +695,38 @@ export const forgotPassword = async (req, res, next) => {
     const { email } = req.body;
 
     if (!email) {
-      return next(new ErrorResponse("Please provide an email", 400));
+      return next(new ErrorResponse('Please provide an email', 400));
     }
 
     const user = await User.findOne({ email });
 
     if (!user) {
-      return next(new ErrorResponse("User not found", 404));
+      return next(new ErrorResponse('User not found', 404));
     }
 
     // Generate reset token
-    const resetToken = generateToken(
-      { id: user._id },
-      process.env.JWT_RESET_EXPIRES_IN || "1h"
-    );
+    const resetToken = generateToken({ id: user._id }, process.env.JWT_RESET_EXPIRES_IN || '1h');
 
     // Send reset email
     await sendTemplatedEmail({
       email: user.email,
-      templateType: "PASSWORD_RESET",
+      templateType: 'PASSWORD_RESET',
       templateData: {
         name: user.username,
-        resetLink: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
-      }
+        resetLink: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`,
+      },
     });
 
-    logger.info("Password reset email sent successfully", { userId: user._id });
+    logger.info('Password reset email sent successfully', { userId: user._id });
 
     res.status(200).json({
       success: true,
-      message: "Password reset email sent"
+      message: 'Password reset email sent',
     });
   } catch (error) {
-    logger.error("Error in forgotPassword controller", {
+    logger.error('Error in forgotPassword controller', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
@@ -735,9 +746,7 @@ export const resetPassword = async (req, res, next) => {
     const { token, newPassword } = req.body;
 
     if (!token || !newPassword) {
-      return next(
-        new ErrorResponse("Please provide token and new password", 400)
-      );
+      return next(new ErrorResponse('Please provide token and new password', 400));
     }
 
     // Verify token
@@ -747,23 +756,23 @@ export const resetPassword = async (req, res, next) => {
     console.log(newPassword);
 
     if (!user) {
-      return next(new ErrorResponse("User not found", 404));
+      return next(new ErrorResponse('User not found', 404));
     }
 
     // Update password
     user.password = newPassword;
     await user.save();
 
-    logger.info("Password reset successfully", { userId: user._id });
+    logger.info('Password reset successfully', { userId: user._id });
 
     res.status(200).json({
       success: true,
-      message: "Password reset successfully"
+      message: 'Password reset successfully',
     });
   } catch (error) {
-    logger.error("Error in resetPassword controller", {
+    logger.error('Error in resetPassword controller', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
@@ -779,19 +788,19 @@ export const resetPassword = async (req, res, next) => {
  * @returns {Object} Response with success message
  */
 export const logout = asyncHandler(async (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
+  const token = req.headers.authorization?.split(' ')[1];
 
   if (token) {
     // Add token to blacklist
     await TokenBlacklist.create({
       token,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
     });
   }
 
   res.status(200).json({
     success: true,
-    data: {}
+    data: {},
   });
 });
 
@@ -820,7 +829,7 @@ export const verifyEmail = async (req, res, next) => {
     const user = await User.findOne({
       email: decoded.email,
       verificationToken: token,
-      verificationTokenExpires: { $gt: Date.now() }
+      verificationTokenExpires: { $gt: Date.now() },
     });
 
     if (!user) {
@@ -835,18 +844,16 @@ export const verifyEmail = async (req, res, next) => {
     user.verificationTokenExpires = undefined;
     await user.save();
 
-    logger.info("Email verified successfully", { userId: user._id });
+    logger.info('Email verified successfully', { userId: user._id });
 
     // Redirect to success page
     return res.redirect(
-      `${process.env.FRONTEND_URL}/email-verified?email=${encodeURIComponent(
-        user.email
-      )}`
+      `${process.env.FRONTEND_URL}/email-verified?email=${encodeURIComponent(user.email)}`
     );
   } catch (error) {
-    logger.error("Error in verifyEmail controller", {
+    logger.error('Error in verifyEmail controller', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     return res.redirect(
       `${
@@ -870,23 +877,23 @@ export const resendVerification = async (req, res, next) => {
     const { email } = req.body;
 
     if (!email) {
-      return next(new ErrorResponse("Email is required", 400));
+      return next(new ErrorResponse('Email is required', 400));
     }
 
     const user = await User.findOne({ email });
 
     if (!user) {
-      return next(new ErrorResponse("User not found", 404));
+      return next(new ErrorResponse('User not found', 404));
     }
 
     if (user.isVerified) {
-      return next(new ErrorResponse("Email is already verified", 400));
+      return next(new ErrorResponse('Email is already verified', 400));
     }
 
     // Generate new verification token
     const verificationToken = generateToken(
       { email: user.email },
-      process.env.JWT_VERIFY_EXPIRES_IN || "1h"
+      process.env.JWT_VERIFY_EXPIRES_IN || '1h'
     );
 
     // Update user
@@ -897,25 +904,25 @@ export const resendVerification = async (req, res, next) => {
     // Send verification email
     await sendTemplatedEmail({
       email: user.email,
-      templateType: "VERIFICATION",
+      templateType: 'VERIFICATION',
       templateData: {
         name: user.username,
         verificationLink: `${
-          process.env.FRONTEND_URL || "http://localhost:5000"
-        }/verify-email?token=${verificationToken}`
-      }
+          process.env.FRONTEND_URL || 'http://localhost:5000'
+        }/verify-email?token=${verificationToken}`,
+      },
     });
 
-    logger.info("Verification email resent successfully", { userId: user._id });
+    logger.info('Verification email resent successfully', { userId: user._id });
 
     res.status(200).json({
       success: true,
-      message: "Verification email sent successfully"
+      message: 'Verification email sent successfully',
     });
   } catch (error) {
-    logger.error("Error in resendVerification controller", {
+    logger.error('Error in resendVerification controller', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
@@ -934,7 +941,7 @@ export const refreshToken = asyncHandler(async (req, res, next) => {
   const { refreshToken } = req.body;
 
   if (!refreshToken) {
-    return next(new ErrorResponse("Refresh token is required", 400));
+    return next(new ErrorResponse('Refresh token is required', 400));
   }
 
   try {
@@ -942,18 +949,18 @@ export const refreshToken = asyncHandler(async (req, res, next) => {
     const user = await User.findById(decoded.id);
 
     if (!user) {
-      return next(new ErrorResponse("User not found", 404));
+      return next(new ErrorResponse('User not found', 404));
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRE
+      expiresIn: process.env.JWT_EXPIRE,
     });
 
     res.status(200).json({
       success: true,
-      token
+      token,
     });
   } catch (err) {
-    return next(new ErrorResponse("Invalid refresh token", 401));
+    return next(new ErrorResponse('Invalid refresh token', 401));
   }
 });

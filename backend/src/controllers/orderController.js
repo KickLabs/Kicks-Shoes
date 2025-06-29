@@ -17,9 +17,7 @@ const orderValidationRules = {
     body('products.*.id').isMongoId().withMessage('Invalid product ID'),
     body('products.*.quantity').isInt({ min: 1 }).withMessage('Invalid quantity'),
     body('totalAmount').isFloat({ min: 0 }).withMessage('Invalid total amount'),
-    body('paymentMethod')
-      .isIn(['credit_card', 'paypal', 'bank_transfer', 'cash_on_delivery'])
-      .withMessage('Invalid payment method'),
+    body('paymentMethod').isIn(['vnpay', 'cash_on_delivery']).withMessage('Invalid payment method'),
     body('shippingAddress').isString().notEmpty().withMessage('Shipping address is required'),
     body('shippingMethod')
       .optional()

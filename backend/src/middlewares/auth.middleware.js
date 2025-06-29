@@ -113,6 +113,12 @@ export const optionalAuth = async (req, res, next) => {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.id);
+      // Trong protect
+console.log("Decoded token:", decoded);
+console.log("User found:", user);
+
+// Trong requireRoles hoặc authorize
+
 
       if (user && user.isVerified) {
         req.user = user;
@@ -149,6 +155,8 @@ export const authorize = (...roles) => {
         )
       );
     }
+console.log("User role:", req.user.role);
+
     next();
   };
 };

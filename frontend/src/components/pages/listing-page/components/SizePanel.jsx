@@ -1,19 +1,13 @@
-// SizePanel.jsx
-import React from "react";
-
 const SizePanel = ({ sizes, selectedSize, onSizeSelect }) => {
   return (
     <div className="filter-size-grid">
-      {sizes.map((size) => (
+      {sizes.map((value, index) => (
         <button
-          key={size.value}
-          className={`size-button ${
-            selectedSize === size.value ? "active" : ""
-          }`}
-          onClick={() => onSizeSelect(size.value)}
-          disabled={size.disabled}
+          key={value ?? index}
+          className={`size-button ${selectedSize === value ? 'active' : ''}`}
+          onClick={() => onSizeSelect(value === selectedSize ? null : value)}
         >
-          {size.value}
+          {value}
         </button>
       ))}
     </div>
