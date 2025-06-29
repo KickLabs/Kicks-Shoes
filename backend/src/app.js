@@ -32,6 +32,7 @@ import productRoutes from './routes/productRoutes.js';
 import rewardPointRoutes from './routes/rewardPointRoutes.js';
 import discountRoutes from './routes/discountRoutes.js';
 import favouriteRoutes from './routes/favouriteRoutes.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
 import { default as shopRoutes, default as storeRoutes } from './routes/storeRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import cartRoutes from './routes/cartRoutes.js'; // Added from feature/HueSuong/cart-be
@@ -86,7 +87,7 @@ app.use('/api/reward-points', rewardPointRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/favourites', favouriteRoutes);
-
+app.use('/api/feedback', feedbackRoutes);
 // Start cron jobs
 startDiscountStatusUpdateCron();
 
