@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Slider } from 'antd';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 
 const PricePanel = ({ priceRange = [0, 1000], isOpen = false }) => {
   const [selectedPrice, setSelectedPrice] = useState(priceRange);
@@ -9,11 +9,8 @@ const PricePanel = ({ priceRange = [0, 1000], isOpen = false }) => {
     setSelectedPrice(value);
 
     try {
-      const response = await axios.get('/api/products', {
-        params: {
-          minPrice: value[0],
-          maxPrice: value[1],
-        },
+      const response = await axiosInstance.get('/products', {
+        params: { priceRange: value },
       });
       console.log('Filtered by price:', response.data);
     } catch (err) {

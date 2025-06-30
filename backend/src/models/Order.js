@@ -57,7 +57,7 @@ const orderSchema = new mongoose.Schema(
       type: Date,
       validate: {
         validator: function (v) {
-          return v > new Date();
+          return !v || v > new Date();
         },
         message: 'Estimated delivery date must be in the future',
       },
@@ -74,6 +74,7 @@ const orderSchema = new mongoose.Schema(
     orderNumber: {
       type: String,
       unique: true,
+      sparse: true,
     },
     shippingMethod: {
       type: String,
@@ -99,6 +100,34 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: [0, 'Subtotal cannot be negative'],
+    },
+    // VNPay transaction fields
+    transactionId: {
+      type: String,
+      trim: true,
+    },
+    paymentDate: {
+      type: Date,
+    },
+    vnpResponseCode: {
+      type: String,
+      trim: true,
+    },
+    vnpTxnRef: {
+      type: String,
+      trim: true,
+    },
+    vnpAmount: {
+      type: Number,
+      min: [0, 'Amount cannot be negative'],
+    },
+    vnpBankCode: {
+      type: String,
+      trim: true,
+    },
+    vnpPayDate: {
+      type: String,
+      trim: true,
     },
     // paymentDetails: {
     //   cardNumber: {
@@ -131,7 +160,7 @@ orderSchema.index({ orderNumber: 1 });
 
 // Virtual for formatted order number
 orderSchema.virtual('formattedOrderNumber').get(function () {
-  return `#${this.orderNumber}`;
+  return this.orderNumber ? `#${this.orderNumber}` : '';
 });
 
 // Virtual for formatted total price
@@ -172,7 +201,7 @@ orderSchema.virtual('orderSummary').get(function () {
 
 // Generate order number before saving
 orderSchema.pre('save', async function (next) {
-  if (this.isNew) {
+  if (this.isNew && !this.orderNumber) {
     try {
       // Get current date components
       const date = new Date();
@@ -181,8 +210,16 @@ orderSchema.pre('save', async function (next) {
       const day = date.getDate().toString().padStart(2, '0');
 
       // Get count of orders for today
-      const startOfDay = new Date(date.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const endOfDay = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        23,
+        59,
+        59,
+        999
+      );
 
       const count = await this.constructor.countDocuments({
         createdAt: {
@@ -192,10 +229,6 @@ orderSchema.pre('save', async function (next) {
       });
 
       // Generate order number format: YYMMDD-XXXX
-      // YY: Year (last 2 digits)
-      // MM: Month (2 digits)
-      // DD: Day (2 digits)
-      // XXXX: Sequential number for the day (4 digits)
       const sequence = (count + 1).toString().padStart(4, '0');
       this.orderNumber = `${year}${month}${day}-${sequence}`;
     } catch (error) {
@@ -280,7 +313,6 @@ orderSchema.methods.getOrderDetails = async function () {
     user: this.user,
     items: this.items,
     orderSummary: this.orderSummary,
-    paymentDetails: this.paymentDetails,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };

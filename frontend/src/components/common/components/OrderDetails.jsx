@@ -4,6 +4,7 @@ import {
   HomeOutlined,
   UserOutlined,
   ExclamationCircleOutlined,
+  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import {
   Avatar,
@@ -26,7 +27,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import './order-details.css';
 import TabHeader from './TabHeader';
 import { useLocation } from 'react-router-dom';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 
 const { Option } = Select;
 
@@ -34,7 +35,10 @@ export default function OrderDetails() {
   const { setActiveTab } = useContext(ActiveTabContext);
   const { user } = useAuth();
   const location = useLocation();
-  const showActions = location.pathname.includes('/dashboard/orders/');
+  const showActions =
+    location.pathname.includes('/dashboard/orders/') ||
+    user?.role === 'admin' ||
+    user?.role === 'shop';
   const orderId = location.pathname.split('/').pop();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -100,13 +104,10 @@ export default function OrderDetails() {
         setLoading(true);
         setError(null);
 
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/orders/${orderId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        const response = await axiosInstance.get(`/orders/${orderId}`);
 
         if (response.data.success) {
+          console.log('Order data received:', response.data.data);
           setOrder(response.data.data);
           setNote(response.data.data.notes || '');
         } else {
@@ -132,17 +133,9 @@ export default function OrderDetails() {
   const handleStatusChange = async value => {
     try {
       setLoading(true);
-      const response = await axios.patch(
-        `${import.meta.env.VITE_API_URL}/api/orders/${orderId}/status`,
-        {
-          status: value.toLowerCase(),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await axiosInstance.patch(`/orders/${orderId}/status`, {
+        status: value.toLowerCase(),
+      });
 
       if (response.data.success) {
         setOrder(prev => ({ ...prev, status: value.toLowerCase() }));
@@ -178,6 +171,13 @@ export default function OrderDetails() {
     refunded: 'default',
   };
 
+  const paymentStatusColorMap = {
+    pending: 'orange',
+    paid: 'green',
+    failed: 'red',
+    refunded: 'gold',
+  };
+
   if (error) {
     return <div className="error-message">{error}</div>;
   }
@@ -190,17 +190,38 @@ export default function OrderDetails() {
     );
   }
 
+  // Debug log
+  console.log('Rendering order details:', {
+    orderNumber: order.orderNumber,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
+  });
+
   return (
     <>
-      {order?.user?._id === user?._id || user?.role === 'admin' ? (
+      {order?.user?._id === user?._id || user?.role === 'admin' || user?.role === 'shop' ? (
         <>
           <TabHeader
-            breadcrumb="Order Details"
-            anotherBreadcrumb={`Orders ID: #${order.orderNumber}`}
+            breadcrumb={user?.role === 'shop' ? 'Shop Dashboard' : 'Order Details'}
+            anotherBreadcrumb={
+              user?.role === 'shop'
+                ? `Orders / #${order.orderNumber}`
+                : `Orders ID: #${order.orderNumber}`
+            }
           />
           <div className="order-details-container">
             <div className="order-details-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {user?.role === 'shop' && (
+                  <Button
+                    icon={<ArrowLeftOutlined />}
+                    onClick={() => (window.location.href = '/shop/orders')}
+                    style={{ marginRight: 8 }}
+                  >
+                    Back to Orders
+                  </Button>
+                )}
                 <span className="order-details-title">
                   Orders ID: <span className="order-details-id">#{order.orderNumber}</span>
                 </span>
@@ -270,10 +291,22 @@ export default function OrderDetails() {
                   <div style={{ fontWeight: 600, marginBottom: 8 }}>Order Info</div>
                   <div>Shipping: {order.shippingMethod}</div>
                   <div>Payment Method: {order.paymentMethod}</div>
-                  <div>
-                    Status:{' '}
-                    <Tag color={statusColorMap[order.status] || 'orange'}>
+                  <div style={{ marginTop: 8 }}>
+                    Order Status:{' '}
+                    <Tag
+                      color={statusColorMap[order.status] || 'orange'}
+                      style={{ fontWeight: 600 }}
+                    >
                       {order.status?.toUpperCase()}
+                    </Tag>
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    Payment Status:{' '}
+                    <Tag
+                      color={paymentStatusColorMap[order.paymentStatus] || 'orange'}
+                      style={{ fontWeight: 600 }}
+                    >
+                      {(order.paymentStatus || 'pending').toUpperCase()}
                     </Tag>
                   </div>
                 </Card>

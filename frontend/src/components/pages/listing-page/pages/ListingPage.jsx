@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pagination } from 'antd';
 import FilterSidebar from '../components/FilterSidebar';
 import ProductCard from '../../../common/components/ProductCard';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 
 const ListingPage = () => {
   const [products, setProducts] = useState([]);
@@ -13,7 +13,7 @@ const ListingPage = () => {
 
   const fetchProducts = async (newFilters, newPage = 1) => {
     try {
-      const response = await axios.get('/api/products', {
+      const response = await axiosInstance.get('/products', {
         params: {
           ...newFilters,
           page: newPage,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 
 const ColorPanel = ({ colors }) => {
   const [selectedColor, setSelectedColor] = useState(null);
@@ -9,7 +9,7 @@ const ColorPanel = ({ colors }) => {
     setSelectedColor(newColor);
 
     try {
-      const response = await axios.get('/api/products', {
+      const response = await axiosInstance.get('/products', {
         params: { color: newColor },
       });
       console.log('Filtered by color:', response.data);

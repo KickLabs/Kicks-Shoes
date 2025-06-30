@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 
 const SizePanel = ({ sizes }) => {
   const [selectedSize, setSelectedSize] = useState(null);
@@ -9,7 +9,7 @@ const SizePanel = ({ sizes }) => {
     setSelectedSize(newSize);
 
     try {
-      const response = await axios.get('/api/products', {
+      const response = await axiosInstance.get('/products', {
         params: { size: newSize },
       });
       console.log('Filtered by size:', response.data);

@@ -12,7 +12,7 @@
 
 // export default CategoryPanel;
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 import { Checkbox, Spin, message } from 'antd';
 
 const CategoryPanel = () => {
@@ -22,7 +22,7 @@ const CategoryPanel = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axios.get('/api/categories'); // tương ứng với router.get("/", ...) bên backend
+        const response = await axiosInstance.get('/categories'); // tương ứng với router.get("/", ...) bên backend
         setCategories(response.data.data || []); // backend của bạn trả về { data: [...] }
       } catch (error) {
         console.error('Failed to fetch categories', error);
