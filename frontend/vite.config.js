@@ -1,29 +1,31 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  assetsInclude: ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.svg"],
+  assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg'],
   resolve: {
     alias: {
-      "@assets": "/src/assets",
+      '@': path.resolve(__dirname, './src'),
+      '@assets': '/src/assets',
     },
   },
   server: {
     port: 5173,
     proxy: {
-      "/api": {
-        target: "http://localhost:3000",
+      '/api': {
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
         ws: true,
       },
-      "/verify-email": {
-        target: "http://localhost:3000/api/auth",
+      '/verify-email': {
+        target: 'http://localhost:3000/api/auth',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/verify-email/, "/verify-email"),
+        rewrite: path => path.replace(/^\/verify-email/, '/verify-email'),
       },
     },
   },

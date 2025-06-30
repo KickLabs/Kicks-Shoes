@@ -5,15 +5,15 @@
  * @description This file contains middleware functions for role-based access control.
  */
 
-import { ErrorResponse } from "../utils/errorResponse.js";
-import logger from "../utils/logger.js";
+import { ErrorResponse } from '../utils/errorResponse.js';
+import logger from '../utils/logger.js';
 
 // Role definitions
 export const ROLES = {
-  GUEST: "guest",
-  CUSTOMER: "customer",
-  SHOP: "shop",
-  ADMIN: "admin",
+  GUEST: 'guest',
+  CUSTOMER: 'customer',
+  SHOP: 'shop',
+  ADMIN: 'admin',
 };
 
 // Role hierarchy (higher roles have access to lower role routes)
@@ -28,32 +28,29 @@ const ROLE_HIERARCHY = {
  * Middleware to check if user has required role level
  * @param {number} requiredLevel - Minimum role level required to access the route
  */
-export const checkRoleLevel = (requiredLevel) => {
+export const checkRoleLevel = requiredLevel => {
   return (req, res, next) => {
     try {
       if (!req.user) {
-        return next(new ErrorResponse("Authentication required", 401));
+        return next(new ErrorResponse('Authentication required', 401));
       }
 
       const userRoleLevel = ROLE_HIERARCHY[req.user.role];
 
       if (userRoleLevel === undefined) {
-        logger.error("Invalid user role", { role: req.user.role });
-        return next(new ErrorResponse("Invalid user role", 403));
+        logger.error('Invalid user role', { role: req.user.role });
+        return next(new ErrorResponse('Invalid user role', 403));
       }
 
       if (userRoleLevel < requiredLevel) {
         return next(
-          new ErrorResponse(
-            `Role ${req.user.role} is not authorized to access this route`,
-            403
-          )
+          new ErrorResponse(`Role ${req.user.role} is not authorized to access this route`, 403)
         );
       }
 
       next();
     } catch (error) {
-      logger.error("Role check error", {
+      logger.error('Role check error', {
         error: error.message,
         stack: error.stack,
       });
@@ -71,22 +68,20 @@ export const requireAdmin = checkRoleLevel(ROLE_HIERARCHY[ROLES.ADMIN]);
  * Middleware to check for exact role match
  * @param {string} role - Exact role required to access the route
  */
-export const requireExactRole = (role) => {
+export const requireExactRole = role => {
   return (req, res, next) => {
     try {
       if (!req.user) {
-        return next(new ErrorResponse("Authentication required", 401));
+        return next(new ErrorResponse('Authentication required', 401));
       }
 
       if (req.user.role !== role) {
-        return next(
-          new ErrorResponse(`Only ${role} can access this route`, 403)
-        );
+        return next(new ErrorResponse(`Only ${role} can access this route`, 403));
       }
 
       next();
     } catch (error) {
-      logger.error("Exact role check error", {
+      logger.error('Exact role check error', {
         error: error.message,
         stack: error.stack,
       });
@@ -105,7 +100,7 @@ export const requireRoles = (...roles) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        error: "Authentication required",
+        error: 'Authentication required',
       });
     }
 
@@ -116,10 +111,14 @@ export const requireRoles = (...roles) => {
         success: false,
         error: `Role ${
           req.user.role
-        } is not authorized to access this route. Required roles: ${roles.join(
-          ", "
-        )}`,
+        } is not authorized to access this route. Required roles: ${roles.join(', ')}`,
       });
     }
   };
 };
+
+/**
+ * Alias for requireExactRole - commonly used as 'authorize'
+ * @param {string} role - Exact role required to access the route
+ */
+export const authorize = requireExactRole;

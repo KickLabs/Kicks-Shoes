@@ -40,7 +40,7 @@ import {
   Tooltip,
 } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 import { ActiveTabContext } from './ActiveTabContext';
 import TabHeader from './TabHeader';
 
@@ -103,7 +103,13 @@ export default function ProductDetails() {
   const { setActiveTab } = useContext(ActiveTabContext);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Cập nhật logic để detect đúng route
   const isAddNew = location.pathname.includes('add-new');
+  const isEdit = location.pathname.includes('/edit');
+
+  // Lấy productId từ URL nếu là edit mode
+  const productId = isEdit ? location.pathname.split('/').slice(-2)[0] : null;
 
   const [product, setProduct] = useState(emptyProduct);
   const [originalProduct, setOriginalProduct] = useState(null); // Store original data
@@ -136,8 +142,7 @@ export default function ProductDetails() {
     setPageLoading(true);
     try {
       await fetchCategories();
-      if (!isAddNew) {
-        const productId = location.pathname.split('/').pop();
+      if (!isAddNew && productId) {
         await fetchProductDetails(productId);
       }
     } catch (error) {
@@ -149,7 +154,7 @@ export default function ProductDetails() {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get(`/api/categories?t=${Date.now()}`, {
+      const response = await axiosInstance.get('/categories?t=' + Date.now(), {
         headers: getAuthHeaders(),
       });
       if (response.data && response.data.data) {
@@ -163,7 +168,7 @@ export default function ProductDetails() {
 
   const fetchProductDetails = async productId => {
     try {
-      const response = await axios.get(`/api/products/${productId}?t=${Date.now()}`, {
+      const response = await axiosInstance.get('/products/' + productId + '?t=' + Date.now(), {
         headers: getAuthHeaders(),
       });
 
@@ -468,7 +473,7 @@ export default function ProductDetails() {
 
       console.log('Creating product with payload:', payload); // Debug log
 
-      const response = await axios.post('/api/products/add', payload, {
+      const response = await axiosInstance.post('/products/add', payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
@@ -476,9 +481,10 @@ export default function ProductDetails() {
       });
 
       message.success('Product created successfully!');
-      window.location.href = '/dashboard/products';
+      // Redirect to shop products page
+      window.location.href = '/shop/products';
       setTimeout(() => {
-        window.location.href = '/dashboard/products';
+        window.location.href = '/shop/products';
       }, 1000);
     } catch (err) {
       console.error('Create product error:', err);
@@ -531,7 +537,7 @@ export default function ProductDetails() {
 
       console.log('Updating product with payload:', payload); // Debug log
 
-      const response = await axios.put(`/api/products/${productId}`, payload, {
+      const response = await axiosInstance.put('/products/' + productId, payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
@@ -539,7 +545,8 @@ export default function ProductDetails() {
       });
 
       message.success('Product updated successfully!');
-      window.location.href = '/dashboard/products';
+      // Redirect to shop products page
+      window.location.href = '/shop/products';
       // Refresh the product data to show updated info
       setTimeout(async () => {
         await fetchProductDetails(productId);
@@ -559,15 +566,16 @@ export default function ProductDetails() {
       const token = userInfo ? JSON.parse(userInfo).token : null;
       const productId = product._id || product.id;
 
-      await axios.delete(`/api/products/${productId}/delete`, {
+      await axiosInstance.delete('/products/' + productId + '/delete', {
         headers: {
           Authorization: token ? `Bearer ${token}` : '',
         },
       });
       message.success('Product deleted successfully!');
-      window.location.href = '/dashboard/products';
+      // Redirect to shop products page
+      window.location.href = '/shop/products';
       setTimeout(() => {
-        window.location.href = '/dashboard/products';
+        window.location.href = '/shop/products';
       }, 1000);
     } catch (err) {
       console.error('Delete product error:', err);
@@ -579,7 +587,8 @@ export default function ProductDetails() {
 
   const handleCancel = () => {
     message.info('Changes canceled');
-    window.location.href = '/dashboard/products';
+    // Redirect to shop products page
+    window.location.href = '/shop/products';
   };
 
   // Inventory table columns
@@ -741,7 +750,7 @@ export default function ProductDetails() {
     <div>
       <TabHeader
         breadcrumb="All Products"
-        anotherBreadcrumb={isAddNew ? 'Add New Product' : 'Product Details'}
+        anotherBreadcrumb={isAddNew ? 'Add New Product' : 'Edit Product'}
       />
 
       <div className="product-details-container" style={{ padding: '24px', background: '#f5f5f5' }}>

@@ -20,7 +20,8 @@ const ProductCard = ({ product }) => {
           <div
             className="custom-product-ellipsis"
             onClick={() => {
-              window.location.href = `/dashboard/products/${product.id}`;
+              const productId = product.id || product._id;
+              window.location.href = `/shop/products/${productId}/edit`;
             }}
           >
             <EllipsisOutlined />

@@ -27,6 +27,7 @@ export class OrderService {
         user,
         products,
         totalAmount,
+        totalPrice,
         paymentMethod,
         shippingAddress,
         shippingMethod = 'standard',
@@ -36,7 +37,7 @@ export class OrderService {
         notes,
       } = orderData;
 
-      if (!user || !products || !totalAmount || !paymentMethod || !shippingAddress) {
+      if (!user || !products || !paymentMethod || !shippingAddress) {
         throw new Error('Missing required fields');
       }
 
@@ -44,7 +45,10 @@ export class OrderService {
         throw new Error('Products must be a non-empty array');
       }
 
-      if (typeof totalAmount !== 'number' || totalAmount <= 0) {
+      // Use totalAmount or totalPrice, whichever is provided
+      const finalTotalAmount = totalAmount || totalPrice;
+
+      if (typeof finalTotalAmount !== 'number' || finalTotalAmount <= 0) {
         throw new Error('Invalid total amount');
       }
 
@@ -55,7 +59,7 @@ export class OrderService {
       // Calculate final total including shipping, tax and discount
       const calculatedTotal = calculatedSubtotal + shippingCost + tax - discount;
 
-      if (Math.abs(calculatedTotal - totalAmount) > 0.01) {
+      if (Math.abs(calculatedTotal - finalTotalAmount) > 0.01) {
         throw new Error('Total amount does not match sum of items');
       }
 
@@ -71,8 +75,15 @@ export class OrderService {
         tax,
         discount,
         notes,
-        status: 'pending',
-        paymentStatus: 'pending',
+        status: orderData.status || 'pending',
+        paymentStatus: orderData.paymentStatus || 'pending',
+        paymentDate: orderData.paymentDate,
+        transactionId: orderData.transactionId,
+        vnpResponseCode: orderData.vnpResponseCode,
+        vnpTxnRef: orderData.vnpTxnRef,
+        vnpAmount: orderData.vnpAmount,
+        vnpBankCode: orderData.vnpBankCode,
+        vnpPayDate: orderData.vnpPayDate,
       });
 
       await order.save();

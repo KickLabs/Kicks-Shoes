@@ -1,15 +1,58 @@
 import { useState } from 'react';
-import { Button, Typography, Modal } from 'antd';
+import { Button, Typography, Modal, message } from 'antd';
 import { formatPrice } from '../../../../utils/StringFormat';
 import './ProductInfoSection.css';
 import SizePanel from './SizePanel';
 import { HeartOutlined } from '@ant-design/icons';
+import { useSelector, useDispatch } from 'react-redux';
+import { addOrUpdateCartItem } from '../../cart/cartService';
 
 const { Paragraph } = Typography;
 
 const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
+  const dispatch = useDispatch();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
+
+  const handleAddCart = async () => {
+    try {
+      // Check if size is selected
+      if (!selectedSize) {
+        message.error('Please select a size before adding to cart');
+        return;
+      }
+
+      // Check if color is selected
+      if (!selectedColor) {
+        message.error('Please select a color before adding to cart');
+        return;
+      }
+
+      // Check if the selected size and color combination is available
+      const inventoryItem = product.inventory.find(
+        item => item.size === selectedSize && item.color === selectedColor
+      );
+
+      if (!inventoryItem || inventoryItem.quantity === 0) {
+        message.error('This size and color combination is not available');
+        return;
+      }
+
+      await dispatch(
+        addOrUpdateCartItem({
+          productId: product._id,
+          quantity: 1,
+          size: selectedSize,
+          color: selectedColor,
+          price: product.price.regular,
+        })
+      ).unwrap();
+      message.success('Added to cart successfully!');
+    } catch (error) {
+      console.error('Lỗi khi thêm vào giỏ hàng:', error);
+      message.error('Failed to add to cart.');
+    }
+  };
 
   // HEX mã màu
   const colorHexMap = {
@@ -67,8 +110,10 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       </div>
 
       {/* Name + Price */}
-      <h1 className="product-name">{product.name}</h1>
-      <h2 className="product-price" style={{ color: '#4A69E2' }}>
+      <h1 style={{ fontSize: '2.5em', fontWeight: 600 }} className="product-name">
+        {product.name}
+      </h1>
+      <h2 style={{ fontSize: '2em', fontWeight: 600, color: '#4A69E2' }} className="product-price">
         {product.price.isOnSale
           ? formatPrice(product.price.regular * (1 - product.price.discountPercent / 100))
           : formatPrice(product.price.regular)}
@@ -129,7 +174,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       {/* Buttons */}
       <div className="product-actions">
         <div className="top-actions">
-          <Button size="large" className="cart-btn">
+          <Button onClick={() => handleAddCart()} size="large" className="cart-btn">
             ADD TO CART
           </Button>
           <button className="icon-btn">

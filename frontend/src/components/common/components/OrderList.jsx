@@ -6,7 +6,7 @@ import { ActiveTabContext } from './ActiveTabContext';
 import TabHeader from './TabHeader';
 import { Dropdown, Button, Menu, message } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 import { useAuth } from '../../../contexts/AuthContext';
 
 const OrderList = () => {
@@ -39,7 +39,7 @@ const OrderList = () => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get(`/api/orders/user/${user._id}`, {
+      const response = await axiosInstance.get(`/orders/user/${user._id}`, {
         params: {
           page: currentPage,
           limit: pageSize,

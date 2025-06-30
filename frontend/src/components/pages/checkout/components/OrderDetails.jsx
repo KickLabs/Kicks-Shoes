@@ -1,9 +1,15 @@
-import { Card, Typography, Row, Col, Image, Space, Divider, Input } from 'antd';
+import { Card, Typography, Row, Col, Image, Space, Divider, Input, Tag } from 'antd';
 import './OrderDetails.css';
 
 const { Title, Text } = Typography;
 
-export default function OrderDetails({ products = [], notes = '', setNotes }) {
+export default function OrderDetails({
+  products = [],
+  notes = '',
+  setNotes,
+  status,
+  paymentStatus,
+}) {
   return (
     <div>
       <Card>
@@ -11,27 +17,33 @@ export default function OrderDetails({ products = [], notes = '', setNotes }) {
           Order Details
         </Title>
         {products.map((product, idx) => {
-          const isDiscount = product.price?.isOnSale && product.price?.discountPercent;
-          const priceRegular = product.price?.regular || product.price;
+          const prod = product.product || product;
+          const isDiscount = prod.price?.isOnSale && prod.price?.discountPercent;
+          const priceRegular = prod.price?.regular || prod.price;
           const priceDiscount = isDiscount
-            ? priceRegular * (1 - product.price.discountPercent / 100)
+            ? priceRegular * (1 - prod.price.discountPercent / 100)
             : priceRegular;
           return (
-            <Row gutter={16} align="middle" key={product.id || idx} style={{ marginBottom: 16 }}>
+            <Row
+              gutter={16}
+              align="middle"
+              key={prod._id || prod.id || idx}
+              style={{ marginBottom: 16 }}
+            >
               <Col span={8}>
                 <Image
-                  src={product.mainImage}
-                  alt={product.name}
+                  src={prod.mainImage}
+                  alt={prod.name}
                   preview={false}
                   className="order-image"
                 />
               </Col>
               <Col span={16}>
                 <Text strong className="order-product-name">
-                  {product.name}
+                  {prod.name}
                 </Text>
                 <Text type="secondary" className="order-product-description">
-                  {product.description}
+                  {prod.description}
                 </Text>
                 <Text type="secondary" className="order-product-color">
                   {product.color}
@@ -56,7 +68,12 @@ export default function OrderDetails({ products = [], notes = '', setNotes }) {
                       </Text>
                     </>
                   ) : (
-                    <Text strong>${priceRegular.toFixed(2)}</Text>
+                    <Text
+                      style={{ fontSize: 20, color: 'rgb(74, 105, 226)', marginRight: 8 }}
+                      strong
+                    >
+                      ${priceRegular.toFixed(2)}
+                    </Text>
                   )}
                 </div>
               </Col>

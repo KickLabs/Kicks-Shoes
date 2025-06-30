@@ -26,6 +26,7 @@ import connectDB from './config/database.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 import emailRoutes from './routes/emailRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import productRoutes from './routes/productRoutes.js';
@@ -36,6 +37,7 @@ import feedbackRoutes from './routes/feedbackRoutes.js';
 import { default as shopRoutes, default as storeRoutes } from './routes/storeRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import cartRoutes from './routes/cartRoutes.js'; // Added from feature/HueSuong/cart-be
+import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
@@ -79,6 +81,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/orders', orderRoutes);
@@ -88,6 +91,8 @@ app.use('/api/discounts', discountRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/favourites', favouriteRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
+
 // Start cron jobs
 startDiscountStatusUpdateCron();
 
