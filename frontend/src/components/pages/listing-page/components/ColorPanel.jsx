@@ -32,7 +32,7 @@ const ColorPanel = ({ colors }) => {
               backgroundColor: hex,
               borderColor: value === 'White' ? '#ccc' : selectedColor === value ? 'black' : '#ccc',
             }}
-            onClick={() => handleSelectColor(value)}
+            onClick={() => onColorSelect(value === selectedColor ? null : value)}
           />
         );
       })}

@@ -77,5 +77,6 @@ router.delete('/:id/delete', protect, requireRoles('admin', 'shop'), deleteProdu
  * @access  Public
  */
 router.get('/public/:id', getProductById);
+router.get('/products', getAllProducts);
 
 export default router;

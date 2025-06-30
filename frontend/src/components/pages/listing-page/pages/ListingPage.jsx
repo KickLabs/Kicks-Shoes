@@ -33,7 +33,7 @@ const ListingPage = () => {
 
   const handleFilterChange = newFilters => {
     setFilters(newFilters);
-    setCurrentPage(1); // Reset về trang 1 khi filter thay đổi
+    setCurrentPage(1); // Reset to page 1 when filters change
   };
 
   return (

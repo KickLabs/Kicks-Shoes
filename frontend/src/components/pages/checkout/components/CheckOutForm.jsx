@@ -36,6 +36,7 @@ export default function CheckoutForm({
   const [form] = Form.useForm();
   const [shippingForm] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('cash_on_delivery');
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -56,7 +57,6 @@ export default function CheckoutForm({
         phone: user.phone || '',
       });
     }
-
     // Check for existing pending order
     const pendingOrder = localStorage.getItem('pendingOrder');
     if (pendingOrder) {
@@ -268,6 +268,7 @@ export default function CheckoutForm({
       } else {
         throw new Error(result.message || 'Failed to create order');
       }
+
     } catch (err) {
       let errorMsg = 'Order creation failed';
       if (err?.response?.data?.message) {
@@ -282,7 +283,6 @@ export default function CheckoutForm({
       setLoading(false);
     }
   };
-
   const handleSubmit = async e => {
     e.preventDefault();
 

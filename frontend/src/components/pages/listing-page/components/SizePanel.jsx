@@ -17,21 +17,17 @@ const SizePanel = ({ sizes }) => {
       console.error('Error filtering by size', err);
     }
   };
-
   return (
     <div className="filter-size-grid">
-      {sizes.map((item, index) => {
-        const value = typeof item === 'object' ? item.value : item;
-        return (
-          <button
-            key={value ?? index}
-            className={`size-button ${selectedSize === value ? 'active' : ''}`}
-            onClick={() => handleSelectSize(value)}
-          >
-            {value}
-          </button>
-        );
-      })}
+      {sizes.map((value, index) => (
+        <button
+          key={value ?? index}
+          className={`size-button ${selectedSize === value ? 'active' : ''}`}
+          onClick={() => onSizeSelect(value === selectedSize ? null : value)}
+        >
+          {value}
+        </button>
+      ))}
     </div>
   );
 };

@@ -177,7 +177,6 @@ export default function OrderDetails() {
     failed: 'red',
     refunded: 'gold',
   };
-
   if (error) {
     return <div className="error-message">{error}</div>;
   }
