@@ -43,6 +43,7 @@ import ProfileTab from './components/pages/account/components/ProfileTab';
 import RewardPointsDetail from './components/pages/account/components/RewardPointsDetail';
 import FavouritesTab from './components/pages/account/components/FavouritesTab';
 import AllCategories from './components/pages/categories/AllCategories';
+import FeedbackManagementPage from './components/pages/dashboard/FeedbackManagermentPage';
 
 // Styles
 import './styles/index.css';
@@ -171,6 +172,10 @@ const router = createBrowserRouter([
           {
             path: 'users',
             element: <UserManagementPage />,
+          },
+          {
+            path: 'feedbacks',
+            element: <FeedbackManagementPage />,
           },
         ],
       },
