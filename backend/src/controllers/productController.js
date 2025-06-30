@@ -260,3 +260,33 @@ export const getAllProducts = async (req, res) => {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 };
+
+/**
+ * Remove violating product
+ * @route DELETE /api/products/violation/:id
+ * @access Private/Admin
+ */
+export const removeViolatingProduct = async (req, res, next) => {
+  try {
+    const productId = req.params.id;
+    logger.warn('Admin attempting to remove violating product', { productId });
+
+    const deleted = await ProductService.deleteProduct(productId);
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found or already deleted',
+      });
+    }
+
+    logger.info('Violating product removed successfully', { productId });
+    res.status(200).json({
+      success: true,
+      message: 'Violating product removed successfully',
+      data: deleted,
+    });
+  } catch (error) {
+    logger.error('Error removing violating product', { error: error.message });
+    next(new ErrorResponse(error.message, 500));
+  }
+};

@@ -14,6 +14,7 @@ import {
   getAllProducts,
   getProductById,
   updateProduct,
+  removeViolatingProduct,
 } from '../controllers/productController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
@@ -55,5 +56,7 @@ router.put('/:id', protect, requireRoles('admin', 'shop'), updateProduct);
  */
 router.get('/public/:id', getProductById);
 router.get('/products', getAllProducts);
+
+router.delete('/violation/:id', protect, requireRoles('admin'), removeViolatingProduct);
 
 export default router;

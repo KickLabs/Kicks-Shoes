@@ -1,0 +1,22 @@
+.removeBtn {
+  color: white;
+  background-color: #ff4d4f;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 12px;
+  transition: background-color 0.3s ease;
+  width: fit-content;
+}
+
+.removeBtn:hover {
+  background-color: #d9363e;
+}
+
+.productWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
