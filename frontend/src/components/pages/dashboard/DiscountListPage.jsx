@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import {
   Pagination,
   Button,
@@ -9,21 +10,17 @@ import {
   message,
   Popconfirm,
   Radio,
-} from "antd";
-import TabHeader from "../../common/components/TabHeader";
-import { useContext, useEffect, useState } from "react";
-import { ActiveTabContext } from "../../common/components/ActiveTabContext"; 
-import TableDiscounts from "./components/TableDiscounts";
-import axios from "axios";
-import moment from "moment";
-
-// Create axios instance with base URL
-const api = axios.create({
-  baseURL: 'http://localhost:3000',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
+  Table,
+  Space,
+  Tag,
+} from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import TabHeader from '../../common/components/TabHeader';
+import { useContext } from 'react';
+import { ActiveTabContext } from '../../common/components/ActiveTabContext';
+import TableDiscounts from './components/TableDiscounts';
+import axiosInstance from '@/services/axiosInstance';
+import moment from 'moment';
 
 const DiscountListPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,7 +35,9 @@ const DiscountListPage = () => {
   const fetchDiscounts = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/discounts?page=${currentPage}&limit=${pageSize}`);
+      const response = await axiosInstance.get(
+        `/api/discounts?page=${currentPage}&limit=${pageSize}`
+      );
       setDiscounts(response.data.data);
       setTotalDiscounts(response.data.pagination.totalItems);
     } catch (error) {
@@ -53,14 +52,14 @@ const DiscountListPage = () => {
     fetchDiscounts();
   }, [currentPage]);
 
-  const handlePageChange = (page) => {
+  const handlePageChange = page => {
     setCurrentPage(page);
   };
 
   const { setActiveTab } = useContext(ActiveTabContext);
 
   useEffect(() => {
-    setActiveTab("5");
+    setActiveTab('5');
   }, [setActiveTab]);
 
   const showModal = (discount = null) => {
@@ -76,7 +75,7 @@ const DiscountListPage = () => {
         endDate: moment(discount.endDate),
         minPurchase: discount.minPurchase,
         usageLimit: discount.usageLimit,
-        status: discount.status
+        status: discount.status,
       });
     } else {
       form.resetFields();
@@ -90,9 +89,9 @@ const DiscountListPage = () => {
     form.resetFields();
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async id => {
     try {
-      await api.delete(`/api/discounts/${id}`);
+      await axiosInstance.delete(`/api/discounts/${id}`);
       message.success('Discount deleted successfully');
       fetchDiscounts();
     } catch (error) {
@@ -101,7 +100,7 @@ const DiscountListPage = () => {
     }
   };
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async values => {
     try {
       const data = {
         ...values,
@@ -110,15 +109,15 @@ const DiscountListPage = () => {
         applicableProducts: [],
         applicableCategories: [],
         usedCount: editingDiscount?.usedCount || 0,
-        status: values.status || 'active'
+        status: values.status || 'active',
       };
 
       if (editingDiscount) {
         const { type, ...updateData } = data;
-        await api.put(`/api/discounts/${editingDiscount._id}`, updateData);
+        await axiosInstance.put(`/api/discounts/${editingDiscount._id}`, updateData);
         message.success('Discount updated successfully');
       } else {
-        await api.post('/api/discounts', data);
+        await axiosInstance.post('/api/discounts', data);
         message.success('Discount created successfully');
       }
 
@@ -143,8 +142,8 @@ const DiscountListPage = () => {
           ADD NEW DISCOUNT
         </Button>
       </div>
-      <TableDiscounts 
-        title="Discount List" 
+      <TableDiscounts
+        title="Discount List"
         discounts={discounts}
         loading={loading}
         onEdit={showModal}
@@ -160,7 +159,7 @@ const DiscountListPage = () => {
       </div>
 
       <Modal
-        title={editingDiscount ? "Edit Discount" : "Add New Discount"}
+        title={editingDiscount ? 'Edit Discount' : 'Add New Discount'}
         open={isModalVisible}
         onCancel={handleCancel}
         footer={null}
@@ -170,9 +169,7 @@ const DiscountListPage = () => {
           <Form.Item
             name="code"
             label="Discount Code"
-            rules={[
-              { required: true, message: "Please input the discount code!" },
-            ]}
+            rules={[{ required: true, message: 'Please input the discount code!' }]}
           >
             <Input placeholder="Enter discount code" disabled={!!editingDiscount} />
           </Form.Item>
@@ -180,9 +177,7 @@ const DiscountListPage = () => {
           <Form.Item
             name="description"
             label="Description"
-            rules={[
-              { required: true, message: "Please input the description!" },
-            ]}
+            rules={[{ required: true, message: 'Please input the description!' }]}
           >
             <Input.TextArea placeholder="Enter description" />
           </Form.Item>
@@ -190,9 +185,7 @@ const DiscountListPage = () => {
           <Form.Item
             name="type"
             label="Discount Type"
-            rules={[
-              { required: true, message: "Please select the discount type!" },
-            ]}
+            rules={[{ required: true, message: 'Please select the discount type!' }]}
           >
             <Radio.Group disabled={!!editingDiscount}>
               <Radio value="percentage">Percentage</Radio>
@@ -211,11 +204,11 @@ const DiscountListPage = () => {
                   name="value"
                   label="Discount Value"
                   rules={[
-                    { required: true, message: "Please input the discount value!" },
+                    { required: true, message: 'Please input the discount value!' },
                     {
                       type: 'number',
                       min: 0.01,
-                      message: "Value must be greater than 0!"
+                      message: 'Value must be greater than 0!',
                     },
                     {
                       validator: async (_, value) => {
@@ -229,12 +222,12 @@ const DiscountListPage = () => {
                           return Promise.reject('Percentage discount cannot exceed 100%');
                         }
                         return Promise.resolve();
-                      }
-                    }
+                      },
+                    },
                   ]}
                 >
                   <InputNumber
-                    style={{ width: "100%" }}
+                    style={{ width: '100%' }}
                     min={0.01}
                     max={discountType === 'percentage' ? 100 : undefined}
                     precision={2}
@@ -249,76 +242,46 @@ const DiscountListPage = () => {
           <Form.Item
             name="maxDiscount"
             label="Maximum Discount Amount"
-            rules={[
-              { required: true, message: "Please input the maximum discount!" },
-            ]}
+            rules={[{ required: true, message: 'Please input the maximum discount!' }]}
           >
-            <InputNumber
-              min={0}
-              placeholder="Enter maximum discount"
-              style={{ width: "100%" }}
-            />
+            <InputNumber min={0} placeholder="Enter maximum discount" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="minPurchase"
             label="Minimum Purchase Amount"
-            rules={[
-              { required: true, message: "Please input the minimum purchase!" },
-            ]}
+            rules={[{ required: true, message: 'Please input the minimum purchase!' }]}
           >
-            <InputNumber
-              min={0}
-              placeholder="Enter minimum purchase"
-              style={{ width: "100%" }}
-            />
+            <InputNumber min={0} placeholder="Enter minimum purchase" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="usageLimit"
             label="Usage Limit"
-            rules={[
-              { required: true, message: "Please input the usage limit!" },
-            ]}
+            rules={[{ required: true, message: 'Please input the usage limit!' }]}
           >
-            <InputNumber
-              min={1}
-              placeholder="Enter usage limit"
-              style={{ width: "100%" }}
-            />
+            <InputNumber min={1} placeholder="Enter usage limit" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="startDate"
             label="Start Date"
-            rules={[
-              { required: true, message: "Please select the start date!" },
-            ]}
+            rules={[{ required: true, message: 'Please select the start date!' }]}
           >
-            <DatePicker
-              showTime
-              format="YYYY-MM-DD HH:mm:ss"
-              style={{ width: "100%" }}
-            />
+            <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="endDate"
             label="End Date"
-            rules={[
-              { required: true, message: "Please select the end date!" },
-            ]}
+            rules={[{ required: true, message: 'Please select the end date!' }]}
           >
-            <DatePicker
-              showTime
-              format="YYYY-MM-DD HH:mm:ss"
-              style={{ width: "100%" }}
-            />
+            <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" style={{ marginRight: 8 }}>
-              {editingDiscount ? "Update" : "Create"}
+              {editingDiscount ? 'Update' : 'Create'}
             </Button>
             <Button onClick={handleCancel}>Cancel</Button>
           </Form.Item>
@@ -328,4 +291,4 @@ const DiscountListPage = () => {
   );
 };
 
-export default DiscountListPage; 
+export default DiscountListPage;

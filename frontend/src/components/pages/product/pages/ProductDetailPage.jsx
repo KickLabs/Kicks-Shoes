@@ -6,7 +6,7 @@ import { RecommendSection } from '../../cart/components/RecommendSection';
 import ProductImageGallery from '../components/ProductImageGallery';
 import ProductInfoSection from '../components/ProductInfoSection';
 import CommentSection from '../components/CommentSection';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -18,7 +18,7 @@ const ProductDetailPage = () => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await axios.get(`/api/products/public/${id}`);
+        const response = await axiosInstance.get(`/products/public/${id}`);
         setProduct(response.data.data);
       } catch (err) {
         setError(err?.response?.data?.message || 'No product found');

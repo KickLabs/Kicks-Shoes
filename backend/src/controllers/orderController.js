@@ -9,6 +9,8 @@ import { body, validationResult } from 'express-validator';
 import { OrderService } from '../services/order.service.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
+import { asyncHandler } from '../middlewares/async.middleware.js';
+import Order from '../models/Order.js';
 
 // Validation rules for order operations
 const orderValidationRules = {
@@ -16,7 +18,8 @@ const orderValidationRules = {
     body('products').isArray().withMessage('Products must be an array'),
     body('products.*.id').isMongoId().withMessage('Invalid product ID'),
     body('products.*.quantity').isInt({ min: 1 }).withMessage('Invalid quantity'),
-    body('totalAmount').isFloat({ min: 0 }).withMessage('Invalid total amount'),
+    body('totalAmount').optional().isFloat({ min: 0 }).withMessage('Invalid total amount'),
+    body('totalPrice').optional().isFloat({ min: 0 }).withMessage('Invalid total price'),
     body('paymentMethod').isIn(['vnpay', 'cash_on_delivery']).withMessage('Invalid payment method'),
     body('shippingAddress').isString().notEmpty().withMessage('Shipping address is required'),
     body('shippingMethod')
@@ -37,6 +40,23 @@ const orderValidationRules = {
       .isString()
       .isLength({ max: 500 })
       .withMessage('Notes cannot exceed 500 characters'),
+    // Order status and payment fields
+    body('status')
+      .optional()
+      .isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'])
+      .withMessage('Invalid status'),
+    body('paymentStatus')
+      .optional()
+      .isIn(['pending', 'paid', 'failed', 'refunded'])
+      .withMessage('Invalid payment status'),
+    body('paymentDate').optional().isISO8601().toDate().withMessage('Invalid payment date'),
+    body('transactionId').optional().isString().withMessage('Invalid transaction ID'),
+    // VNPay transaction fields
+    body('vnpResponseCode').optional().isString().withMessage('Invalid VNPay response code'),
+    body('vnpTxnRef').optional().isString().withMessage('Invalid VNPay transaction reference'),
+    body('vnpAmount').optional().isFloat({ min: 0 }).withMessage('Invalid VNPay amount'),
+    body('vnpBankCode').optional().isString().withMessage('Invalid VNPay bank code'),
+    body('vnpPayDate').optional().isString().withMessage('Invalid VNPay payment date'),
   ],
   update: [
     body('status')
@@ -50,6 +70,14 @@ const orderValidationRules = {
     body('tax').optional().isFloat({ min: 0 }),
     body('discount').optional().isFloat({ min: 0 }),
     body('notes').optional().isString().isLength({ max: 500 }),
+    // VNPay transaction fields
+    body('transactionId').optional().isString(),
+    body('paymentDate').optional().isISO8601().toDate(),
+    body('vnpResponseCode').optional().isString(),
+    body('vnpTxnRef').optional().isString(),
+    body('vnpAmount').optional().isFloat({ min: 0 }),
+    body('vnpBankCode').optional().isString(),
+    body('vnpPayDate').optional().isString(),
   ],
 };
 
@@ -83,6 +111,7 @@ export const createOrder = [
       const {
         products,
         totalAmount,
+        totalPrice,
         paymentMethod,
         shippingAddress,
         shippingMethod,
@@ -90,12 +119,22 @@ export const createOrder = [
         tax,
         discount,
         notes,
+        status,
+        paymentStatus,
+        paymentDate,
+        transactionId,
+        vnpResponseCode,
+        vnpTxnRef,
+        vnpAmount,
+        vnpBankCode,
+        vnpPayDate,
       } = req.body;
 
       const order = await OrderService.createOrder({
         user: req.user._id,
         products,
         totalAmount,
+        totalPrice,
         paymentMethod,
         shippingAddress,
         shippingMethod,
@@ -103,6 +142,15 @@ export const createOrder = [
         tax,
         discount,
         notes,
+        status,
+        paymentStatus,
+        paymentDate,
+        transactionId,
+        vnpResponseCode,
+        vnpTxnRef,
+        vnpAmount,
+        vnpBankCode,
+        vnpPayDate,
       });
 
       logger.info('Order created successfully', { orderId: order._id });

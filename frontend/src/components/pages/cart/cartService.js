@@ -3,7 +3,7 @@ import axiosInstance from '../../../services/axiosInstance';
 
 export const getCart = createAsyncThunk('cart/get', async (_, thunkAPI) => {
   try {
-    const res = await axiosInstance.get('/cart/');
+    const res = await axiosInstance.get('/cart');
     return res.data;
   } catch (error) {
     console.log('looi', error.response?.data?.message || error.message);

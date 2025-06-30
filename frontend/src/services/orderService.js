@@ -1,22 +1,79 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import axiosInstance from './axiosInstance';
 
 const orderService = {
   async createOrder(orderData) {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await axios.post(`${API_URL}/api/orders`, orderData, {
+      console.log(
+        'Creating order with token:',
+        localStorage.getItem('accessToken') ? 'Token exists' : 'No token'
+      );
+
+      const response = await axiosInstance.post(`/orders`, orderData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
       return response.data;
     } catch (error) {
-      throw error.response?.data?.message || error.message;
+      console.error('OrderService createOrder error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        errors: error.response?.data?.errors,
+      });
+
+      // Return detailed error information
+      if (error.response?.data?.errors) {
+        const errorMessages = error.response.data.errors
+          .map(e => e.msg || e.message || e)
+          .join(', ');
+        throw new Error(errorMessages);
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else {
+        throw new Error(error.message || 'Failed to create order');
+      }
+    }
+  },
+
+  async updateOrder(orderId, updateData) {
+    try {
+      console.log(
+        'Updating order with token:',
+        localStorage.getItem('accessToken') ? 'Token exists' : 'No token'
+      );
+      console.log('Update data:', { orderId, updateData });
+
+      const response = await axiosInstance.put(`/orders/${orderId}`, updateData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('Update response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('OrderService updateOrder error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        errors: error.response?.data?.errors,
+      });
+
+      // Return detailed error information
+      if (error.response?.data?.errors) {
+        const errorMessages = error.response.data.errors
+          .map(e => e.msg || e.message || e)
+          .join(', ');
+        throw new Error(errorMessages);
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else {
+        throw new Error(error.message || 'Failed to update order');
+      }
     }
   },
 };
+
+console.log('orderService loaded:', orderService);
 
 export default orderService;
