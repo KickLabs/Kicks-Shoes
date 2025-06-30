@@ -1,9 +1,15 @@
-import { Card, Typography, Row, Col, Image, Space, Divider, Input } from 'antd';
+import { Card, Typography, Row, Col, Image, Space, Divider, Input, Tag } from 'antd';
 import './OrderDetails.css';
 
 const { Title, Text } = Typography;
 
-export default function OrderDetails({ products = [], notes = '', setNotes }) {
+export default function OrderDetails({
+  products = [],
+  notes = '',
+  setNotes,
+  status,
+  paymentStatus,
+}) {
   return (
     <div>
       <Card>

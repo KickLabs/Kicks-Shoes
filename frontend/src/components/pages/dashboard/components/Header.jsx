@@ -1,23 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Layout, Button, Input } from 'antd';
-import { SearchOutlined, BellOutlined, LogoutOutlined, RightOutlined } from '@ant-design/icons';
+import { Layout, Button, Input, Dropdown, Menu } from 'antd';
+import {
+  SearchOutlined,
+  BellOutlined,
+  LogoutOutlined,
+  RightOutlined,
+  UserOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
 import { products } from '../../../../data/mockData';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 const { Header: AntHeader } = Layout;
 
-export default function Header() {
+export default function Header({ userRole = 'ADMIN' }) {
   const [search, setSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [filtered, setFiltered] = useState([]);
   const [showInput, setShowInput] = useState(false);
-  const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const wrapperRef = useRef(null);
-  const adminBtnRef = useRef(null);
-  const adminMenuRef = useRef(null);
-  const { logout } = useAuth();
+  const accountBtnRef = useRef(null);
+  const accountMenuRef = useRef(null);
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,13 +43,13 @@ export default function Header() {
       if (
         wrapperRef.current &&
         !wrapperRef.current.contains(event.target) &&
-        (!adminMenuRef.current || !adminMenuRef.current.contains(event.target)) &&
-        (!adminBtnRef.current || !adminBtnRef.current.contains(event.target))
+        (!accountMenuRef.current || !accountMenuRef.current.contains(event.target)) &&
+        (!accountBtnRef.current || !accountBtnRef.current.contains(event.target))
       ) {
         setShowDropdown(false);
         setShowInput(false);
         setSearch('');
-        setShowAdminMenu(false);
+        setShowAccountMenu(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -71,13 +78,13 @@ export default function Header() {
     setShowDropdown(false);
     setShowInput(false);
     setSearch('');
-    setShowAdminMenu(false);
+    setShowAccountMenu(false);
   };
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login-admin');
+      navigate(userRole === 'ADMIN' ? '/login-admin' : '/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -87,6 +94,96 @@ export default function Header() {
     navigate('/change-password');
   };
 
+  const handleViewProfile = () => {
+    navigate('/profile');
+  };
+
+  const handleEditProfile = () => {
+    navigate('/edit-profile');
+  };
+
+  // Account menu items based on role
+  const getAccountMenuItems = () => {
+    const baseItems = [
+      {
+        key: 'profile',
+        label: 'View Profile',
+        icon: <UserOutlined />,
+        onClick: handleViewProfile,
+      },
+      {
+        key: 'edit-profile',
+        label: 'Edit Profile',
+        icon: <SettingOutlined />,
+        onClick: handleEditProfile,
+      },
+      {
+        key: 'change-password',
+        label: 'Change Password',
+        icon: <SettingOutlined />,
+        onClick: handleChangePassword,
+      },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'logout',
+        label: 'Logout',
+        icon: <LogoutOutlined />,
+        onClick: handleLogout,
+      },
+    ];
+
+    // For admin, we might want to show different options
+    if (userRole === 'ADMIN') {
+      return [
+        {
+          key: 'change-password',
+          label: 'Change Password',
+          icon: <SettingOutlined />,
+          onClick: handleChangePassword,
+        },
+        {
+          type: 'divider',
+        },
+        {
+          key: 'logout',
+          label: 'Logout',
+          icon: <LogoutOutlined />,
+          onClick: handleLogout,
+        },
+      ];
+    }
+
+    return baseItems;
+  };
+
+  const accountMenu = (
+    <Menu
+      items={getAccountMenuItems()}
+      style={{
+        minWidth: 200,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+        borderRadius: 8,
+      }}
+    />
+  );
+
+  const getRoleDisplayName = () => {
+    switch (userRole) {
+      case 'ADMIN':
+        return 'ADMIN';
+      case 'SHOP_OWNER':
+        return 'SHOP OWNER';
+      default:
+        return 'USER';
+    }
+  };
+
+  const getUserDisplayName = () => {
+    return user?.name || user?.email || 'User';
+  };
+
   return (
     <AntHeader
       className="header"
@@ -94,7 +191,7 @@ export default function Header() {
         background: '#fff',
         margin: 0,
         display: 'flex',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
         alignItems: 'center',
         borderRadius: '0px',
         padding: '0 24px',
@@ -102,25 +199,11 @@ export default function Header() {
         zIndex: 10,
       }}
     >
-      {(showInput && showDropdown) || showAdminMenu ? (
-        <div
-          onClick={handleOverlayClick}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            background: 'rgba(0,0,0,0.18)',
-            zIndex: 99,
-          }}
-        />
-      ) : null}
+      {/* Left side - Search */}
       <div
         ref={wrapperRef}
         style={{
           position: 'relative',
-          marginRight: 16,
           display: 'flex',
           alignItems: 'center',
         }}
@@ -141,9 +224,6 @@ export default function Header() {
             onFocus={() => search && setShowDropdown(true)}
             style={{ width: 220, borderRadius: 8, marginLeft: 4 }}
             allowClear
-            onBlur={() => {
-              // setShowInput(false); // Đã xử lý bằng click outside
-            }}
             onClear={handleInputClear}
           />
         )}
@@ -196,65 +276,47 @@ export default function Header() {
           </div>
         )}
       </div>
-      <BellOutlined style={{ fontSize: 20, marginRight: 24 }} />
-      <Button
-        type="default"
-        ref={adminBtnRef}
-        style={{ fontWeight: 600, letterSpacing: 1, borderRadius: 8 }}
-        onClick={() => setShowAdminMenu(v => !v)}
-      >
-        ADMIN <span style={{ marginLeft: 4 }}>▼</span>
-      </Button>
-      {showAdminMenu && (
-        <div
-          ref={adminMenuRef}
-          style={{
-            position: 'absolute',
-            top: 56,
-            right: 20,
-            width: 280,
-            background: '#fff',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
-            borderRadius: 16,
-            zIndex: 200,
-            padding: 24,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16,
-          }}
-        >
-          <div style={{ fontWeight: 700, fontSize: 22 }}>Admin</div>
-          <div
+
+      {/* Right side - Notifications and Account */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <BellOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
+
+        <Dropdown overlay={accountMenu} trigger={['click']} placement="bottomRight">
+          <Button
+            type="default"
+            ref={accountBtnRef}
             style={{
+              fontWeight: 600,
+              letterSpacing: 1,
+              borderRadius: 8,
               display: 'flex',
               alignItems: 'center',
-              fontWeight: 500,
-              fontSize: 16,
-              cursor: 'pointer',
-              justifyContent: 'space-between',
-              height: 40,
-            }}
-            onClick={handleChangePassword}
-          >
-            CHANGE PASSWORD <RightOutlined />
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontWeight: 500,
-              fontSize: 16,
-              color: '#222',
-              cursor: 'pointer',
               gap: 8,
-              height: 40,
             }}
-            onClick={handleLogout}
           >
-            LOG OUT <LogoutOutlined />
-          </div>
-        </div>
-      )}
+            <UserOutlined />
+            {getUserDisplayName()}
+            <span style={{ fontSize: 12, opacity: 0.7 }}>({getRoleDisplayName()})</span>
+            <span style={{ marginLeft: 4 }}>▼</span>
+          </Button>
+        </Dropdown>
+      </div>
+
+      {/* Overlay for closing dropdowns */}
+      {showInput && showDropdown ? (
+        <div
+          onClick={handleOverlayClick}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.18)',
+            zIndex: 99,
+          }}
+        />
+      ) : null}
     </AntHeader>
   );
 }

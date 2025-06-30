@@ -3,7 +3,7 @@ import { Button, Pagination } from 'antd';
 import TableUsers from './components/TableUsers';
 import TabHeader from '../../common/components/TabHeader';
 import { ActiveTabContext } from '../../common/components/ActiveTabContext';
-import axios from 'axios';
+import axiosInstance from '@/services/axiosInstance';
 
 const UserManagementPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -14,7 +14,7 @@ const UserManagementPage = () => {
   const [totalUsers, setTotalUsers] = useState(0);
 
   const fetchUsers = () => {
-    axios
+    axiosInstance
       .get(`/api/users?page=${currentPage}&limit=${pageSize}`)
       .then(res => {
         setCurrentUsers(res.data.data);

@@ -6,7 +6,7 @@
  * It supports hierarchical category structures and includes metadata for category management.
  */
 
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 const CategorySchema = new Schema(
@@ -25,7 +25,15 @@ const CategorySchema = new Schema(
     description: {
       type: String,
       trim: true,
-      default: "",
+      default: '',
+    },
+    image: {
+      type: String,
+      default: '',
+    },
+    status: {
+      type: Boolean,
+      default: true,
     },
   },
   {
@@ -34,16 +42,16 @@ const CategorySchema = new Schema(
 );
 
 // Generate slug from name before saving
-CategorySchema.pre("save", function (next) {
-  if (this.isModified("name")) {
+CategorySchema.pre('save', function (next) {
+  if (this.isModified('name')) {
     this.slug = this.name
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
   }
   next();
 });
 
-const Category = mongoose.model("Category", CategorySchema);
+const Category = mongoose.model('Category', CategorySchema);
 
 export default Category;

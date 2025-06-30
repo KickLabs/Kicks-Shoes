@@ -32,19 +32,17 @@ router.get('/profile/:username', optionalAuth, getUserProfile);
 router.put('/profile', protect, upload.single('avatar'), handleUpload, updateUserProfile);
 
 // Admin only routes
-router
-  .route('/')
-  .get(protect, requireShop || requireAdmin, getUsers)
-  .post(protect, requireShop || requireAdmin, createUser);
+router.route('/').get(protect, requireAdmin, getUsers).post(protect, requireAdmin, createUser);
 
 router.get('/active', protect, requireShop, getUsersIsActive);
 
 router
   .route('/:id')
-  .get(protect, requireShop || requireAdmin, getUser)
-  .put(protect, requireShop || requireAdmin, updateUser)
-  .delete(protect, requireShop || requireAdmin, deleteUser);
+  .get(protect, requireAdmin, getUser)
+  .put(protect, requireAdmin, updateUser)
+  .delete(protect, requireAdmin, deleteUser);
 
+// User status management (ban/unban)
 router.patch('/:id/status', protect, requireAdmin, toggleUserStatus);
 
 export default router;
