@@ -30,9 +30,8 @@ import ChangePassword from './components/pages/authentication/pages/ChangePasswo
 
 // Main Pages
 import CartPage from './components/pages/cart/pages/CartPage';
-import CheckoutPage from './components/pages/checkout/Checkout';
+import CheckoutPage from './components/pages/checkout/CheckOut';
 import AllProducts from './components/pages/dashboard/AllProducts';
-import Dashboard, { DashboardContent } from './components/pages/dashboard/Dashboard';
 import DiscountListPage from './components/pages/dashboard/DiscountListPage';
 import UserManagementPage from './components/pages/dashboard/UserManagementPage';
 import HomePage from './components/pages/home/pages/HomePage';
@@ -43,6 +42,17 @@ import ProfileTab from './components/pages/account/components/ProfileTab';
 import RewardPointsDetail from './components/pages/account/components/RewardPointsDetail';
 import FavouritesTab from './components/pages/account/components/FavouritesTab';
 import AllCategories from './components/pages/categories/AllCategories';
+import PaymentStatus from './components/pages/payment/PaymentStatus';
+
+// New Role-Based Dashboard Components
+import DashboardLayout from './components/pages/dashboard/DashboardLayout';
+import AdminDashboard from './components/pages/dashboard/AdminDashboard';
+import ShopDashboard from './components/pages/dashboard/ShopDashboard';
+import RoleSwitcher from './components/pages/dashboard/RoleSwitcher';
+
+// Product Management Components
+import AddNewProduct from './components/pages/dashboard/AddNewProduct';
+import EditProduct from './components/pages/dashboard/EditProduct';
 
 // Styles
 import './styles/index.css';
@@ -66,6 +76,47 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// New Role-Based Protected Routes
+const AdminProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/login-admin" replace />;
+  }
+
+  return children;
+};
+
+const ShopOwnerProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user || user.role !== 'shop') {
+    return <Navigate to="/login-admin" replace />;
+  }
+
+  return children;
+};
+
+// Dashboard redirect component based on user role
+const DashboardRedirect = () => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login-admin" replace />;
+  }
+
+  if (user.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  if (user.role === 'shop') {
+    return <Navigate to="/shop" replace />;
+  }
+
+  // Default fallback
+  return <Navigate to="/login-admin" replace />;
+};
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -75,6 +126,18 @@ const router = createBrowserRouter([
       {
         path: '',
         element: <HomePage />,
+      },
+      {
+        path: 'dashboard',
+        element: <DashboardRedirect />,
+      },
+      {
+        path: 'role-switcher',
+        element: <RoleSwitcher />,
+      },
+      {
+        path: 'dashboard-new',
+        element: <RoleSwitcher />,
       },
       {
         path: 'verify-email',
@@ -116,61 +179,177 @@ const router = createBrowserRouter([
         path: 'product/:id',
         element: <ProductDetailPage />,
       },
+      // Admin Dashboard Routes
       {
-        path: 'dashboard',
-        element: (
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        ),
+        path: 'admin',
+        element: <DashboardLayout />,
         children: [
           {
             path: '',
-            element: <DashboardContent />,
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
           },
           {
-            path: 'products',
-            element: <AllProducts />,
-          },
-          {
-            path: 'categories',
-            element: <AllCategories />,
-          },
-          {
-            path: 'categories/:storeId',
-            element: <CategoryDetails />,
-          },
-          {
-            path: 'categories/add-new',
-            element: <CategoryDetails isAddNew={true} />,
-          },
-          {
-            path: 'orders',
-            element: <OrderList />,
-          },
-          {
-            path: 'orders/:orderId',
-            element: <OrderDetails />,
-          },
-          {
-            path: 'products/:productId',
-            element: <ProductDetails />,
-          },
-          {
-            path: 'products/add-new',
-            element: <ProductDetails isAddNew={true} />,
-          },
-          {
-            path: 'discounts',
-            element: <DiscountListPage />,
-          },
-          {
-            path: 'chat',
-            element: <ChatPage />,
+            path: 'dashboard',
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
           },
           {
             path: 'users',
-            element: <UserManagementPage />,
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
+          },
+          {
+            path: 'moderation',
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
+          },
+          {
+            path: 'financial',
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
+          },
+          {
+            path: 'feedback',
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
+          },
+          {
+            path: 'categories',
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
+          },
+          {
+            path: 'discounts',
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
+          },
+          {
+            path: 'orders',
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
+          },
+          {
+            path: 'orders/:orderId',
+            element: (
+              <AdminProtectedRoute>
+                <OrderDetails />
+              </AdminProtectedRoute>
+            ),
+          },
+        ],
+      },
+      // Shop Owner Dashboard Routes
+      {
+        path: 'shop',
+        element: <DashboardLayout />,
+        children: [
+          {
+            path: '',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShopDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'dashboard',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShopDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'products',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShopDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'products/add-new',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <AddNewProduct />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'products/:productId/edit',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <EditProduct />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'orders',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShopDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'orders/:orderId',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <OrderDetails />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'feedback',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShopDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'discounts',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShopDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'settings',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShopDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
           },
         ],
       },
@@ -199,22 +378,26 @@ const router = createBrowserRouter([
             element: <OrderDetails />,
           },
           {
-            path: 'chat',
-            element: <ChatPage />,
-          },
-          {
             path: 'reward-points',
             element: <RewardPointsDetail />,
           },
         ],
       },
       {
-        path: 'change-password',
-        element: <ChangePassword />,
+        path: 'categories',
+        element: <AllCategories />,
+      },
+      {
+        path: 'categories/:storeId',
+        element: <CategoryDetails />,
       },
       {
         path: 'forgot-password',
         element: <ForgotPassword />,
+      },
+      {
+        path: 'change-password',
+        element: <ChangePassword />,
       },
       {
         path: 'reset-password',
@@ -223,6 +406,10 @@ const router = createBrowserRouter([
       {
         path: 'set-password',
         element: <SetPassword />,
+      },
+      {
+        path: 'payment-status',
+        element: <PaymentStatus />,
       },
     ],
   },

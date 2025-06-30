@@ -20,7 +20,7 @@ export default function CheckoutPage() {
       rating: 4.5,
       isNew: true,
       price: {
-        regular: 135,
+        regular: 135000,
         discountPercent: 14,
         isOnSale: true,
       },
@@ -44,6 +44,8 @@ export default function CheckoutPage() {
   const [tax] = useState(0); // demo tax
   const [notes, setNotes] = useState(''); // Ghi chú đơn hàng
   const [paymentMethod, setPaymentMethod] = useState('creditCard');
+  const [orderStatus, setOrderStatus] = useState('pending'); // Trạng thái đơn hàng
+  const [paymentStatus, setPaymentStatus] = useState('pending'); // Trạng thái thanh toán
 
   const deliveryCost = deliveryMethod === 'standard' ? 6.99 : 0;
   const subtotal = products.reduce((sum, p) => {
@@ -85,7 +87,14 @@ export default function CheckoutPage() {
         </Col>
 
         <Col xs={{ span: 24, order: 1 }} md={{ span: 8, order: 2 }} className="checkout-right-col">
-          <OrderDetails products={products} discount={discount} notes={notes} setNotes={setNotes} />
+          <OrderDetails
+            products={products}
+            discount={discount}
+            notes={notes}
+            setNotes={setNotes}
+            status={orderStatus}
+            paymentStatus={paymentStatus}
+          />
           <OrderSummary
             subtotal={subtotal}
             deliveryCost={deliveryCost}
