@@ -4,12 +4,32 @@ import { formatPrice } from '../../../../utils/StringFormat';
 import './ProductInfoSection.css';
 import SizePanel from './SizePanel';
 import { HeartOutlined } from '@ant-design/icons';
+import { useSelector, useDispatch } from 'react-redux';
+import { addOrUpdateCartItem } from '../../cart/cartService';
 
 const { Paragraph } = Typography;
 
 const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
+  const dispatch = useDispatch();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
+  const handleAddCart = async () => {
+    try {
+      await dispatch(
+        addOrUpdateCartItem({
+          productId: product._id,
+          quantity: 1,
+          size: product.variants.sizes[0],
+          color: selectedColor,
+          price: product.price.regular,
+        })
+      ).unwrap();
+      alert('Added to cart successfully!');
+    } catch (error) {
+      console.error('Lỗi khi thêm vào giỏ hàng:', error);
+      alert('Failed to add to cart.');
+    }
+  };
 
   // HEX mã màu
   const colorHexMap = {
@@ -129,7 +149,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       {/* Buttons */}
       <div className="product-actions">
         <div className="top-actions">
-          <Button size="large" className="cart-btn">
+          <Button onClick={() => handleAddCart()} size="large" className="cart-btn">
             ADD TO CART
           </Button>
           <button className="icon-btn">
