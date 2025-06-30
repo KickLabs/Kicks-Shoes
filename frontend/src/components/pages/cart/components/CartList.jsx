@@ -15,6 +15,20 @@ export const CartList = () => {
     dispatch(getCart());
   }, [dispatch]);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Cart state:', { items, totalPrice, status, error });
+    if (items && items.length > 0) {
+      console.log('Cart items:', items);
+      items.forEach((item, index) => {
+        console.log(`Item ${index}:`, item);
+        if (item.product) {
+          console.log(`Item ${index} product:`, item.product);
+        }
+      });
+    }
+  }, [items, totalPrice, status, error]);
+
   return (
     <>
       <div className="cart-wrapper">
@@ -28,7 +42,7 @@ export const CartList = () => {
 
         <div className="cart-items-scroll">
           {items && items.length > 0 ? (
-            items.map((item, index) => <CartItemCard key={item._id} item={item} />)
+            items.map((item, index) => <CartItemCard key={item._id || index} item={item} />)
           ) : (
             <p>Your cart is empty.</p>
           )}

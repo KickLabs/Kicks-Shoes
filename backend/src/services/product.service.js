@@ -334,4 +334,38 @@ export class ProductService {
 
     return { products, total };
   }
+
+  /**
+   * Get new drops with optional filters and pagination
+   * @param {Object} options - { page, limit, filters }
+   * @returns {Promise<{data: Array<Product>, total: number, page: number, limit: number, totalPages: number}>}
+   */
+  static async getNewDrops({ page = 1, limit = 10, filters = {} }) {
+    const filter = { isNew: true };
+    // Hỗ trợ filter động
+    if (filters.brand) filter.brand = filters.brand;
+    if (filters.category) filter.category = filters.category;
+    if (filters.minPrice)
+      filter['price.regular'] = {
+        ...(filter['price.regular'] || {}),
+        $gte: Number(filters.minPrice),
+      };
+    if (filters.maxPrice)
+      filter['price.regular'] = {
+        ...(filter['price.regular'] || {}),
+        $lte: Number(filters.maxPrice),
+      };
+    if (filters.size) filter['variants.sizes'] = { $in: [filters.size] };
+    if (filters.color) filter['variants.colors'] = { $in: [filters.color] };
+
+    const skip = (page - 1) * limit;
+    const total = await Product.countDocuments(filter);
+    const data = await Product.find(filter)
+      .populate('category')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    const totalPages = Math.ceil(total / limit);
+    return { data, total, page, limit, totalPages };
+  }
 }

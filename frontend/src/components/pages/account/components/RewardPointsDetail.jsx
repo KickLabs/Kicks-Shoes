@@ -2,8 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Table, Spin, Typography, Card, Row, Col, Statistic } from 'antd';
 import { useAuth } from '../../../../contexts/AuthContext';
 import TabHeader from '../../../common/components/TabHeader';
-import axios from 'axios';
-import { GiftOutlined, CheckCircleOutlined, ClockCircleOutlined, ShoppingOutlined } from '@ant-design/icons';
+import axiosInstance from '@/services/axiosInstance';
+import {
+  GiftOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ShoppingOutlined,
+} from '@ant-design/icons';
 
 const { Title } = Typography;
 
@@ -33,8 +38,8 @@ export default function RewardPointsDetail() {
     try {
       setLoading(true);
       const [pointsResponse, historyResponse] = await Promise.all([
-        axios.get(`/api/reward-points/user/${user._id}/total`),
-        axios.get(`/api/reward-points/user/${user._id}`, {
+        axiosInstance.get(`/reward-points/user/${user._id}/total`),
+        axiosInstance.get(`/reward-points/user/${user._id}`, {
           params: {
             page: pagination.current,
             limit: pagination.pageSize,
@@ -60,7 +65,7 @@ export default function RewardPointsDetail() {
     }
   };
 
-  const handleTableChange = (pagination) => {
+  const handleTableChange = pagination => {
     setPagination(pagination);
   };
 
@@ -69,7 +74,7 @@ export default function RewardPointsDetail() {
       title: 'Date',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (text) => new Date(text).toLocaleDateString(),
+      render: text => new Date(text).toLocaleDateString(),
     },
     {
       title: 'Description',
@@ -81,11 +86,18 @@ export default function RewardPointsDetail() {
       dataIndex: 'points',
       key: 'points',
       render: (points, record) => (
-        <span style={{ 
-          color: record.type === 'earn' ? '#52c41a' : 
-                 record.type === 'redeem' ? '#f5222d' : 
-                 record.type === 'expired' ? '#faad14' : '#1890ff'
-        }}>
+        <span
+          style={{
+            color:
+              record.type === 'earn'
+                ? '#52c41a'
+                : record.type === 'redeem'
+                  ? '#f5222d'
+                  : record.type === 'expired'
+                    ? '#faad14'
+                    : '#1890ff',
+          }}
+        >
           {record.type === 'earn' ? `+${points}` : `-${points}`}
         </span>
       ),
@@ -94,7 +106,7 @@ export default function RewardPointsDetail() {
       title: 'Type',
       dataIndex: 'type',
       key: 'type',
-      render: (type) => {
+      render: type => {
         const typeConfig = {
           earn: { color: '#52c41a', text: 'Earned' },
           redeem: { color: '#f5222d', text: 'Redeemed' },
@@ -102,9 +114,7 @@ export default function RewardPointsDetail() {
           adjust: { color: '#1890ff', text: 'Adjusted' },
         };
         return (
-          <span style={{ color: typeConfig[type]?.color }}>
-            {typeConfig[type]?.text || type}
-          </span>
+          <span style={{ color: typeConfig[type]?.color }}>{typeConfig[type]?.text || type}</span>
         );
       },
     },
@@ -112,7 +122,7 @@ export default function RewardPointsDetail() {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status) => {
+      render: status => {
         const statusConfig = {
           active: { color: '#52c41a', text: 'Active' },
           expired: { color: '#faad14', text: 'Expired' },
@@ -129,7 +139,9 @@ export default function RewardPointsDetail() {
 
   if (loading && !rewardPoints.length) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -190,7 +202,7 @@ export default function RewardPointsDetail() {
             pagination={{
               ...pagination,
               showSizeChanger: true,
-              showTotal: (total) => `Total ${total} transactions`,
+              showTotal: total => `Total ${total} transactions`,
             }}
             onChange={handleTableChange}
             loading={loading}
