@@ -12,6 +12,7 @@ import {
   createProduct,
   deleteProduct,
   getAllProducts,
+  getNewDrops,
   getProductById,
   updateProduct,
 } from '../controllers/productController.js';
@@ -27,6 +28,13 @@ const router = Router();
  * @access  Public
  */
 router.get('/', getAllProducts);
+
+/**
+ * @route   GET /api/products/new-drops
+ * @desc    Get new drops
+ * @access  Public
+ */
+router.get('/new-drops', getNewDrops);
 
 /**
  * @route   GET /api/products/:id

@@ -16,10 +16,21 @@ const recalculateTotalPrice = cart => {
 export const getCart = async (req, res) => {
   try {
     const userId = req.user.id;
-    const cart = await Cart.findOne({ user: userId }).populate('items.product');
-    if (!cart) return res.status(404).json({ message: 'Cart not found' });
+    const cart = await Cart.findOne({ user: userId }).populate({
+      path: 'items.product',
+      select: 'name brand price variants images mainImage stock',
+    });
+
+    if (!cart) {
+      // Create empty cart if none exists
+      const newCart = new Cart({ user: userId, items: [] });
+      await newCart.save();
+      return res.json(newCart);
+    }
+
     res.json(cart);
   } catch (err) {
+    console.error('Error getting cart:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -54,8 +65,15 @@ export const addOrUpdateItem = async (req, res) => {
     recalculateTotalPrice(cart);
     await cart.save();
 
-    res.status(200).json(cart);
+    // Return populated cart data
+    const populatedCart = await Cart.findById(cart._id).populate({
+      path: 'items.product',
+      select: 'name brand price variants images mainImage stock',
+    });
+
+    res.status(200).json(populatedCart);
   } catch (err) {
+    console.error('Error adding/updating cart item:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -83,8 +101,15 @@ export const updateCartItem = async (req, res) => {
     recalculateTotalPrice(cart);
     await cart.save();
 
-    res.status(200).json(cart);
+    // Return populated cart data
+    const populatedCart = await Cart.findById(cart._id).populate({
+      path: 'items.product',
+      select: 'name brand price variants images mainImage stock',
+    });
+
+    res.status(200).json(populatedCart);
   } catch (err) {
+    console.error('Error updating cart item:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -105,8 +130,15 @@ export const removeCartItem = async (req, res) => {
     recalculateTotalPrice(cart);
     await cart.save();
 
-    res.status(200).json(cart);
+    // Return populated cart data
+    const populatedCart = await Cart.findById(cart._id).populate({
+      path: 'items.product',
+      select: 'name brand price variants images mainImage stock',
+    });
+
+    res.status(200).json(populatedCart);
   } catch (err) {
+    console.error('Error removing cart item:', err);
     res.status(500).json({ message: err.message });
   }
 };

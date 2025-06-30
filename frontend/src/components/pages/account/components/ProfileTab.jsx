@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { Button, Input, Select, DatePicker, Spin, message, Form } from "antd";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
+import { Button, Input, Select, DatePicker, Spin, message, Form } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import axiosInstance from '@/services/axiosInstance';
+
 import {
   EditOutlined,
   UserOutlined,
@@ -13,11 +14,11 @@ import {
   InfoCircleOutlined,
   CheckCircleOutlined,
   GiftOutlined,
-} from "@ant-design/icons";
-import "../account.css";
-import TabHeader from "../../../common/components/TabHeader";
-import { useAuth } from "../../../../contexts/AuthContext";
-import dayjs from "dayjs";
+} from '@ant-design/icons';
+import '../account.css';
+import TabHeader from '../../../common/components/TabHeader';
+import { useAuth } from '../../../../contexts/AuthContext';
+import dayjs from 'dayjs';
 
 export default function ProfileTab() {
   const { user, updateProfile } = useAuth();
@@ -35,7 +36,7 @@ export default function ProfileTab() {
         username: user.username,
         phone: user.phone,
         address: user.address,
-        gender: user.gender || "male",
+        gender: user.gender || 'male',
         aboutMe: user.aboutMe,
         dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
       });
@@ -45,12 +46,12 @@ export default function ProfileTab() {
 
   const fetchTotalPoints = async () => {
     try {
-      const response = await axios.get(`/api/reward-points/user/${user._id}/total`);
+      const response = await axiosInstance.get(`/reward-points/user/${user._id}/total`);
       if (response.data.success) {
         setTotalPoints(response.data.data.availablePoints);
       }
     } catch (error) {
-      console.error("Failed to fetch total points:", error);
+      console.error('Failed to fetch total points:', error);
     }
   };
 
@@ -58,10 +59,10 @@ export default function ProfileTab() {
     return (
       <div
         style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
         }}
       >
         <Spin size="large" />
@@ -69,14 +70,14 @@ export default function ProfileTab() {
     );
   }
 
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = e => {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
       // Create a preview URL for the selected image
       const reader = new FileReader();
       reader.onloadend = () => {
-        const previewImg = document.querySelector(".profile-avatar img");
+        const previewImg = document.querySelector('.profile-avatar img');
         if (previewImg) {
           previewImg.src = reader.result;
         }
@@ -85,13 +86,13 @@ export default function ProfileTab() {
     }
   };
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async values => {
     try {
       setLoading(true);
       const formData = new FormData();
-      Object.keys(values).forEach((key) => {
+      Object.keys(values).forEach(key => {
         if (values[key] !== undefined && values[key] !== null) {
-          if (key === "dateOfBirth") {
+          if (key === 'dateOfBirth') {
             formData.append(key, values[key].toISOString());
           } else {
             formData.append(key, values[key]);
@@ -99,23 +100,23 @@ export default function ProfileTab() {
         }
       });
       if (avatarFile) {
-        formData.append("avatar", avatarFile);
+        formData.append('avatar', avatarFile);
       }
       const updatedUser = await updateProfile(formData);
       console.log('Updated user:', updatedUser);
-      
+
       // Cập nhật preview ảnh ngay lập tức nếu có URL mới
       if (updatedUser && updatedUser.avatar) {
-        const previewImg = document.querySelector(".profile-avatar img");
+        const previewImg = document.querySelector('.profile-avatar img');
         if (previewImg) {
           previewImg.src = updatedUser.avatar;
         }
       }
-      
-      message.success("Profile updated successfully");
+
+      message.success('Profile updated successfully');
     } catch (error) {
-      console.error("Update error:", error);
-      message.error(error.message || "Failed to update profile. Please try again.");
+      console.error('Update error:', error);
+      message.error(error.message || 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -127,12 +128,16 @@ export default function ProfileTab() {
       <div className="profile-tab-container">
         <div className="profile-header">
           <div className="profile-avatar">
-            <img 
-              src={user.avatar || "https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png"} 
-              alt="avatar" 
-              onError={(e) => {
+            <img
+              src={
+                user.avatar ||
+                'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png'
+              }
+              alt="avatar"
+              onError={e => {
                 console.log('Avatar load error, falling back to default');
-                e.target.src = "https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png";
+                e.target.src =
+                  'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png';
                 return true; // Prevent infinite error loop
               }}
             />
@@ -142,7 +147,7 @@ export default function ProfileTab() {
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarChange}
-                style={{ display: "none" }}
+                style={{ display: 'none' }}
               />
             </label>
           </div>
@@ -156,10 +161,10 @@ export default function ProfileTab() {
             <div className="email">
               <MailOutlined /> {user.email}
             </div>
-            <div 
-              className="point" 
+            <div
+              className="point"
               onClick={() => navigate('/account/reward-points')}
-              style={{ 
+              style={{
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -168,8 +173,8 @@ export default function ProfileTab() {
                 borderRadius: '6px',
                 transition: 'background 0.3s',
                 ':hover': {
-                  background: '#e6e8eb'
-                }
+                  background: '#e6e8eb',
+                },
               }}
             >
               <GiftOutlined style={{ marginRight: 8, color: '#1890ff' }} />
@@ -182,12 +187,9 @@ export default function ProfileTab() {
           layout="vertical"
           onFinish={handleSubmit}
           className="profile-sections-form"
-          style={{ width: "100%" }}
+          style={{ width: '100%' }}
         >
-          <div
-            className="profile-sections-row"
-            style={{ display: "flex", gap: 32 }}
-          >
+          <div className="profile-sections-row" style={{ display: 'flex', gap: 32 }}>
             <div className="profile-section" style={{ flex: 1 }}>
               <div className="profile-section-title">Personal Information</div>
               <Form.Item
@@ -208,7 +210,7 @@ export default function ProfileTab() {
                   </label>
                 }
               >
-                <DatePicker style={{ width: "100%" }} />
+                <DatePicker style={{ width: '100%' }} />
               </Form.Item>
               <Form.Item
                 name="gender"
@@ -232,10 +234,7 @@ export default function ProfileTab() {
                   </label>
                 }
               >
-                <Input.TextArea
-                  rows={2}
-                  placeholder="A short introduction about yourself..."
-                />
+                <Input.TextArea rows={2} placeholder="A short introduction about yourself..." />
               </Form.Item>
             </div>
             <div className="profile-section" style={{ flex: 1 }}>
@@ -287,15 +286,12 @@ export default function ProfileTab() {
                   </label>
                 }
               >
-                <Input
-                  value={new Date(user.createdAt).toLocaleDateString()}
-                  disabled
-                />
+                <Input value={new Date(user.createdAt).toLocaleDateString()} disabled />
               </Form.Item>
             </div>
           </div>
         </Form>
-        <div style={{ display: "flex", justifyContent: "center" }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <Button
             type="primary"
             className="save-btn"
