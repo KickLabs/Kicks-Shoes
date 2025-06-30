@@ -381,6 +381,10 @@ const router = createBrowserRouter([
             path: 'reward-points',
             element: <RewardPointsDetail />,
           },
+          {
+            path: 'chat',
+            element: <ChatPage />,
+          },
         ],
       },
       {

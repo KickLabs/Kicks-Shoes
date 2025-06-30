@@ -51,11 +51,7 @@ const cartSlice = createSlice({
       })
       .addCase(updateCartItem.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        const updatedItem = action.payload;
-        const index = state.items.findIndex(item => item._id === updatedItem._id);
-        if (index !== -1) {
-          state.items[index] = updatedItem;
-        }
+        state.items = action.payload.items;
         state.totalPrice = action.payload.totalPrice;
       })
       .addCase(updateCartItem.rejected, (state, action) => {

@@ -260,3 +260,18 @@ export const getAllProducts = async (req, res) => {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 };
+
+export const getNewDrops = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, ...filters } = req.query;
+    const result = await ProductService.getNewDrops({
+      page: Number(page),
+      limit: Number(limit),
+      filters,
+    });
+    res.status(200).json({ success: true, ...result });
+  } catch (err) {
+    console.error('Error fetching new drops:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};

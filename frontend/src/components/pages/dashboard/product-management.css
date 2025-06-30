@@ -14,19 +14,6 @@
   margin-bottom: 24px;
 }
 
-.product-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  overflow: hidden;
-}
-
-.product-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
 .product-image {
   width: 100%;
   height: 200px;
@@ -81,26 +68,6 @@
   font-size: 14px;
   font-weight: 600;
   color: #333;
-}
-
-.product-actions {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.product-actions:hover {
-  background: white;
-  transform: scale(1.1);
 }
 
 /* Inventory Management Styles */
