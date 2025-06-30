@@ -1,5 +1,6 @@
 import Feedback from '../models/Feedback.js';
 import Product from '../models/Product.js';
+import Report from '../models/Report.js';
 
 /**
  * Create a new feedback
@@ -56,6 +57,21 @@ export class FeedbackService {
       // Truy vấn tất cả feedbacks với điều kiện lọc
       const feedbacks = await Feedback.find(filter).populate('user', 'name');
       return feedbacks;
+    } catch (error) {
+      throw new Error(error);
+    }
+  }
+
+  /**
+   * Report a feedback
+   * @param {Object} reportData - Thông tin báo cáo
+   * @returns {Promise<Report>} - Đối tượng báo cáo được lưu
+   */
+  static async reportFeedback(reportData) {
+    try {
+      const report = new Report(reportData);
+      await report.save();
+      return report;
     } catch (error) {
       throw new Error(error);
     }

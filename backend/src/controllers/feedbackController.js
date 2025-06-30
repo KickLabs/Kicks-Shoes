@@ -1,7 +1,8 @@
 import { validationResult } from 'express-validator';
 import { FeedbackService } from '../services/feedback.service.js';
 import logger from '../utils/logger.js';
-
+import Feedback from '../models/Feedback.js';
+import Report from '../models/Report.js';
 /**
  * Create a new feedback
  * @route POST /api/feedback
@@ -116,5 +117,109 @@ export const getAllFeedback = async (req, res) => {
   } catch (error) {
     console.error('Error fetching feedbacks:', error);
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Report a feedback
+ * @route POST /api/feedback/:id/report
+ * @desc Report a feedback
+ * @access Private
+ */
+export const reportFeedback = async (req, res, next) => {
+  try {
+    const feedbackId = req.params.id;
+    const { reason, description, evidence } = req.body; // Nhận lý do báo cáo và mô tả từ request body
+
+    // Kiểm tra xem feedback có tồn tại không
+    const feedback = await Feedback.findById(feedbackId);
+    if (!feedback) {
+      return res.status(404).json({ success: false, message: 'Feedback not found' });
+    }
+
+    // Tạo báo cáo mới
+    const report = new Report({
+      reporter: req.user.id, // Người báo cáo là người dùng hiện tại
+      targetType: 'review', // Loại mục tiêu là feedback (review)
+      targetId: feedbackId, // ID của feedback
+      reason, // Lý do báo cáo
+      description, // Mô tả về báo cáo
+      evidence, // Chứng cứ báo cáo (nếu có)
+    });
+
+    await report.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Feedback reported successfully',
+      data: report,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Admin Approve or Delete Reported Feedback
+ * @route PUT /api/feedback/:id/approve
+ * @route DELETE /api/feedback/:id/delete
+ * @desc Admin approve or delete the reported feedback
+ * @access Private/Admin
+ */
+export const adminApproveFeedback = async (req, res, next) => {
+  try {
+    const feedbackId = req.params.id;
+    const feedback = await Feedback.findById(feedbackId);
+
+    if (!feedback) {
+      return res.status(404).json({ success: false, message: 'Feedback not found' });
+    }
+
+    const report = await Report.findOne({
+      targetId: feedbackId,
+      targetType: 'review',
+      status: 'pending',
+    });
+
+    if (!report) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'No pending report found for this feedback' });
+    }
+
+    if (req.method === 'PUT') {
+      feedback.status = 'approved';
+      feedback.isVerified = true;
+      await feedback.save();
+
+      report.status = 'resolved';
+      report.resolution = 'no_action';
+      report.resolvedBy = req.user.id;
+      report.resolvedAt = new Date();
+      await report.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Feedback approved and report resolved',
+        data: feedback,
+      });
+    }
+
+    if (req.method === 'DELETE') {
+      await feedback.deleteOne();
+
+      report.status = 'resolved';
+      report.resolution = 'ban';
+      report.resolvedBy = req.user.id;
+      report.resolvedAt = new Date();
+      await report.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Feedback deleted and report resolved',
+      });
+    }
+  } catch (error) {
+    next(error);
   }
 };

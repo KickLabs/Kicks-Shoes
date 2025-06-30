@@ -4,9 +4,12 @@ import {
   updateFeedback,
   deleteFeedback,
   getAllFeedback,
+  reportFeedback,
+  adminApproveFeedback,
 } from '../controllers/feedbackController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { checkFeedbackOwner } from '../middlewares/feedback.middleware.js'; // Middleware để kiểm tra feedback của chính người dùng
+import { requireRoles } from '../middlewares/role.middleware.js';
 
 const router = Router();
 
@@ -37,5 +40,14 @@ router.delete('/:id', protect, checkFeedbackOwner, deleteFeedback); // Xóa feed
  * @access  Public
  */
 router.get('/', getAllFeedback);
+
+/**
+ * @route   POST /api/feedback
+ * @desc    Other can report feedback
+ * @access  Private/Customer
+ */
+router.post('/:id/report', protect, reportFeedback);
+router.put('/:id/approve', protect, requireRoles('admin'), adminApproveFeedback); // Admin duyệt feedback
+router.delete('/:id/delete', protect, requireRoles('admin'), adminApproveFeedback); // Admin xóa feedback
 
 export default router;
