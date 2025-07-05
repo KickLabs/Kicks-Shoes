@@ -1,7 +1,7 @@
-import Favourite from "../models/Favourite.js";
-import Product from "../models/Product.js";
-import { ErrorResponse } from "../utils/errorResponse.js";
-import logger from "../utils/logger.js";
+import Favourite from '../models/Favourite.js';
+import Product from '../models/Product.js';
+import { ErrorResponse } from '../utils/errorResponse.js';
+import logger from '../utils/logger.js';
 
 /**
  * @desc    Add product to favourites
@@ -13,7 +13,7 @@ export const addToFavourites = async (req, res, next) => {
     const { productId } = req.body;
     const userId = req.user._id;
 
-    logger.info("Adding to favourites", {
+    logger.info('Adding to favourites', {
       userId: userId,
       productId: productId,
     });
@@ -21,27 +21,27 @@ export const addToFavourites = async (req, res, next) => {
     // Check if product exists
     const product = await Product.findById(productId);
     if (!product) {
-      logger.warn("Product not found", { productId });
-      return next(new ErrorResponse("Product not found", 404));
+      logger.warn('Product not found', { productId });
+      return next(new ErrorResponse('Product not found', 404));
     }
 
     // Find or create user's favourite list
     let favourite = await Favourite.findOne({ user: userId });
-    
+
     if (!favourite) {
       // Create new favourite list for user
       favourite = await Favourite.create({
         user: userId,
-        products: [productId]
+        products: [productId],
       });
     } else {
       // Check if product is already in favourites
       if (favourite.products.includes(productId)) {
-        logger.info("Product already in favourites", {
+        logger.info('Product already in favourites', {
           userId,
           productId,
         });
-        return next(new ErrorResponse("Product already in favourites", 400));
+        return next(new ErrorResponse('Product already in favourites', 400));
       }
 
       // Add product to existing favourites
@@ -50,13 +50,12 @@ export const addToFavourites = async (req, res, next) => {
     }
 
     // Populate product details
-    const populatedFavourite = await Favourite.findById(favourite._id)
-      .populate({
-        path: "products",
-        select: "name price images description brand"
-      });
+    const populatedFavourite = await Favourite.findById(favourite._id).populate({
+      path: 'products',
+      select: 'name price images description brand',
+    });
 
-    logger.info("Successfully added to favourites", {
+    logger.info('Successfully added to favourites', {
       favouriteId: favourite._id,
       userId,
       productId,
@@ -67,7 +66,7 @@ export const addToFavourites = async (req, res, next) => {
       data: populatedFavourite,
     });
   } catch (error) {
-    logger.error("Error in addToFavourites", {
+    logger.error('Error in addToFavourites', {
       error: error.message,
       stack: error.stack,
       userId: req.user?._id,
@@ -90,22 +89,20 @@ export const removeFromFavourites = async (req, res, next) => {
     const favourite = await Favourite.findOne({ user: userId });
 
     if (!favourite) {
-      return next(new ErrorResponse("Favourite list not found", 404));
+      return next(new ErrorResponse('Favourite list not found', 404));
     }
 
     // Remove product from array
-    favourite.products = favourite.products.filter(
-      (id) => id.toString() !== productId
-    );
-    
+    favourite.products = favourite.products.filter(id => id.toString() !== productId);
+
     await favourite.save();
 
     res.status(200).json({
       success: true,
-      message: "Product removed from favourites",
+      message: 'Product removed from favourites',
     });
   } catch (error) {
-    logger.error("Error in removeFromFavourites", {
+    logger.error('Error in removeFromFavourites', {
       error: error.message,
       stack: error.stack,
     });
@@ -120,23 +117,24 @@ export const removeFromFavourites = async (req, res, next) => {
  */
 export const getFavourites = async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
 
-    const favourite = await Favourite.findOne({ user: userId })
-      .populate({
-        path: "products",
-        select: "name price images description brand"
-      });
+    const favourite = await Favourite.findOne({ user: userId }).populate({
+      path: 'products',
+      select: 'name price images description brand mainImage isNew',
+    });
 
     res.status(200).json({
       success: true,
       count: favourite ? favourite.products.length : 0,
-      data: favourite ? favourite.products.map(product => ({
-        product: product
-      })) : [],
+      data: favourite
+        ? favourite.products.map(product => ({
+            product: product,
+          }))
+        : [],
     });
   } catch (error) {
-    logger.error("Error in getFavourites", {
+    logger.error('Error in getFavourites', {
       error: error.message,
       stack: error.stack,
     });
@@ -152,7 +150,7 @@ export const getFavourites = async (req, res, next) => {
 export const checkFavourite = async (req, res, next) => {
   try {
     const { productId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const favourite = await Favourite.findOne({ user: userId });
 
@@ -161,7 +159,7 @@ export const checkFavourite = async (req, res, next) => {
       isFavourite: favourite ? favourite.products.includes(productId) : false,
     });
   } catch (error) {
-    logger.error("Error in checkFavourite", {
+    logger.error('Error in checkFavourite', {
       error: error.message,
       stack: error.stack,
     });
@@ -179,28 +177,29 @@ export const getFavouritesByUserId = async (req, res, next) => {
     const { userId } = req.params;
 
     // Check if user is admin or requesting their own favourites
-    if (req.user.role !== 'admin' && req.user.id !== userId) {
+    if (req.user.role !== 'admin' && req.user._id !== userId) {
       return next(new ErrorResponse('Not authorized to access other users favourites', 403));
     }
 
-    const favourite = await Favourite.findOne({ user: userId })
-      .populate({
-        path: 'products',
-        select: 'name price images description brand variants.sizes variants.colors'
-      });
+    const favourite = await Favourite.findOne({ user: userId }).populate({
+      path: 'products',
+      select: 'name price images description brand variants.sizes variants.colors',
+    });
 
     res.status(200).json({
       success: true,
       count: favourite ? favourite.products.length : 0,
-      data: favourite ? favourite.products.map(product => ({
-        product: product
-      })) : []
+      data: favourite
+        ? favourite.products.map(product => ({
+            product: product,
+          }))
+        : [],
     });
   } catch (error) {
-    logger.error("Error in getFavouritesByUserId", {
+    logger.error('Error in getFavouritesByUserId', {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
-}; 
+};

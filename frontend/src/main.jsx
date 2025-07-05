@@ -415,6 +415,10 @@ const router = createBrowserRouter([
         path: 'payment-status',
         element: <PaymentStatus />,
       },
+      {
+        path: 'payment/return',
+        element: <PaymentStatus />,
+      },
     ],
   },
 ]);

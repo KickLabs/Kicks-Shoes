@@ -192,7 +192,7 @@
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-  margin-top: 24px;
+  margin-top: 0px !important;
 }
 
 .ant-table-thead > tr > th {
@@ -714,7 +714,9 @@ h4.best-seller-title,
   cursor: pointer;
   border-radius: 12px;
   margin: 6px 10px;
-  transition: background 0.2s, box-shadow 0.2s;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
   display: flex !important;
   align-items: center !important;
 }

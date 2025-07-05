@@ -14,6 +14,7 @@ import {
   getAllProducts,
   getNewDrops,
   getProductById,
+  getRecommendProductsForProductDetails,
   updateProduct,
 } from '../controllers/productController.js';
 import { protect } from '../middlewares/auth.middleware.js';
@@ -35,6 +36,13 @@ router.get('/', getAllProducts);
  * @access  Public
  */
 router.get('/new-drops', getNewDrops);
+
+/**
+ * @route   GET /api/products/recommend
+ * @desc    Get recommend products
+ * @access  Public
+ */
+router.get('/recommend/:productId', getRecommendProductsForProductDetails);
 
 /**
  * @route   GET /api/products/:id

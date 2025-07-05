@@ -1,13 +1,48 @@
 import './ProductCard.css';
 import { formatPrice } from '../../../utils/StringFormat';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { favouriteService } from '../../../services/favouriteService';
 
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
+  const [isFavourite, setIsFavourite] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const displayPrice = product.price.isOnSale
     ? product.price.regular * (1 - product.price.discountPercent / 100)
     : product.price.regular;
+
+  // Check if product is in favourites on component mount
+  useEffect(() => {
+    const checkFavouriteStatus = async () => {
+      try {
+        const response = await favouriteService.checkFavourite(product._id);
+        setIsFavourite(response.isFavourite);
+      } catch (error) {
+        console.error('Error checking favourite status:', error);
+      }
+    };
+
+    checkFavouriteStatus();
+  }, [product._id]);
+
+  const handleFavouriteToggle = async () => {
+    try {
+      setIsLoading(true);
+      if (isFavourite) {
+        await favouriteService.removeFromFavourites(product._id);
+        setIsFavourite(false);
+      } else {
+        await favouriteService.addToFavourites(product._id);
+        setIsFavourite(true);
+      }
+    } catch (error) {
+      console.error('Error toggling favourite:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="product-card">
@@ -30,6 +65,32 @@ const ProductCard = ({ product }) => {
           alt={product.name}
           className="product-card__image"
         />
+
+        {/* Favourite button */}
+        <button
+          className="product-card__favourite-button"
+          onClick={handleFavouriteToggle}
+          disabled={isLoading}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            background: 'rgba(255, 255, 255, 0.9)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '30px',
+            height: '30px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '16px',
+            color: isFavourite ? '#ff4757' : '#666',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          {isFavourite ? '♥' : '♡'}
+        </button>
       </div>
 
       <div className="product-card__info">

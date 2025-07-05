@@ -7,6 +7,7 @@ const orderService = {
         'Creating order with token:',
         localStorage.getItem('accessToken') ? 'Token exists' : 'No token'
       );
+      console.log('Order data being sent:', JSON.stringify(orderData, null, 2));
 
       const response = await axiosInstance.post(`/orders`, orderData, {
         headers: {

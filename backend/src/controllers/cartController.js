@@ -16,7 +16,7 @@ const recalculateTotalPrice = cart => {
 export const getCart = async (req, res) => {
   try {
     const userId = req.user.id;
-    const cart = await Cart.findOne({ user: userId }).populate({
+    let cart = await Cart.findOne({ user: userId }).populate({
       path: 'items.product',
       select: 'name brand price variants images mainImage stock',
     });
@@ -26,6 +26,14 @@ export const getCart = async (req, res) => {
       const newCart = new Cart({ user: userId, items: [] });
       await newCart.save();
       return res.json(newCart);
+    }
+
+    // Clean up invalid items (items without product)
+    const validItems = cart.items.filter(item => item.product && item.product._id);
+    if (validItems.length !== cart.items.length) {
+      cart.items = validItems;
+      recalculateTotalPrice(cart);
+      await cart.save();
     }
 
     res.json(cart);
@@ -41,7 +49,24 @@ export const getCart = async (req, res) => {
 export const addOrUpdateItem = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { productId, quantity, size, color, price } = req.body;
+    const { product, quantity, size, color, price } = req.body;
+
+    // Validate required fields
+    if (!product) {
+      return res.status(400).json({ message: 'Product is required' });
+    }
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({ message: 'Valid quantity is required' });
+    }
+    if (!size) {
+      return res.status(400).json({ message: 'Size is required' });
+    }
+    if (!color) {
+      return res.status(400).json({ message: 'Color is required' });
+    }
+    if (!price || price < 0) {
+      return res.status(400).json({ message: 'Valid price is required' });
+    }
 
     let cart = await Cart.findOne({ user: userId });
 
@@ -49,9 +74,12 @@ export const addOrUpdateItem = async (req, res) => {
       cart = new Cart({ user: userId, items: [] });
     }
 
+    // Clean up any invalid items first
+    cart.items = cart.items.filter(item => item.product && item.product.toString());
+
     // Kiểm tra item đã tồn tại (cùng product, size, color)
     const existingItem = cart.items.find(
-      item => item.product.toString() === productId && item.size === size && item.color === color
+      item => item.product.toString() === product && item.size === size && item.color === color
     );
 
     if (existingItem) {
@@ -59,7 +87,7 @@ export const addOrUpdateItem = async (req, res) => {
       existingItem.quantity += quantity;
     } else {
       // Nếu chưa có, thêm mới
-      cart.items.push({ product: productId, quantity, size, color, price });
+      cart.items.push({ product, quantity, size, color, price });
     }
 
     recalculateTotalPrice(cart);
