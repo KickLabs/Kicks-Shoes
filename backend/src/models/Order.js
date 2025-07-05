@@ -23,7 +23,15 @@ const orderSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'],
+      enum: [
+        'pending',
+        'processing',
+        'shipped',
+        'delivered',
+        'cancelled',
+        'refunded',
+        'refund_pending',
+      ],
       default: 'pending',
     },
     totalPrice: {
@@ -45,7 +53,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'failed', 'refunded'],
+      enum: ['pending', 'paid', 'failed', 'refunded', 'refund_pending'],
       default: 'pending',
     },
     trackingNumber: {
@@ -129,6 +137,50 @@ const orderSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // VNPay transaction number for refunds
+    vnpTransactionNo: {
+      type: String,
+      trim: true,
+    },
+    // Refund-related fields
+    refundedAt: {
+      type: Date,
+    },
+    refundReason: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Refund reason cannot exceed 500 characters'],
+    },
+    refundAmount: {
+      type: Number,
+      min: [0, 'Refund amount cannot be negative'],
+    },
+    refundTransactionNo: {
+      type: String,
+      trim: true,
+    },
+    refundResponseCode: {
+      type: String,
+      trim: true,
+    },
+    // Refund pending and error tracking
+    refundError: {
+      type: String,
+      trim: true,
+      maxlength: [1000, 'Refund error cannot exceed 1000 characters'],
+    },
+    refundAttemptedAt: {
+      type: Date,
+    },
+    // Cancellation fields
+    cancelledAt: {
+      type: Date,
+    },
+    cancellationReason: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Cancellation reason cannot exceed 500 characters'],
+    },
     // paymentDetails: {
     //   cardNumber: {
     //     type: String,
@@ -156,7 +208,7 @@ const orderSchema = new mongoose.Schema(
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: 1 });
-orderSchema.index({ orderNumber: 1 });
+// orderNumber index is already defined in the schema
 
 // Virtual for formatted order number
 orderSchema.virtual('formattedOrderNumber').get(function () {

@@ -130,16 +130,33 @@ export default function OrderDetails() {
     fetchOrder();
   }, [orderId]);
 
-  const handleStatusChange = async value => {
+  const handleStatusChange = async newStatus => {
     try {
       setLoading(true);
+
+      // Validate status transition
+      const currentStatus = order.status;
+      const validTransitions = {
+        pending: ['processing', 'cancelled'],
+        processing: ['shipped', 'cancelled'],
+        shipped: ['delivered'],
+        delivered: ['refunded'],
+        cancelled: [], // No further transitions
+        refunded: [], // No further transitions
+      };
+
+      if (!validTransitions[currentStatus]?.includes(newStatus)) {
+        message.error(`Cannot change status from ${currentStatus} to ${newStatus}`);
+        return;
+      }
+
       const response = await axiosInstance.patch(`/orders/${orderId}/status`, {
-        status: value.toLowerCase(),
+        status: newStatus,
       });
 
       if (response.data.success) {
-        setOrder(prev => ({ ...prev, status: value.toLowerCase() }));
-        message.success('Order status updated successfully');
+        setOrder(prev => ({ ...prev, status: newStatus }));
+        message.success(`Order status updated to ${newStatus}`);
       } else {
         throw new Error(response.data.message || 'Failed to update order status');
       }
@@ -155,12 +172,86 @@ export default function OrderDetails() {
     setNote(e.target.value);
   };
 
-  const canCancel =
-    user?.role === 'customer' && order?.user?._id === user?._id && order?.status === 'pending';
+  const handleCancelOrder = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.post(`/orders/${orderId}/cancel`, {
+        reason: 'Customer requested cancellation',
+      });
 
-  const handleCancelOrder = () => {
-    message.info('Cancel order');
+      if (response.data.success) {
+        setOrder(prev => ({ ...prev, status: 'cancelled' }));
+        message.success('Order cancelled successfully');
+      } else {
+        throw new Error(response.data.message || 'Failed to cancel order');
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      message.error('Failed to cancel order');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleRefundOrder = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.post(`/orders/${orderId}/refund`, {
+        reason: 'Customer requested refund',
+        amount: order.totalPrice,
+      });
+
+      if (response.data.success) {
+        setOrder(prev => ({ ...prev, status: 'refunded' }));
+        message.success('Order refunded successfully');
+      } else {
+        throw new Error(response.data.message || 'Failed to refund order');
+      }
+    } catch (error) {
+      console.error('Error refunding order:', error);
+      message.error('Failed to refund order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check if customer can cancel order (processing or pending status)
+  const canCancel =
+    user?.role === 'customer' &&
+    order?.user?._id === user?._id &&
+    (order?.status === 'processing' || order?.status === 'pending');
+
+  // Check if customer can refund order
+  const canRefund = () => {
+    if (user?.role !== 'customer' || order?.user?._id !== user?._id) {
+      return false;
+    }
+
+    // Case 1: Cancelled and paid orders with VNPay payment method
+    if (
+      order?.paymentStatus === 'paid' &&
+      order?.status === 'cancelled' &&
+      order?.paymentMethod === 'vnpay'
+    ) {
+      return true;
+    }
+
+    // Case 2: Delivered and paid orders (any payment method) within 3 days
+    if (order?.paymentStatus === 'paid' && order?.status === 'delivered') {
+      if (order?.deliveredAt) {
+        const deliveredDate = new Date(order.deliveredAt);
+        const currentDate = new Date();
+        const daysDiff = (currentDate - deliveredDate) / (1000 * 60 * 60 * 24);
+        return daysDiff <= 3; // Refund available within 3 days of delivery
+      }
+      // If no deliveredAt date, don't allow refund
+      return false;
+    }
+
+    return false;
+  };
+
+  const shouldShowRefund = canRefund();
 
   const statusColorMap = {
     pending: 'orange',
@@ -195,6 +286,23 @@ export default function OrderDetails() {
     status: order.status,
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod,
+    deliveredAt: order.deliveredAt,
+    updatedAt: order.updatedAt,
+    canCancel,
+    shouldShowRefund,
+    userRole: user?.role,
+    userId: user?._id,
+    orderUserId: order?.user?._id,
+    // Refund eligibility check
+    isCancelledAndPaidVNPay:
+      order?.paymentStatus === 'paid' &&
+      order?.status === 'cancelled' &&
+      order?.paymentMethod === 'vnpay',
+    isDeliveredAndPaidWithin3Days:
+      order?.paymentStatus === 'paid' &&
+      order?.status === 'delivered' &&
+      order?.deliveredAt &&
+      new Date() - new Date(order.deliveredAt) <= 3 * 24 * 60 * 60 * 1000,
   });
 
   return (
@@ -231,13 +339,6 @@ export default function OrderDetails() {
                 >
                   {order.status?.toUpperCase()}
                 </Tag>
-                <DatePicker.RangePicker
-                  value={[
-                    order.createdAt ? dayjs(order.createdAt) : null,
-                    order.estimatedDelivery ? dayjs(order.estimatedDelivery) : null,
-                  ]}
-                  disabled
-                />
               </div>
               {canCancel && (
                 <div className="order-details-actions">
@@ -252,21 +353,120 @@ export default function OrderDetails() {
                   </Button>
                 </div>
               )}
+              {shouldShowRefund && (
+                <div className="order-details-actions">
+                  {order?.status === 'delivered' && order?.deliveredAt && (
+                    <div style={{ marginBottom: 8, fontSize: '12px', color: '#666' }}>
+                      {(() => {
+                        const deliveredDate = new Date(order.deliveredAt);
+                        const currentDate = new Date();
+                        const daysDiff = (currentDate - deliveredDate) / (1000 * 60 * 60 * 24);
+                        const remainingDays = Math.max(0, 3 - Math.ceil(daysDiff));
+                        return `Refund available for ${remainingDays} more day${remainingDays !== 1 ? 's' : ''}`;
+                      })()}
+                    </div>
+                  )}
+                  <Button
+                    type="primary"
+                    danger
+                    block
+                    onClick={handleRefundOrder}
+                    className="order-refund-btn"
+                    icon={<ExclamationCircleOutlined className="order-refund-btn-icon" />}
+                  >
+                    Request Refund
+                  </Button>
+                </div>
+              )}
               {showActions && (
                 <div className="order-details-header-actions">
-                  <Select
-                    defaultValue={order.status?.toUpperCase()}
-                    style={{ width: 140 }}
-                    onChange={handleStatusChange}
-                  >
-                    <Option value="PENDING">Pending</Option>
-                    <Option value="PROCESSING">Processing</Option>
-                    <Option value="SHIPPED">Shipped</Option>
-                    <Option value="DELIVERED">Delivered</Option>
-                    <Option value="CANCELLED">Cancelled</Option>
-                    <Option value="REFUNDED">Refunded</Option>
-                  </Select>
-                  <Button icon={<DownloadOutlined />} />
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {/* Status flow indicator */}
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: '#666',
+                        marginRight: 16,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <span>Status Flow:</span>
+                      <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+                        {order.status?.toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* Pending -> Processing */}
+                    {order.status === 'pending' && (
+                      <Button
+                        type="primary"
+                        onClick={() => handleStatusChange('processing')}
+                        loading={loading}
+                      >
+                        Start Processing
+                      </Button>
+                    )}
+
+                    {/* Processing -> Shipped */}
+                    {order.status === 'processing' && (
+                      <Button
+                        type="primary"
+                        onClick={() => handleStatusChange('shipped')}
+                        loading={loading}
+                      >
+                        Mark as Shipped
+                      </Button>
+                    )}
+
+                    {/* Shipped -> Delivered */}
+                    {order.status === 'shipped' && (
+                      <Button
+                        type="primary"
+                        onClick={() => handleStatusChange('delivered')}
+                        loading={loading}
+                      >
+                        Mark as Delivered
+                      </Button>
+                    )}
+
+                    {/* Cancel button for pending and processing orders */}
+                    {(order.status === 'pending' || order.status === 'processing') && (
+                      <Button
+                        danger
+                        onClick={() => handleStatusChange('cancelled')}
+                        loading={loading}
+                      >
+                        Cancel Order
+                      </Button>
+                    )}
+
+                    {/* Refund button for delivered orders */}
+                    {order.status === 'delivered' && order.paymentStatus === 'paid' && (
+                      <Button
+                        type="primary"
+                        danger
+                        onClick={() => handleStatusChange('refunded')}
+                        loading={loading}
+                      >
+                        Process Refund
+                      </Button>
+                    )}
+
+                    {/* Final status indicator */}
+                    {(order.status === 'cancelled' || order.status === 'refunded') && (
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: '#52c41a',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        ✓ Order {order.status === 'cancelled' ? 'Cancelled' : 'Refunded'}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -349,17 +549,6 @@ export default function OrderDetails() {
                 </Card>
               </Col>
             </Row>
-
-            {showActions && (
-              <div className="order-details-actions">
-                <Button block>View Customer Profile</Button>
-                <Button icon={<DownloadOutlined />} block>
-                  Download Order Info
-                </Button>
-                <Button block>View Delivery Address</Button>
-              </div>
-            )}
-
             <div className="order-details-products">
               <div className="order-details-products-title">Products</div>
               <Table

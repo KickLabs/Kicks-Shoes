@@ -365,6 +365,23 @@ export const cancelOrder = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Order with id ' + id + ' cancelled successfully',
+      data: {
+        orderId: order._id,
+        status: order.status,
+        cancellationReason: order.cancellationReason,
+        cancelledAt: order.cancelledAt,
+        // Include refund information if VNPay refund was processed
+        refundInfo:
+          order.paymentMethod === 'vnpay' && order.paymentStatus === 'refunded'
+            ? {
+                refundAmount: order.refundAmount,
+                refundReason: order.refundReason,
+                refundedAt: order.refundedAt,
+                refundTransactionNo: order.refundTransactionNo,
+                refundResponseCode: order.refundResponseCode,
+              }
+            : null,
+      },
     });
   } catch (error) {
     logger.error('Error cancelling order:', error);
@@ -486,7 +503,17 @@ export const refundOrder = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      data: orderRefunded,
+      data: {
+        orderId: orderRefunded._id,
+        status: orderRefunded.status,
+        paymentStatus: orderRefunded.paymentStatus,
+        refundAmount: orderRefunded.refundAmount,
+        refundReason: orderRefunded.refundReason,
+        refundedAt: orderRefunded.refundedAt,
+        // Include VNPay refund details if available
+        refundTransactionNo: orderRefunded.refundTransactionNo,
+        refundResponseCode: orderRefunded.refundResponseCode,
+      },
       message: 'Refund processed successfully',
     });
   } catch (error) {

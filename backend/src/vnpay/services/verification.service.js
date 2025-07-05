@@ -1,4 +1,4 @@
-import { WRONG_CHECKSUM_KEY, numberRegex } from '../constants/index.js';
+import { WRONG_CHECKSUM_KEY, numberRegex, RESPONSE_MAP } from '../constants/index.js';
 import { ignoreLogger } from '../utils/index.js';
 import { getResponseByStatusCode } from '../utils/common.js';
 import { buildPaymentUrlSearchParams, verifySecureHash } from '../utils/payment.util.js';
@@ -63,7 +63,8 @@ export class VerificationService {
       isSuccess: cloneQuery.vnp_ResponseCode === '00',
       message: getResponseByStatusCode(
         cloneQuery.vnp_ResponseCode?.toString() ?? '',
-        this.config.vnp_Locale
+        this.config.vnp_Locale,
+        RESPONSE_MAP
       ),
     };
 

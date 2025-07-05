@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Form, Input, Divider } from 'antd';
 import './Authenticate.css';
-import LoginHeader from '../components/LoginHeader';
+import AdminLoginHeader from '../components/AdminLoginHeader';
 import RememberCheckbox from '../components/RememberCheckbox';
 import EmailLoginButton from '../components/EmailLoginButton';
 import SocialButton from '../components/SocialButton';
@@ -20,11 +20,18 @@ const LoginAdmin = () => {
     try {
       setLoading(true);
       const response = await login(values);
+
+      // Check if user has admin or shop role
       if (response.role === 'admin') {
-        message.success('Login successful!');
+        message.success('Admin login successful!');
         navigate('/dashboard');
+      } else if (response.role === 'shop') {
+        message.success('Shop login successful!');
+        navigate('/shop/dashboard');
       } else {
-        message.error('You are not authorized to access the admin panel');
+        message.error(
+          'You are not authorized to access the admin/shop panel. Only admin and shop roles are allowed.'
+        );
       }
     } catch (error) {
       message.error(error.response?.data?.message || 'Login failed');
@@ -41,7 +48,30 @@ const LoginAdmin = () => {
 
       <div className="login-box-admin">
         <Form name="login-admin" onFinish={onFinish} layout="vertical" validateTrigger="onBlur">
-          <LoginHeader />
+          <AdminLoginHeader />
+
+          {/* Role information */}
+          <div
+            style={{
+              background: '#f6ffed',
+              border: '1px solid #b7eb8f',
+              borderRadius: 6,
+              padding: 12,
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{ fontSize: '12px', color: '#52c41a', fontWeight: 'bold', marginBottom: 4 }}
+            >
+              ✓ Authorized Roles
+            </div>
+            <div style={{ fontSize: '11px', color: '#666' }}>
+              • <strong>Admin:</strong> Full system access and management
+            </div>
+            <div style={{ fontSize: '11px', color: '#666' }}>
+              • <strong>Shop:</strong> Shop dashboard and order management
+            </div>
+          </div>
 
           <Form.Item
             name="email"
