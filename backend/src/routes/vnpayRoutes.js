@@ -22,5 +22,6 @@ router.get('/config', vnpayController.getConfig);
 // Protected routes (authentication required)
 router.post('/query', protect, vnpayController.queryPaymentStatus);
 router.post('/refund', protect, authorize('admin'), vnpayController.refundPayment);
+router.post('/refund-order', protect, authorize('admin'), vnpayController.refundOrderPayment);
 
 export default router;

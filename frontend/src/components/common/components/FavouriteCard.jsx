@@ -26,6 +26,12 @@ const FavouriteCard = ({ product, onRemoveFromFavourites }) => {
 
   const handleRemoveFromFavourites = async () => {
     try {
+      // Check if user is logged in before making API call
+      const userInfo = localStorage.getItem('userInfo');
+      if (!userInfo) {
+        window.location.href = '/login';
+        return;
+      }
       setIsLoading(true);
       await favouriteService.removeFromFavourites(product._id);
       if (onRemoveFromFavourites) {
@@ -33,6 +39,10 @@ const FavouriteCard = ({ product, onRemoveFromFavourites }) => {
       }
     } catch (error) {
       console.error('Error removing from favourites:', error);
+      // If error occurs (e.g., token expired), redirect to login
+      if (error.message?.includes('Not authorized') || error.message?.includes('401')) {
+        window.location.href = '/login';
+      }
     } finally {
       setIsLoading(false);
     }

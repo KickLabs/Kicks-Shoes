@@ -7,8 +7,6 @@ import CategoryPanel from './CategoryPanel';
 import PricePanel from './PricePanel';
 import { useState, useEffect } from 'react';
 
-const { Panel } = Collapse;
-
 const FilterSidebar = ({ onFiltersChange }) => {
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
@@ -45,6 +43,70 @@ const FilterSidebar = ({ onFiltersChange }) => {
     setSelectedCategory(null);
     setSelectedPrice([0, 1000]);
   };
+
+  // Define collapse items
+  const collapseItems = [
+    {
+      key: '1',
+      label: 'FILTER BY BRAND',
+      children: (
+        <RefinePanel
+          refineOptions={['Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance']}
+          selectedRefineOption={selectedBrand}
+          onRefineSelect={b => setSelectedBrand(b === selectedBrand ? null : b)}
+        />
+      ),
+    },
+    {
+      key: '2',
+      label: 'SIZE',
+      children: (
+        <SizePanel
+          sizes={[
+            30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+          ]}
+          selectedSize={selectedSize}
+          onSizeSelect={s => setSelectedSize(s === selectedSize ? null : s)}
+        />
+      ),
+    },
+    {
+      key: '3',
+      label: 'COLOR',
+      children: (
+        <ColorPanel
+          colors={[
+            { value: 'Black', hex: '#000000' },
+            { value: 'White', hex: '#FFFFFF' },
+            { value: 'Red', hex: '#FF0000' },
+            { value: 'Blue', hex: '#0000FF' },
+            { value: 'Green', hex: '#008000' },
+            { value: 'Yellow', hex: '#FFFF00' },
+            { value: 'Gray', hex: '#808080' },
+          ]}
+          selectedColor={selectedColor}
+          onColorSelect={c => setSelectedColor(c === selectedColor ? null : c)}
+        />
+      ),
+    },
+    {
+      key: '4',
+      label: 'TYPE',
+      children: (
+        <CategoryPanel
+          selectedCategory={selectedCategory}
+          onCategorySelect={catId => setSelectedCategory(catId === selectedCategory ? null : catId)}
+        />
+      ),
+    },
+    {
+      key: '5',
+      label: 'PRICE',
+      children: (
+        <PricePanel priceRange={selectedPrice} onPriceChange={price => setSelectedPrice(price)} />
+      ),
+    },
+  ];
 
   return (
     <div className="filter-sidebar">
@@ -93,50 +155,7 @@ const FilterSidebar = ({ onFiltersChange }) => {
           )}
         </div>
       </div>
-      <Collapse defaultActiveKey={['1', '2', '3', '4', '5']} ghost>
-        <Panel header="FILTER BY BRAND" key="1">
-          <RefinePanel
-            refineOptions={['Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance']} // List brand options here
-            selectedRefineOption={selectedBrand} // Brand filter state
-            onRefineSelect={b => setSelectedBrand(b === selectedBrand ? null : b)} // Toggle brand filter
-          />
-        </Panel>
-        <Panel header="SIZE" key="2">
-          <SizePanel
-            sizes={[
-              30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
-            ]}
-            selectedSize={selectedSize}
-            onSizeSelect={s => setSelectedSize(s === selectedSize ? null : s)}
-          />
-        </Panel>
-        <Panel header="COLOR" key="3">
-          <ColorPanel
-            colors={[
-              { value: 'Black', hex: '#000000' },
-              { value: 'White', hex: '#FFFFFF' },
-              { value: 'Red', hex: '#FF0000' },
-              { value: 'Blue', hex: '#0000FF' },
-              { value: 'Green', hex: '#008000' },
-              { value: 'Yellow', hex: '#FFFF00' },
-              { value: 'Gray', hex: '#808080' },
-            ]}
-            selectedColor={selectedColor}
-            onColorSelect={c => setSelectedColor(c === selectedColor ? null : c)}
-          />
-        </Panel>
-        <Panel header="TYPE" key="4">
-          <CategoryPanel
-            selectedCategory={selectedCategory}
-            onCategorySelect={catId =>
-              setSelectedCategory(catId === selectedCategory ? null : catId)
-            } // Toggle category selection
-          />
-        </Panel>
-        <Panel header="PRICE" key="5">
-          <PricePanel priceRange={selectedPrice} onPriceChange={price => setSelectedPrice(price)} />
-        </Panel>
-      </Collapse>
+      <Collapse defaultActiveKey={['1', '2', '3', '4', '5']} ghost items={collapseItems} />
     </div>
   );
 };
