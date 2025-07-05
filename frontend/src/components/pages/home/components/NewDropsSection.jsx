@@ -1,47 +1,32 @@
 import './NewDropsSection.css';
 import ProductCard from '../../../common/components/ProductCard';
 import { useEffect, useState } from 'react';
-import { Button, Pagination } from 'antd'; // Dùng Button từ Ant Design
-import axios from 'axios';
+import { Button } from 'antd';
+import axiosInstance from '@/services/axiosInstance';
+import { useNavigate } from 'react-router-dom';
 
 export const NewDropsSection = () => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [products, setProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [totalProducts, setTotalProducts] = useState(0);
-  const pageSize = 4; // Mỗi trang chỉ hiển thị tối đa 4 sản phẩm
-
-  const fetchProducts = async (newFilters, newPage = 1) => {
-    try {
-      const response = await axios.get('/api/products', {
-        params: {
-          ...newFilters,
-          page: newPage,
-          limit: pageSize, // Giới hạn số sản phẩm mỗi trang
-        },
-      });
-      setProducts(response.data.data.products);
-      setTotalProducts(response.data.data.total);
-    } catch (err) {
-      console.error('Error fetching products', err);
-    }
-  };
-
+  const navigate = useNavigate();
+  const [newDrops, setNewDrops] = useState([]);
   useEffect(() => {
-    const newProducts = products.filter(product => product.isNew);
-    setFilteredProducts(newProducts);
-  }, [products]);
-
-  useEffect(() => {
-    fetchProducts({ isNew: true }, currentPage);
-  }, [currentPage]);
-
-  const totalPages = Math.ceil(totalProducts / pageSize);
-
-  const handlePageChange = page => {
-    setCurrentPage(page);
+    const fetchNewDrops = async () => {
+      const newProducts = await axiosInstance.get('/products/new-drops').then(res => res.data);
+      setNewDrops(
+        newProducts.data.slice(0, 4).map(product => ({
+          ...product,
+          price: {
+            ...product.price,
+            isOnSale: product.price.discountPercent > 0,
+          },
+        }))
+      );
+      console.log(newProducts);
+    };
+    fetchNewDrops();
+  }, []);
+  const handleShopNewDrops = () => {
+    navigate('/listing-page?isNew=true');
   };
-
   return (
     <div className="new-drops-wrapper">
       <div className="new-drops-header">
@@ -53,21 +38,11 @@ export const NewDropsSection = () => {
       </div>
 
       <div className="new-drops-list">
-        <div className="card-wrapper">
-          {filteredProducts.map(product => (
-            <ProductCard key={product._id} product={product} />
-          ))}
-        </div>
-      </div>
-
-      {/* Phân trang */}
-      <div className="pagination">
-        <Pagination
-          current={currentPage}
-          total={totalProducts}
-          pageSize={pageSize}
-          onChange={setCurrentPage}
-        />
+        {newDrops.map(product => (
+          <div className="card-wrapper" key={product._id || product.id}>
+            <ProductCard product={product} />
+          </div>
+        ))}
       </div>
     </div>
   );

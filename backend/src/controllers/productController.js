@@ -244,7 +244,7 @@ export const getAllProducts = async (req, res) => {
       category: category || undefined,
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
-      isNew: isNew !== undefined ? Boolean(isNew) : undefined,
+      isNew: isNew === 'true' ? true : undefined,
       sortBy,
       order,
       page: Number(page),

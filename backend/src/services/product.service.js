@@ -314,12 +314,30 @@ export class ProductService {
     const filter = {};
     if (brand) filter.brand = brand;
     if (category) filter.category = category;
-    if (size) filter['variants.sizes'] = { $in: [size] };
-    if (color) filter['variants.colors'] = { $in: [color] };
-    if (minPrice) filter['price.regular'] = { $gte: minPrice };
-    if (maxPrice) filter['price.regular'] = { $lte: maxPrice };
-    if (isNew !== undefined) filter.isNew = isNew;
-
+    if (isNew) filter.isNew = true;
+    if (size) {
+      filter.$or = [
+        { 'variants.sizes': { $in: [Number(size)] } },
+        { 'inventory.size': Number(size) },
+      ];
+    }
+    if (color) {
+      if (filter.$or) {
+        const existingOr = filter.$or;
+        filter.$and = [
+          { $or: existingOr },
+          { $or: [{ 'variants.colors': { $in: [color] } }, { 'inventory.color': color }] },
+        ];
+        delete filter.$or;
+      } else {
+        filter.$or = [{ 'variants.colors': { $in: [color] } }, { 'inventory.color': color }];
+      }
+    }
+    if (minPrice || maxPrice) {
+      filter['price.regular'] = {};
+      if (minPrice) filter['price.regular'].$gte = minPrice;
+      if (maxPrice) filter['price.regular'].$lte = maxPrice;
+    }
     const sortOptions = { [sortBy]: order === 'asc' ? 1 : -1 };
     const skip = (page - 1) * limit;
     console.log('Product filter:', JSON.stringify(filter, null, 2));

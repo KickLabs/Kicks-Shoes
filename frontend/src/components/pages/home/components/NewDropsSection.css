@@ -53,11 +53,28 @@
   gap: 24px;
   align-items: stretch;
 }
+
+@media (max-width: 900px) {
+  .new-drops-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .new-drops-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .card-wrapper {
   display: flex;
-  flex-wrap: wrap;
-  gap: 45px;
+  justify-content: center;
+  align-items: stretch;
 }
+
+/* .card-wrapper {
+    min-width: 160px;
+} */
 
 @media (max-width: 768px) {
   .new-drops-list {
