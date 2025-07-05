@@ -23,7 +23,6 @@ const ProductCard = ({ product }) => {
           setIsFavourite(false);
           return;
         }
-
         const response = await favouriteService.checkFavourite(product._id);
         setIsFavourite(response.isFavourite);
       } catch (error) {
@@ -45,7 +44,6 @@ const ProductCard = ({ product }) => {
         window.location.href = '/login';
         return;
       }
-
       setIsLoading(true);
       if (isFavourite) {
         await favouriteService.removeFromFavourites(product._id);

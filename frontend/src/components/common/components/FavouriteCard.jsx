@@ -32,7 +32,6 @@ const FavouriteCard = ({ product, onRemoveFromFavourites }) => {
         window.location.href = '/login';
         return;
       }
-
       setIsLoading(true);
       await favouriteService.removeFromFavourites(product._id);
       if (onRemoveFromFavourites) {
