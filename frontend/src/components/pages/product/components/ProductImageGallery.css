@@ -2,6 +2,9 @@
   margin-top: 20px;
   display: flex;
   gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 340px;
 }
 
 .thumbnail-img {
@@ -15,4 +18,13 @@
 
 .thumbnail-img.active {
   border: 2px solid #1677ff;
+}
+
+/* Đảm bảo mỗi ảnh thumbnail chiếm 1/3 hàng, tối đa 3 ảnh/row */
+.thumbnail-row > .ant-col {
+  flex: 0 0 calc(33.33% - 10px);
+  max-width: 100px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
 }

@@ -102,6 +102,11 @@ export default function Header({ userRole = 'ADMIN' }) {
     navigate('/edit-profile');
   };
 
+  const handleNewDrop = () => {
+    console.log('New Drop clicked! Navigating to /listing-page?isNew=true');
+    navigate('/listing-page?isNew=true');
+  };
+
   // Account menu items based on role
   const getAccountMenuItems = () => {
     const baseItems = [
@@ -279,6 +284,16 @@ export default function Header({ userRole = 'ADMIN' }) {
 
       {/* Right side - Notifications and Account */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <Button
+          type="link"
+          style={{ color: '#4A69E2', fontWeight: 600 }}
+          onClick={() => {
+            console.log('Button clicked!');
+            handleNewDrop();
+          }}
+        >
+          New Drop
+        </Button>
         <BellOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
 
         <Dropdown overlay={accountMenu} trigger={['click']} placement="bottomRight">

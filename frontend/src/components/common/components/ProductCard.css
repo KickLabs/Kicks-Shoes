@@ -3,13 +3,15 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  width: 21vw;
+  width: 100%;
   height: 100%;
   border-radius: 32px;
   padding: 0;
   overflow: hidden;
   position: relative;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .product-card:hover {
@@ -40,7 +42,7 @@
   position: absolute;
   background: #4a69e2;
   color: #fff;
-  font-family: "Rubik", sans-serif;
+  font-family: 'Rubik', sans-serif;
   font-size: 14px;
   font-weight: 600;
   width: 47px;
@@ -68,7 +70,7 @@
 }
 
 .product-card__name {
-  font-family: "Rubik", sans-serif;
+  font-family: 'Rubik', sans-serif;
   font-size: 24px;
   font-weight: 700;
   color: #232321;
@@ -82,7 +84,8 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-height: 56px;
+  min-height: 2.8em;
+  line-height: 1.4em;
 }
 
 .product-card__footer {
@@ -113,7 +116,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: "Rubik", sans-serif;
+  font-family: 'Rubik', sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: #fff;
@@ -132,7 +135,7 @@
 
 .product-card__price {
   color: #ffb13b;
-  font-family: "Rubik", sans-serif;
+  font-family: 'Rubik', sans-serif;
   font-weight: 700;
   font-size: 14px;
   margin-left: 6px;

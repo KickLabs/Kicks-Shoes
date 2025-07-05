@@ -78,7 +78,7 @@ const orderSchema = new mongoose.Schema(
     },
     shippingMethod: {
       type: String,
-      enum: ['standard', 'express', 'next_day'],
+      enum: ['standard', 'express', 'next_day', 'store'],
       default: 'standard',
     },
     shippingCost: {

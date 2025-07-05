@@ -1,10 +1,12 @@
-import './RecommendSection.css';
+import './NewDropsSection.css';
 import ProductCard from '../../../common/components/ProductCard';
 import { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import axiosInstance from '@/services/axiosInstance';
+import { useNavigate } from 'react-router-dom';
 
-export const RecommendSection = () => {
+export const NewDropsSection = () => {
+  const navigate = useNavigate();
   const [newDrops, setNewDrops] = useState([]);
   useEffect(() => {
     const fetchNewDrops = async () => {
@@ -22,13 +24,17 @@ export const RecommendSection = () => {
     };
     fetchNewDrops();
   }, []);
+  const handleShopNewDrops = () => {
+    navigate('/listing-page?isNew=true');
+  };
   return (
-    <div className="recommend-wrapper">
-      <div className="recommend-header">
+    <div className="new-drops-wrapper">
+      <div className="new-drops-header">
         <h4>
-          <span className="line">You May Also Like </span>
+          <span className="line">Don't miss out </span>
+          <span className="line">new drops</span>
         </h4>
-        <Button>See all products</Button>
+        <Button onClick={handleShopNewDrops}>Shop new drops</Button>
       </div>
 
       <div className="recommend-grid">
