@@ -161,7 +161,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
         <h3 className="variant-label">Color</h3>
         <div className="color-options">
           {noColorAvailable ? (
-            <span style={{ color: 'red' }}>Không có màu khả dụng</span>
+            <span style={{ color: 'red' }}>No color available</span>
           ) : (
             colorOptions.map(color => (
               <div
@@ -197,7 +197,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
           </h4>
         </div>
         {noSizeAvailable ? (
-          <span style={{ color: 'red' }}>Không có size khả dụng cho màu này</span>
+          <span style={{ color: 'red' }}>No size available for this color</span>
         ) : (
           <SizePanel sizes={sizeData} selectedSize={selectedSize} onSizeSelect={setSelectedSize} />
         )}
