@@ -17,10 +17,19 @@ const ProductCard = ({ product }) => {
   useEffect(() => {
     const checkFavouriteStatus = async () => {
       try {
+        // Check if user is logged in before making API call
+        const userInfo = localStorage.getItem('userInfo');
+        if (!userInfo) {
+          setIsFavourite(false);
+          return;
+        }
+
         const response = await favouriteService.checkFavourite(product._id);
         setIsFavourite(response.isFavourite);
       } catch (error) {
         console.error('Error checking favourite status:', error);
+        // If error occurs (e.g., not authenticated), set to false
+        setIsFavourite(false);
       }
     };
 
@@ -29,6 +38,14 @@ const ProductCard = ({ product }) => {
 
   const handleFavouriteToggle = async () => {
     try {
+      // Check if user is logged in before making API call
+      const userInfo = localStorage.getItem('userInfo');
+      if (!userInfo) {
+        // Redirect to login page if not authenticated
+        window.location.href = '/login';
+        return;
+      }
+
       setIsLoading(true);
       if (isFavourite) {
         await favouriteService.removeFromFavourites(product._id);
@@ -39,6 +56,10 @@ const ProductCard = ({ product }) => {
       }
     } catch (error) {
       console.error('Error toggling favourite:', error);
+      // If error occurs (e.g., token expired), redirect to login
+      if (error.message?.includes('Not authorized') || error.message?.includes('401')) {
+        window.location.href = '/login';
+      }
     } finally {
       setIsLoading(false);
     }
