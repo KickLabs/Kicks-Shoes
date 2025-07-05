@@ -48,13 +48,30 @@
 }
 
 .new-drops-list {
-  /* justify-content: center; */
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap; /* Cho responsive nếu cần */
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  align-items: stretch;
 }
+
+@media (max-width: 900px) {
+  .new-drops-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .new-drops-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
 /* .card-wrapper {
     min-width: 160px;
 } */

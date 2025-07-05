@@ -162,14 +162,14 @@ const productSchema = new Schema(
   {
     timestamps: true,
     toJSON: { virtuals: true },
-toObject: { virtuals: true },
+    toObject: { virtuals: true },
     suppressReservedKeysWarning: true,
   }
 );
 
 // Indexes
-productSchema.index({ name: "text", brand: "text", description: "text" });
-productSchema.index({ "inventory.size": 1, "inventory.color": 1 });
+productSchema.index({ name: 'text', brand: 'text', description: 'text' });
+productSchema.index({ 'inventory.size': 1, 'inventory.color': 1 });
 
 // --- Virtuals ---
 productSchema.virtual('discountedPrice').get(function () {
@@ -180,6 +180,14 @@ productSchema.virtual('discountedPrice').get(function () {
 productSchema.virtual('isInStock').get(function () {
   return this.stock > 0;
 });
+
+// --- Helper: Sync variants from inventory ---
+productSchema.methods.syncVariantsFromInventory = function () {
+  if (!Array.isArray(this.inventory)) return;
+  const sizes = [...new Set(this.inventory.map(item => item.size))];
+  const colors = [...new Set(this.inventory.map(item => item.color))];
+  this.variants = { sizes, colors };
+};
 
 // --- Pre-save middleware ---
 productSchema.pre('save', function (next) {
@@ -204,6 +212,8 @@ productSchema.pre('save', function (next) {
     });
 
     this.stock = this.inventory.reduce((total, item) => total + item.quantity, 0);
+    // --- Đồng bộ variants từ inventory ---
+    this.syncVariantsFromInventory();
   }
 
   next();

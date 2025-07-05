@@ -24,7 +24,7 @@ const orderValidationRules = {
     body('shippingAddress').isString().notEmpty().withMessage('Shipping address is required'),
     body('shippingMethod')
       .optional()
-      .isIn(['standard', 'express', 'next_day'])
+      .isIn(['standard', 'express', 'next_day', 'store'])
       .withMessage('Invalid shipping method'),
     body('shippingCost')
       .optional()
@@ -65,7 +65,7 @@ const orderValidationRules = {
     body('paymentStatus').optional().isIn(['pending', 'paid', 'failed', 'refunded']),
     body('trackingNumber').optional().isString(),
     body('shippingAddress').optional().isString(),
-    body('shippingMethod').optional().isIn(['standard', 'express', 'next_day']),
+    body('shippingMethod').optional().isIn(['standard', 'express', 'next_day', 'store']),
     body('shippingCost').optional().isFloat({ min: 0 }),
     body('tax').optional().isFloat({ min: 0 }),
     body('discount').optional().isFloat({ min: 0 }),

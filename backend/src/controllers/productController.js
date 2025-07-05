@@ -229,6 +229,7 @@ export const getAllProducts = async (req, res) => {
       category,
       minPrice,
       maxPrice,
+      isNew,
       sortBy = 'createdAt',
       order = 'desc',
       page = 1,
@@ -243,11 +244,14 @@ export const getAllProducts = async (req, res) => {
       category: category || undefined,
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      isNew: isNew === 'true' ? true : undefined,
       sortBy,
       order,
       page: Number(page),
       limit: Number(limit),
     };
+
+    console.log('Controller sending query to service:', query);
 
     const { products, total } = await ProductService.getAllProducts(query);
 
@@ -272,6 +276,19 @@ export const getNewDrops = async (req, res) => {
     res.status(200).json({ success: true, ...result });
   } catch (err) {
     console.error('Error fetching new drops:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+export const getRecommendProductsForProductDetails = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const result = await ProductService.getRecommendProductsForProductDetails({
+      productId,
+    });
+    res.status(200).json({ success: true, ...result });
+  } catch (err) {
+    console.error('Error fetching recommend products:', err);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 };

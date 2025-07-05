@@ -301,37 +301,54 @@ export class ProductService {
   static async getAllProducts({
     size,
     color,
-    brand, // brand filter added
+    brand,
     category,
     minPrice,
     maxPrice,
+    isNew,
     sortBy = 'createdAt',
     order = 'desc',
     page = 1,
     limit = 10,
   }) {
     const filter = {};
-
-    // Filter by brand
-    if (brand) filter.brand = brand; // Apply brand filter
-
-    // Other filters
+    if (brand) filter.brand = brand;
     if (category) filter.category = category;
-    if (size) filter['variants.sizes'] = { $in: [size] };
-    if (color) filter['variants.colors'] = { $in: [color] };
-    if (minPrice) filter['price.regular'] = { $gte: minPrice };
-    if (maxPrice) filter['price.regular'] = { $lte: maxPrice };
-
+    if (isNew) filter.isNew = true;
+    if (size) {
+      filter.$or = [
+        { 'variants.sizes': { $in: [Number(size)] } },
+        { 'inventory.size': Number(size) },
+      ];
+    }
+    if (color) {
+      if (filter.$or) {
+        const existingOr = filter.$or;
+        filter.$and = [
+          { $or: existingOr },
+          { $or: [{ 'variants.colors': { $in: [color] } }, { 'inventory.color': color }] },
+        ];
+        delete filter.$or;
+      } else {
+        filter.$or = [{ 'variants.colors': { $in: [color] } }, { 'inventory.color': color }];
+      }
+    }
+    if (minPrice || maxPrice) {
+      filter['price.regular'] = {};
+      if (minPrice) filter['price.regular'].$gte = minPrice;
+      if (maxPrice) filter['price.regular'].$lte = maxPrice;
+    }
     const sortOptions = { [sortBy]: order === 'asc' ? 1 : -1 };
     const skip = (page - 1) * limit;
-
+    console.log('Product filter:', JSON.stringify(filter, null, 2));
+    console.log('Filter parameters:', { size, color, brand, category, minPrice, maxPrice, isNew });
     const total = await Product.countDocuments(filter);
     const products = await Product.find(filter)
       .populate('category')
       .sort(sortOptions)
       .skip(skip)
       .limit(limit);
-
+    console.log(`Found ${products.length} products out of ${total} total`);
     return { products, total };
   }
 
@@ -342,7 +359,6 @@ export class ProductService {
    */
   static async getNewDrops({ page = 1, limit = 10, filters = {} }) {
     const filter = { isNew: true };
-    // Hỗ trợ filter động
     if (filters.brand) filter.brand = filters.brand;
     if (filters.category) filter.category = filters.category;
     if (filters.minPrice)
@@ -367,5 +383,15 @@ export class ProductService {
       .limit(limit);
     const totalPages = Math.ceil(total / limit);
     return { data, total, page, limit, totalPages };
+  }
+
+  static async getRecommendProductsForProductDetails({ productId }) {
+    const product = await Product.findById(productId);
+    const filter = {
+      category: product.category,
+      brand: product.brand,
+    };
+    const products = await Product.find(filter).limit(4);
+    return products;
   }
 }

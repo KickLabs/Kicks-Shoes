@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Typography, Modal, message } from 'antd';
 import { formatPrice } from '../../../../utils/StringFormat';
 import './ProductInfoSection.css';
@@ -54,6 +54,25 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
     }
   };
 
+  // Fallback cho product.variants
+  const safeVariants =
+    product.variants &&
+    Array.isArray(product.variants.colors) &&
+    Array.isArray(product.variants.sizes)
+      ? product.variants
+      : { colors: [], sizes: [] };
+
+  // Nếu không có inventory hoặc inventory rỗng, render toàn bộ màu/size từ variants
+  const hasInventory = Array.isArray(product.inventory) && product.inventory.length > 0;
+
+  // Lọc danh sách màu chỉ lấy màu có tồn kho nếu có inventory, ngược lại lấy toàn bộ từ variants
+  const availableColors = hasInventory
+    ? (safeVariants.colors || []).filter(color =>
+        product.inventory.some(item => item.color === color && item.quantity > 0)
+      )
+    : safeVariants.colors || [];
+  const noColorAvailable = availableColors.length === 0;
+
   // HEX mã màu
   const colorHexMap = {
     Black: '#000000',
@@ -68,31 +87,49 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
     Pink: '#FFC0CB',
   };
 
-  // Màu từ variants.colors
-  const colorOptions = product.variants.colors.map(color => ({
+  // Màu từ availableColors
+  const colorOptions = availableColors.map(color => ({
     value: color,
     hex: colorHexMap[color] || '#CCCCCC',
   }));
 
-  // Danh sách size chuẩn
-  const allSizes = [
-    30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
-  ];
-
   // Inventory theo màu đang chọn
-  const colorInventory = product.inventory.filter(item => item.color === selectedColor);
+  const colorInventory = hasInventory
+    ? product.inventory.filter(item => item.color === selectedColor)
+    : [];
+  // Các size còn hàng với quantity > 0 nếu có inventory, ngược lại lấy toàn bộ từ variants
+  const availableSizes = hasInventory
+    ? Array.from(new Set(colorInventory.filter(i => i.quantity > 0).map(i => i.size)))
+    : safeVariants.sizes || [];
+  // Chuẩn hóa danh sách size (30-50)
+  const allSizes = hasInventory
+    ? [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
+    : safeVariants.sizes || [];
+  // Dữ liệu size cho SizePanel (disable nếu không có hàng)
+  const sizeData = hasInventory
+    ? allSizes.map(size => {
+        const inventoryEntry = colorInventory.find(item => item.size === size);
+        return {
+          value: size,
+          disabled: !inventoryEntry || inventoryEntry.quantity === 0,
+        };
+      })
+    : allSizes.map(size => ({ value: size, disabled: false }));
+  // Nếu không có size khả dụng
+  const noSizeAvailable = availableSizes.length === 0;
 
-  // Các size đang có với quantity > 0
-  const availableSizes = Array.from(new Set(colorInventory.map(i => i.size)));
+  // Log dữ liệu đầu vào để debug
+  console.log('product.variants:', product.variants);
 
-  // Dữ liệu size cho SizePanel (disable nếu quantity = 0 hoặc không tồn tại)
-  const sizeData = allSizes.map(size => {
-    const inventoryEntry = colorInventory.find(item => item.size === size);
-    return {
-      value: size,
-      disabled: !inventoryEntry || inventoryEntry.quantity === 0,
-    };
-  });
+  // Nếu selectedColor không hợp lệ, tự động set lại
+  useEffect(() => {
+    if (
+      (!selectedColor || !availableColors.includes(selectedColor)) &&
+      availableColors.length > 0
+    ) {
+      setSelectedColor(availableColors[0]);
+    }
+  }, [availableColors, selectedColor, setSelectedColor]);
 
   return (
     <div className="product-info">
@@ -123,18 +160,22 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       <div className="variant-block">
         <h3 className="variant-label">Color</h3>
         <div className="color-options">
-          {colorOptions.map(color => (
-            <div
-              key={color.value}
-              className={`color-swatch ${selectedColor === color.value ? 'active' : ''}`}
-              style={{ backgroundColor: color.hex }}
-              title={color.value}
-              onClick={() => {
-                setSelectedColor(color.value);
-                setSelectedSize(null); // reset size khi đổi màu
-              }}
-            />
-          ))}
+          {noColorAvailable ? (
+            <span style={{ color: 'red' }}>Không có màu khả dụng</span>
+          ) : (
+            colorOptions.map(color => (
+              <div
+                key={color.value}
+                className={`color-swatch ${selectedColor === color.value ? 'active' : ''}`}
+                style={{ backgroundColor: color.hex }}
+                title={color.value}
+                onClick={() => {
+                  setSelectedColor(color.value);
+                  setSelectedSize(null); // reset size khi đổi màu
+                }}
+              />
+            ))
+          )}
         </div>
       </div>
 
@@ -155,7 +196,11 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
             Size Chart
           </h4>
         </div>
-        <SizePanel sizes={sizeData} selectedSize={selectedSize} onSizeSelect={setSelectedSize} />
+        {noSizeAvailable ? (
+          <span style={{ color: 'red' }}>Không có size khả dụng cho màu này</span>
+        ) : (
+          <SizePanel sizes={sizeData} selectedSize={selectedSize} onSizeSelect={setSelectedSize} />
+        )}
       </div>
 
       <Modal
