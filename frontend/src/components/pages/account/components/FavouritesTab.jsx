@@ -23,6 +23,14 @@ export default function FavouritesTab() {
 
   const fetchFavourites = async () => {
     try {
+      // Check if user is logged in before making API call
+      const userInfo = localStorage.getItem('userInfo');
+      if (!userInfo) {
+        message.error('Please login to view favourites');
+        setFavourites([]);
+        return;
+      }
+
       setLoading(true);
       const response = await favouriteService.getFavourites();
       console.log('Favourites response:', response);

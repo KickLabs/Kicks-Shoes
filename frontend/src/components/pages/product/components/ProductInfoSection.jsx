@@ -40,7 +40,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
 
       await dispatch(
         addOrUpdateCartItem({
-          productId: product._id,
+          product: product._id,
           quantity: 1,
           size: selectedSize,
           color: selectedColor,

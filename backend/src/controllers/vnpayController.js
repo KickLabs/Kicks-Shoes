@@ -3,6 +3,7 @@ import { asyncHandler } from '../middlewares/async.middleware.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import Order from '../models/Order.js';
 import { OrderService } from '../services/order.service.js';
+import logger from '../utils/logger.js';
 
 /**
  * VNPay Payment Controller
@@ -187,6 +188,7 @@ class VNPayController {
         order.paymentStatus = paymentStatus;
         order.status = orderStatus;
         order.transactionId = result.data?.transactionNo;
+        order.vnpTransactionNo = result.data?.transactionNo;
         order.paymentDate = new Date();
         order.vnpResponseCode = queryParams.vnp_ResponseCode;
         order.vnpTxnRef = txnRef;
@@ -241,6 +243,7 @@ class VNPayController {
             paymentStatus: paymentStatus,
             paymentDate: new Date(),
             transactionId: result.data?.transactionNo,
+            vnpTransactionNo: result.data?.transactionNo,
             vnpResponseCode: queryParams.vnp_ResponseCode,
             vnpTxnRef: txnRef,
             vnpAmount: result.data?.amount,
@@ -268,6 +271,7 @@ class VNPayController {
             paymentStatus: paymentStatus,
             paymentDate: new Date(),
             transactionId: result.data?.transactionNo,
+            vnpTransactionNo: result.data?.transactionNo,
             vnpResponseCode: queryParams.vnp_ResponseCode,
             vnpTxnRef: txnRef,
             vnpAmount: result.data?.amount,
@@ -591,6 +595,7 @@ class VNPayController {
         order.paymentStatus = paymentStatus;
         order.status = orderStatus;
         order.transactionId = result.data?.transactionNo;
+        order.vnpTransactionNo = result.data?.transactionNo;
         order.paymentDate = new Date();
         order.vnpResponseCode = testParams.vnp_ResponseCode;
         order.vnpTxnRef = txnRef;
@@ -626,6 +631,98 @@ class VNPayController {
           : null,
       },
     });
+  });
+
+  /**
+   * Process VNPay refund for cancelled order
+   * POST /api/payment/refund-order
+   */
+  refundOrderPayment = asyncHandler(async (req, res, next) => {
+    const { orderId, reason } = req.body;
+
+    // Validate required fields
+    if (!orderId) {
+      return next(new ErrorResponse('Order ID is required', 400));
+    }
+
+    if (!reason?.trim()) {
+      return next(new ErrorResponse('Refund reason is required', 400));
+    }
+
+    try {
+      // Get the order
+      const order = await Order.findById(orderId);
+      if (!order) {
+        return next(new ErrorResponse('Order not found', 404));
+      }
+
+      // Check if order is eligible for VNPay refund
+      if (order.paymentMethod !== 'vnpay') {
+        return next(new ErrorResponse('Order is not a VNPay payment', 400));
+      }
+
+      if (order.paymentStatus !== 'paid') {
+        return next(new ErrorResponse('Order payment status is not paid', 400));
+      }
+
+      if (!order.vnpTxnRef || !order.vnpTransactionNo) {
+        return next(new ErrorResponse('Missing VNPay transaction information', 400));
+      }
+
+      logger.info('Processing VNPay refund for order', {
+        orderId,
+        vnpTxnRef: order.vnpTxnRef,
+        vnpTransactionNo: order.vnpTransactionNo,
+        amount: order.totalPrice,
+        reason,
+      });
+
+      // Process refund through OrderService
+      const refundResult = await OrderService.processVNPayRefund(order, reason);
+
+      if (!refundResult.success) {
+        logger.error('VNPay refund failed', {
+          orderId,
+          error: refundResult.error,
+        });
+        return next(new ErrorResponse(`VNPay refund failed: ${refundResult.error}`, 500));
+      }
+
+      if (!refundResult.refundSuccess) {
+        logger.error('VNPay refund was not successful', {
+          orderId,
+          message: refundResult.message,
+        });
+        return next(
+          new ErrorResponse(`VNPay refund was not successful: ${refundResult.message}`, 500)
+        );
+      }
+
+      logger.info('VNPay refund processed successfully', {
+        orderId,
+        refundData: refundResult.data,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'VNPay refund processed successfully',
+        data: {
+          orderId: order._id,
+          refundAmount: order.totalPrice,
+          refundReason: reason,
+          refundTransactionNo: refundResult.data?.transactionNo,
+          refundResponseCode: refundResult.data?.responseCode,
+          refundData: refundResult.data,
+        },
+      });
+    } catch (error) {
+      logger.error('Error processing VNPay refund:', {
+        error: error.message,
+        stack: error.stack,
+        orderId,
+      });
+      next(error);
+    }
   });
 
   /**
