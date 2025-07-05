@@ -114,7 +114,7 @@ const AppHeader = () => {
 
   const handleMenuClick = e => {
     if (e.key === 'new') {
-      navigate('/listing-page');
+      navigate('/listing-page?isNew=true');
     } else if (e.key === 'products') {
       navigate('/listing-page');
     }

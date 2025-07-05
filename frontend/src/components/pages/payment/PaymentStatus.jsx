@@ -142,7 +142,13 @@ export default function PaymentStatus() {
 
         setError('Failed to process payment return after multiple attempts');
       } finally {
-        if (retryCount === 0) {
+        // Set loading to false when this is the final attempt (no more retries)
+        if (retryCount >= 3) {
+          console.log(
+            'Payment return processing completed after retries, setting loading to false'
+          );
+          setLoading(false);
+        } else if (retryCount === 0) {
           console.log('Payment return processing completed, setting loading to false');
           setLoading(false);
         }
@@ -151,6 +157,17 @@ export default function PaymentStatus() {
 
     console.log('PaymentStatus component useEffect triggered');
     handlePaymentReturn();
+
+    // Add a timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.log('Payment processing timeout reached, setting loading to false');
+      setLoading(false);
+      if (!error) {
+        setError('Payment processing timeout. Please check your order status.');
+      }
+    }, 30000); // 30 seconds timeout
+
+    return () => clearTimeout(timeout);
   }, [query, user]);
 
   if (loading) {
@@ -229,6 +246,43 @@ export default function PaymentStatus() {
               {error}
             </Text>
           </div>
+
+          {/* Show transaction details even when there's an error */}
+          {query.vnp_ResponseCode && (
+            <Descriptions
+              column={1}
+              bordered
+              size="middle"
+              labelStyle={{
+                width: 160,
+                background: '#f0f6ff',
+                color: PRIMARY_COLOR,
+                fontWeight: 600,
+                fontSize: 15,
+              }}
+              contentStyle={{ fontWeight: 500, fontSize: 15, color: '#232321', background: '#fff' }}
+              style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}
+            >
+              <Descriptions.Item label="Order Info">{query.vnp_OrderInfo}</Descriptions.Item>
+              <Descriptions.Item label="Amount">
+                <span style={{ color: PRIMARY_COLOR, fontWeight: 700 }}>
+                  {Number(query.vnp_Amount) / 100} VND
+                </span>
+              </Descriptions.Item>
+              <Descriptions.Item label="Bank Code">{query.vnp_BankCode}</Descriptions.Item>
+              <Descriptions.Item label="Transaction No.">
+                {query.vnp_TransactionNo}
+              </Descriptions.Item>
+              <Descriptions.Item label="Transaction Time">{query.vnp_PayDate}</Descriptions.Item>
+              <Descriptions.Item label="Status Code">{query.vnp_ResponseCode}</Descriptions.Item>
+              <Descriptions.Item label="Status">
+                <span style={{ color: ERROR_COLOR, fontWeight: 700 }}>
+                  {getStatusInfo(query.vnp_ResponseCode).title}
+                </span>
+              </Descriptions.Item>
+            </Descriptions>
+          )}
+
           <div style={{ display: 'flex', gap: 14, marginTop: 32, justifyContent: 'center' }}>
             <Button
               type="primary"

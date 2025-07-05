@@ -1,23 +1,6 @@
-import React, { useState } from 'react';
-import axiosInstance from '@/services/axiosInstance';
+import React from 'react';
 
-const ColorPanel = ({ colors }) => {
-  const [selectedColor, setSelectedColor] = useState(null);
-
-  const handleSelectColor = async color => {
-    const newColor = selectedColor === color ? null : color;
-    setSelectedColor(newColor);
-
-    try {
-      const response = await axiosInstance.get('/products', {
-        params: { color: newColor },
-      });
-      console.log('Filtered by color:', response.data);
-    } catch (err) {
-      console.error('Error filtering by color', err);
-    }
-  };
-
+const ColorPanel = ({ colors, selectedColor, onColorSelect }) => {
   return (
     <div className="filter-color-grid">
       {colors.map((item, index) => {

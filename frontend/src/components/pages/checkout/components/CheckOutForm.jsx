@@ -101,16 +101,44 @@ export default function CheckoutForm({
   };
 
   const prepareOrderData = () => {
-    const orderProducts = (products || []).map(p => ({
-      id: p.id,
-      quantity: p.quantity || 1,
-      price:
-        p.price?.isOnSale && p.price?.discountPercent
-          ? Number((p.price.regular * (1 - p.price.discountPercent / 100)).toFixed(2))
-          : Number(p.price?.regular || p.price),
-      size: p.size,
-      color: p.color,
-    }));
+    const orderProducts = (products || []).map(p => {
+      // Handle different price structures
+      let price = 0;
+      if (p.product?.price) {
+        if (typeof p.product.price === 'object') {
+          // Price object with regular, discountPercent, etc.
+          if (p.product.price.isOnSale && p.product.price.discountPercent) {
+            price = Number(
+              (p.product.price.regular * (1 - p.product.price.discountPercent / 100)).toFixed(2)
+            );
+          } else {
+            price = Number(p.product.price.regular || 0);
+          }
+        } else {
+          // Direct price number
+          price = Number(p.product.price);
+        }
+      } else if (p.price) {
+        // Fallback to item price
+        price = Number(p.price);
+      }
+
+      // Get product ID - prefer product._id, fallback to p.id
+      const productId = p.product?._id || p.id;
+
+      // Validate that we have a valid product ID
+      if (!productId) {
+        throw new Error(`Missing product ID for item: ${p.product?.name || 'Unknown product'}`);
+      }
+
+      return {
+        id: productId,
+        quantity: p.quantity || 1,
+        price,
+        size: p.size,
+        color: p.color,
+      };
+    });
 
     const subtotalNum = orderProducts.reduce((sum, p) => sum + p.price * p.quantity, 0);
     const deliveryCostNum = Number(deliveryCost);
@@ -126,7 +154,7 @@ export default function CheckoutForm({
     const shippingAddress =
       `${shippingValues.firstName || ''} ${shippingValues.lastName || ''}, ${shippingValues.address || ''}, ${shippingValues.phone || ''}`.trim();
 
-    return {
+    const orderData = {
       products: orderProducts,
       subtotal: subtotalNum,
       totalPrice: totalNum,
@@ -139,6 +167,14 @@ export default function CheckoutForm({
       discount: discountNum,
       notes: notes || '',
     };
+
+    // Debug logging
+    console.log('Prepared order data:', orderData);
+    console.log('Original products:', products);
+    console.log('Order products:', orderProducts);
+    console.log('Delivery method:', deliveryMethod);
+
+    return orderData;
   };
 
   const handlePaymentMethodChange = method => {

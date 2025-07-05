@@ -1,4 +1,4 @@
-.recommend-header {
+.new-drops-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -6,28 +6,28 @@
   margin: 0 0 50px 0;
 }
 
-.recommend-wrapper {
-  margin: 6vw 0 7vw 0;
+.new-drops-wrapper {
+  margin: 6vw 3vw;
 }
 
-.recommend-header h4 {
-  /* width: 60%; */
+.new-drops-header h4 {
+  width: 60%;
   color: var(--Dark-Gray, #232321);
   font-family: Rubik;
-  font-size: clamp(0.5rem, 8vw, 3rem);
+  font-size: clamp(0.5rem, 8vw, 4rem);
   font-style: normal;
   font-weight: 600;
   line-height: 95%;
-  /* text-transform: uppercase; */
-  flex-direction: column;
+  text-transform: uppercase;
+  flex-direction: column; /* đảm bảo mỗi span là 1 dòng */
 }
 
-.recommend-header .line {
+.new-drops-header .line {
   display: block;
   white-space: nowrap;
 }
 
-.recommend-header button {
+.new-drops-header button {
   color: var(--Pure-White, #fff);
   font-family: Rubik;
   font-size: 14px;
@@ -47,7 +47,7 @@
   border: none;
 }
 
-.recommend-list {
+.new-drops-list {
   /* justify-content: center; */
   display: flex;
   align-items: flex-start;
@@ -60,7 +60,7 @@
 } */
 
 @media (max-width: 768px) {
-  .recommend-list {
+  .new-drops-list {
     display: flex;
     align-items: flex-start;
     flex-wrap: wrap; /* Cho responsive nếu cần */
@@ -71,7 +71,7 @@
     width: 27vw !important;
   }
 
-  .recommend-header h4 {
+  .new-drops-header h4 {
     width: 50%;
     font-size: clamp(0.5rem, 6vw, 2.5rem);
     font-weight: 600;
@@ -87,7 +87,7 @@
 
 .recommend-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   align-items: stretch;
 }

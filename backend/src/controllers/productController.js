@@ -251,6 +251,8 @@ export const getAllProducts = async (req, res) => {
       limit: Number(limit),
     };
 
+    console.log('Controller sending query to service:', query);
+
     const { products, total } = await ProductService.getAllProducts(query);
 
     res.status(200).json({
@@ -274,6 +276,19 @@ export const getNewDrops = async (req, res) => {
     res.status(200).json({ success: true, ...result });
   } catch (err) {
     console.error('Error fetching new drops:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+export const getRecommendProductsForProductDetails = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const result = await ProductService.getRecommendProductsForProductDetails({
+      productId,
+    });
+    res.status(200).json({ success: true, ...result });
+  } catch (err) {
+    console.error('Error fetching recommend products:', err);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 };

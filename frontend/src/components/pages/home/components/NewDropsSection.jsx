@@ -46,10 +46,10 @@ export const NewDropsSection = () => {
     <div className="new-drops-wrapper">
       <div className="new-drops-header">
         <h4>
-          <span className="line">Don’t miss out </span>
+          <span className="line">Don't miss out </span>
           <span className="line">new drops</span>
         </h4>
-        <Button>Shop new drops</Button>
+        <Button onClick={handleShopNewDrops}>Shop new drops</Button>
       </div>
 
       <div className="new-drops-list">

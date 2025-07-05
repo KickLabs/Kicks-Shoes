@@ -81,7 +81,7 @@ const CommentSection = () => {
             }}
             type={filterRating === star ? 'primary' : 'default'}
           >
-            {star} sao
+            {star} star
           </Button>
         ))}
       </div>
