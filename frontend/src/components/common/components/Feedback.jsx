@@ -1,147 +1,67 @@
-// import React, { useState } from 'react';
-// import { Modal, Form, Rate, Input, Upload, Button, message } from 'antd';
-// import { UploadOutlined } from '@ant-design/icons';
-// import axiosInstance from '@/services/axiosInstance';
-
-// const FeedbackModal = ({ visible, onCancel, onSaved, orderId, productId }) => {
-//   const [form] = Form.useForm();
-//   const [fileList, setFileList] = useState([]);
-//   const [loading, setLoading] = useState(false);
-
-//   const handleUploadChange = ({ fileList }) => {
-//     setFileList(fileList);
-//   };
-
-//   const onFinish = async values => {
-//     const imageUrls = fileList
-//       .filter(file => file.status === 'done')
-//       .map(file => file.url || (file.response && file.response.url));
-//     try {
-//       const data = new FormData();
-//       data.append('order', orderId);
-//       data.append('product', productId);
-//       data.append('rating', values.rating);
-//       data.append('comment', values.comment);
-//       fileList.forEach(file => {
-//         if (file.originFileObj) data.append('images', file.originFileObj);
-//       });
-//       await axiosInstance.post('/feedback', data);
-
-//       form.resetFields();
-//       setFileList([]);
-//       message.success('Review submitted successfully');
-//       onSaved();
-//     } catch (error) {
-//       console.error('Error submitting feedback:', error);
-//       message.error('Failed to submit review');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <Modal
-//       title="Submit Product Review"
-//       visible={visible}
-//       onCancel={onCancel}
-//       onOk={() => form.submit()}
-//       confirmLoading={loading}
-//       okText="Submit"
-//       cancelText="Cancel"
-//     >
-//       <Form form={form} layout="vertical" onFinish={onFinish}>
-//         <Form.Item
-//           name="rating"
-//           label="Rating"
-//           rules={[{ required: true, message: 'Please provide a rating!' }]}
-//         >
-//           <Rate />
-//         </Form.Item>
-
-//         <Form.Item
-//           name="comment"
-//           label="Comment"
-//           rules={[{ required: true, message: 'Please enter your comment!' }]}
-//         >
-//           <Input.TextArea rows={4} placeholder="Write your review..." />
-//         </Form.Item>
-
-//         <Form.Item name="images" label="Images">
-//           <Upload
-//             beforeUpload={() => false}
-//             multiple
-//             listType="picture"
-//             fileList={fileList}
-//             onChange={handleUploadChange}
-//           >
-//             <Button icon={<UploadOutlined />}>Choose Images</Button>
-//           </Upload>
-//         </Form.Item>
-//       </Form>
-//     </Modal>
-//   );
-// };
-
-// export default FeedbackModal;
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Rate, Input, Upload, Button, message, Spin } from 'antd';
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import axiosInstance from '@/services/axiosInstance';
 
-const FeedbackModal = ({ visible, onCancel, onSaved, orderId, productId }) => {
+export default function FeedbackModal({
+  visible,
+  onCancel,
+  onSaved,
+  orderId,
+  productId,
+  feedbackId: fidProp, // id truyền vào nếu edit
+}) {
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
-  const [feedbackId, setFeedbackId] = useState(null);
+  const [fid, setFid] = useState(fidProp || null);
 
-  // Fetch existing feedback when modal opens
+  // Khi modal bật: chỉ fetch feedback by ID nếu đang edit
   useEffect(() => {
-    if (visible && productId) {
+    if (!visible) return;
+    if (fidProp) {
       setLoadingExisting(true);
       axiosInstance
-        .get(`/feedback?product=${productId}&order=${orderId}`)
+        .get(`/feedback/${fidProp}`)
         .then(res => {
           const fb = res.data.data;
-          if (fb) {
-            setFeedbackId(fb._id);
-            form.setFieldsValue({ rating: fb.rating, comment: fb.comment });
-            setFileList(
-              fb.images.map((url, idx) => ({
-                uid: `fb-${idx}`,
-                name: `Image ${idx + 1}`,
-                status: 'done',
-                url,
-              }))
-            );
-          }
+          setFid(fb._id);
+          form.setFieldsValue({ rating: fb.rating, comment: fb.comment });
+          setFileList(
+            fb.images.map((url, idx) => ({
+              uid: `fb-${idx}`,
+              name: `Image ${idx + 1}`,
+              status: 'done',
+              url,
+            }))
+          );
         })
-        .catch(() => {})
+        .catch(err => console.error('Fetch by ID error:', err))
         .finally(() => setLoadingExisting(false));
     } else {
-      // reset when closed or no product
-      setFeedbackId(null);
+      // tạo mới: reset form & list
       form.resetFields();
       setFileList([]);
+      setFid(null);
     }
-  }, [visible, productId]);
+  }, [visible, fidProp, form]);
 
   // Upload handler
   const customRequest = async ({ file, onSuccess, onError, onProgress }) => {
-    const formData = new FormData();
-    formData.append('image', file);
+    const data = new FormData();
+    data.append('image', file);
     try {
-      const response = await axiosInstance.post('/upload', formData, {
+      const res = await axiosInstance.post('/upload', data, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: ({ loaded, total }) =>
-          onProgress({ percent: (loaded / total) * 100 }, file),
+        onUploadProgress: e => onProgress({ percent: (e.loaded / e.total) * 100 }, file),
       });
-      const url = response.data.url;
+      const url = res.data.url;
       setFileList(prev => [...prev, { uid: file.uid, name: file.name, status: 'done', url }]);
-      onSuccess(response.data, file);
+      onSuccess(res.data, file);
     } catch (err) {
       console.error('Upload error:', err);
-      message.error(`${file.name} upload failed.`);
+      message.error('Image upload failed');
       onError(err);
     }
   };
@@ -152,34 +72,36 @@ const FeedbackModal = ({ visible, onCancel, onSaved, orderId, productId }) => {
 
   // Delete feedback
   const handleDelete = async () => {
-    if (!feedbackId) return;
-    setSubmitting(true);
+    if (!fid) return;
+    setLoading(true);
     try {
-      await axiosInstance.delete(`/feedback/${feedbackId}`);
+      await axiosInstance.delete(`/feedback/${fid}`);
       message.success('Review deleted successfully');
       onSaved();
     } catch (err) {
       console.error('Delete error:', err);
       message.error('Failed to delete review');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
       onCancel();
     }
   };
 
-  // Submit or update
+  // Submit or update feedback
   const onFinish = async values => {
-    setSubmitting(true);
+    setLoading(true);
     const images = fileList.map(f => f.url).filter(Boolean);
     try {
-      if (feedbackId) {
-        await axiosInstance.put(`/feedback/${feedbackId}`, {
+      if (fid) {
+        // EDIT mode: PUT
+        await axiosInstance.put(`/feedback/${fid}`, {
           rating: values.rating,
           comment: values.comment,
           images,
         });
         message.success('Review updated successfully');
       } else {
+        // CREATE mode: POST
         await axiosInstance.post('/feedback', {
           order: orderId,
           product: productId,
@@ -189,34 +111,33 @@ const FeedbackModal = ({ visible, onCancel, onSaved, orderId, productId }) => {
         });
         message.success('Review submitted successfully');
       }
-      form.resetFields();
-      setFileList([]);
       onSaved();
     } catch (err) {
       console.error('Submit error:', err);
       message.error('Failed to submit review');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
       onCancel();
     }
   };
 
   return (
     <Modal
-      title={feedbackId ? 'Edit Product Review' : 'Submit Product Review'}
+      title={fid ? 'Edit Product Review' : 'Submit Product Review'}
       open={visible}
       onCancel={onCancel}
+      confirmLoading={loading}
       footer={
         loadingExisting
           ? [<Spin key="spin" />]
           : [
-              feedbackId && (
+              fid && (
                 <Button
                   key="delete"
                   danger
                   icon={<DeleteOutlined />}
                   onClick={handleDelete}
-                  loading={submitting}
+                  loading={loading}
                 >
                   Delete
                 </Button>
@@ -224,13 +145,8 @@ const FeedbackModal = ({ visible, onCancel, onSaved, orderId, productId }) => {
               <Button key="cancel" onClick={onCancel}>
                 Cancel
               </Button>,
-              <Button
-                key="submit"
-                type="primary"
-                onClick={() => form.submit()}
-                loading={submitting}
-              >
-                {feedbackId ? 'Update' : 'Submit'}
+              <Button key="submit" type="primary" onClick={() => form.submit()} loading={loading}>
+                {fid ? 'Update' : 'Submit'}
               </Button>,
             ]
       }
@@ -246,7 +162,6 @@ const FeedbackModal = ({ visible, onCancel, onSaved, orderId, productId }) => {
           >
             <Rate />
           </Form.Item>
-
           <Form.Item
             name="comment"
             label="Comment"
@@ -254,19 +169,18 @@ const FeedbackModal = ({ visible, onCancel, onSaved, orderId, productId }) => {
           >
             <Input.TextArea rows={4} placeholder="Write your review..." />
           </Form.Item>
-
           <Form.Item label="Images">
             <Upload
               customRequest={customRequest}
               listType="picture-card"
               fileList={fileList}
-              onRemove={handleRemove}
               multiple
+              onRemove={handleRemove}
             >
               {fileList.length < 5 && (
                 <div>
                   <UploadOutlined />
-                  <div style={{ marginTop: 8 }}>{feedbackId ? 'Add' : 'Upload'}</div>
+                  <div style={{ marginTop: 8 }}>{fid ? 'Add' : 'Upload'}</div>
                 </div>
               )}
             </Upload>
@@ -275,6 +189,4 @@ const FeedbackModal = ({ visible, onCancel, onSaved, orderId, productId }) => {
       )}
     </Modal>
   );
-};
-
-export default FeedbackModal;
+}

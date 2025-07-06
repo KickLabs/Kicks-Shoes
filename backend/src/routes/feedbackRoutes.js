@@ -6,6 +6,8 @@ import {
   getAllFeedback,
   reportFeedback,
   adminApproveFeedback,
+  getFeedback,
+  getFeedbackById,
 } from '../controllers/feedbackController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { checkFeedbackOwner } from '../middlewares/feedback.middleware.js'; // Middleware để kiểm tra feedback của chính người dùng
@@ -54,5 +56,6 @@ router.get('/', getAllFeedback);
 router.post('/:id/report', protect, reportFeedback);
 router.put('/:id/approve', protect, requireRoles('admin'), adminApproveFeedback); // Admin duyệt feedback
 router.delete('/:id/delete', protect, requireRoles('admin'), adminApproveFeedback); // Admin xóa feedback
-
+router.get('/feedback', getFeedback);
+router.get('/:id', getFeedbackById);
 export default router;

@@ -41,12 +41,17 @@ export default function OrderDetails() {
     user?.role === 'admin' ||
     user?.role === 'shop';
   const orderId = location.pathname.split('/').pop();
+
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [note, setNote] = useState('');
+
+  // **Feedback-related state added**
+  const [existingFeedbacks, setExistingFeedbacks] = useState({});
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedFeedbackId, setSelectedFeedbackId] = useState(null);
 
   const columns = [
     {
@@ -54,13 +59,13 @@ export default function OrderDetails() {
       dataIndex: 'product',
       key: 'product',
       render: (product, record) => {
-        const inventoryItem = product?.inventory?.find(
+        const inv = product?.inventory?.find(
           inv => inv.size === record.size && inv.color === record.color
         );
-        const imageSrc = inventoryItem?.images?.[0] || product?.mainImage || '';
+        const img = inv?.images?.[0] || product?.mainImage || '';
         return (
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Avatar src={imageSrc} shape="square" size={32} /> {product?.name || 'N/A'}
+            <Avatar src={img} shape="square" size={32} /> {product?.name}
           </span>
         );
       },
@@ -69,37 +74,40 @@ export default function OrderDetails() {
       title: 'Order ID',
       dataIndex: 'orderNumber',
       key: 'orderNumber',
-      render: () => <b style={{ color: '#232321' }}>#{order?.orderNumber}</b>,
+      render: () => `#${order.orderNumber}`,
     },
     {
       title: 'Size / Color',
       dataIndex: 'sizeColor',
       key: 'sizeColor',
-      render: (_, record) => `${record.size || '-'} / ${record.color || '-'}`,
+      render: (_, r) => `${r.size} / ${r.color}`,
     },
-    {
-      title: 'Quantity',
-      dataIndex: 'quantity',
-      key: 'quantity',
-    },
-    {
-      title: 'Total',
-      dataIndex: 'subtotal',
-      key: 'subtotal',
-      render: val => `$${val?.toFixed ? val.toFixed(2) : '0.00'}`,
-    },
+    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
+    { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => `$${v?.toFixed(2)}` },
     {
       title: 'Review',
       key: 'review',
-      render: (_, record) => (
-        <Button
-          type="link"
-          className="feedback-btn"
-          onClick={() => openFeedbackModal(record.product._id)}
-        >
-          Leave Review
-        </Button>
-      ),
+      render: (_, record) => {
+        const fb = existingFeedbacks[record.product._id];
+        return fb ? (
+          <>
+            <Button type="link" onClick={() => openFeedbackModal(record.product._id, fb._id)}>
+              Edit
+            </Button>
+            <Button type="link" danger onClick={() => handleDeleteFeedback(fb._id)}>
+              Delete
+            </Button>
+          </>
+        ) : (
+          <Button
+            type="link"
+            className="feedback-btn"
+            onClick={() => openFeedbackModal(record.product._id)}
+          >
+            Leave Review
+          </Button>
+        );
+      },
     },
   ];
 
@@ -110,56 +118,84 @@ export default function OrderDetails() {
   useEffect(() => {
     const fetchOrder = async () => {
       if (!orderId) {
-        console.error('No order ID available');
         setError('Order information is not available');
         setOrder(null);
         return;
       }
-
       try {
         setLoading(true);
-        setError(null);
-
         const response = await axiosInstance.get(`/orders/${orderId}`);
-
         if (response.data.success) {
-          console.log('Order data received:', response.data.data);
           setOrder(response.data.data);
           setNote(response.data.data.notes || '');
         } else {
-          throw new Error(response.data.message || 'Failed to fetch order');
+          throw new Error(response.data.message);
         }
-      } catch (error) {
-        console.error('Error details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-        });
-        setError(error.response?.data?.message || 'Failed to fetch order');
-        setOrder(null);
+      } catch (err) {
+        setError('Failed to fetch order details');
         message.error('Failed to fetch order details');
       } finally {
         setLoading(false);
       }
     };
-
     fetchOrder();
   }, [orderId]);
 
-  const openFeedbackModal = productId => {
+  // **Load all feedbacks for this order**
+  useEffect(() => {
+    const fetchFeedbacks = async () => {
+      try {
+        const res = await axiosInstance.get(`/feedback?order=${orderId}`);
+        const map = {};
+        (res.data.data || []).forEach(fb => {
+          map[fb.product] = fb;
+        });
+        setExistingFeedbacks(map);
+      } catch {
+        // ignore
+      }
+    };
+    fetchFeedbacks();
+  }, [orderId]);
+
+  const openFeedbackModal = (productId, feedbackId = null) => {
     setSelectedProduct(productId);
+    setSelectedFeedbackId(feedbackId);
     setFeedbackVisible(true);
   };
 
   const closeFeedbackModal = () => {
     setFeedbackVisible(false);
     setSelectedProduct(null);
+    setSelectedFeedbackId(null);
+  };
+  const refreshFeedbacks = async () => {
+    try {
+      const res = await axiosInstance.get(`/feedback?order=${orderId}`);
+      const map = {};
+      (res.data.data || []).forEach(fb => {
+        map[fb.product] = fb;
+      });
+      setExistingFeedbacks(map);
+    } catch {
+      // ignore
+    }
   };
 
   const handleFeedbackSaved = () => {
-    message.success('Review submitted successfully');
+    message.success('Review saved');
     closeFeedbackModal();
-    // TODO: reload lại order nếu cần
+    refreshFeedbacks();
+  };
+
+  const handleDeleteFeedback = async id => {
+    try {
+      await axiosInstance.delete(`/feedback/${id}`);
+      message.success('Review deleted');
+      refreshFeedbacks();
+    } catch {
+      message.error('Failed to delete review');
+    }
   };
 
   const handleStatusChange = async newStatus => {
@@ -200,9 +236,7 @@ export default function OrderDetails() {
     }
   };
 
-  const handleNoteChange = e => {
-    setNote(e.target.value);
-  };
+  const handleNoteChange = e => setNote(e.target.value);
 
   const handleCancelOrder = async () => {
     try {
@@ -346,7 +380,7 @@ export default function OrderDetails() {
             anotherBreadcrumb={
               user?.role === 'shop'
                 ? `Orders / #${order.orderNumber}`
-                : `Orders ID: #${order.orderNumber}`
+                : `Order #${order.orderNumber}`
             }
           />
           <div className="order-details-container">
@@ -585,31 +619,9 @@ export default function OrderDetails() {
               <div className="order-details-products-title">Products</div>
               <Table
                 columns={columns}
-                dataSource={order.items?.map((item, index) => ({
-                  ...item,
-                  key: index,
-                }))}
+                dataSource={order.items.map((it, i) => ({ ...it, key: i }))}
                 pagination={false}
-                className="order-details-table"
               />
-              <div className="order-details-summary">
-                <div className="order-details-summary-row">
-                  <span>Subtotal</span>
-                  <span>${order.subtotal?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="order-details-summary-row">
-                  <span>Tax</span>
-                  <span>${order.tax?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="order-details-summary-row">
-                  <span>Discount</span>
-                  <span>${order.discount?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="order-details-total">
-                  <span>Total</span>
-                  <span>${order.totalPrice?.toFixed(2) || '0.00'}</span>
-                </div>
-              </div>
             </div>
           </div>
           <FeedbackModal
@@ -618,6 +630,7 @@ export default function OrderDetails() {
             onSaved={handleFeedbackSaved}
             orderId={orderId}
             productId={selectedProduct}
+            feedbackId={selectedFeedbackId} // **added**
           />
         </>
       ) : (

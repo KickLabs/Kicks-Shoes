@@ -8,6 +8,10 @@ import mongoose from 'mongoose';
  * @returns {Promise<Feedback>} Created feedback
  */
 export class FeedbackService {
+  static async findOne(query) {
+    return Feedback.findOne(query);
+  }
+
   static async createFeedback(feedbackData) {
     try {
       const feedback = new Feedback(feedbackData);
@@ -83,6 +87,17 @@ export class FeedbackService {
       const report = new Report(reportData);
       await report.save();
       return report;
+    } catch (error) {
+      throw new Error(error);
+    }
+  }
+
+  static async getFeedbackById(feedbackId) {
+    try {
+      const feedback = await Feedback.findById(feedbackId)
+        .populate('user', 'name')
+        .populate('product', 'name');
+      return feedback;
     } catch (error) {
       throw new Error(error);
     }

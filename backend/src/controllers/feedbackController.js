@@ -87,28 +87,21 @@ export const deleteFeedback = async (req, res, next) => {
  */
 export const getAllFeedback = async (req, res) => {
   try {
-    // Lấy các tham số từ query (order và product)
     const { order, product } = req.query;
-
-    // Tạo đối tượng filter
     const filter = {};
 
-    // Nếu có orderId trong query, thêm điều kiện lọc theo order
     if (order) {
       filter.order = order;
     }
 
-    // Nếu có productId trong query, thêm điều kiện lọc theo product
     if (product) {
       filter.product = product;
     }
 
     console.log('Filter criteria:', filter); // Debug: Kiểm tra điều kiện lọc
 
-    // Truy vấn dữ liệu feedback với điều kiện filter
     const feedbacks = await FeedbackService.getFeedbacks(filter);
 
-    // Trả về kết quả
     res.status(200).json({
       success: true,
       data: feedbacks,
@@ -130,20 +123,18 @@ export const reportFeedback = async (req, res, next) => {
     const feedbackId = req.params.id;
     const { reason, description, evidence } = req.body; // Nhận lý do báo cáo và mô tả từ request body
 
-    // Kiểm tra xem feedback có tồn tại không
     const feedback = await Feedback.findById(feedbackId);
     if (!feedback) {
       return res.status(404).json({ success: false, message: 'Feedback not found' });
     }
 
-    // Tạo báo cáo mới
     const report = new Report({
-      reporter: req.user.id, // Người báo cáo là người dùng hiện tại
-      targetType: 'review', // Loại mục tiêu là feedback (review)
-      targetId: feedbackId, // ID của feedback
-      reason, // Lý do báo cáo
-      description, // Mô tả về báo cáo
-      evidence, // Chứng cứ báo cáo (nếu có)
+      reporter: req.user.id,
+      targetType: 'review',
+      targetId: feedbackId,
+      reason,
+      description,
+      evidence,
     });
 
     await report.save();
@@ -220,5 +211,33 @@ export const adminApproveFeedback = async (req, res, next) => {
     }
   } catch (error) {
     next(error);
+  }
+};
+
+export const getFeedback = async (req, res, next) => {
+  try {
+    const user = req.user.id;
+    const { order, product } = req.query;
+    const fb = await FeedbackService.findOne({ user, order, product });
+    return res.json({ success: true, data: fb || null });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+export const getFeedbackById = async (req, res, next) => {
+  try {
+    const feedbackId = req.params.id;
+    const feedback = await Feedback.findById(feedbackId).populate('user', 'name email');
+    if (!feedback) {
+      return res.status(404).json({ success: false, message: 'Feedback not found' });
+    }
+    res.status(200).json({
+      success: true,
+      data: feedback,
+    });
+  } catch (error) {
+    console.error('Error fetching feedback by ID:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
