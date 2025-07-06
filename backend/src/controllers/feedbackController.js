@@ -100,7 +100,7 @@ export const getAllFeedback = async (req, res) => {
 
     console.log('Filter criteria:', filter); // Debug: Kiểm tra điều kiện lọc
 
-    const feedbacks = await FeedbackService.getFeedbacks(filter);
+    const feedbacks = await Feedback.find(filter).populate('user', 'fullName avatar').exec();
 
     res.status(200).json({
       success: true,
@@ -218,7 +218,10 @@ export const getFeedback = async (req, res, next) => {
   try {
     const user = req.user.id;
     const { order, product } = req.query;
-    const fb = await FeedbackService.findOne({ user, order, product });
+    let fb = await FeedbackService.findOne({ user, order, product });
+    if (fb) {
+      fb = await fb.populate('user', 'fullName avatar');
+    }
     return res.json({ success: true, data: fb || null });
   } catch (err) {
     return next(err);
