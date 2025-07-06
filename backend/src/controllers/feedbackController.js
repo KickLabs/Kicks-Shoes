@@ -228,7 +228,7 @@ export const getFeedback = async (req, res, next) => {
 export const getFeedbackById = async (req, res, next) => {
   try {
     const feedbackId = req.params.id;
-    const feedback = await Feedback.findById(feedbackId).populate('user', 'name email');
+    const feedback = await Feedback.findById(feedbackId).populate('user', 'fullName avatar');
     if (!feedback) {
       return res.status(404).json({ success: false, message: 'Feedback not found' });
     }
