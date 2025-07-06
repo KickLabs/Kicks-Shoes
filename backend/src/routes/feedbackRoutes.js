@@ -10,9 +10,14 @@ import {
 import { protect } from '../middlewares/auth.middleware.js';
 import { checkFeedbackOwner } from '../middlewares/feedback.middleware.js'; // Middleware để kiểm tra feedback của chính người dùng
 import { requireRoles } from '../middlewares/role.middleware.js';
+import upload from '../middlewares/upload.middleware.js';
 
 const router = Router();
-
+router.post('/upload', upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  // Multer + Cloudinary đã gán URL vào req.file.path
+  res.json({ url: req.file.path });
+});
 /**
  * @route   POST /api/feedback
  * @desc    Create new feedback

@@ -1,13 +1,12 @@
-import { Pagination } from 'antd';
+import axiosInstance from '@/services/axiosInstance';
+import { DownOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Menu, message, Pagination } from 'antd';
 import { useContext, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext';
 import TableOrders from '../../pages/dashboard/components/TableOrders';
 import { ActiveTabContext } from './ActiveTabContext';
 import TabHeader from './TabHeader';
-import { Dropdown, Button, Menu, message } from 'antd';
-import { DownOutlined } from '@ant-design/icons';
-import axiosInstance from '@/services/axiosInstance';
-import { useAuth } from '../../../contexts/AuthContext';
 
 const OrderList = () => {
   const { user } = useAuth();
@@ -24,7 +23,7 @@ const OrderList = () => {
   const isDashboard = location.pathname.startsWith('/dashboard');
 
   useEffect(() => {
-    setActiveTab('4');
+    setActiveTab('3');
   }, [setActiveTab]);
 
   const fetchOrders = async () => {

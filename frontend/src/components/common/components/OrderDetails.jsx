@@ -21,13 +21,14 @@ import {
   message,
 } from 'antd';
 import dayjs from 'dayjs';
-import { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { ActiveTabContext } from './ActiveTabContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import './order-details.css';
 import TabHeader from './TabHeader';
 import { useLocation } from 'react-router-dom';
 import axiosInstance from '@/services/axiosInstance';
+import FeedbackModal from './Feedback';
 
 const { Option } = Select;
 
@@ -44,6 +45,8 @@ export default function OrderDetails() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [note, setNote] = useState('');
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const columns = [
     {
@@ -84,6 +87,19 @@ export default function OrderDetails() {
       dataIndex: 'subtotal',
       key: 'subtotal',
       render: val => `$${val?.toFixed ? val.toFixed(2) : '0.00'}`,
+    },
+    {
+      title: 'Review',
+      key: 'review',
+      render: (_, record) => (
+        <Button
+          type="link"
+          className="feedback-btn"
+          onClick={() => openFeedbackModal(record.product._id)}
+        >
+          Leave Review
+        </Button>
+      ),
     },
   ];
 
@@ -129,6 +145,22 @@ export default function OrderDetails() {
 
     fetchOrder();
   }, [orderId]);
+
+  const openFeedbackModal = productId => {
+    setSelectedProduct(productId);
+    setFeedbackVisible(true);
+  };
+
+  const closeFeedbackModal = () => {
+    setFeedbackVisible(false);
+    setSelectedProduct(null);
+  };
+
+  const handleFeedbackSaved = () => {
+    message.success('Review submitted successfully');
+    closeFeedbackModal();
+    // TODO: reload lại order nếu cần
+  };
 
   const handleStatusChange = async newStatus => {
     try {
@@ -580,6 +612,13 @@ export default function OrderDetails() {
               </div>
             </div>
           </div>
+          <FeedbackModal
+            visible={feedbackVisible}
+            onCancel={closeFeedbackModal}
+            onSaved={handleFeedbackSaved}
+            orderId={orderId}
+            productId={selectedProduct}
+          />
         </>
       ) : (
         <div>

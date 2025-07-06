@@ -1,7 +1,7 @@
 import Feedback from '../models/Feedback.js';
 import Product from '../models/Product.js';
 import Report from '../models/Report.js';
-
+import mongoose from 'mongoose';
 /**
  * Create a new feedback
  * @param {Object} feedbackData - Feedback data
@@ -16,10 +16,21 @@ export class FeedbackService {
       // Optionally update product rating based on feedback
       const product = await Product.findById(feedbackData.product);
       if (product) {
-        product.rating = await Feedback.aggregate([
-          { $match: { product: feedbackData.product, status: 'approved' } },
-          { $group: { _id: '$product', avgRating: { $avg: '$rating' } } },
+        const stats = await Feedback.aggregate([
+          {
+            $match: {
+              product: new mongoose.Types.ObjectId(feedbackData.product),
+              status: 'approved',
+            },
+          },
+          {
+            $group: {
+              _id: '$product',
+              avgRating: { $avg: '$rating' },
+            },
+          },
         ]);
+        product.rating = stats.length ? stats[0].avgRating : feedbackData.rating;
         await product.save();
       }
 

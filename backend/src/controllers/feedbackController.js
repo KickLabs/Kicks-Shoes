@@ -10,18 +10,17 @@ import Report from '../models/Report.js';
  */
 export const createFeedback = async (req, res, next) => {
   try {
-    console.log('Received feedback data:', req.body); // Log dữ liệu gửi lên
+    const { order, product, rating, comment, images = [] } = req.body;
+    const user = req.user.id;
 
-    const feedbackData = {
-      user: req.user.id, // Lấy thông tin người dùng từ token
-      product: req.body.product,
-      order: req.body.order,
-      rating: req.body.rating,
-      comment: req.body.comment,
-      images: req.body.images || [],
-    };
-
-    const feedback = await FeedbackService.createFeedback(feedbackData);
+    const feedback = await FeedbackService.createFeedback({
+      user,
+      order,
+      product,
+      rating,
+      comment,
+      images,
+    });
 
     res.status(201).json({
       success: true,
