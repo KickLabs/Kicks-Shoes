@@ -101,3 +101,15 @@
     width: 40vw !important;
   }
 }
+
+.product-card {
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}

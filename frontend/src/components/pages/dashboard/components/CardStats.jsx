@@ -8,7 +8,6 @@ import {
 } from '@ant-design/icons';
 import { getShopStats } from '../../../../services/dashboardService';
 
-
 export default function CardStats() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
