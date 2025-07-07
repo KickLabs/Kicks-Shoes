@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Table, Tag } from 'antd';
+import { formatPrice } from '../../../../utils/StringFormat';
 
 const statusColorMap = {
   pending: { tag: 'rgb(245 158 66 / 30%)', dot: '#f59e42' },
@@ -79,7 +80,7 @@ const TableOrders = ({
         title: 'Amount',
         dataIndex: 'totalPrice',
         key: 'amount',
-        render: amount => `$${amount?.toFixed(2) || '0.00'}`,
+        render: amount => formatPrice(amount || 0),
       },
     ];
 

@@ -311,7 +311,7 @@ export class ProductService {
     page = 1,
     limit = 10,
   }) {
-    const filter = {};
+    const filter = { status: true };
     if (brand) filter.brand = brand;
     if (category) filter.category = category;
     if (isNew) filter.isNew = true;
@@ -338,16 +338,47 @@ export class ProductService {
       if (minPrice) filter['price.regular'].$gte = minPrice;
       if (maxPrice) filter['price.regular'].$lte = maxPrice;
     }
-    const sortOptions = { [sortBy]: order === 'asc' ? 1 : -1 };
+
+    // Handle sorting for nested fields
+    let sortOptions = {};
+    if (sortBy === 'price.regular') {
+      // For nested price field, we need to handle it specially
+      sortOptions = { 'price.regular': order === 'asc' ? 1 : -1 };
+    } else if (sortBy === 'price') {
+      // Alias for price.regular
+      sortOptions = { 'price.regular': order === 'asc' ? 1 : -1 };
+    } else if (sortBy === 'sales') {
+      // Handle sales field - ensure it exists and has default value
+      sortOptions = { sales: order === 'asc' ? 1 : -1 };
+      // Add a default value for products without sales field
+      filter.sales = { $exists: true };
+    } else {
+      // For regular fields
+      sortOptions = { [sortBy]: order === 'asc' ? 1 : -1 };
+    }
+
     const skip = (page - 1) * limit;
     console.log('Product filter:', JSON.stringify(filter, null, 2));
-    console.log('Filter parameters:', { size, color, brand, category, minPrice, maxPrice, isNew });
+    console.log('Sort options:', JSON.stringify(sortOptions, null, 2));
+    console.log('Filter parameters:', {
+      size,
+      color,
+      brand,
+      category,
+      minPrice,
+      maxPrice,
+      isNew,
+      sortBy,
+      order,
+    });
+
     const total = await Product.countDocuments(filter);
     const products = await Product.find(filter)
       .populate('category')
       .sort(sortOptions)
       .skip(skip)
       .limit(limit);
+
     console.log(`Found ${products.length} products out of ${total} total`);
     return { products, total };
   }
@@ -358,7 +389,7 @@ export class ProductService {
    * @returns {Promise<{data: Array<Product>, total: number, page: number, limit: number, totalPages: number}>}
    */
   static async getNewDrops({ page = 1, limit = 10, filters = {} }) {
-    const filter = { isNew: true };
+    const filter = { isNew: true, status: true };
     if (filters.brand) filter.brand = filters.brand;
     if (filters.category) filter.category = filters.category;
     if (filters.minPrice)

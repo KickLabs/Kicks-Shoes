@@ -1,4 +1,6 @@
+import React from 'react';
 import { EllipsisOutlined } from '@ant-design/icons';
+import { formatPrice } from '../../../../utils/StringFormat';
 
 const ProductCard = ({ product }) => {
   return (
@@ -12,7 +14,7 @@ const ProductCard = ({ product }) => {
             <div>
               <div className="custom-product-name">{product.name}</div>
               <div className="custom-product-type">{product.type}</div>
-              <div className="custom-product-price">${product.price.regular.toFixed(2)}</div>
+              <div className="custom-product-price">{formatPrice(product.price.regular)}</div>
             </div>
           </div>
         </div>

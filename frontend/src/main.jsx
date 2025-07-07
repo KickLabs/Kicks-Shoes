@@ -62,6 +62,7 @@ import EmailVerification from './components/pages/authentication/pages/EmailVeri
 import ResetPasswordForm from './components/pages/authentication/pages/ResetPasswordForm';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import SetPassword from './components/pages/authentication/pages/SetPassword';
+import ReportTab from './components/pages/account/components/ReportTab';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -384,6 +385,10 @@ const router = createBrowserRouter([
           {
             path: 'chat',
             element: <ChatPage />,
+          },
+          {
+            path: 'reports',
+            element: <ReportTab />,
           },
         ],
       },

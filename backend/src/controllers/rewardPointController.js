@@ -5,23 +5,22 @@
  * @description This controller handles all reward point-related HTTP requests.
  */
 
-import { body, validationResult } from "express-validator";
-import RewardPoint from "../models/RewardPoint.js";
-import { ErrorResponse } from "../utils/errorResponse.js";
-import logger from "../utils/logger.js";
-import mongoose from "mongoose";
+import { body, validationResult } from 'express-validator';
+import RewardPoint from '../models/RewardPoint.js';
+import { ErrorResponse } from '../utils/errorResponse.js';
+import logger from '../utils/logger.js';
+import mongoose from 'mongoose';
+import { getUserTotalPoints } from '../services/rewardPoint.service.js';
 
 // Validation rules
 const rewardPointValidationRules = {
   create: [
-    body("user").isMongoId().withMessage("Invalid user ID"),
-    body("points").isInt({ min: 0 }).withMessage("Points must be a positive number"),
-    body("type")
-      .isIn(["earn", "redeem", "expired", "adjust"])
-      .withMessage("Invalid type"),
-    body("order").optional().isMongoId().withMessage("Invalid order ID"),
-    body("description").notEmpty().withMessage("Description is required"),
-    body("expiryDate").optional().isISO8601().withMessage("Invalid expiry date"),
+    body('user').isMongoId().withMessage('Invalid user ID'),
+    body('points').isInt({ min: 0 }).withMessage('Points must be a positive number'),
+    body('type').isIn(['earn', 'redeem', 'expired', 'adjust']).withMessage('Invalid type'),
+    body('order').optional().isMongoId().withMessage('Invalid order ID'),
+    body('description').notEmpty().withMessage('Description is required'),
+    body('expiryDate').optional().isISO8601().withMessage('Invalid expiry date'),
   ],
 };
 
@@ -49,7 +48,7 @@ const createRewardPoint = [
     try {
       const { user, points, type, order, description, expiryDate } = req.body;
 
-      logger.info("Creating new reward point record", {
+      logger.info('Creating new reward point record', {
         userId: user,
         points,
         type,
@@ -64,7 +63,7 @@ const createRewardPoint = [
         expiryDate,
       });
 
-      logger.info("Reward point record created successfully", {
+      logger.info('Reward point record created successfully', {
         rewardPointId: rewardPoint._id,
       });
 
@@ -73,7 +72,7 @@ const createRewardPoint = [
         data: rewardPoint,
       });
     } catch (error) {
-      logger.error("Error creating reward point record:", error);
+      logger.error('Error creating reward point record:', error);
       next(error);
     }
   },
@@ -118,7 +117,7 @@ const getUserRewardPoints = async (req, res, next) => {
       },
     });
   } catch (error) {
-    logger.error("Error getting user reward points:", error);
+    logger.error('Error getting user reward points:', error);
     next(error);
   }
 };
@@ -128,75 +127,18 @@ const getUserRewardPoints = async (req, res, next) => {
  * @route GET /api/reward-points/user/:userId/total
  * @access Private
  */
-const getUserTotalPoints = async (req, res, next) => {
+const getUserTotalPointsController = async (req, res, next) => {
   try {
     const { userId } = req.params;
 
-    // Calculate total earned points
-    const earnedPoints = await RewardPoint.aggregate([
-      {
-        $match: {
-          user: new mongoose.Types.ObjectId(userId),
-          type: "earn",
-          status: "active",
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$points" },
-        },
-      },
-    ]);
-
-    // Calculate total redeemed points
-    const redeemedPoints = await RewardPoint.aggregate([
-      {
-        $match: {
-          user: new mongoose.Types.ObjectId(userId),
-          type: "redeem",
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$points" },
-        },
-      },
-    ]);
-
-    // Calculate total expired points
-    const expiredPoints = await RewardPoint.aggregate([
-      {
-        $match: {
-          user: new mongoose.Types.ObjectId(userId),
-          status: "expired",
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$points" },
-        },
-      },
-    ]);
-
-    const earned = earnedPoints[0]?.total || 0;
-    const redeemed = redeemedPoints[0]?.total || 0;
-    const expired = expiredPoints[0]?.total || 0;
-    const available = earned - redeemed - expired;
+    const totalPoints = await getUserTotalPoints(userId);
 
     res.status(200).json({
       success: true,
-      data: {
-        totalEarned: earned,
-        totalRedeemed: redeemed,
-        totalExpired: expired,
-        availablePoints: available,
-      },
+      data: totalPoints,
     });
   } catch (error) {
-    logger.error("Error calculating user total points:", error);
+    logger.error('Error calculating user total points:', error);
     next(error);
   }
 };
@@ -204,5 +146,5 @@ const getUserTotalPoints = async (req, res, next) => {
 export {
   createRewardPoint,
   getUserRewardPoints,
-  getUserTotalPoints,
+  getUserTotalPointsController as getUserTotalPoints,
 };

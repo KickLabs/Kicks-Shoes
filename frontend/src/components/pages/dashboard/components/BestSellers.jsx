@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Spin, Alert } from 'antd';
+import { Button, Spin, Alert, Card, List, Avatar, Tag, Space } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import { getShopStats } from '../../../../services/dashboardService';
+import { formatPrice } from '../../../../utils/StringFormat';
 
 export default function BestSellers() {
   const [bestSellers, setBestSellers] = useState([]);
@@ -82,12 +83,12 @@ export default function BestSellers() {
               <div className="best-seller-info">
                 <div className="best-seller-name">{item.name}</div>
                 <div className="best-seller-price">
-                  ${item.price?.regular?.toFixed(2) || item.price?.toFixed(2) || '0.00'}
+                  {formatPrice(item.price?.regular || item.price || 0)}
                 </div>
               </div>
               <div className="best-seller-meta">
                 <div className="best-seller-price-bold">
-                  ${item.price?.regular?.toFixed(2) || item.price?.toFixed(2) || '0.00'}
+                  {formatPrice(item.price?.regular || item.price || 0)}
                 </div>
                 <div className="best-seller-sales">{item.sales || 0} sales</div>
               </div>

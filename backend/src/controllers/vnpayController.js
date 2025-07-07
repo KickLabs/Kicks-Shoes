@@ -4,6 +4,10 @@ import { ErrorResponse } from '../utils/errorResponse.js';
 import Order from '../models/Order.js';
 import { OrderService } from '../services/order.service.js';
 import logger from '../utils/logger.js';
+import {
+  createRewardPointsForOrder,
+  hasOrderEarnedRewardPoints,
+} from '../services/rewardPoint.service.js';
 
 /**
  * VNPay Payment Controller
@@ -205,6 +209,33 @@ class VNPayController {
         console.log('Order updated successfully:', order._id);
         console.log('Updated order status:', order.status);
         console.log('Updated payment status:', order.paymentStatus);
+
+        // Create reward points if payment was successful
+        if (paymentStatus === 'paid' && order) {
+          try {
+            // Check if reward points already exist for this order
+            const hasRewardPoints = await hasOrderEarnedRewardPoints(order._id);
+
+            if (!hasRewardPoints) {
+              console.log('Creating reward points for successful payment');
+              const rewardPoint = await createRewardPointsForOrder(order);
+
+              if (rewardPoint) {
+                console.log('Reward points created successfully:', {
+                  orderId: order._id,
+                  orderNumber: order.orderNumber,
+                  pointsEarned: rewardPoint.points,
+                  rewardPointId: rewardPoint._id,
+                });
+              }
+            } else {
+              console.log('Reward points already exist for this order:', order._id);
+            }
+          } catch (error) {
+            console.error('Error creating reward points:', error);
+            // Don't fail the payment process if reward points creation fails
+          }
+        }
       } else {
         // Validate pendingOrderData before creating cancelled order
         const orderData = pendingOrderData?.orderData || pendingOrderData;

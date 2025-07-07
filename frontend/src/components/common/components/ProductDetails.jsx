@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
+import { formatPrice } from '../../../utils/StringFormat';
 import {
   DeleteOutlined,
   PlusOutlined,
@@ -999,7 +1000,7 @@ export default function ProductDetails() {
                       color: '#52c41a',
                     }}
                   >
-                    ${calculateSalePrice().toFixed(2)}
+                    {formatPrice(calculateSalePrice())}
                   </div>
                 </Col>
               </Row>

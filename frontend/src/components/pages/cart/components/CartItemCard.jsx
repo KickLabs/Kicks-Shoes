@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatPrice } from '../../../../utils/StringFormat';
 import './CartItemCard.css';
 import { updateCartItem, removeCartItem, getCart } from '../cartService';
 import { useDispatch } from 'react-redux';
@@ -89,7 +90,7 @@ const CartItemCard = ({ item }) => {
       <div className="item-details">
         <div className="item-header">
           <h3>{item.product.name || 'Unknown Product'}</h3>
-          <span className="item-price">${productPrice.toFixed(2)}</span>
+          <span className="item-price">{formatPrice(productPrice)}</span>
         </div>
         <p className="item-category">
           {item.product.brand || 'Unknown Brand'} - Men's Road Running Shoes

@@ -1,6 +1,7 @@
 import { Card, Typography, Radio, Space, Row, Col, Form, Checkbox, Button } from 'antd';
 import './DeliveryOptions.css';
 import PaymentMethod from './PaymentMethod';
+import { formatPrice } from '../../../../utils/StringFormat';
 
 const { Title, Text } = Typography;
 
@@ -35,7 +36,7 @@ export default function DeliveryOptions({
               </Col>
               <Col>
                 <Text style={{ color: '#4a69e2' }} strong>
-                  $6.99
+                  {formatPrice(30000, { showSymbol: true })}
                 </Text>
               </Col>
             </Row>

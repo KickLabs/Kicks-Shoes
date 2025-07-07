@@ -12,7 +12,6 @@ import {
   WalletOutlined,
   MessageOutlined,
   UserOutlined,
-  SettingOutlined,
   BarChartOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
@@ -26,7 +25,6 @@ const dashboardTabs = [
   { key: '3', name: 'Orders', icon: <UnorderedListOutlined />, path: '/orders' },
   { key: '4', name: 'Discounts', icon: <WalletOutlined />, path: '/discounts' },
   { key: '5', name: 'Feedback', icon: <MessageOutlined />, path: '/feedback' },
-  { key: '6', name: 'Settings', icon: <SettingOutlined />, path: '/settings' },
 ];
 
 // Admin-specific tabs
@@ -47,7 +45,6 @@ const shopTabs = [
   { key: '3', name: 'Orders', icon: <UnorderedListOutlined />, path: '/shop/orders' },
   { key: '4', name: 'Feedback', icon: <MessageOutlined />, path: '/shop/feedback' },
   { key: '5', name: 'Discounts', icon: <WalletOutlined />, path: '/shop/discounts' },
-  { key: '6', name: 'Settings', icon: <SettingOutlined />, path: '/shop/settings' },
 ];
 
 export default function DashboardLayout() {

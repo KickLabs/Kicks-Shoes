@@ -29,6 +29,8 @@ import {
   SettingOutlined,
   PlusOutlined,
   AppstoreOutlined,
+  EyeOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { Line, Bar } from '@ant-design/charts';
 import TableUsers from './components/TableUsers';
@@ -47,6 +49,7 @@ import {
   deleteFeedback,
 } from '../../../services/dashboardService';
 import TabHeader from '../../common/components/TabHeader';
+import axiosInstance from '../../../services/axiosInstance';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -67,6 +70,13 @@ export default function AdminDashboard() {
 
   // UI State
   const [searchText, setSearchText] = useState('');
+
+  // Modal reply admin
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [replyReport, setReplyReport] = useState(null);
+  const [replyResolution, setReplyResolution] = useState('no_action');
+  const [replyNote, setReplyNote] = useState('');
+  const [replyLoading, setReplyLoading] = useState(false);
 
   // Determine current view from URL path
   const getCurrentView = () => {
@@ -150,7 +160,7 @@ export default function AdminDashboard() {
   const fetchReportedProducts = async () => {
     try {
       const response = await getAdminReportedProducts(1, 10);
-      setReportedProducts(response.data?.reportedProducts || []);
+      setReportedProducts(response.data?.reports || []);
     } catch (err) {
       console.error('Error fetching reported products:', err);
     }
@@ -254,30 +264,93 @@ export default function AdminDashboard() {
 
   // Table columns for other views
   const productColumns = [
-    { title: 'Product Name', dataIndex: 'name', key: 'name' },
-    { title: 'Shop', dataIndex: 'shop', key: 'shop' },
-    { title: 'Reason', dataIndex: 'reason', key: 'reason' },
-    { title: 'Reported By', dataIndex: 'reportedBy', key: 'reportedBy' },
+    {
+      title: 'Type',
+      dataIndex: 'targetType',
+      key: 'type',
+      align: 'center',
+      render: type => (
+        <Tag
+          color={
+            type === 'product'
+              ? 'blue'
+              : type === 'feedback'
+                ? 'orange'
+                : type === 'comment'
+                  ? 'purple'
+                  : 'default'
+          }
+          style={{ borderRadius: 8, fontWeight: 600, fontSize: 14, padding: '4px 16px' }}
+        >
+          {type.toUpperCase()}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Reporter',
+      dataIndex: 'reporter',
+      key: 'reporter',
+      render: reporter => (reporter ? `${reporter.fullName} (${reporter.email})` : 'N/A'),
+      align: 'center',
+    },
+    {
+      title: 'Reason',
+      dataIndex: 'reason',
+      key: 'reason',
+      align: 'center',
+      render: text => <span style={{ fontWeight: 500 }}>{text}</span>,
+    },
+    {
+      title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      align: 'center',
+      render: text => (
+        <span
+          style={{ maxWidth: 320, display: 'inline-block', whiteSpace: 'pre-line', fontSize: 15 }}
+        >
+          {text}
+        </span>
+      ),
+    },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      align: 'center',
       render: status => (
-        <Tag color={status === 'pending' ? 'orange' : 'blue'}>{status.toUpperCase()}</Tag>
+        <Tag
+          color={status === 'pending' ? 'orange' : status === 'resolved' ? 'green' : 'blue'}
+          style={{ borderRadius: 8, fontWeight: 500 }}
+        >
+          {status}
+        </Tag>
       ),
     },
     {
-      title: 'Actions',
+      title: 'Action',
       key: 'actions',
+      align: 'center',
       render: (_, record) => (
         <Button
-          type="primary"
-          danger
+          icon={<EditOutlined />}
           size="small"
-          icon={<DeleteOutlined />}
-          onClick={() => handleDeleteProduct(record.id)}
+          style={{
+            fontWeight: 600,
+            borderRadius: 8,
+            background: '#f5f7fa',
+            color: '#4A69E2',
+            border: '1px solid #dbeafe',
+          }}
+          onClick={() => {
+            setReplyReport(record);
+            setReplyResolution('no_action');
+            setReplyNote('');
+            setReplyModalOpen(true);
+          }}
+          title="Reply to report"
         >
-          Delete Illegal Product
+          Reply
         </Button>
       ),
     },
@@ -399,8 +472,8 @@ export default function AdminDashboard() {
                 >
                   <Line
                     data={revenueData}
-                    xField="month"
-                    yField="revenue"
+                    xField="_id"
+                    yField="totalRevenue"
                     smooth
                     point={{
                       size: 5,
@@ -424,14 +497,7 @@ export default function AdminDashboard() {
                   title="User Growth"
                   style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
                 >
-                  <Bar
-                    data={userGrowthData}
-                    xField="month"
-                    yField="customers"
-                    seriesField="type"
-                    isGroup={true}
-                    height={300}
-                  />
+                  <Bar data={userGrowthData} xField="_id" yField="customers" height={300} />
                 </Card>
               </Col>
             </Row>
@@ -460,17 +526,20 @@ export default function AdminDashboard() {
 
       case 'moderation':
         return (
-          <Card
-            title={<div style={{ fontSize: 20, fontWeight: 600 }}>Product Moderation</div>}
-            style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-          >
-            <Table
-              columns={productColumns}
-              dataSource={reportedProducts}
-              rowKey="id"
-              pagination={{ pageSize: 10 }}
-            />
-          </Card>
+          <>
+            <TabHeader breadcrumb="Moderation Management" />
+            <Card
+              title={<div style={{ fontSize: 20, fontWeight: 600 }}>Moderation Management</div>}
+              style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+            >
+              <Table
+                columns={productColumns}
+                dataSource={reportedProducts}
+                rowKey="id"
+                pagination={{ pageSize: 10 }}
+              />
+            </Card>
+          </>
         );
 
       case 'financial':
@@ -532,7 +601,140 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDisableProduct = async productId => {
+    Modal.confirm({
+      title: 'Ẩn sản phẩm',
+      content: 'Bạn có chắc muốn ẩn sản phẩm này không?',
+      onOk: async () => {
+        try {
+          await axiosInstance.put(`/products/${productId}`, { status: false });
+          message.success('Đã ẩn sản phẩm');
+          fetchReportedProducts();
+        } catch (err) {
+          message.error('Ẩn sản phẩm thất bại');
+        }
+      },
+    });
+  };
+
+  const handleIgnoreReport = async reportId => {
+    Modal.confirm({
+      title: 'Bỏ qua báo cáo',
+      content: 'Bạn có chắc muốn bỏ qua báo cáo này không?',
+      onOk: async () => {
+        try {
+          await axiosInstance.put(`/dashboard/admin/reports/${reportId}/ignore`);
+          message.success('Đã bỏ qua báo cáo');
+          fetchReportedProducts();
+        } catch (err) {
+          message.error('Bỏ qua báo cáo thất bại');
+        }
+      },
+    });
+  };
+
   return (
-    <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>{renderView()}</div>
+    <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>
+      {renderView()}
+      {/* Modal reply admin */}
+      <Modal
+        open={replyModalOpen}
+        onCancel={() => setReplyModalOpen(false)}
+        title={
+          <span style={{ fontWeight: 700, fontSize: 20 }}>
+            {replyReport?.status === 'pending' ? 'Reply to Report' : 'Admin Resolution'}
+          </span>
+        }
+        okText={replyReport?.status === 'pending' ? 'Submit' : 'Close'}
+        cancelText="Cancel"
+        onOk={async () => {
+          if (replyReport?.status !== 'pending') {
+            setReplyModalOpen(false);
+            return;
+          }
+          setReplyLoading(true);
+          try {
+            await axiosInstance.put(`/dashboard/admin/reports/${replyReport._id}/resolve`, {
+              resolution: replyResolution,
+              adminNote: replyNote,
+            });
+            message.success('Report resolved!');
+            setReplyModalOpen(false);
+            fetchReportedProducts();
+          } catch (err) {
+            message.error('Failed to resolve report');
+          } finally {
+            setReplyLoading(false);
+          }
+        }}
+        confirmLoading={replyLoading}
+        footer={replyReport?.status === 'pending' ? undefined : null}
+        bodyStyle={{ padding: 24 }}
+        style={{ borderRadius: 16 }}
+      >
+        {replyReport && replyReport.status === 'pending' ? (
+          <div style={{ lineHeight: 2 }}>
+            <div style={{ marginBottom: 16 }}>
+              <b>Resolution:</b>
+              <select
+                value={replyResolution}
+                onChange={e => setReplyResolution(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: 8,
+                  marginTop: 6,
+                  borderRadius: 8,
+                  border: '1px solid #dbeafe',
+                  fontSize: 15,
+                }}
+              >
+                <option value="warning">Warning</option>
+                <option value="suspension">Suspension</option>
+                <option value="ban">Ban</option>
+                <option value="no_action">No Action</option>
+              </select>
+            </div>
+            <div>
+              <b>Admin Note:</b>
+              <textarea
+                value={replyNote}
+                onChange={e => setReplyNote(e.target.value)}
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: 8,
+                  marginTop: 6,
+                  borderRadius: 8,
+                  border: '1px solid #dbeafe',
+                  fontSize: 15,
+                }}
+                placeholder="Enter admin note..."
+              />
+            </div>
+          </div>
+        ) : replyReport ? (
+          <div style={{ lineHeight: 2 }}>
+            <div>
+              <b>Resolution:</b> {replyReport.resolution || 'N/A'}
+            </div>
+            <div>
+              <b>Admin Note:</b> {replyReport.adminNote || 'N/A'}
+            </div>
+            <div>
+              <b>Resolved By:</b>{' '}
+              {replyReport.resolvedBy
+                ? replyReport.resolvedBy.fullName ||
+                  replyReport.resolvedBy.email ||
+                  replyReport.resolvedBy
+                : 'N/A'}
+            </div>
+            <div>
+              <b>Resolved At:</b>{' '}
+              {replyReport.resolvedAt ? new Date(replyReport.resolvedAt).toLocaleString() : 'N/A'}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+    </div>
   );
 }
