@@ -40,7 +40,7 @@ export class FeedbackService {
 
       return feedback;
     } catch (error) {
-      throw new Error(error);
+      throw error;
     }
   }
 
