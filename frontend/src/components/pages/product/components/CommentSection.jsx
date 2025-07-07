@@ -1,66 +1,46 @@
-import React, { useState } from 'react';
-import { Pagination, Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Pagination, Button, Spin, Alert, Avatar } from 'antd';
 import { FaStar } from 'react-icons/fa';
+import axiosInstance from '@/services/axiosInstance';
 import './CommentSection.css';
 
-const generateFakeComments = (count = 30) => {
-  const names = ['Minh', 'An', 'Huy', 'Trang', 'Linh', 'Nam', 'Hoa', 'Tú'];
-  const comments = [
-    'Sản phẩm rất đẹp, chất lượng tuyệt vời!',
-    'Đóng gói cẩn thận, giao hàng nhanh.',
-    'Giá cả hợp lý, sẽ ủng hộ tiếp.',
-    'Hơi chật một chút nhưng vẫn ổn.',
-    'Màu sắc giống hình, rất ưng ý.',
-  ];
-  const sampleImages = [
-    'https://picsum.photos/seed/1/120',
-    'https://picsum.photos/seed/2/120',
-    'https://picsum.photos/seed/3/120',
-    'https://picsum.photos/seed/4/120',
-    'https://picsum.photos/seed/5/120',
-  ];
-
-  return Array.from({ length: count }).map(() => {
-    const name = names[Math.floor(Math.random() * names.length)];
-    const content = comments[Math.floor(Math.random() * comments.length)];
-    const hash = Math.random().toString(36).substring(2, 10).toUpperCase();
-    const time = new Date(
-      Date.now() - Math.floor(Math.random() * 5 * 24 * 60 * 60 * 1000)
-    ).toLocaleString();
-    const rating = Math.floor(Math.random() * 5) + 1;
-    const imageCount = Math.floor(Math.random() * 4); // 0–3 images
-    const images = Array.from({ length: imageCount }).map(
-      () => sampleImages[Math.floor(Math.random() * sampleImages.length)]
-    );
-
-    return { name, content, hash, time, images, rating };
-  });
-};
-
-const CommentSection = () => {
-  const allComments = generateFakeComments(9);
-  const [filterRating, setFilterRating] = useState(null); // null = All
+const CommentSection = ({ productId }) => {
+  const [comments, setComments] = useState([]);
+  const [filterRating, setFilterRating] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const pageSize = 5;
 
-  const filteredComments = filterRating
-    ? allComments.filter(c => c.rating === filterRating)
-    : allComments;
+  // Fetch real feedbacks for this product
+  useEffect(() => {
+    if (!productId) return;
+    setLoading(true);
+    axiosInstance
+      .get(`/feedback?product=${productId}`)
+      .then(res => setComments(res.data.data || []))
+      .catch(err => {
+        console.error('Fetch comments error:', err);
+        setError('Failed to load reviews');
+      })
+      .finally(() => setLoading(false));
+  }, [productId]);
 
-  const pagedComments = filteredComments.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  const filtered = filterRating ? comments.filter(c => c.rating === filterRating) : comments;
 
-  const renderStars = count => {
-    return Array.from({ length: count }).map((_, idx) => (
-      <FaStar key={idx} style={{ color: '#fadb14', marginRight: 2 }} />
+  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const renderStars = n =>
+    Array.from({ length: n }).map((_, i) => (
+      <FaStar key={i} style={{ color: '#fadb14', marginRight: 2 }} />
     ));
-  };
+
+  if (loading) return <Spin />;
+  if (error) return <Alert type="error" message={error} />;
 
   return (
     <div className="comment-section">
-      <h3>Đánh giá sản phẩm</h3>
+      <h3>Product reviews</h3>
 
       <div className="comment-filter">
         <Button
@@ -75,30 +55,30 @@ const CommentSection = () => {
         {[5, 4, 3, 2, 1].map(star => (
           <Button
             key={star}
+            type={filterRating === star ? 'primary' : 'default'}
             onClick={() => {
               setFilterRating(star);
               setCurrentPage(1);
             }}
-            type={filterRating === star ? 'primary' : 'default'}
           >
             {star} star
           </Button>
         ))}
       </div>
 
-      {pagedComments.map(c => (
-        <div key={c.hash} className="comment-item">
-          <div className="comment-header">
-            <strong>{c.name}</strong>
-            <span className="comment-hash">#{c.hash}</span>
-            <span className="comment-time">{c.time}</span>
+      {paged.map(c => (
+        <div key={c._id} className="comment-item">
+          <div className="comment-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Avatar src={c.user?.avatar} />
+            <strong>{c.user?.fullName || 'Anonymous'}</strong>
+            <span className="comment-time">{new Date(c.createdAt).toLocaleString()}</span>
           </div>
           <div className="comment-rating">{renderStars(c.rating)}</div>
-          <p className="comment-content">{c.content}</p>
-          {c.images.length > 0 && (
+          <p className="comment-content">{c.comment}</p>
+          {c.images?.length > 0 && (
             <div className="comment-images">
-              {c.images.map((imgUrl, i) => (
-                <img key={i} src={imgUrl} alt={`Feedback ${i}`} />
+              {c.images.map((url, i) => (
+                <img key={i} src={url} alt={`Review ${i}`} />
               ))}
             </div>
           )}
@@ -109,7 +89,7 @@ const CommentSection = () => {
         <Pagination
           current={currentPage}
           pageSize={pageSize}
-          total={filteredComments.length}
+          total={filtered.length}
           onChange={page => setCurrentPage(page)}
           showSizeChanger={false}
         />
