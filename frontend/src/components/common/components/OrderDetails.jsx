@@ -619,7 +619,7 @@ export default function OrderDetails() {
               <div className="order-details-products-title">Products</div>
               <Table
                 columns={columns}
-                dataSource={order.items.map((it, i) => ({ ...it, key: i }))}
+                dataSource={(order.items || []).map((it, i) => ({ ...it, key: i }))}
                 pagination={false}
               />
             </div>
