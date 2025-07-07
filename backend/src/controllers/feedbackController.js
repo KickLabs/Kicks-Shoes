@@ -98,7 +98,7 @@ export const getAllFeedback = async (req, res) => {
       filter.product = product;
     }
 
-    console.log('Filter criteria:', filter); // Debug: Kiểm tra điều kiện lọc
+    logger.info('Filter criteria applied', { filter }); // Log filter criteria for debugging
 
     const feedbacks = await Feedback.find(filter).populate('user', 'fullName avatar').exec();
 
