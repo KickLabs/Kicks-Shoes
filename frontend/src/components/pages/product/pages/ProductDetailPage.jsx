@@ -26,7 +26,6 @@ const ProductDetailPage = () => {
         setLoading(false);
       }
     };
-
     fetchProduct();
   }, [id]);
 
@@ -55,7 +54,9 @@ const ProductDetailPage = () => {
         </Col>
       </Row>
       <RecommendSection />
-      <CommentSection />
+
+      {/* Truyền product._id vào CommentSection để fetch feedback */}
+      <CommentSection productId={product._id} />
     </div>
   );
 };
