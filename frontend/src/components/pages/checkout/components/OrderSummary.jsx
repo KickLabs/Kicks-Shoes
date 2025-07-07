@@ -1,5 +1,6 @@
 import { Card, Col, Divider, Row, Typography, Input, Button, Space } from 'antd';
 import { useState } from 'react';
+import { formatPrice } from '../../../../utils/StringFormat';
 import './OrderSummary.css';
 
 const { Title, Text } = Typography;
@@ -36,7 +37,7 @@ export default function OrderSummary({
         </Col>
         <Col>
           <Text strong style={{ fontSize: 16 }}>
-            ${subtotal.toFixed(2)}
+            {formatPrice(subtotal)}
           </Text>
         </Col>
       </Row>
@@ -47,7 +48,7 @@ export default function OrderSummary({
         </Col>
         <Col>
           <Text strong style={{ fontSize: 16 }}>
-            ${deliveryCost ? deliveryCost.toFixed(2) : 'Free'}
+            {deliveryCost ? formatPrice(deliveryCost) : 'Free'}
           </Text>
         </Col>
       </Row>
@@ -59,7 +60,7 @@ export default function OrderSummary({
           </Col>
           <Col>
             <Text strong style={{ fontSize: 16, color: 'rgb(74, 105, 226)' }}>
-              - ${discount.toFixed(2)}
+              - {formatPrice(discount)}
             </Text>
           </Col>
         </Row>
@@ -70,7 +71,7 @@ export default function OrderSummary({
           <Text className="order-summary-text">Sales Tax</Text>
         </Col>
         <Col>
-          <Text style={{ fontSize: 16 }}>{tax > 0 ? `$${tax.toFixed(2)}` : '-'}</Text>
+          <Text style={{ fontSize: 16 }}>{tax > 0 ? formatPrice(tax) : '-'}</Text>
         </Col>
       </Row>
       {/* Coupon input */}
@@ -95,7 +96,7 @@ export default function OrderSummary({
         </Col>
         <Col>
           <Text strong style={{ fontSize: 24 }}>
-            ${total.toFixed(2)}
+            {formatPrice(total)}
           </Text>
         </Col>
       </Row>

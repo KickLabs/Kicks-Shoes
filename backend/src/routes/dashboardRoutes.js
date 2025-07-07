@@ -35,6 +35,9 @@ import {
   unbanUser,
   deleteReportedProduct,
   deleteFeedback,
+  ignoreProductReport,
+  resolveProductReport,
+  getMyFeedbackReports,
 } from '../controllers/dashboardController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireAdmin, requireShop, requireRoles } from '../middlewares/role.middleware.js';
@@ -68,5 +71,10 @@ router.put('/admin/users/:userId/ban', protect, requireAdmin, banUser);
 router.put('/admin/users/:userId/unban', protect, requireAdmin, unbanUser);
 router.delete('/admin/products/:productId', protect, requireAdmin, deleteReportedProduct);
 router.delete('/admin/feedback/:feedbackId', protect, requireAdmin, deleteFeedback);
+router.put('/admin/reports/:id/ignore', protect, requireAdmin, ignoreProductReport);
+router.put('/admin/reports/:id/resolve', protect, requireAdmin, resolveProductReport);
+
+// Add after other user routes:
+router.get('/my/feedback-reports', protect, getMyFeedbackReports);
 
 export default router;

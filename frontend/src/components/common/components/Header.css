@@ -77,7 +77,9 @@
   margin-bottom: 16px;
   padding: 8px 12px;
   border-radius: 10px;
-  transition: background 0.18s, box-shadow 0.18s;
+  transition:
+    background 0.18s,
+    box-shadow 0.18s;
   cursor: pointer;
 }
 .header-search-result-item:hover {

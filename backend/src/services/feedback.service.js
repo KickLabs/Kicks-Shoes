@@ -69,7 +69,7 @@ export class FeedbackService {
    */
   static async getFeedbacks(filter = {}) {
     try {
-      // Truy vấn tất cả feedbacks với điều kiện lọc
+      if (filter) filter.status = true;
       const feedbacks = await Feedback.find(filter).populate('user', 'name');
       return feedbacks;
     } catch (error) {

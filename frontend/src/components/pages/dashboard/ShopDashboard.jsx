@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { formatPrice } from '../../../utils/StringFormat';
 import {
   Card,
   Row,
@@ -43,6 +44,7 @@ import {
   BarChartOutlined,
   RiseOutlined,
   FallOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { Line, Bar, Pie } from '@ant-design/charts';
 import AllProducts from './AllProducts';
@@ -56,6 +58,7 @@ import {
   createDiscount,
   deleteDiscount,
 } from '../../../services/dashboardService';
+import axiosInstance from '../../../services/axiosInstance';
 
 const { Search } = Input;
 const { TextArea } = Input;
@@ -79,6 +82,12 @@ export default function ShopDashboard() {
   const [isEditStoreModalVisible, setIsEditStoreModalVisible] = useState(false);
   const [discountForm] = Form.useForm();
   const [storeForm] = Form.useForm();
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportFeedbackId, setReportFeedbackId] = useState(null);
+  const [reportReason, setReportReason] = useState('inappropriate_content');
+  const [reportDescription, setReportDescription] = useState('');
+  const [reportEvidence, setReportEvidence] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
 
   // Determine current view from URL path
   const getCurrentView = () => {
@@ -88,7 +97,6 @@ export default function ShopDashboard() {
     if (path === '/shop/orders') return 'orders';
     if (path === '/shop/feedback') return 'feedback';
     if (path === '/shop/discounts') return 'discounts';
-    if (path === '/shop/settings') return 'settings';
     return 'dashboard';
   };
 
@@ -136,7 +144,37 @@ export default function ShopDashboard() {
   const fetchStats = async () => {
     try {
       const response = await getShopStats();
-      setStats(response.data);
+      console.log('Shop stats response:', response);
+
+      // Transform the data to match the expected structure
+      const transformedStats = {
+        totalRevenue: {
+          value: response.data.totalRevenue || 0,
+          change: 0, // Calculate change if needed
+        },
+        totalOrders: {
+          value: response.data.totalOrders || 0,
+          change: 0,
+        },
+        totalCustomers: {
+          value: response.data.totalCustomers || 0,
+          change: 0,
+        },
+        averageRating: {
+          value: response.data.averageRating || 0,
+        },
+        totalProducts: {
+          value: response.data.totalProducts || 0,
+        },
+        newOrdersToday: response.data.newOrdersToday || 0,
+        newCustomersToday: response.data.newCustomersToday || 0,
+        totalReviews: response.data.totalReviews || 0,
+        orderStatusDistribution: response.data.orderStatusDistribution || [],
+        topProducts: response.data.topProducts || [],
+        storeInfo: response.data.storeInfo || {},
+      };
+
+      setStats(transformedStats);
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
@@ -145,7 +183,16 @@ export default function ShopDashboard() {
   const fetchSalesData = async () => {
     try {
       const response = await getShopSalesData('monthly');
-      setSalesData(response.data || []);
+      console.log('Sales data response:', response);
+
+      // Transform sales data to match chart format
+      const transformedSalesData = (response.data || []).map(item => ({
+        month: item._id,
+        sales: item.totalSales || 0,
+        orders: item.orderCount || 0,
+      }));
+
+      setSalesData(transformedSalesData);
     } catch (err) {
       console.error('Error fetching sales data:', err);
     }
@@ -154,6 +201,7 @@ export default function ShopDashboard() {
   const fetchRecentOrders = async () => {
     try {
       const response = await getShopOrders(1, 5);
+      console.log('Recent orders response:', response);
       setOrders(response.data?.orders || []);
     } catch (err) {
       console.error('Error fetching recent orders:', err);
@@ -163,6 +211,7 @@ export default function ShopDashboard() {
   const fetchOrders = async () => {
     try {
       const response = await getShopOrders(1, 10);
+      console.log('Orders response:', response);
       setOrders(response.data?.orders || []);
     } catch (err) {
       console.error('Error fetching orders:', err);
@@ -172,6 +221,7 @@ export default function ShopDashboard() {
   const fetchRecentFeedback = async () => {
     try {
       const response = await getShopFeedback(1, 5);
+      console.log('Recent feedback response:', response);
       setFeedback(response.data?.feedback || []);
     } catch (err) {
       console.error('Error fetching recent feedback:', err);
@@ -181,6 +231,7 @@ export default function ShopDashboard() {
   const fetchFeedback = async () => {
     try {
       const response = await getShopFeedback(1, 10);
+      console.log('Feedback response:', response);
       setFeedback(response.data?.feedback || []);
     } catch (err) {
       console.error('Error fetching feedback:', err);
@@ -190,7 +241,8 @@ export default function ShopDashboard() {
   const fetchDiscounts = async () => {
     try {
       const response = await getShopDiscounts();
-      setDiscounts(response.data?.discounts || []);
+      console.log('Discounts response:', response);
+      setDiscounts(response.data || []);
     } catch (err) {
       console.error('Error fetching discounts:', err);
     }
@@ -248,12 +300,6 @@ export default function ShopDashboard() {
     });
   };
 
-  // Store Settings
-  const handleUpdateStoreInfo = values => {
-    message.success('Store information updated successfully');
-    setIsEditStoreModalVisible(false);
-  };
-
   // Table columns
   const orderColumns = [
     {
@@ -262,9 +308,9 @@ export default function ShopDashboard() {
       key: 'customer',
       render: user => (
         <Space>
-          <Avatar size="small">{user?.fullName?.charAt(0) || 'U'}</Avatar>
+          <Avatar size="small">{user?.fullName?.charAt(0) || user?.email?.charAt(0) || 'U'}</Avatar>
           <div>
-            <div style={{ fontWeight: 600 }}>{user?.fullName || 'Unknown'}</div>
+            <div style={{ fontWeight: 600 }}>{user?.fullName || user?.email || 'Unknown'}</div>
             <div style={{ color: '#666', fontSize: 12 }}>{user?.email || 'N/A'}</div>
           </div>
         </Space>
@@ -274,14 +320,14 @@ export default function ShopDashboard() {
       title: 'Order',
       dataIndex: 'orderNumber',
       key: 'order',
-      render: orderNumber => <span style={{ fontWeight: 500 }}>{orderNumber}</span>,
+      render: orderNumber => <span style={{ fontWeight: 500 }}>{orderNumber || 'N/A'}</span>,
     },
     {
       title: 'Amount',
       dataIndex: 'totalPrice',
       key: 'amount',
       render: amount => (
-        <span style={{ fontWeight: 600, color: '#52c41a' }}>${amount?.toFixed(2) || '0.00'}</span>
+        <span style={{ fontWeight: 600, color: '#52c41a' }}>{formatPrice(amount || 0)}</span>
       ),
     },
     {
@@ -344,9 +390,9 @@ export default function ShopDashboard() {
       key: 'customer',
       render: user => (
         <Space>
-          <Avatar size="small">{user?.fullName?.charAt(0) || 'U'}</Avatar>
+          <Avatar size="small">{user?.fullName?.charAt(0) || user?.email?.charAt(0) || 'U'}</Avatar>
           <div>
-            <div style={{ fontWeight: 600 }}>{user?.fullName || 'Unknown'}</div>
+            <div style={{ fontWeight: 600 }}>{user?.fullName || user?.email || 'Unknown'}</div>
             <div style={{ color: '#666', fontSize: 12 }}>{user?.email || 'N/A'}</div>
           </div>
         </Space>
@@ -393,6 +439,25 @@ export default function ShopDashboard() {
       dataIndex: 'createdAt',
       key: 'date',
       render: date => new Date(date).toLocaleDateString(),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="link"
+            icon={<ExclamationCircleOutlined style={{ color: '#faad14' }} />}
+            onClick={() => {
+              setReportFeedbackId(record._id);
+              setReportModalOpen(true);
+            }}
+            title="Report feedback"
+          >
+            Report
+          </Button>
+        </Space>
+      ),
     },
   ];
 
@@ -519,18 +584,18 @@ export default function ShopDashboard() {
               <Col xs={24} sm={12} lg={6}>
                 <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                   <Statistic
-                    title="Total Customers"
-                    value={stats?.totalCustomers?.value || 0}
-                    prefix={<UserOutlined style={{ color: '#722ed1' }} />}
+                    title="Total Products"
+                    value={stats?.totalProducts?.value || 0}
+                    prefix={<TagsOutlined style={{ color: '#722ed1' }} />}
                     valueStyle={{ color: '#722ed1', fontSize: 24, fontWeight: 600 }}
                     suffix={
                       <span style={{ fontSize: 14, color: '#722ed1' }}>
-                        <RiseOutlined /> +{stats?.totalCustomers?.change || 0}%
+                        <RiseOutlined /> +{stats?.totalProducts?.change || 0}%
                       </span>
                     }
                   />
                   <div style={{ color: '#666', fontSize: 12, marginTop: 8 }}>
-                    +{stats?.newCustomersToday || 0} new customers today
+                    Active products in store
                   </div>
                 </Card>
               </Col>
@@ -587,22 +652,28 @@ export default function ShopDashboard() {
                   title="Order Status Distribution"
                   style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
                 >
-                  <Pie
-                    data={stats?.orderStatusDistribution || []}
-                    angleField="value"
-                    colorField="status"
-                    radius={0.8}
-                    height={300}
-                    label={{
-                      type: 'outer',
-                      content: '{name} {percentage}',
-                    }}
-                    interactions={[
-                      {
-                        type: 'element-active',
-                      },
-                    ]}
-                  />
+                  {stats?.orderStatusDistribution && stats.orderStatusDistribution.length > 0 ? (
+                    <Pie
+                      data={stats.orderStatusDistribution}
+                      angleField="value"
+                      colorField="status"
+                      radius={0.8}
+                      height={300}
+                      label={{
+                        type: 'outer',
+                        content: '{name} {percentage}',
+                      }}
+                      interactions={[
+                        {
+                          type: 'element-active',
+                        },
+                      ]}
+                    />
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '50px', color: '#666' }}>
+                      No order data available
+                    </div>
+                  )}
                 </Card>
               </Col>
             </Row>
@@ -633,34 +704,39 @@ export default function ShopDashboard() {
                   title="Top Selling Products"
                   style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
                 >
-                  <List
-                    dataSource={stats?.topProducts || []}
-                    renderItem={item => (
-                      <List.Item>
-                        <List.Item.Meta
-                          avatar={
-                            <Image
-                              width={40}
-                              height={40}
-                              src={item.mainImage || '/placeholder.svg'}
-                              alt={item.name}
-                              style={{ borderRadius: 8 }}
-                            />
-                          }
-                          title={<div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>}
-                          description={
-                            <div>
-                              <div style={{ color: '#666', fontSize: 12 }}>{item.category}</div>
-                              <div style={{ color: '#1890ff', fontWeight: 600 }}>
-                                ${item.price?.regular?.toFixed(2) || '0.00'} • {item.sales || 0}{' '}
-                                sold
+                  {stats?.topProducts && stats.topProducts.length > 0 ? (
+                    <List
+                      dataSource={stats.topProducts}
+                      renderItem={item => (
+                        <List.Item>
+                          <List.Item.Meta
+                            avatar={
+                              <Image
+                                width={40}
+                                height={40}
+                                src={item.mainImage || '/placeholder.svg'}
+                                alt={item.name}
+                                style={{ borderRadius: 8 }}
+                              />
+                            }
+                            title={<div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>}
+                            description={
+                              <div>
+                                <div style={{ color: '#666', fontSize: 12 }}>{item.category}</div>
+                                <div style={{ color: '#1890ff', fontWeight: 600 }}>
+                                  {formatPrice(item.price?.regular || 0)} • {item.sales || 0} sold
+                                </div>
                               </div>
-                            </div>
-                          }
-                        />
-                      </List.Item>
-                    )}
-                  />
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                      No product data available
+                    </div>
+                  )}
                 </Card>
               </Col>
             </Row>
@@ -690,7 +766,8 @@ export default function ShopDashboard() {
               columns={orderColumns}
               dataSource={orders.filter(
                 order =>
-                  order.user?.fullName?.toLowerCase().includes(searchText.toLowerCase()) ||
+                  order.user?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+                  order.user?.email?.toLowerCase().includes(searchText.toLowerCase()) ||
                   order.orderNumber?.toLowerCase().includes(searchText.toLowerCase())
               )}
               rowKey="_id"
@@ -733,7 +810,7 @@ export default function ShopDashboard() {
             style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
             extra={
               <Button
-                type="primary"
+                type="default"
                 icon={<PlusOutlined />}
                 size="large"
                 onClick={() => setIsAddDiscountModalVisible(true)}
@@ -755,89 +832,6 @@ export default function ShopDashboard() {
               }}
               style={{ borderRadius: 8 }}
             />
-          </Card>
-        );
-
-      case 'settings':
-        return (
-          <Card
-            title={<div style={{ fontSize: 20, fontWeight: 600 }}>Store Settings</div>}
-            style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-            extra={
-              <Button
-                type="primary"
-                icon={<EditOutlined />}
-                size="large"
-                onClick={() => setIsEditStoreModalVisible(true)}
-                style={{ borderRadius: 8 }}
-              >
-                Edit Store Info
-              </Button>
-            }
-          >
-            <Row gutter={[24, 24]}>
-              <Col xs={24} lg={12}>
-                <Card title="Store Information" size="small" style={{ borderRadius: 8 }}>
-                  <div style={{ lineHeight: 2 }}>
-                    <div>
-                      <strong>Store Name:</strong> {stats?.storeInfo?.name || 'Sports Store'}
-                    </div>
-                    <div>
-                      <strong>Description:</strong>{' '}
-                      {stats?.storeInfo?.description || 'Premium sports shoes and athletic wear'}
-                    </div>
-                    <div>
-                      <strong>Address:</strong>{' '}
-                      {stats?.storeInfo?.address || '123 Main St, City, State'}
-                    </div>
-                    <div>
-                      <strong>Phone:</strong> {stats?.storeInfo?.phone || '(555) 123-4567'}
-                    </div>
-                    <div>
-                      <strong>Email:</strong> {stats?.storeInfo?.email || 'contact@sportsstore.com'}
-                    </div>
-                    <div>
-                      <strong>Website:</strong> {stats?.storeInfo?.website || 'www.sportsstore.com'}
-                    </div>
-                  </div>
-                </Card>
-              </Col>
-              <Col xs={24} lg={12}>
-                <Card title="Store Statistics" size="small" style={{ borderRadius: 8 }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <Row gutter={[16, 16]}>
-                      <Col span={8}>
-                        <div style={{ fontSize: '2em', color: '#1890ff' }}>
-                          <ShoppingOutlined />
-                        </div>
-                        <div style={{ fontSize: '1.5em', fontWeight: 600 }}>
-                          {stats?.totalProducts?.value || 0}
-                        </div>
-                        <div style={{ color: '#666' }}>Products</div>
-                      </Col>
-                      <Col span={8}>
-                        <div style={{ fontSize: '2em', color: '#52c41a' }}>
-                          <DollarOutlined />
-                        </div>
-                        <div style={{ fontSize: '1.5em', fontWeight: 600 }}>
-                          ${stats?.totalRevenue?.value?.toLocaleString() || 0}
-                        </div>
-                        <div style={{ color: '#666' }}>Revenue</div>
-                      </Col>
-                      <Col span={8}>
-                        <div style={{ fontSize: '2em', color: '#722ed1' }}>
-                          <UserOutlined />
-                        </div>
-                        <div style={{ fontSize: '1.5em', fontWeight: 600 }}>
-                          {stats?.totalOrders?.value || 0}
-                        </div>
-                        <div style={{ color: '#666' }}>Orders</div>
-                      </Col>
-                    </Row>
-                  </div>
-                </Card>
-              </Col>
-            </Row>
           </Card>
         );
 
@@ -905,59 +899,69 @@ export default function ShopDashboard() {
         </Form>
       </Modal>
 
-      {/* Edit Store Modal */}
+      {/* Modal báo cáo feedback */}
       <Modal
-        title="Edit Store Information"
-        open={isEditStoreModalVisible}
-        onCancel={() => setIsEditStoreModalVisible(false)}
-        footer={null}
-        width={600}
+        title="Report Feedback Violation"
+        open={reportModalOpen}
+        onCancel={() => setReportModalOpen(false)}
+        onOk={async () => {
+          if (!reportReason || !reportDescription) {
+            message.error('Please select a reason and enter a description');
+            return;
+          }
+          setReportLoading(true);
+          try {
+            await axiosInstance.post(`/feedback/${reportFeedbackId}/report`, {
+              reason: reportReason,
+              description: reportDescription,
+              evidence: reportEvidence ? [reportEvidence] : [],
+            });
+            message.success('Feedback reported successfully!');
+            setReportModalOpen(false);
+            setReportDescription('');
+            setReportEvidence('');
+          } catch (err) {
+            message.error(err.response?.data?.message || 'Report failed');
+          } finally {
+            setReportLoading(false);
+          }
+        }}
+        confirmLoading={reportLoading}
+        okText="Submit report"
+        cancelText="Cancel"
       >
-        <Form form={storeForm} layout="vertical" onFinish={handleUpdateStoreInfo}>
-          <Form.Item
-            name="name"
-            label="Store Name"
-            rules={[{ required: true, message: 'Please enter store name!' }]}
+        <div style={{ marginBottom: 12 }}>
+          <label>Reason:</label>
+          <select
+            value={reportReason}
+            onChange={e => setReportReason(e.target.value)}
+            style={{ width: '100%', padding: 6, marginTop: 4 }}
           >
-            <Input placeholder="Store Name" />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[{ required: true, message: 'Please enter description!' }]}
-          >
-            <TextArea rows={3} placeholder="Store description" />
-          </Form.Item>
-          <Form.Item
-            name="address"
-            label="Address"
-            rules={[{ required: true, message: 'Please enter address!' }]}
-          >
-            <Input placeholder="Store address" />
-          </Form.Item>
-          <Form.Item
-            name="phone"
-            label="Phone"
-            rules={[{ required: true, message: 'Please enter phone number!' }]}
-          >
-            <Input placeholder="Phone number" />
-          </Form.Item>
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[{ required: true, message: 'Please enter email!' }]}
-          >
-            <Input placeholder="Email address" />
-          </Form.Item>
-          <Form.Item name="website" label="Website">
-            <Input placeholder="Website URL" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block>
-              Update Store Info
-            </Button>
-          </Form.Item>
-        </Form>
+            <option value="inappropriate_content">Inappropriate Content</option>
+            <option value="harassment">Harassment</option>
+            <option value="spam">Spam</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label>Description:</label>
+          <textarea
+            value={reportDescription}
+            onChange={e => setReportDescription(e.target.value)}
+            rows={4}
+            style={{ width: '100%', padding: 6, marginTop: 4 }}
+            placeholder="Enter details about the violation..."
+          />
+        </div>
+        <div>
+          <label>Evidence (image/video link, if any):</label>
+          <input
+            value={reportEvidence}
+            onChange={e => setReportEvidence(e.target.value)}
+            style={{ width: '100%', padding: 6, marginTop: 4 }}
+            placeholder="Paste evidence link (optional)"
+          />
+        </div>
       </Modal>
     </div>
   );

@@ -132,11 +132,74 @@ export const emailTemplates = {
         <p style="color: #34495e;">Please enter this code in the app to complete your verification.</p>
       </div>
       <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
-        <p style="margin: 0;">If you didn’t request this code, you can safely ignore this email.</p>
+        <p style="margin: 0;">If you didn't request this code, you can safely ignore this email.</p>
         <p style="margin: 10px 0 0 0;">This OTP will expire in 5 minutes.</p>
         <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
       </div>
     </div>
   `,
+  },
+
+  PRODUCT_WARNING: {
+    subject: 'Product Warning Notice - Kicks Shoes',
+    getContent: ({ shopName, productName, adminNote, resolution }) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #e67e22; margin: 0;">Product Warning</h1>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="color: #34495e; margin: 0;">Dear ${shopName || 'Shop'},</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">Your product <b>${productName}</b> has received a warning due to a violation of our policies.</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;"><b>Resolution:</b> ${resolution}</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;"><b>Admin Note:</b> ${adminNote || 'No additional notes.'}</p>
+        </div>
+        <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+          <p style="margin: 0;">Please review your product and ensure it complies with our guidelines.</p>
+          <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Moderation Team</p>
+        </div>
+      </div>
+    `,
+  },
+
+  PRODUCT_DELETED: {
+    subject: 'Product Deletion Notice - Kicks Shoes',
+    getContent: ({ shopName, productName, adminNote, resolution }) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #e74c3c; margin: 0;">Product Deleted</h1>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="color: #34495e; margin: 0;">Dear ${shopName || 'Shop'},</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">Your product <b>${productName}</b> has been deleted due to a serious violation of our policies.</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;"><b>Resolution:</b> ${resolution}</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;"><b>Admin Note:</b> ${adminNote || 'No additional notes.'}</p>
+        </div>
+        <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+          <p style="margin: 0;">If you have any questions, please contact our support team.</p>
+          <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Moderation Team</p>
+        </div>
+      </div>
+    `,
+  },
+
+  REVIEW_DELETED: {
+    subject: 'Review Deletion Notice - Kicks Shoes',
+    getContent: ({ userName, productName, adminNote, resolution }) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #e74c3c; margin: 0;">Review Deleted</h1>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="color: #34495e; margin: 0;">Dear ${userName || 'User'},</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">Your review for product <b>${productName}</b> has been deleted due to a violation of our policies.</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;"><b>Resolution:</b> ${resolution}</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;"><b>Admin Note:</b> ${adminNote || 'No additional notes.'}</p>
+        </div>
+        <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+          <p style="margin: 0;">If you have any questions, please contact our support team.</p>
+          <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Moderation Team</p>
+        </div>
+      </div>
+    `,
   },
 };

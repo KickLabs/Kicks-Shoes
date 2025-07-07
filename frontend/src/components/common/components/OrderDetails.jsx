@@ -29,6 +29,7 @@ import TabHeader from './TabHeader';
 import { useLocation } from 'react-router-dom';
 import axiosInstance from '@/services/axiosInstance';
 import FeedbackModal from './Feedback';
+import { formatPrice } from '../../../utils/StringFormat';
 
 const { Option } = Select;
 
@@ -83,32 +84,54 @@ export default function OrderDetails() {
       render: (_, r) => `${r.size} / ${r.color}`,
     },
     { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
-    { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => `$${v?.toFixed(2)}` },
-    {
-      title: 'Review',
-      key: 'review',
-      render: (_, record) => {
-        const fb = existingFeedbacks[record.product._id];
-        return fb ? (
-          <>
-            <Button type="link" onClick={() => openFeedbackModal(record.product._id, fb._id)}>
-              Edit
-            </Button>
-            <Button type="link" danger onClick={() => handleDeleteFeedback(fb._id)}>
-              Delete
-            </Button>
-          </>
-        ) : (
-          <Button
-            type="link"
-            className="feedback-btn"
-            onClick={() => openFeedbackModal(record.product._id)}
-          >
-            Leave Review
-          </Button>
-        );
-      },
-    },
+    { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => formatPrice(v || 0) },
+    // Only show Review column for customers
+    ...(user?.role === 'customer'
+      ? [
+          {
+            title: 'Review',
+            key: 'review',
+            render: (_, record) => {
+              // Check if this is the first occurrence of this product in the order
+              const productId = record.product._id;
+              const isFirstOccurrence =
+                order?.items?.findIndex(item => item.product._id === productId) ===
+                order?.items?.findIndex(item => item._id === record._id);
+
+              // Only show review for the first occurrence of each product
+              if (!isFirstOccurrence) {
+                return null; // Don't render anything for subsequent occurrences
+              }
+
+              const fb = existingFeedbacks[productId];
+              const canReview = order?.status === 'delivered';
+
+              if (!canReview) {
+                return <span style={{ color: '#999', fontSize: '12px' }}>Not available yet</span>;
+              }
+
+              return fb ? (
+                <>
+                  <Button type="link" onClick={() => openFeedbackModal(productId, fb._id)}>
+                    Edit
+                  </Button>
+                  <Button type="link" danger onClick={() => handleDeleteFeedback(fb._id)}>
+                    Delete
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="link"
+                  className="feedback-btn"
+                  onClick={() => openFeedbackModal(productId)}
+                >
+                  Leave Review
+                </Button>
+              );
+            },
+          },
+        ]
+      : []),
   ];
 
   useEffect(() => {
