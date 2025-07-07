@@ -44,18 +44,18 @@ const CommentSection = ({ productId }) => {
 
       <div className="comment-filter">
         <Button
-          type={!filterRating ? 'primary' : 'default'}
+          type={!filterRating ? 'default' : 'default'}
           onClick={() => {
             setFilterRating(null);
             setCurrentPage(1);
           }}
         >
-          Tất cả
+          All
         </Button>
         {[5, 4, 3, 2, 1].map(star => (
           <Button
             key={star}
-            type={filterRating === star ? 'primary' : 'default'}
+            type={filterRating === star ? 'default' : 'default'}
             onClick={() => {
               setFilterRating(star);
               setCurrentPage(1);

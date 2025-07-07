@@ -9,6 +9,7 @@ import { validationResult } from 'express-validator';
 import { ProductService } from '../services/product.service.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
+import Report from '../models/Report.js';
 
 /**
  * Create a new product
@@ -290,5 +291,55 @@ export const getRecommendProductsForProductDetails = async (req, res) => {
   } catch (err) {
     console.error('Error fetching recommend products:', err);
     res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+/**
+ * Report a product
+ * @route POST /api/products/:id/report
+ * @access Private (user)
+ */
+export const reportProduct = async (req, res, next) => {
+  try {
+    const productId = req.params.id;
+    const { reason, description, evidence } = req.body;
+    if (!reason || !description) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Reason and description are required' });
+    }
+    const report = new Report({
+      reporter: req.user.id,
+      targetType: 'product',
+      targetId: productId,
+      reason,
+      description,
+      evidence,
+    });
+    await report.save();
+    res.status(201).json({ success: true, message: 'Product reported successfully', data: report });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'You have already reported this product.' });
+    }
+    next(error);
+  }
+};
+
+/**
+ * Get all reports of current user
+ * @route GET /api/reports/my
+ * @access Private (user)
+ */
+export const getMyReports = async (req, res) => {
+  try {
+    const reports = await Report.find({ reporter: req.user.id })
+      .sort({ createdAt: -1 })
+      .populate({ path: 'targetId', model: 'Product', select: 'name mainImage' });
+    res.status(200).json({ success: true, data: reports });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };

@@ -32,6 +32,7 @@ export default function CheckoutForm({
   setNotes,
   paymentMethod,
   setPaymentMethod,
+  isBuyNow = false,
 }) {
   const [form] = Form.useForm();
   const [shippingForm] = Form.useForm();
@@ -102,9 +103,13 @@ export default function CheckoutForm({
 
   const prepareOrderData = () => {
     const orderProducts = (products || []).map(p => {
-      // Handle different price structures
+      // Handle different price structures for both cart items and buy now items
       let price = 0;
-      if (p.product?.price) {
+
+      if (isBuyNow && p.productDetails) {
+        // Buy now item - use the stored price
+        price = Number(p.price);
+      } else if (p.product?.price) {
         if (typeof p.product.price === 'object') {
           // Price object with regular, discountPercent, etc.
           if (p.product.price.isOnSale && p.product.price.discountPercent) {
@@ -123,12 +128,19 @@ export default function CheckoutForm({
         price = Number(p.price);
       }
 
-      // Get product ID - prefer product._id, fallback to p.id
-      const productId = p.product?._id || p.id;
+      // Get product ID - handle both cart items and buy now items
+      let productId;
+      if (isBuyNow && p.productDetails) {
+        productId = p.product; // For buy now, product ID is stored directly
+      } else {
+        productId = p.product?._id || p.id;
+      }
 
       // Validate that we have a valid product ID
       if (!productId) {
-        throw new Error(`Missing product ID for item: ${p.product?.name || 'Unknown product'}`);
+        throw new Error(
+          `Missing product ID for item: ${p.product?.name || p.productDetails?.name || 'Unknown product'}`
+        );
       }
 
       return {
@@ -173,6 +185,7 @@ export default function CheckoutForm({
     console.log('Original products:', products);
     console.log('Order products:', orderProducts);
     console.log('Delivery method:', deliveryMethod);
+    console.log('Is buy now:', isBuyNow);
 
     return orderData;
   };

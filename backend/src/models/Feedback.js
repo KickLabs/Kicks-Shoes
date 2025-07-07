@@ -49,9 +49,8 @@ const feedbackSchema = new mongoose.Schema(
       },
     ],
     status: {
-      type: String,
-      enum: ['pending', 'approved', 'rejected'],
-      default: 'pending',
+      type: Boolean,
+      default: true,
     },
     isVerified: {
       type: Boolean,

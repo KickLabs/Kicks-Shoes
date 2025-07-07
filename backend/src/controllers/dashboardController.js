@@ -15,6 +15,9 @@ import Feedback from '../models/Feedback.js';
 import Discount from '../models/Discount.js';
 import Store from '../models/Store.js';
 import Category from '../models/Category.js';
+import Report from '../models/Report.js';
+import { sendTemplatedEmail } from '../utils/sendEmail.js';
+import { emailTemplates } from '../templates/email.templates.js';
 
 // ==================== SHOP DASHBOARD CONTROLLERS ====================
 
@@ -40,25 +43,46 @@ export const getShopStats = asyncHandler(async (req, res) => {
   // Get total products (all products for now)
   const totalProducts = await Product.countDocuments();
 
-  // Get recent orders
-  const recentOrders = await Order.find()
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .populate('user', 'name email');
+  // Average rating & total reviews
+  const ratingAgg = await Feedback.aggregate([
+    { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
+  ]);
+  const averageRating = ratingAgg[0]?.avg || 0;
+  const totalReviews = ratingAgg[0]?.count || 0;
 
-  // Get monthly sales data
-  const currentDate = new Date();
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const monthlySales = await Order.aggregate([
+  // Order status distribution
+  const statusAgg = await Order.aggregate([{ $group: { _id: '$status', value: { $sum: 1 } } }]);
+  const orderStatusDistribution = statusAgg.map(s => ({
+    status: s._id,
+    value: s.value,
+  }));
+
+  // Top selling products
+  const topProductsAgg = await Order.aggregate([
+    { $unwind: '$items' },
+    { $group: { _id: '$items.product', sales: { $sum: '$items.quantity' } } },
+    { $sort: { sales: -1 } },
+    { $limit: 5 },
     {
-      $match: {
-        createdAt: { $gte: startOfMonth },
-        status: { $in: ['delivered'] },
+      $lookup: {
+        from: 'products',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'product',
       },
     },
-    { $group: { _id: null, total: { $sum: '$totalPrice' } } },
+    { $unwind: '$product' },
+    {
+      $project: {
+        _id: 0,
+        name: '$product.name',
+        mainImage: '$product.mainImage',
+        category: '$product.category',
+        price: '$product.price',
+        sales: 1,
+      },
+    },
   ]);
-  const monthlyRevenue = monthlySales.length > 0 ? monthlySales[0].total : 0;
 
   res.status(200).json({
     success: true,
@@ -66,8 +90,10 @@ export const getShopStats = asyncHandler(async (req, res) => {
       totalOrders,
       totalRevenue,
       totalProducts,
-      monthlyRevenue,
-      recentOrders,
+      averageRating,
+      totalReviews,
+      orderStatusDistribution,
+      topProducts: topProductsAgg,
     },
   });
 });
@@ -86,7 +112,7 @@ export const getShopOrders = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
-    .populate('user', 'name email')
+    .populate('user', 'fullName email')
     .populate('items');
 
   const total = await Order.countDocuments();
@@ -119,7 +145,7 @@ export const getShopFeedback = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
-    .populate('user', 'name email')
+    .populate('user', 'fullName email')
     .populate('product', 'name images');
 
   const total = await Feedback.countDocuments();
@@ -278,7 +304,7 @@ export const getAdminStats = asyncHandler(async (req, res) => {
   const recentOrders = await Order.find()
     .sort({ createdAt: -1 })
     .limit(5)
-    .populate('user', 'name email');
+    .populate('user', 'fullName email');
 
   res.status(200).json({
     success: true,
@@ -335,16 +361,49 @@ export const getAdminReportedProducts = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  // This would need a Report model or field in Product model
-  // For now, returning all products
-  const products = await Product.find().sort({ createdAt: -1 }).skip(skip).limit(limit);
+  // Fetch all reports with reporter populated
+  let reports = await Report.find({})
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate('reporter', 'fullName email')
+    .lean();
 
-  const total = await Product.countDocuments();
+  // Populate targetId for each report
+  reports = await Promise.all(
+    reports.map(async report => {
+      let populatedTarget = null;
+      if (report.targetType === 'product') {
+        populatedTarget = await Product.findById(report.targetId).select('name mainImage').lean();
+      } else if (report.targetType === 'feedback') {
+        populatedTarget = await Feedback.findById(report.targetId)
+          .select('comment user')
+          .populate('user', 'fullName email')
+          .lean();
+      } else if (report.targetType === 'comment') {
+        populatedTarget = await Comment.findById(report.targetId)
+          .select('comment user product')
+          .populate('user', 'fullName email')
+          .populate('product', 'name mainImage')
+          .lean();
+      } else if (report.targetType === 'user') {
+        populatedTarget = await User.findById(report.targetId)
+          .select('fullName email avatar')
+          .lean();
+      }
+      return {
+        ...report,
+        target: populatedTarget,
+      };
+    })
+  );
+
+  const total = await Report.countDocuments({});
 
   res.status(200).json({
     success: true,
     data: {
-      products,
+      reports,
       pagination: {
         page,
         limit,
@@ -369,9 +428,8 @@ export const getAdminFeedback = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
-    .populate('user', 'name email')
-    .populate('product', 'name images')
-    .populate('store', 'name');
+    .populate('user', 'fullName email')
+    .populate('product', 'name images');
 
   const total = await Feedback.countDocuments();
 
@@ -722,5 +780,137 @@ export const deleteFeedback = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Feedback deleted successfully',
+  });
+});
+
+/**
+ * Admin ignore a product report
+ * @route PUT /api/dashboard/admin/reports/:id/ignore
+ * @access Private (Admin)
+ */
+export const ignoreProductReport = asyncHandler(async (req, res) => {
+  const reportId = req.params.id;
+  const report = await Report.findById(reportId);
+  if (!report) {
+    return res.status(404).json({ success: false, message: 'Report not found' });
+  }
+  report.status = 'resolved';
+  report.resolution = 'no_action';
+  report.resolvedBy = req.user.id;
+  report.resolvedAt = new Date();
+  await report.save();
+  res.status(200).json({ success: true, message: 'Report ignored' });
+});
+
+/**
+ * Admin resolve a product report (reply)
+ * @route PUT /api/dashboard/admin/reports/:id/resolve
+ * @access Private (Admin)
+ */
+export const resolveProductReport = asyncHandler(async (req, res) => {
+  const reportId = req.params.id;
+  const { resolution, adminNote } = req.body;
+  const report = await Report.findById(reportId);
+  if (!report) {
+    return res.status(404).json({ success: false, message: 'Report not found' });
+  }
+  report.status = 'resolved';
+  report.resolution = resolution;
+  report.adminNote = adminNote;
+  report.resolvedBy = req.user.id;
+  report.resolvedAt = new Date();
+  await report.save();
+
+  if (report.targetType === 'product') {
+    const Product = (await import('../models/Product.js')).default;
+    const product = await Product.findById(report.targetId).populate('store');
+    if (resolution === 'delete_product') {
+      await Product.findByIdAndDelete(report.targetId);
+      if (product && product.store && (product.store.email || product.store.contactEmail)) {
+        await sendTemplatedEmail({
+          email: product.store.email || product.store.contactEmail,
+          templateType: 'PRODUCT_DELETED',
+          templateData: {
+            shopName: product.store.name,
+            productName: product.name,
+            adminNote,
+            resolution: 'Product Deleted',
+          },
+        });
+      }
+    } else if (resolution === 'warning' && product && product.store) {
+      // Send product warning email to shop
+      if (product.store.email || product.store.contactEmail) {
+        await sendTemplatedEmail({
+          email: product.store.email || product.store.contactEmail,
+          templateType: 'PRODUCT_WARNING',
+          templateData: {
+            shopName: product.store.name,
+            productName: product.name,
+            adminNote,
+            resolution: 'Warning',
+          },
+        });
+      }
+    }
+  } else if (report.targetType === 'review') {
+    const Feedback = (await import('../models/Feedback.js')).default;
+    const feedback = await Feedback.findById(report.targetId).populate('user').populate('product');
+    if (resolution === 'delete_comment') {
+      // Soft delete: cập nhật status = false
+      await Feedback.findByIdAndUpdate(report.targetId, { status: false });
+      // Send review deleted email to user
+      if (feedback && feedback.user && feedback.user.email) {
+        await sendTemplatedEmail({
+          email: feedback.user.email,
+          templateType: 'REVIEW_DELETED',
+          templateData: {
+            userName: feedback.user.fullName || feedback.user.email,
+            productName: feedback.product?.name || '',
+            adminNote,
+            resolution: 'Review Deleted',
+          },
+        });
+      }
+    }
+    // Nếu resolution là 'no_action' thì không làm gì
+  }
+
+  res.status(200).json({ success: true, message: 'Report resolved', data: report });
+});
+
+// API: Get all reports about feedback written by the current user
+export const getMyFeedbackReports = asyncHandler(async (req, res) => {
+  // Find all feedbacks written by this user
+  const feedbacks = await Feedback.find({ user: req.user.id }).select('_id');
+  const feedbackIds = feedbacks.map(fb => fb._id);
+
+  // Find all reports where targetType is 'review' and targetId in feedbackIds
+  let reports = await Report.find({
+    targetType: 'review',
+    targetId: { $in: feedbackIds },
+  })
+    .sort({ createdAt: -1 })
+    .populate('reporter', 'fullName email')
+    .lean();
+
+  // Populate feedback details for each report
+  reports = await Promise.all(
+    reports.map(async report => {
+      const feedback = await Feedback.findById(report.targetId)
+        .select('comment product rating createdAt')
+        .populate('product', 'name mainImage')
+        .lean();
+      return {
+        ...report,
+        feedback,
+        targetType: 'feedback', // for frontend compatibility
+      };
+    })
+  );
+
+  res.status(200).json({
+    success: true,
+    data: reports,
   });
 });

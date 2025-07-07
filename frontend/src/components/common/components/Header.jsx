@@ -14,14 +14,12 @@ import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal } from 'antd';
 import logo from '@assets/Logo.svg';
 import './Header.css';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { getAllProducts } from '../../../data/mockData';
 import { useAuth } from '../../../contexts/AuthContext';
+import axiosInstance from '../../../services/axiosInstance';
 
 const { Header } = Layout;
 
 const NotificationBadgeOnly = ({ count = 0 }) => <div>{count > 99 ? '99+' : count}</div>;
-
-const products = getAllProducts();
 
 const AppHeader = () => {
   const { logout, user } = useAuth();
@@ -30,11 +28,32 @@ const AppHeader = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [filtered, setFiltered] = useState([]);
   const [showInput, setShowInput] = useState(false);
+  const [allProducts, setAllProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
   const wrapperRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const isLoggedIn = localStorage.getItem('userInfo') ? true : false;
+
+  // Fetch all products for search
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await axiosInstance.get('/products?limit=1000');
+        if (response.data.success) {
+          setAllProducts(response.data.data.products || []);
+        }
+      } catch (error) {
+        console.error('Error fetching products for search:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
     console.log('Current user:', user); // Debug log
@@ -55,10 +74,16 @@ const AppHeader = () => {
       setShowDropdown(false);
       return;
     }
-    const result = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+
+    const result = allProducts.filter(
+      p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.brand?.toLowerCase().includes(search.toLowerCase()) ||
+        p.category?.toLowerCase().includes(search.toLowerCase())
+    );
     setFiltered(result);
     setShowDropdown(true);
-  }, [search]);
+  }, [search, allProducts]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -84,6 +109,13 @@ const AppHeader = () => {
     navigate('/listing-page');
     setShowDropdown(false);
     setShowInput(false);
+  };
+
+  const handleProductClick = product => {
+    navigate(`/product/${product._id}`);
+    setShowDropdown(false);
+    setShowInput(false);
+    setSearch('');
   };
 
   // Menu items using the new API
@@ -266,28 +298,28 @@ const AppHeader = () => {
                 }}
               >
                 <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 16 }}>Products</div>
-                {filtered.length === 0 ? (
+                {loading ? (
+                  <div style={{ color: '#888', padding: '16px 0' }}>Loading...</div>
+                ) : filtered.length === 0 ? (
                   <div style={{ color: '#888', padding: '16px 0' }}>No products found.</div>
                 ) : (
                   filtered.slice(0, 3).map(p => (
                     <div
-                      onClick={() => {
-                        navigate(`/product/${p.id}`);
-                        setShowDropdown(false);
-                        setShowInput(false);
-                        setSearch('');
-                      }}
-                      key={p.id}
+                      onClick={() => handleProductClick(p)}
+                      key={p._id}
                       className="header-search-result-item"
                     >
                       <img
-                        src={`${p.images[0]}`}
+                        src={p.mainImage || p.images?.[0] || '/placeholder.svg'}
                         alt={p.name}
                         style={{
                           width: 48,
                           height: 48,
                           borderRadius: 8,
                           objectFit: 'cover',
+                        }}
+                        onError={e => {
+                          e.target.src = '/placeholder.svg';
                         }}
                       />
                       <span style={{ fontWeight: 500, fontSize: 18 }}>{p.name}</span>

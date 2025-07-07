@@ -29,7 +29,42 @@ export const createFeedback = async (req, res, next) => {
     });
   } catch (error) {
     console.log('Error creating feedback:', error); // Log lỗi nếu có
-    res.status(500).json({ success: false, message: error.message });
+
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = {};
+      Object.keys(error.errors).forEach(field => {
+        errors[field] = {
+          message: error.errors[field].message,
+          value: error.errors[field].value,
+        };
+      });
+
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors,
+      });
+    }
+
+    // Handle other specific errors
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reviewed this product for this order',
+        errors: {
+          duplicate: {
+            message: 'Duplicate review detected',
+          },
+        },
+      });
+    }
+
+    // Generic error
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create feedback',
+    });
   }
 };
 
@@ -53,6 +88,24 @@ export const updateFeedback = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Error updating feedback', { error: error.message });
+
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = {};
+      Object.keys(error.errors).forEach(field => {
+        errors[field] = {
+          message: error.errors[field].message,
+          value: error.errors[field].value,
+        };
+      });
+
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors,
+      });
+    }
+
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -98,7 +151,9 @@ export const getAllFeedback = async (req, res) => {
       filter.product = product;
     }
 
-    console.log('Filter criteria:', filter); // Debug: Kiểm tra điều kiện lọc
+    filter.status = true;
+
+    logger.info('Filter criteria applied', { filter }); // Log filter criteria for debugging
 
     const feedbacks = await Feedback.find(filter).populate('user', 'fullName avatar').exec();
 

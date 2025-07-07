@@ -16,6 +16,8 @@ import {
   getProductById,
   getRecommendProductsForProductDetails,
   updateProduct,
+  reportProduct,
+  getMyReports,
 } from '../controllers/productController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
@@ -94,5 +96,19 @@ router.delete('/:id/delete', protect, requireRoles('admin', 'shop'), deleteProdu
  */
 router.get('/public/:id', getProductById);
 router.get('/products', getAllProducts);
+
+/**
+ * @route   POST /api/products/:id/report
+ * @desc    Report a product
+ * @access  Private (user)
+ */
+router.post('/:id/report', protect, reportProduct);
+
+/**
+ * @route   GET /api/reports/my
+ * @desc    Get user's reports
+ * @access  Private
+ */
+router.get('/reports/my', protect, getMyReports);
 
 export default router;

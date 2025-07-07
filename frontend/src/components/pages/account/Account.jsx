@@ -34,6 +34,7 @@ const accountTabs = [
     path: '/account/orders',
   },
   { key: '4', name: 'Chat', icon: <MessageOutlined />, path: '/account/chat' },
+  { key: '5', name: 'Reports Management', icon: <AppstoreOutlined />, path: '/account/reports' },
 ];
 
 export default function Account() {

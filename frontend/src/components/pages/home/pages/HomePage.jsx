@@ -1,5 +1,4 @@
 import ProductCard from '../../../common/components/ProductCard';
-import { getAllProducts } from '../../../../data/mockData';
 import { HeroSection } from '../components/HeroSection';
 import './HomePage.css';
 import { NewDropsSection } from '../components/NewDropsSection';
