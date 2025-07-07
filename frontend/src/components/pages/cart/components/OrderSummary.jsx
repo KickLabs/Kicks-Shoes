@@ -1,3 +1,4 @@
+import { formatPrice } from '../../../../utils/StringFormat';
 import './OrderSummary.css';
 import { useSelector } from 'react-redux';
 import { Button } from 'antd';
@@ -30,15 +31,15 @@ export const OrderSummary = () => {
           </div>
           <div className="item-info">
             <p>Delivery</p>
-            <p>${delivery.toFixed(2)}</p>
+            <p>{formatPrice(delivery)}</p>
           </div>
           <div className="item-info">
             <p>Tax</p>
-            <p>${tax.toFixed(2)}</p>
+            <p>{formatPrice(tax)}</p>
           </div>
           <div className="total">
             <p>Total</p>
-            <p>${total.toFixed(2)}</p>
+            <p>{formatPrice(total)}</p>
           </div>
         </div>
         <Button

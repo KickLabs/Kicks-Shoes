@@ -57,6 +57,8 @@ const ListingPage = () => {
       if (isNewParam) params.isNew = true;
 
       console.log('Fetching products with params:', params);
+      console.log('Current sortBy:', sortBy);
+      console.log('Current sortOrder:', sortOrder);
 
       const response = await axiosInstance.get('/products', { params });
       setProducts(response.data.data.products);
@@ -82,6 +84,7 @@ const ListingPage = () => {
   const handleSortChange = value => {
     const selectedOption = sortOptions.find(option => option.value === value);
     if (selectedOption) {
+      console.log('Sort change:', selectedOption);
       setSortBy(selectedOption.sortBy);
       setSortOrder(selectedOption.sortOrder);
       setCurrentPage(1); // Reset to page 1 when sort changes

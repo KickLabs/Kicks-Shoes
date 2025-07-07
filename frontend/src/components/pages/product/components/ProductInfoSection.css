@@ -211,6 +211,28 @@
   align-items: center;
   padding: 0;
   cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 18px;
+}
+
+.icon-btn:hover {
+  background: #333;
+  transform: scale(1.05);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+.icon-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.icon-btn:disabled:hover {
+  background: #232321;
+  transform: none;
 }
 
 .size-btn:disabled {

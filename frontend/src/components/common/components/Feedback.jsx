@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Rate, Input, Upload, Button, message, Spin } from 'antd';
+import { Modal, Form, Rate, Input, Upload, Button, message, Spin, Alert } from 'antd';
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import axiosInstance from '@/services/axiosInstance';
 
@@ -16,6 +16,7 @@ export default function FeedbackModal({
   const [loading, setLoading] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [fid, setFid] = useState(fidProp || null);
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Khi modal bật: chỉ fetch feedback by ID nếu đang edit
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function FeedbackModal({
       form.resetFields();
       setFileList([]);
       setFid(null);
+      setValidationErrors({});
     }
   }, [visible, fidProp, form]);
 
@@ -87,9 +89,22 @@ export default function FeedbackModal({
     }
   };
 
+  // Helper function to extract validation errors
+  const extractValidationErrors = error => {
+    if (error.response?.data?.errors) {
+      const errors = {};
+      Object.keys(error.response.data.errors).forEach(field => {
+        errors[field] = error.response.data.errors[field].message;
+      });
+      return errors;
+    }
+    return {};
+  };
+
   // Submit or update feedback
   const onFinish = async values => {
     setLoading(true);
+    setValidationErrors({});
     const images = fileList.map(f => f.url).filter(Boolean);
     try {
       if (fid) {
@@ -114,10 +129,32 @@ export default function FeedbackModal({
       onSaved();
     } catch (err) {
       console.error('Submit error:', err);
-      message.error('Failed to submit review');
+
+      // Handle validation errors
+      if (err.response?.status === 400 || err.response?.status === 422) {
+        const validationErrs = extractValidationErrors(err);
+        setValidationErrors(validationErrs);
+
+        // Show specific validation messages
+        if (validationErrs.comment) {
+          message.error(`Comment: ${validationErrs.comment}`);
+        }
+        if (validationErrs.rating) {
+          message.error(`Rating: ${validationErrs.rating}`);
+        }
+        if (validationErrs.product) {
+          message.error(`Product: ${validationErrs.product}`);
+        }
+        if (validationErrs.order) {
+          message.error(`Order: ${validationErrs.order}`);
+        }
+      } else {
+        // Generic error
+        const errorMessage = err.response?.data?.message || 'Failed to submit review';
+        message.error(errorMessage);
+      }
     } finally {
       setLoading(false);
-      onCancel();
     }
   };
 
@@ -155,19 +192,50 @@ export default function FeedbackModal({
         <Spin />
       ) : (
         <Form form={form} layout="vertical" onFinish={onFinish}>
+          {/* Display validation errors */}
+          {Object.keys(validationErrors).length > 0 && (
+            <Alert
+              message="Please fix the following errors:"
+              description={
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {Object.entries(validationErrors).map(([field, error]) => (
+                    <li key={field} style={{ color: '#ff4d4f' }}>
+                      <strong>{field.charAt(0).toUpperCase() + field.slice(1)}:</strong> {error}
+                    </li>
+                  ))}
+                </ul>
+              }
+              type="error"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+          )}
+
           <Form.Item
             name="rating"
             label="Rating"
             rules={[{ required: true, message: 'Please provide a rating!' }]}
+            validateStatus={validationErrors.rating ? 'error' : ''}
+            help={validationErrors.rating}
           >
             <Rate />
           </Form.Item>
           <Form.Item
             name="comment"
             label="Comment"
-            rules={[{ required: true, message: 'Please enter your comment!' }]}
+            rules={[
+              { required: true, message: 'Please enter your comment!' },
+              { min: 10, message: 'Comment must be at least 10 characters long!' },
+            ]}
+            validateStatus={validationErrors.comment ? 'error' : ''}
+            help={validationErrors.comment}
           >
-            <Input.TextArea rows={4} placeholder="Write your review..." />
+            <Input.TextArea
+              rows={4}
+              placeholder="Write your review (minimum 10 characters)..."
+              showCount
+              maxLength={500}
+            />
           </Form.Item>
           <Form.Item label="Images">
             <Upload

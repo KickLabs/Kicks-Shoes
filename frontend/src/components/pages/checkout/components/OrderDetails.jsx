@@ -1,4 +1,5 @@
 import { Card, Typography, Row, Col, Image, Space, Divider, Input, Tag } from 'antd';
+import { formatPrice } from '../../../../utils/StringFormat';
 import './OrderDetails.css';
 
 const { Title, Text } = Typography;
@@ -9,6 +10,7 @@ export default function OrderDetails({
   setNotes,
   status,
   paymentStatus,
+  isBuyNow = false,
 }) {
   return (
     <div>
@@ -17,12 +19,35 @@ export default function OrderDetails({
           Order Details
         </Title>
         {products.map((product, idx) => {
-          const prod = product.product || product;
-          const isDiscount = prod.price?.isOnSale && prod.price?.discountPercent;
-          const priceRegular = prod.price?.regular || prod.price;
-          const priceDiscount = isDiscount
-            ? priceRegular * (1 - prod.price.discountPercent / 100)
-            : priceRegular;
+          // Handle both cart items and buy now items
+          let prod, priceRegular, priceDiscount, isDiscount;
+
+          if (isBuyNow && product.productDetails) {
+            // Buy now item with productDetails
+            prod = {
+              _id: product.product,
+              name: product.productDetails.name,
+              mainImage: product.productDetails.mainImage,
+              description: product.productDetails.brand,
+              price: {
+                regular: product.price,
+                isOnSale: false,
+                discountPercent: 0,
+              },
+            };
+            priceRegular = product.price;
+            priceDiscount = product.price;
+            isDiscount = false;
+          } else {
+            // Regular cart item
+            prod = product.product || product;
+            isDiscount = prod.price?.isOnSale && prod.price?.discountPercent;
+            priceRegular = prod.price?.regular || prod.price;
+            priceDiscount = isDiscount
+              ? priceRegular * (1 - prod.price.discountPercent / 100)
+              : priceRegular;
+          }
+
           return (
             <Row
               gutter={16}
@@ -60,11 +85,11 @@ export default function OrderDetails({
                         strong
                         style={{ fontSize: 20, color: 'rgb(74, 105, 226)', marginRight: 8 }}
                       >
-                        ${priceDiscount.toFixed(2)}
+                        {formatPrice(priceDiscount)}
                       </Text>
 
                       <Text delete style={{ fontSize: 16, marginLeft: 8 }}>
-                        ${priceRegular.toFixed(2)}
+                        {formatPrice(priceRegular)}
                       </Text>
                     </>
                   ) : (
@@ -72,7 +97,7 @@ export default function OrderDetails({
                       style={{ fontSize: 20, color: 'rgb(74, 105, 226)', marginRight: 8 }}
                       strong
                     >
-                      ${priceRegular.toFixed(2)}
+                      {formatPrice(priceRegular)}
                     </Text>
                   )}
                 </div>
