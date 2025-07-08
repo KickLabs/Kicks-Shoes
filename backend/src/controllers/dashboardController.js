@@ -708,6 +708,7 @@ export const deleteCategory = asyncHandler(async (req, res) => {
  */
 export const banUser = asyncHandler(async (req, res) => {
   const { userId } = req.params;
+  const { adminNote, banReason } = req.body;
 
   const user = await User.findByIdAndUpdate(userId, { status: false }, { new: true }).select(
     '-password'
@@ -717,9 +718,34 @@ export const banUser = asyncHandler(async (req, res) => {
     throw new ErrorResponse('User not found', 404);
   }
 
+  // Send email notification to banned user
+  try {
+    const { sendTemplatedEmail } = await import('../utils/sendEmail.js');
+
+    if (user.email) {
+      console.log('Sending ban notification email to user:', user.email);
+      await sendTemplatedEmail({
+        email: user.email,
+        templateType: 'USER_BANNED',
+        templateData: {
+          userName: user.fullName || user.email,
+          adminNote: adminNote || 'Account suspended by admin',
+          banReason: banReason || 'Violation of community guidelines',
+        },
+      });
+      console.log('Ban notification email sent successfully');
+    } else {
+      console.log('User has no email address, skipping email notification');
+    }
+  } catch (emailError) {
+    console.error('Error sending ban notification email:', emailError);
+    // Don't fail the request if email fails
+  }
+
   res.status(200).json({
     success: true,
     data: user,
+    message: 'User banned successfully',
   });
 });
 
@@ -730,6 +756,7 @@ export const banUser = asyncHandler(async (req, res) => {
  */
 export const unbanUser = asyncHandler(async (req, res) => {
   const { userId } = req.params;
+  const { adminNote } = req.body;
 
   const user = await User.findByIdAndUpdate(userId, { status: true }, { new: true }).select(
     '-password'
@@ -739,9 +766,33 @@ export const unbanUser = asyncHandler(async (req, res) => {
     throw new ErrorResponse('User not found', 404);
   }
 
+  // Send email notification to unbanned user
+  try {
+    const { sendTemplatedEmail } = await import('../utils/sendEmail.js');
+
+    if (user.email) {
+      console.log('Sending unban notification email to user:', user.email);
+      await sendTemplatedEmail({
+        email: user.email,
+        templateType: 'USER_UNBANNED',
+        templateData: {
+          userName: user.fullName || user.email,
+          adminNote: adminNote || 'Account restored by admin',
+        },
+      });
+      console.log('Unban notification email sent successfully');
+    } else {
+      console.log('User has no email address, skipping email notification');
+    }
+  } catch (emailError) {
+    console.error('Error sending unban notification email:', emailError);
+    // Don't fail the request if email fails
+  }
+
   res.status(200).json({
     success: true,
     data: user,
+    message: 'User unbanned successfully',
   });
 });
 
@@ -772,9 +823,86 @@ export const deleteReportedProduct = asyncHandler(async (req, res) => {
 export const deleteFeedback = asyncHandler(async (req, res) => {
   const { feedbackId } = req.params;
 
-  const feedback = await Feedback.findByIdAndDelete(feedbackId);
+  const feedback = await Feedback.findById(feedbackId).populate('user').populate('product');
   if (!feedback) {
     throw new ErrorResponse('Feedback not found', 404);
+  }
+
+  // Soft delete: set status to false
+  await Feedback.findByIdAndUpdate(feedbackId, { status: false });
+
+  // Send notification emails
+  try {
+    const User = (await import('../models/User.js')).default;
+    const { sendTemplatedEmail } = await import('../utils/sendEmail.js');
+
+    const shopUser = await User.findOne({ role: 'shop' });
+
+    // Check if there's a pending report for this feedback
+    const Report = (await import('../models/Report.js')).default;
+    const pendingReport = await Report.findOne({
+      targetType: 'review',
+      targetId: feedbackId,
+      status: 'pending',
+    });
+
+    // Email to review author about deletion
+    if (feedback.user && feedback.user.email) {
+      await sendTemplatedEmail({
+        email: feedback.user.email,
+        templateType: 'REVIEW_DELETED',
+        templateData: {
+          userName: feedback.user.fullName || feedback.user.email,
+          productName: feedback.product?.name || 'Product',
+          adminNote: 'Review deleted by admin',
+          resolution: 'Review Deleted',
+        },
+      });
+    }
+
+    // Email to shop about review deletion
+    if (shopUser && shopUser.email && feedback.product) {
+      await sendTemplatedEmail({
+        email: shopUser.email,
+        templateType: 'REVIEW_DELETED_SHOP',
+        templateData: {
+          shopName: shopUser.fullName || 'Shop',
+          productName: feedback.product.name,
+          userName: feedback.user?.fullName || feedback.user?.email || 'User',
+          adminNote: 'Review deleted by admin',
+          resolution: 'Review Deleted',
+        },
+      });
+    }
+
+    // Email to reporter if there's a pending report
+    if (pendingReport) {
+      const reporterUser = await User.findById(pendingReport.reporter);
+      if (reporterUser && reporterUser.email) {
+        await sendTemplatedEmail({
+          email: reporterUser.email,
+          templateType: 'REPORT_RESOLVED',
+          templateData: {
+            userName: reporterUser.fullName || reporterUser.email,
+            targetName: feedback?.product?.name || 'Product Review',
+            adminNote: 'Review deleted by admin',
+            resolution: 'Review Deleted',
+            reportReason: pendingReport.reason,
+            reportDescription: pendingReport.description,
+          },
+        });
+      }
+
+      // Update report status
+      pendingReport.status = 'resolved';
+      pendingReport.resolution = 'delete_comment';
+      pendingReport.resolvedBy = req.user.id;
+      pendingReport.resolvedAt = new Date();
+      await pendingReport.save();
+    }
+  } catch (emailError) {
+    console.error('Error sending notification emails:', emailError);
+    // Don't fail the request if email fails
   }
 
   res.status(200).json({
@@ -823,57 +951,221 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
 
   if (report.targetType === 'product') {
     const Product = (await import('../models/Product.js')).default;
-    const product = await Product.findById(report.targetId).populate('store');
+    const User = (await import('../models/User.js')).default;
+
+    const product = await Product.findById(report.targetId);
+
+    // Find the shop user (role: shop)
+    const shopUser = await User.findOne({ role: 'shop' });
+
+    // Find the reporter user
+    const reporterUser = await User.findById(report.reporter);
+
     if (resolution === 'delete_product') {
       await Product.findByIdAndDelete(report.targetId);
-      if (product && product.store && (product.store.email || product.store.contactEmail)) {
-        await sendTemplatedEmail({
-          email: product.store.email || product.store.contactEmail,
-          templateType: 'PRODUCT_DELETED',
-          templateData: {
-            shopName: product.store.name,
-            productName: product.name,
-            adminNote,
-            resolution: 'Product Deleted',
-          },
-        });
+      if (shopUser && shopUser.email) {
+        try {
+          console.log('Sending delete_product email to shop:', shopUser.email);
+          await sendTemplatedEmail({
+            email: shopUser.email,
+            templateType: 'PRODUCT_DELETED',
+            templateData: {
+              shopName: shopUser.fullName || 'Shop',
+              productName: product?.name || 'Product',
+              adminNote,
+              resolution: 'Product Deleted',
+            },
+          });
+          console.log('Delete product email sent to shop successfully');
+        } catch (error) {
+          console.error('Error sending delete_product email to shop:', error);
+        }
       }
-    } else if (resolution === 'warning' && product && product.store) {
+
+      // CC to reporter
+      if (reporterUser && reporterUser.email) {
+        try {
+          console.log('Sending delete_product email to reporter:', reporterUser.email);
+          await sendTemplatedEmail({
+            email: reporterUser.email,
+            templateType: 'REPORT_RESOLVED',
+            templateData: {
+              userName: reporterUser.fullName || reporterUser.email,
+              productName: product?.name || 'Product',
+              adminNote,
+              resolution: 'Product Deleted',
+              reportReason: report.reason,
+              reportDescription: report.description,
+            },
+          });
+          console.log('Delete product email sent to reporter successfully');
+        } catch (error) {
+          console.error('Error sending delete_product email to reporter:', error);
+        }
+      }
+    } else if (resolution === 'warning' && product) {
       // Send product warning email to shop
-      if (product.store.email || product.store.contactEmail) {
-        await sendTemplatedEmail({
-          email: product.store.email || product.store.contactEmail,
-          templateType: 'PRODUCT_WARNING',
-          templateData: {
-            shopName: product.store.name,
-            productName: product.name,
-            adminNote,
-            resolution: 'Warning',
-          },
-        });
+      if (shopUser && shopUser.email) {
+        try {
+          console.log('Sending warning email to shop:', shopUser.email);
+          await sendTemplatedEmail({
+            email: shopUser.email,
+            templateType: 'PRODUCT_WARNING',
+            templateData: {
+              shopName: shopUser.fullName || 'Shop',
+              productName: product.name,
+              adminNote,
+              resolution: 'Warning',
+            },
+          });
+          console.log('Warning email sent to shop successfully');
+        } catch (error) {
+          console.error('Error sending warning email to shop:', error);
+        }
+      }
+
+      // CC to reporter
+      if (reporterUser && reporterUser.email) {
+        try {
+          console.log('Sending warning email to reporter:', reporterUser.email);
+          await sendTemplatedEmail({
+            email: reporterUser.email,
+            templateType: 'REPORT_RESOLVED',
+            templateData: {
+              userName: reporterUser.fullName || reporterUser.email,
+              productName: product.name,
+              adminNote,
+              resolution: 'Warning',
+              reportReason: report.reason,
+              reportDescription: report.description,
+            },
+          });
+          console.log('Warning email sent to reporter successfully');
+        } catch (error) {
+          console.error('Error sending warning email to reporter:', error);
+        }
       }
     }
+    // no_action: không làm gì, chỉ cập nhật status
   } else if (report.targetType === 'review') {
     const Feedback = (await import('../models/Feedback.js')).default;
+    const User = (await import('../models/User.js')).default;
+
     const feedback = await Feedback.findById(report.targetId).populate('user').populate('product');
+    const reporterUser = await User.findById(report.reporter);
+    const shopUser = await User.findOne({ role: 'shop' });
+
     if (resolution === 'delete_comment') {
       // Soft delete: cập nhật status = false
       await Feedback.findByIdAndUpdate(report.targetId, { status: false });
-      // Send review deleted email to user
-      if (feedback && feedback.user && feedback.user.email) {
-        await sendTemplatedEmail({
-          email: feedback.user.email,
-          templateType: 'REVIEW_DELETED',
-          templateData: {
-            userName: feedback.user.fullName || feedback.user.email,
-            productName: feedback.product?.name || '',
-            adminNote,
-            resolution: 'Review Deleted',
-          },
+
+      console.log('Processing delete_comment resolution:', {
+        shopUser: shopUser ? { email: shopUser.email, fullName: shopUser.fullName } : null,
+        reporterUser: reporterUser
+          ? { email: reporterUser.email, fullName: reporterUser.fullName }
+          : null,
+        feedback: feedback
+          ? { product: feedback.product?.name, user: feedback.user?.fullName }
+          : null,
+      });
+
+      // Notify shop about review deletion
+      if (shopUser && shopUser.email && feedback?.product) {
+        try {
+          console.log('Sending email to shop:', shopUser.email);
+          await sendTemplatedEmail({
+            email: shopUser.email,
+            templateType: 'REVIEW_DELETED_SHOP',
+            templateData: {
+              shopName: shopUser.fullName || 'Shop',
+              productName: feedback.product.name,
+              userName: feedback.user?.fullName || feedback.user?.email || 'User',
+              adminNote,
+              resolution: 'Review Deleted',
+            },
+          });
+          console.log('Email sent to shop successfully');
+        } catch (error) {
+          console.error('Error sending email to shop:', error);
+        }
+      } else {
+        console.log('Skipping shop email - conditions not met:', {
+          hasShopUser: !!shopUser,
+          hasShopEmail: shopUser?.email,
+          hasFeedbackProduct: !!feedback?.product,
         });
       }
+
+      // CC to reporter
+      if (reporterUser && reporterUser.email) {
+        try {
+          console.log('Sending email to reporter:', reporterUser.email);
+          await sendTemplatedEmail({
+            email: reporterUser.email,
+            templateType: 'REPORT_RESOLVED',
+            templateData: {
+              userName: reporterUser.fullName || reporterUser.email,
+              targetName: feedback?.product?.name || 'Product Review',
+              adminNote,
+              resolution: 'Review Deleted',
+              reportReason: report.reason,
+              reportDescription: report.description,
+            },
+          });
+          console.log('Email sent to reporter successfully');
+        } catch (error) {
+          console.error('Error sending email to reporter:', error);
+        }
+      } else {
+        console.log('Skipping reporter email - conditions not met:', {
+          hasReporterUser: !!reporterUser,
+          hasReporterEmail: reporterUser?.email,
+        });
+      }
+    } else if (resolution === 'warning' && feedback) {
+      // Send warning email to review author
+      if (feedback.user && feedback.user.email) {
+        try {
+          console.log('Sending warning email to review author:', feedback.user.email);
+          await sendTemplatedEmail({
+            email: feedback.user.email,
+            templateType: 'REVIEW_WARNING',
+            templateData: {
+              userName: feedback.user.fullName || feedback.user.email,
+              productName: feedback.product?.name || 'Product',
+              adminNote,
+              resolution: 'Warning',
+            },
+          });
+          console.log('Warning email sent to review author successfully');
+        } catch (error) {
+          console.error('Error sending warning email to review author:', error);
+        }
+      }
+
+      // CC to reporter
+      if (reporterUser && reporterUser.email) {
+        try {
+          console.log('Sending warning email to reporter:', reporterUser.email);
+          await sendTemplatedEmail({
+            email: reporterUser.email,
+            templateType: 'REPORT_RESOLVED',
+            templateData: {
+              userName: reporterUser.fullName || reporterUser.email,
+              targetName: feedback?.product?.name || 'Product Review',
+              adminNote,
+              resolution: 'Warning',
+              reportReason: report.reason,
+              reportDescription: report.description,
+            },
+          });
+          console.log('Warning email sent to reporter successfully');
+        } catch (error) {
+          console.error('Error sending warning email to reporter:', error);
+        }
+      }
     }
-    // Nếu resolution là 'no_action' thì không làm gì
+    // no_action: không làm gì, chỉ cập nhật status
   }
 
   res.status(200).json({ success: true, message: 'Report resolved', data: report });

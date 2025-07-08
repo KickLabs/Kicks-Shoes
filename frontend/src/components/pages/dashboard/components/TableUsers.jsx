@@ -1,9 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Table, Tag, Button, Avatar, Space, Modal, message } from 'antd';
+import { Table, Tag, Button, Avatar, Space, Modal, message, Input, Form } from 'antd';
 import { EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import axiosInstance from '../../../../services/axiosInstance';
+import { banUser, unbanUser } from '../../../../services/dashboardService';
 import EmptyState from './EmptyState';
+
+const { TextArea } = Input;
 
 const StatusTag = React.memo(({ status }) => (
   <Tag color={status === 'active' ? 'green' : 'red'} style={{ borderRadius: 10, fontWeight: 500 }}>
@@ -49,14 +52,32 @@ RoleTag.propTypes = {
 
 const TableUsers = ({ title, users, onReload }) => {
   const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState(''); // 'ban' or 'unban'
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [form] = Form.useForm();
 
-  const handleToggleStatus = async (userId, currentStatus) => {
+  const handleToggleStatus = async (user, action) => {
+    setSelectedUser(user);
+    setModalType(action);
+    setModalVisible(true);
+  };
+
+  const handleModalOk = async () => {
     try {
+      const values = await form.validateFields();
       setLoading(true);
-      await axiosInstance.patch(`/api/users/${userId}/status`, {
-        status: currentStatus === 'active' ? 'inactive' : 'active',
-      });
-      message.success(`User ${currentStatus === 'active' ? 'banned' : 'unbanned'} successfully`);
+
+      if (modalType === 'ban') {
+        await banUser(selectedUser._id, values.adminNote, values.banReason);
+        message.success('User banned successfully');
+      } else if (modalType === 'unban') {
+        await unbanUser(selectedUser._id, values.adminNote);
+        message.success('User unbanned successfully');
+      }
+
+      setModalVisible(false);
+      form.resetFields();
       onReload();
     } catch (err) {
       console.error('Failed to update user status:', err);
@@ -64,6 +85,13 @@ const TableUsers = ({ title, users, onReload }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleModalCancel = () => {
+    setModalVisible(false);
+    setSelectedUser(null);
+    setModalType('');
+    form.resetFields();
   };
 
   const handleDelete = async userId => {
@@ -87,6 +115,15 @@ const TableUsers = ({ title, users, onReload }) => {
         }
       },
     });
+  };
+
+  const getModalTitle = () => {
+    if (modalType === 'ban') {
+      return `Ban User: ${selectedUser?.fullName || selectedUser?.email}`;
+    } else if (modalType === 'unban') {
+      return `Unban User: ${selectedUser?.fullName || selectedUser?.email}`;
+    }
+    return '';
   };
 
   const columns = useMemo(
@@ -143,7 +180,7 @@ const TableUsers = ({ title, users, onReload }) => {
             <Button
               type="link"
               danger={record.status === true}
-              onClick={() => handleToggleStatus(record._id, record.status ? 'active' : 'inactive')}
+              onClick={() => handleToggleStatus(record, record.status ? 'ban' : 'unban')}
               title={record.status ? 'Ban User' : 'Unban User'}
             >
               {record.status ? 'Ban' : 'Unban'}
@@ -200,11 +237,48 @@ const TableUsers = ({ title, users, onReload }) => {
             showQuickJumper: true,
             showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} users`,
           }}
-          rowKey="_id"
           loading={loading}
-          scroll={{ x: 'max-content' }}
+          rowKey="_id"
         />
       )}
+
+      {/* Ban/Unban Modal */}
+      <Modal
+        title={getModalTitle()}
+        open={modalVisible}
+        onOk={handleModalOk}
+        onCancel={handleModalCancel}
+        confirmLoading={loading}
+        okText={modalType === 'ban' ? 'Ban User' : 'Unban User'}
+        cancelText="Cancel"
+        width={600}
+      >
+        <Form form={form} layout="vertical">
+          {modalType === 'ban' && (
+            <Form.Item
+              name="banReason"
+              label="Ban Reason"
+              rules={[{ required: true, message: 'Please enter a reason for banning this user' }]}
+            >
+              <Input placeholder="e.g., Violation of community guidelines" />
+            </Form.Item>
+          )}
+          <Form.Item
+            name="adminNote"
+            label="Admin Note"
+            rules={[{ required: true, message: 'Please enter an admin note' }]}
+          >
+            <TextArea
+              rows={4}
+              placeholder={
+                modalType === 'ban'
+                  ? 'Enter additional details about the ban...'
+                  : 'Enter additional details about the unban...'
+              }
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

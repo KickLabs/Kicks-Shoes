@@ -11,6 +11,8 @@ import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
 import { asyncHandler } from '../middlewares/async.middleware.js';
 import Order from '../models/Order.js';
+import EmailService from '../services/email.service.js';
+import User from '../models/User.js';
 
 // Validation rules for order operations
 const orderValidationRules = {
@@ -154,6 +156,17 @@ export const createOrder = [
       });
 
       logger.info('Order created successfully', { orderId: order._id });
+
+      // Send email confirmation
+      try {
+        const user = await User.findById(req.user._id);
+
+        // Order is already populated from OrderService
+        await EmailService.sendOrderConfirmationEmail(user, order);
+      } catch (emailError) {
+        logger.error('Error sending order confirmation email:', emailError);
+        // Don't fail the request if email fails
+      }
 
       res.status(201).json({
         success: true,
@@ -360,6 +373,19 @@ export const cancelOrder = async (req, res, next) => {
       });
     }
 
+    // Send email notification for order cancellation
+    try {
+      const populatedOrder = await order.populate('user', 'fullName email');
+      await EmailService.sendOrderStatusUpdateEmail(
+        populatedOrder.user,
+        populatedOrder,
+        'cancelled'
+      );
+    } catch (emailError) {
+      logger.error('Error sending order cancellation email:', emailError);
+      // Don't fail the request if email fails
+    }
+
     logger.info('Order cancelled successfully', { orderId: id });
 
     res.status(200).json({
@@ -501,6 +527,19 @@ export const refundOrder = async (req, res, next) => {
       paymentStatus: orderRefunded.paymentStatus,
     });
 
+    // Send email notification for order refund
+    try {
+      const populatedOrder = await orderRefunded.populate('user', 'fullName email');
+      await EmailService.sendOrderStatusUpdateEmail(
+        populatedOrder.user,
+        populatedOrder,
+        'refunded'
+      );
+    } catch (emailError) {
+      logger.error('Error sending order refund email:', emailError);
+      // Don't fail the request if email fails
+    }
+
     return res.status(200).json({
       success: true,
       data: {
@@ -577,6 +616,19 @@ export const updateOrderStatus = async (req, res, next) => {
         success: false,
         message: 'Order not found',
       });
+    }
+
+    // Send email notification for status change
+    try {
+      const populatedOrder = await order.populate('user', 'fullName email');
+      await EmailService.sendOrderStatusUpdateEmail(
+        populatedOrder.user,
+        populatedOrder,
+        status.toLowerCase()
+      );
+    } catch (emailError) {
+      logger.error('Error sending order status update email:', emailError);
+      // Don't fail the request if email fails
     }
 
     logger.info('Order status updated successfully', { orderId: id });
