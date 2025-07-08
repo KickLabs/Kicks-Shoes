@@ -317,6 +317,50 @@ export const reportProduct = async (req, res, next) => {
       evidence,
     });
     await report.save();
+
+    // Send notification emails
+    try {
+      const User = (await import('../models/User.js')).default;
+      const Product = (await import('../models/Product.js')).default;
+      const { sendTemplatedEmail } = await import('../utils/sendEmail.js');
+
+      const product = await Product.findById(productId);
+      const shopUser = await User.findOne({ role: 'shop' });
+      const reporterUser = await User.findById(req.user.id);
+
+      // Email to shop about new report
+      if (shopUser && shopUser.email && product) {
+        await sendTemplatedEmail({
+          email: shopUser.email,
+          templateType: 'PRODUCT_REPORTED',
+          templateData: {
+            shopName: shopUser.fullName || 'Shop',
+            productName: product.name,
+            reporterName: reporterUser?.fullName || reporterUser?.email || 'User',
+            reason,
+            description,
+          },
+        });
+      }
+
+      // Email to reporter confirming report
+      if (reporterUser && reporterUser.email && product) {
+        await sendTemplatedEmail({
+          email: reporterUser.email,
+          templateType: 'REPORT_SUBMITTED',
+          templateData: {
+            userName: reporterUser.fullName || reporterUser.email,
+            productName: product.name,
+            reason,
+            description,
+          },
+        });
+      }
+    } catch (emailError) {
+      console.error('Error sending notification emails:', emailError);
+      // Don't fail the report if email fails
+    }
+
     res.status(201).json({ success: true, message: 'Product reported successfully', data: report });
   } catch (error) {
     if (error.code === 11000) {

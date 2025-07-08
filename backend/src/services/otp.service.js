@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { validateEmail, validatePhone } from '../utils/validation.js';
 import EmailService from './email.service.js';
+import { emailTemplates } from '../templates/email.templates.js';
 
 export class OtpService {
   /**
