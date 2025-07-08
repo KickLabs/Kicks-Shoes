@@ -84,6 +84,33 @@ export default function OrderDetails() {
       render: (_, r) => `${r.size} / ${r.color}`,
     },
     { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
+    { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => `$${v?.toFixed(2)}` },
+    {
+      title: 'Review',
+      key: 'review',
+      render: (_, record) => {
+        const fb = existingFeedbacks[record.product._id];
+        return fb ? (
+          <>
+            <Button type="link" onClick={() => openFeedbackModal(record.product._id, fb._id)}>
+              Edit
+            </Button>
+            <Button type="link" danger onClick={() => handleDeleteFeedback(fb._id)}>
+              Delete
+            </Button>
+          </>
+        ) : (
+          <Button
+            type="link"
+            className="feedback-btn"
+            onClick={() => openFeedbackModal(record.product._id)}
+          >
+            Leave Review
+          </Button>
+        );
+      },
+    },
+    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
     { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => formatPrice(v || 0) },
     // Only show Review column for customers
     ...(user?.role === 'customer'
