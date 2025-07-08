@@ -42,6 +42,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axiosInstance from '@/services/axiosInstance';
 import { ActiveTabContext } from './ActiveTabContext';
 import TabHeader from './TabHeader';
+import { useCallback } from 'react';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -120,6 +121,25 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [inventoryForm] = Form.useForm();
+
+  const uploadToCloud = useCallback(async ({ file, onSuccess, onError, onProgress }) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const res = await axiosInstance.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: e => {
+          onProgress({ percent: (e.loaded / e.total) * 100 }, file);
+        },
+      });
+      const url = res.data.url;
+      onSuccess(res.data, file);
+      return url;
+    } catch (err) {
+      console.error('Upload error:', err);
+      onError(err);
+    }
+  }, []);
 
   const getAuthHeaders = () => {
     const userInfo = localStorage.getItem('userInfo');
@@ -472,12 +492,7 @@ export default function ProductDetails() {
 
       console.log('Creating product with payload:', payload); // Debug log
 
-      const response = await axiosInstance.post('/products/add', payload, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await axiosInstance.post('/products/add', payload);
 
       message.success('Product created successfully!');
       // Redirect to shop products page
@@ -1321,12 +1336,35 @@ export default function ProductDetails() {
 
               <Upload.Dragger
                 fileList={fileList}
-                onChange={handleUploadChange}
+                customRequest={async options => {
+                  const url = await uploadToCloud(options);
+                  if (url) {
+                    // cập nhật state
+                    setFileList(prev => [
+                      ...prev,
+                      { uid: options.file.uid, name: options.file.name, status: 'done', url },
+                    ]);
+                    setProduct(prev => ({
+                      ...prev,
+                      mainImage: url,
+                      images: [...prev.images, url],
+                    }));
+                  }
+                }}
+                onRemove={file => {
+                  setFileList(prev => prev.filter(f => f.uid !== file.uid));
+                  setProduct(prev => ({
+                    ...prev,
+                    images: prev.images.filter(img => img !== file.url),
+                    mainImage:
+                      prev.mainImage === file.url
+                        ? prev.images.filter(img => img !== file.url)[0] || ''
+                        : prev.mainImage,
+                  }));
+                }}
                 listType="picture"
                 accept=".png,.jpg,.jpeg,.webp"
                 multiple
-                showUploadList={{ showRemoveIcon: true }}
-                beforeUpload={() => false}
                 style={{
                   borderRadius: 8,
                   border: '2px dashed #d9d9d9',
@@ -1482,12 +1520,28 @@ export default function ProductDetails() {
             >
               <Upload.Dragger
                 fileList={inventoryImageFileList}
-                onChange={handleInventoryImageUpload}
+                customRequest={async options => {
+                  const url = await uploadToCloud(options);
+                  if (url) {
+                    setInventoryImageFileList(prev => [
+                      ...prev,
+                      { uid: options.file.uid, name: options.file.name, status: 'done', url },
+                    ]);
+                    // cập nhật form field để submit lên backend
+                    const prevImgs = inventoryForm.getFieldValue('images') || [];
+                    inventoryForm.setFieldsValue({ images: [...prevImgs, url] });
+                  }
+                }}
+                onRemove={file => {
+                  setInventoryImageFileList(prev => prev.filter(f => f.uid !== file.uid));
+                  const prevImgs = inventoryForm.getFieldValue('images') || [];
+                  inventoryForm.setFieldsValue({
+                    images: prevImgs.filter(img => img !== file.url),
+                  });
+                }}
                 listType="picture"
                 accept=".png,.jpg,.jpeg,.webp"
                 multiple
-                showUploadList={{ showRemoveIcon: true }}
-                beforeUpload={() => false}
                 style={{
                   borderRadius: 8,
                   border: '2px dashed #d9d9d9',
