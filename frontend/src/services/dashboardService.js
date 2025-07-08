@@ -142,9 +142,12 @@ export const getAdminCategories = async (page = 1, limit = 10) => {
 };
 
 // User Management Actions
-export const banUser = async userId => {
+export const banUser = async (userId, adminNote = '', banReason = '') => {
   try {
-    const response = await axiosInstance.put(`/dashboard/admin/users/${userId}/ban`);
+    const response = await axiosInstance.put(`/dashboard/admin/users/${userId}/ban`, {
+      adminNote,
+      banReason,
+    });
     return response.data;
   } catch (error) {
     console.error('Error banning user:', error);
@@ -152,9 +155,11 @@ export const banUser = async userId => {
   }
 };
 
-export const unbanUser = async userId => {
+export const unbanUser = async (userId, adminNote = '') => {
   try {
-    const response = await axiosInstance.put(`/dashboard/admin/users/${userId}/unban`);
+    const response = await axiosInstance.put(`/dashboard/admin/users/${userId}/unban`, {
+      adminNote,
+    });
     return response.data;
   } catch (error) {
     console.error('Error unbanning user:', error);

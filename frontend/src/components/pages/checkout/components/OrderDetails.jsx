@@ -12,6 +12,12 @@ export default function OrderDetails({
   paymentStatus,
   isBuyNow = false,
 }) {
+  console.log('OrderDetails Debug:', {
+    products: products?.length || 0,
+    isBuyNow,
+    productsData: products,
+  });
+
   return (
     <div>
       <Card>
@@ -19,11 +25,14 @@ export default function OrderDetails({
           Order Details
         </Title>
         {products.map((product, idx) => {
+          console.log(`Processing product ${idx}:`, product);
+
           // Handle both cart items and buy now items
           let prod, priceRegular, priceDiscount, isDiscount;
 
           if (isBuyNow && product.productDetails) {
             // Buy now item with productDetails
+            console.log('Processing as buy now item');
             prod = {
               _id: product.product,
               name: product.productDetails.name,
@@ -40,6 +49,7 @@ export default function OrderDetails({
             isDiscount = false;
           } else {
             // Regular cart item
+            console.log('Processing as cart item');
             prod = product.product || product;
             isDiscount = prod.price?.isOnSale && prod.price?.discountPercent;
             priceRegular = prod.price?.regular || prod.price;
@@ -47,6 +57,8 @@ export default function OrderDetails({
               ? priceRegular * (1 - prod.price.discountPercent / 100)
               : priceRegular;
           }
+
+          console.log('Processed product:', { prod, priceRegular, priceDiscount, isDiscount });
 
           return (
             <Row

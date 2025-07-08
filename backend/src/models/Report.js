@@ -16,7 +16,7 @@ const reportSchema = new mongoose.Schema(
     },
     targetType: {
       type: String,
-      enum: ['product', 'store', 'user', 'review'],
+      enum: ['product', 'review'],
       required: [true, 'Target type is required'],
     },
     targetId: {
@@ -65,16 +65,7 @@ const reportSchema = new mongoose.Schema(
     },
     resolution: {
       type: String,
-      enum: [
-        'warning',
-        'suspension',
-        'ban',
-        'no_action',
-        'delete_product',
-        'delete_comment',
-        'product_deleted',
-        'review_deleted',
-      ],
+      enum: ['no_action', 'warning', 'delete_product', 'delete_comment'],
     },
     resolvedBy: {
       type: mongoose.Schema.Types.ObjectId,

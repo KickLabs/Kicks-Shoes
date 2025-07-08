@@ -84,33 +84,6 @@ export default function OrderDetails() {
       render: (_, r) => `${r.size} / ${r.color}`,
     },
     { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
-    { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => `$${v?.toFixed(2)}` },
-    {
-      title: 'Review',
-      key: 'review',
-      render: (_, record) => {
-        const fb = existingFeedbacks[record.product._id];
-        return fb ? (
-          <>
-            <Button type="link" onClick={() => openFeedbackModal(record.product._id, fb._id)}>
-              Edit
-            </Button>
-            <Button type="link" danger onClick={() => handleDeleteFeedback(fb._id)}>
-              Delete
-            </Button>
-          </>
-        ) : (
-          <Button
-            type="link"
-            className="feedback-btn"
-            onClick={() => openFeedbackModal(record.product._id)}
-          >
-            Leave Review
-          </Button>
-        );
-      },
-    },
-    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
     { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => formatPrice(v || 0) },
     // Only show Review column for customers
     ...(user?.role === 'customer'
@@ -672,6 +645,70 @@ export default function OrderDetails() {
                 dataSource={(order.items || []).map((it, i) => ({ ...it, key: i }))}
                 pagination={false}
               />
+            </div>
+
+            {/* Order Summary Section */}
+            <div className="order-details-summary">
+              <div className="order-details-products-title">Order Summary</div>
+              <Card bordered={false} className="order-details-card">
+                <Row gutter={[16, 8]}>
+                  <Col span={12}>
+                    <div className="order-details-summary-row">
+                      <span>Subtotal:</span>
+                      <span>{formatPrice(order.subtotal || 0)}</span>
+                    </div>
+                    {order.shippingCost > 0 && (
+                      <div className="order-details-summary-row">
+                        <span>Shipping Cost:</span>
+                        <span>{formatPrice(order.shippingCost)}</span>
+                      </div>
+                    )}
+                    {order.tax > 0 && (
+                      <div className="order-details-summary-row">
+                        <span>Tax:</span>
+                        <span>{formatPrice(order.tax)}</span>
+                      </div>
+                    )}
+                    {order.discount > 0 && (
+                      <div className="order-details-summary-row" style={{ color: '#52c41a' }}>
+                        <span>Discount:</span>
+                        <span>-{formatPrice(order.discount)}</span>
+                      </div>
+                    )}
+                    <div className="order-details-total">
+                      <span>Total:</span>
+                      <span style={{ color: '#4A69E2' }}>{formatPrice(order.totalPrice || 0)}</span>
+                    </div>
+                  </Col>
+                  <Col span={12}>
+                    <div
+                      style={{
+                        background: '#f8f9fa',
+                        padding: '16px',
+                        borderRadius: '8px',
+                        border: '1px solid #e8e8e8',
+                      }}
+                    >
+                      <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Payment Details</div>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        <div>Payment Method: {order.paymentMethod}</div>
+                        <div>
+                          Payment Status:
+                          <Tag
+                            color={paymentStatusColorMap[order.paymentStatus] || 'orange'}
+                            style={{ marginLeft: '8px' }}
+                          >
+                            {(order.paymentStatus || 'pending').toUpperCase()}
+                          </Tag>
+                        </div>
+                        {order.paymentMethod === 'vnpay' && order.transactionId && (
+                          <div>Transaction ID: {order.transactionId}</div>
+                        )}
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
             </div>
           </div>
           <FeedbackModal
