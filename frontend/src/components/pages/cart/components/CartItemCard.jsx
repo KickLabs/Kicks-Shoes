@@ -3,8 +3,9 @@ import { formatPrice } from '../../../../utils/StringFormat';
 import './CartItemCard.css';
 import { updateCartItem, removeCartItem, getCart } from '../cartService';
 import { useDispatch } from 'react-redux';
+import { Checkbox } from 'antd';
 
-const CartItemCard = ({ item }) => {
+const CartItemCard = ({ item, isSelected, onSelectChange }) => {
   const dispatch = useDispatch();
 
   const handleSizeChange = (itemId, newSize) => {
@@ -86,6 +87,11 @@ const CartItemCard = ({ item }) => {
 
   return (
     <div className="cart-item-card">
+      <Checkbox
+        checked={isSelected}
+        onChange={e => onSelectChange(item._id, e.target.checked)}
+        style={{ marginRight: 12 }}
+      />
       <img src={productImage} alt={item.product.name || 'Product'} className="item-image" />
       <div className="item-details">
         <div className="item-header">
@@ -157,32 +163,18 @@ const CartItemCard = ({ item }) => {
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="33"
-              height="32"
-              viewBox="0 0 33 32"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
               fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <path
-                d="M27.8184 9L26.0265 26.2337C25.9692 26.7203 25.7353 27.169 25.3692 27.4946C25.0031 27.8201 24.5302 28 24.0402 28H9.59711C9.10716 28 8.63426 27.8201 8.26813 27.4946C7.90201 27.169 7.66812 26.7203 7.61086 26.2337L5.81836 9"
-                stroke="#232321"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M29.8184 4H3.81836C3.26607 4 2.81836 4.44772 2.81836 5V8C2.81836 8.55228 3.26607 9 3.81836 9H29.8184C30.3706 9 30.8184 8.55228 30.8184 8V5C30.8184 4.44772 30.3706 4 29.8184 4Z"
-                stroke="#232321"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M20.3184 15L13.3184 22M20.3184 22L13.3184 15"
-                stroke="#232321"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
             </svg>
           </button>
         </div>

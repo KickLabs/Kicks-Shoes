@@ -55,7 +55,12 @@ export class FeedbackService {
 
   static async deleteFeedback(feedbackId) {
     try {
-      const feedback = await Feedback.findByIdAndDelete(feedbackId);
+      // Soft delete: set status to false instead of hard delete
+      const feedback = await Feedback.findByIdAndUpdate(
+        feedbackId,
+        { status: false },
+        { new: true }
+      );
       return feedback;
     } catch (error) {
       throw new Error(error);

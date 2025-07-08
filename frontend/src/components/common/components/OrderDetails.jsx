@@ -646,6 +646,70 @@ export default function OrderDetails() {
                 pagination={false}
               />
             </div>
+
+            {/* Order Summary Section */}
+            <div className="order-details-summary">
+              <div className="order-details-products-title">Order Summary</div>
+              <Card bordered={false} className="order-details-card">
+                <Row gutter={[16, 8]}>
+                  <Col span={12}>
+                    <div className="order-details-summary-row">
+                      <span>Subtotal:</span>
+                      <span>{formatPrice(order.subtotal || 0)}</span>
+                    </div>
+                    {order.shippingCost > 0 && (
+                      <div className="order-details-summary-row">
+                        <span>Shipping Cost:</span>
+                        <span>{formatPrice(order.shippingCost)}</span>
+                      </div>
+                    )}
+                    {order.tax > 0 && (
+                      <div className="order-details-summary-row">
+                        <span>Tax:</span>
+                        <span>{formatPrice(order.tax)}</span>
+                      </div>
+                    )}
+                    {order.discount > 0 && (
+                      <div className="order-details-summary-row" style={{ color: '#52c41a' }}>
+                        <span>Discount:</span>
+                        <span>-{formatPrice(order.discount)}</span>
+                      </div>
+                    )}
+                    <div className="order-details-total">
+                      <span>Total:</span>
+                      <span style={{ color: '#4A69E2' }}>{formatPrice(order.totalPrice || 0)}</span>
+                    </div>
+                  </Col>
+                  <Col span={12}>
+                    <div
+                      style={{
+                        background: '#f8f9fa',
+                        padding: '16px',
+                        borderRadius: '8px',
+                        border: '1px solid #e8e8e8',
+                      }}
+                    >
+                      <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Payment Details</div>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        <div>Payment Method: {order.paymentMethod}</div>
+                        <div>
+                          Payment Status:
+                          <Tag
+                            color={paymentStatusColorMap[order.paymentStatus] || 'orange'}
+                            style={{ marginLeft: '8px' }}
+                          >
+                            {(order.paymentStatus || 'pending').toUpperCase()}
+                          </Tag>
+                        </div>
+                        {order.paymentMethod === 'vnpay' && order.transactionId && (
+                          <div>Transaction ID: {order.transactionId}</div>
+                        )}
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
+            </div>
           </div>
           <FeedbackModal
             visible={feedbackVisible}

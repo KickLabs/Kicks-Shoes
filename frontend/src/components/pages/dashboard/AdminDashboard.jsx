@@ -271,18 +271,10 @@ export default function AdminDashboard() {
       align: 'center',
       render: type => (
         <Tag
-          color={
-            type === 'product'
-              ? 'blue'
-              : type === 'feedback'
-                ? 'orange'
-                : type === 'comment'
-                  ? 'purple'
-                  : 'default'
-          }
+          color={type === 'product' ? 'blue' : type === 'review' ? 'orange' : 'default'}
           style={{ borderRadius: 8, fontWeight: 600, fontSize: 14, padding: '4px 16px' }}
         >
-          {type.toUpperCase()}
+          {type === 'product' ? 'PRODUCT' : type === 'review' ? 'REVIEW' : type.toUpperCase()}
         </Tag>
       ),
     },
@@ -688,10 +680,14 @@ export default function AdminDashboard() {
                   fontSize: 15,
                 }}
               >
-                <option value="warning">Warning</option>
-                <option value="suspension">Suspension</option>
-                <option value="ban">Ban</option>
                 <option value="no_action">No Action</option>
+                <option value="warning">Warning</option>
+                {replyReport?.targetType === 'product' && (
+                  <option value="delete_product">Delete Product</option>
+                )}
+                {replyReport?.targetType === 'review' && (
+                  <option value="delete_comment">Delete Comment</option>
+                )}
               </select>
             </div>
             <div>
@@ -715,7 +711,16 @@ export default function AdminDashboard() {
         ) : replyReport ? (
           <div style={{ lineHeight: 2 }}>
             <div>
-              <b>Resolution:</b> {replyReport.resolution || 'N/A'}
+              <b>Resolution:</b>{' '}
+              {replyReport.resolution === 'no_action'
+                ? 'No Action'
+                : replyReport.resolution === 'warning'
+                  ? 'Warning'
+                  : replyReport.resolution === 'delete_product'
+                    ? 'Delete Product'
+                    : replyReport.resolution === 'delete_comment'
+                      ? 'Delete Comment'
+                      : replyReport.resolution || 'N/A'}
             </div>
             <div>
               <b>Admin Note:</b> {replyReport.adminNote || 'N/A'}

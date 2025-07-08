@@ -108,8 +108,17 @@ export class OrderService {
       order.items = orderItems;
       await order.save();
 
+      // Populate the order with items and products before returning
+      const populatedOrder = await order.populate({
+        path: 'items',
+        populate: {
+          path: 'product',
+          select: 'name mainImage price',
+        },
+      });
+
       logger.info('Order created successfully', { orderId: order._id });
-      return order;
+      return populatedOrder;
     } catch (error) {
       logger.error('Error creating order:', {
         error: error.message,
@@ -407,11 +416,12 @@ export class OrderService {
   /**
    * Cancel an order
    * @param {string} orderId - The ID of the order
+   * @param {string} reason - The reason for cancellation
    * @returns {Promise<Order>} The cancelled order
    */
-  static async cancelOrder(orderId) {
+  static async cancelOrder(orderId, reason) {
     try {
-      logger.info('Cancelling order:', { orderId });
+      logger.info('Cancelling order:', { orderId, reason });
       if (!orderId) {
         logger.error('Order ID is required');
         throw new Error('Order ID is required');
@@ -426,9 +436,25 @@ export class OrderService {
       session.startTransaction();
 
       try {
-        const order = await Order.findByIdAndUpdate(orderId, {
+        const updateData = {
           status: 'cancelled',
-        });
+          cancelledAt: new Date(),
+        };
+
+        if (reason) {
+          updateData.cancellationReason = reason;
+        }
+
+        const order = await Order.findByIdAndUpdate(
+          orderId,
+          { $set: updateData },
+          { new: true, runValidators: true }
+        );
+
+        if (!order) {
+          throw new Error('Order not found');
+        }
+
         await session.commitTransaction();
         return order;
       } catch (error) {
@@ -453,11 +479,12 @@ export class OrderService {
   /**
    * Refund an order
    * @param {string} orderId - The ID of the order
+   * @param {Object} refundData - The refund data
    * @returns {Promise<Order>} The refunded order
    */
-  static async refundOrder(orderId) {
+  static async refundOrder(orderId, refundData) {
     try {
-      logger.info('Refunding order:', { orderId });
+      logger.info('Refunding order:', { orderId, refundData });
       if (!orderId) {
         logger.error('Order ID is required');
         throw new Error('Order ID is required');
@@ -467,17 +494,49 @@ export class OrderService {
         throw new Error('Invalid order ID');
       }
 
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
       try {
-        const order = await Order.findByIdAndUpdate(orderId, {
+        const updateData = {
           status: 'refunded',
-        });
+          refundedAt: new Date(),
+        };
+
+        if (refundData.reason) {
+          updateData.refundReason = refundData.reason;
+        }
+        if (refundData.amount) {
+          updateData.refundAmount = refundData.amount;
+        }
+        if (refundData.refundTransactionNo) {
+          updateData.refundTransactionNo = refundData.refundTransactionNo;
+        }
+        if (refundData.refundResponseCode) {
+          updateData.refundResponseCode = refundData.refundResponseCode;
+        }
+
+        const order = await Order.findByIdAndUpdate(
+          orderId,
+          { $set: updateData },
+          { new: true, runValidators: true }
+        );
+
+        if (!order) {
+          throw new Error('Order not found');
+        }
+
+        await session.commitTransaction();
         return order;
       } catch (error) {
+        await session.abortTransaction();
         logger.error('Error refunding order:', {
           error: error.message,
           stack: error.stack,
         });
         throw new Error(`Failed to refund order: ${error.message}`);
+      } finally {
+        session.endSession();
       }
     } catch (error) {
       logger.error('Error refunding order:', {

@@ -8,6 +8,8 @@ import {
   createRewardPointsForOrder,
   hasOrderEarnedRewardPoints,
 } from '../services/rewardPoint.service.js';
+import EmailService from '../services/email.service.js';
+import User from '../models/User.js';
 
 /**
  * VNPay Payment Controller
@@ -234,6 +236,32 @@ class VNPayController {
           } catch (error) {
             console.error('Error creating reward points:', error);
             // Don't fail the payment process if reward points creation fails
+          }
+
+          // Send email notification for successful payment
+          try {
+            const populatedOrder = await order.populate('user', 'fullName email');
+            await EmailService.sendOrderConfirmationEmail(populatedOrder.user, populatedOrder);
+            console.log('Order confirmation email sent for successful payment:', order._id);
+          } catch (emailError) {
+            console.error('Error sending order confirmation email:', emailError);
+            // Don't fail the payment process if email fails
+          }
+        }
+
+        // Send email notification for failed payment
+        if (paymentStatus === 'failed' && order) {
+          try {
+            const populatedOrder = await order.populate('user', 'fullName email');
+            await EmailService.sendOrderStatusUpdateEmail(
+              populatedOrder.user,
+              populatedOrder,
+              'failed'
+            );
+            console.log('Failed payment email sent for order:', order._id);
+          } catch (emailError) {
+            console.error('Error sending failed payment email:', emailError);
+            // Don't fail the payment process if email fails
           }
         }
       } else {
