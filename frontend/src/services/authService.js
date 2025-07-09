@@ -116,25 +116,27 @@ const authService = {
   // Update user profile
   async updateProfile(userData) {
     try {
-      const response = await axiosInstance.put(`/auth/update-profile`, userData, {
-        headers: {
-          ...(userData instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-        },
-      });
+      // Đối với FormData, không cần thiết lập Content-Type, Axios sẽ tự xử lý
+      const response = await axiosInstance.put(`/auth/update-profile`, userData);
+
+      console.log('Profile update response:', response.data);
+
       if (response.data.success) {
         const updatedUser = response.data.data;
         // Update stored user info
         localStorage.setItem('userInfo', JSON.stringify(updatedUser));
         return updatedUser;
       }
-      throw new Error(response.data.message || 'Profile update failed');
+      throw new Error(response.data.message || 'Cập nhật hồ sơ thất bại');
     } catch (error) {
       console.error('Profile update error:', error.response?.data || error.message);
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
       }
       if (error.message === 'Network Error') {
-        throw new Error('Cannot connect to server. Please check your internet connection.');
+        throw new Error(
+          'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối internet của bạn.'
+        );
       }
       throw error;
     }

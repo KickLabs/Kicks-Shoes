@@ -90,6 +90,8 @@ export default function ProfileTab() {
     try {
       setLoading(true);
       const formData = new FormData();
+
+      // Thêm các giá trị form vào FormData
       Object.keys(values).forEach(key => {
         if (values[key] !== undefined && values[key] !== null) {
           if (key === 'dateOfBirth') {
@@ -99,9 +101,19 @@ export default function ProfileTab() {
           }
         }
       });
+
+      // Thêm file avatar nếu có
       if (avatarFile) {
         formData.append('avatar', avatarFile);
+        console.log('Adding avatar file:', avatarFile.name);
       }
+
+      // Ghi log FormData để debug
+      console.log('Form data entries:');
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + (pair[0] === 'avatar' ? 'File object' : pair[1]));
+      }
+
       const updatedUser = await updateProfile(formData);
       console.log('Updated user:', updatedUser);
 
