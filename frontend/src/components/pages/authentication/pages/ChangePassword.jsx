@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { Form, Input, Button, message } from "antd";
-import { useNavigate } from "react-router-dom";
-import "./Authenticate.css";
-import { useAuth } from "../../../../contexts/AuthContext";
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Button, message } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import './Authenticate.css';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 const ChangePassword = () => {
   const [form] = Form.useForm();
@@ -10,23 +10,45 @@ const ChangePassword = () => {
   const [loading, setLoading] = useState(false);
   const { changePassword, logout, user } = useAuth();
 
+  const validatePassword = (_, value) => {
+    if (!value) {
+      return Promise.reject('Please input your password!');
+    }
+    if (value.length < 8) {
+      return Promise.reject('Password must be at least 8 characters!');
+    }
+    if (!/[A-Z]/.test(value)) {
+      return Promise.reject('Password must contain at least one uppercase letter!');
+    }
+    if (!/[a-z]/.test(value)) {
+      return Promise.reject('Password must contain at least one lowercase letter!');
+    }
+    if (!/[0-9]/.test(value)) {
+      return Promise.reject('Password must contain at least one number!');
+    }
+    if (!/[@$!%*?&]/.test(value)) {
+      return Promise.reject('Password must contain at least one special character (@$!%*?&)!');
+    }
+    return Promise.resolve();
+  };
+
   useEffect(() => {
     if (!user) {
-      message.error("Please login to change password");
-      navigate("/login");
+      message.error('Please login to change password');
+      navigate('/login');
     }
   }, [user, navigate]);
 
-  const onFinish = async (values) => {
+  const onFinish = async values => {
     try {
       setLoading(true);
       console.log(values);
       await changePassword(values.currentPassword, values.newPassword);
-      message.success("Password changed successfully!");
+      message.success('Password changed successfully!');
       await logout();
-      navigate("/login");
+      navigate('/login');
     } catch (error) {
-      message.error(error.message || "Failed to change password");
+      message.error(error.message || 'Failed to change password');
     } finally {
       setLoading(false);
     }
@@ -38,29 +60,21 @@ const ChangePassword = () => {
 
   return (
     <div className="login-page">
-      <div className="login-container" style={{ width: "50%" }}>
+      <div className="login-container" style={{ width: '50%' }}>
         <div className="login-box">
           <h2>Change Password</h2>
-          <Form
-            form={form}
-            name="change-password"
-            onFinish={onFinish}
-            layout="vertical"
-          >
+          <Form form={form} name="change-password" onFinish={onFinish} layout="vertical">
             <Form.Item
               name="currentPassword"
               label="Current Password"
               rules={[
                 {
                   required: true,
-                  message: "Please input your current password!",
+                  message: 'Please input your current password!',
                 },
               ]}
             >
-              <Input.Password
-                className="input"
-                placeholder="Enter current password"
-              />
+              <Input.Password className="input" placeholder="Enter current password" />
             </Form.Item>
 
             <Form.Item
@@ -68,44 +82,33 @@ const ChangePassword = () => {
               label="New Password"
               rules={[
                 {
-                  required: true,
-                  message: "Please input your new password!",
-                },
-                {
-                  min: 8,
-                  message: "Password must be at least 8 characters!",
+                  validator: validatePassword,
                 },
               ]}
             >
-              <Input.Password
-                className="input"
-                placeholder="Enter new password"
-              />
+              <Input.Password className="input" placeholder="Enter new password" />
             </Form.Item>
 
             <Form.Item
               name="confirmPassword"
               label="Confirm New Password"
-              dependencies={["newPassword"]}
+              dependencies={['newPassword']}
               rules={[
                 {
                   required: true,
-                  message: "Please confirm your new password!",
+                  message: 'Please confirm your new password!',
                 },
                 ({ getFieldValue }) => ({
                   validator(_, value) {
-                    if (!value || getFieldValue("newPassword") === value) {
+                    if (!value || getFieldValue('newPassword') === value) {
                       return Promise.resolve();
                     }
-                    return Promise.reject(new Error("Passwords do not match!"));
+                    return Promise.reject(new Error('Passwords do not match!'));
                   },
                 }),
               ]}
             >
-              <Input.Password
-                className="input"
-                placeholder="Confirm new password"
-              />
+              <Input.Password className="input" placeholder="Confirm new password" />
             </Form.Item>
 
             <Form.Item>
