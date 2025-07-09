@@ -127,16 +127,14 @@ const authService = {
         localStorage.setItem('userInfo', JSON.stringify(updatedUser));
         return updatedUser;
       }
-      throw new Error(response.data.message || 'Cập nhật hồ sơ thất bại');
+      throw new Error(response.data.message || 'Profile update failed');
     } catch (error) {
       console.error('Profile update error:', error.response?.data || error.message);
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
       }
       if (error.message === 'Network Error') {
-        throw new Error(
-          'Không thể kết nối với máy chủ. Vui lòng kiểm tra kết nối internet của bạn.'
-        );
+        throw new Error('Cannot connect to server. Please check your internet connection.');
       }
       throw error;
     }
