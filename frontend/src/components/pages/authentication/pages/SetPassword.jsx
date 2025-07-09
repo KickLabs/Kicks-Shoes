@@ -13,6 +13,28 @@ const SetPassword = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const validatePassword = (_, value) => {
+    if (!value) {
+      return Promise.reject('Please input your password!');
+    }
+    if (value.length < 8) {
+      return Promise.reject('Password must be at least 8 characters!');
+    }
+    if (!/[A-Z]/.test(value)) {
+      return Promise.reject('Password must contain at least one uppercase letter!');
+    }
+    if (!/[a-z]/.test(value)) {
+      return Promise.reject('Password must contain at least one lowercase letter!');
+    }
+    if (!/[0-9]/.test(value)) {
+      return Promise.reject('Password must contain at least one number!');
+    }
+    if (!/[@$!%*?&]/.test(value)) {
+      return Promise.reject('Password must contain at least one special character (@$!%*?&)!');
+    }
+    return Promise.resolve();
+  };
+
   const onFinish = async values => {
     try {
       setLoading(true);
@@ -24,10 +46,10 @@ const SetPassword = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      message.success('Mật khẩu đã được thiết lập!');
+      message.success('Password has been set!');
       navigate('/');
     } catch (error) {
-      message.error(error?.response?.data?.message || 'Thất bại, thử lại.');
+      message.error(error?.response?.data?.message || 'Fail, try again!');
     } finally {
       setLoading(false);
     }
@@ -41,7 +63,7 @@ const SetPassword = () => {
           Please set a password to login with the following Email + Password.
         </Typography.Paragraph>
         <Form name="set-password" onFinish={onFinish} layout="vertical">
-          <Form.Item name="password" label="Password" rules={[{ required: true, min: 6 }]}>
+          <Form.Item name="password" label="Password" rules={[{ validator: validatePassword }]}>
             <Input.Password size="large" />
           </Form.Item>
           <Form.Item
@@ -53,7 +75,7 @@ const SetPassword = () => {
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue('password') === value) return Promise.resolve();
-                  return Promise.reject(new Error('Mật khẩu không khớp!'));
+                  return Promise.reject(new Error('Passwords do not match!'));
                 },
               }),
             ]}
