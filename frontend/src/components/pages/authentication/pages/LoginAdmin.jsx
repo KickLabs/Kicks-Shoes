@@ -34,7 +34,7 @@ const LoginAdmin = () => {
         );
       }
     } catch (error) {
-      message.error(error.response?.data?.message || 'Login failed');
+      message.error(error.message || 'Login failed');
     } finally {
       setLoading(false);
     }

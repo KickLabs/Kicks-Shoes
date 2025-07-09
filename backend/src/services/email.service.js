@@ -108,6 +108,34 @@ class EmailService {
   }
 
   /**
+   * Send discount code email
+   * @param {Object} user - User object
+   * @param {Object} discountData - Discount data
+   * @returns {Promise<void>}
+   */
+  static async sendDiscountCodeEmail(user, discountData) {
+    try {
+      await this.sendTemplatedEmail(user.email, 'DISCOUNT_CODE', {
+        name: user.fullName || user.email,
+        code: discountData.code,
+        value: discountData.value,
+        description: discountData.description,
+        startDate: discountData.startDate,
+        endDate: discountData.endDate,
+        points: discountData.points,
+      });
+
+      logger.info('Discount code email sent', {
+        userEmail: user.email,
+        discountCode: discountData.code,
+      });
+    } catch (error) {
+      logger.error('Error sending discount code email:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Send order status update email
    * @param {Object} user - User object
    * @param {Object} order - Order object

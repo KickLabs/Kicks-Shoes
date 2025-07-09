@@ -69,9 +69,15 @@ feedbackSchema.index({ order: 1 });
 feedbackSchema.index({ rating: 1 });
 feedbackSchema.index({ status: 1 });
 
-// Ensure one feedback per order
-// feedbackSchema.index({ order: 1 }, { unique: true });
-feedbackSchema.index({ user: 1, product: 1 }, { unique: true });
+// Ensure one feedback per order per product
+// Drop old index and create new one
+feedbackSchema.index(
+  { user: 1, order: 1, product: 1 },
+  {
+    unique: true,
+    name: 'user_order_product_unique',
+  }
+);
 
 const Feedback = mongoose.model('Feedback', feedbackSchema);
 

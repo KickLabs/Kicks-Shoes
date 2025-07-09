@@ -10,6 +10,7 @@ import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
 import mongoose from 'mongoose';
 import logger from '../utils/logger.js';
+import { validateDiscountCode } from './discount.service.js';
 
 /**
  * Service class for handling order operations
@@ -34,6 +35,7 @@ export class OrderService {
         shippingCost = 0,
         tax = 0,
         discount = 0,
+        discountCode,
         notes,
       } = orderData;
 
@@ -56,8 +58,36 @@ export class OrderService {
         return sum + product.price * product.quantity;
       }, 0);
 
+      // Validate and apply discount code if provided
+      let finalDiscount = discount;
+      let finalDiscountCode = null;
+
+      if (discountCode) {
+        const validation = await validateDiscountCode(
+          discountCode,
+          user,
+          calculatedSubtotal,
+          products
+        );
+
+        if (validation.isValid) {
+          finalDiscount = validation.discountAmount;
+          finalDiscountCode = discountCode.toUpperCase();
+
+          // Update discount usage count
+          const Discount = (await import('../models/Discount.js')).default;
+          const discountDoc = await Discount.findOne({ code: discountCode.toUpperCase() });
+          if (discountDoc) {
+            discountDoc.usedCount += 1;
+            await discountDoc.save();
+          }
+        } else {
+          throw new Error(`Invalid discount code: ${validation.message}`);
+        }
+      }
+
       // Calculate final total including shipping, tax and discount
-      const calculatedTotal = calculatedSubtotal + shippingCost + tax - discount;
+      const calculatedTotal = calculatedSubtotal + shippingCost + tax - finalDiscount;
 
       if (Math.abs(calculatedTotal - finalTotalAmount) > 0.01) {
         throw new Error('Total amount does not match sum of items');
@@ -73,7 +103,8 @@ export class OrderService {
         shippingMethod,
         shippingCost,
         tax,
-        discount,
+        discount: finalDiscount,
+        discountCode: finalDiscountCode,
         notes,
         status: orderData.status || 'pending',
         paymentStatus: orderData.paymentStatus || 'pending',

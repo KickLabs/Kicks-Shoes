@@ -1,15 +1,14 @@
 import './CartList.css';
 import CartItemCard from './CartItemCard';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { getCart } from '../cartService';
 import { useNavigate } from 'react-router-dom';
 
-export const CartList = () => {
+export const CartList = ({ selectedItems, handleItemSelect, handleSelectAll }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { items, totalPrice, status, error } = useSelector(state => state.cart);
-  const [selectedItems, setSelectedItems] = useState(new Set());
 
   useEffect(() => {
     dispatch(getCart());
@@ -29,32 +28,11 @@ export const CartList = () => {
     }
   }, [items, totalPrice, status, error]);
 
-  const handleItemSelect = (itemId, isSelected) => {
-    setSelectedItems(prev => {
-      const newSet = new Set(prev);
-      if (isSelected) {
-        newSet.add(itemId);
-      } else {
-        newSet.delete(itemId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAll = isSelected => {
-    if (isSelected) {
-      setSelectedItems(new Set(items.map(item => item._id)));
-    } else {
-      setSelectedItems(new Set());
-    }
-  };
-
   const handleCheckoutSelected = () => {
     if (selectedItems.size === 0) {
       alert('Please select at least one item to checkout');
       return;
     }
-
     const selectedItemsData = items.filter(item => selectedItems.has(item._id));
     localStorage.setItem('selectedCartItems', JSON.stringify(selectedItemsData));
     navigate('/checkout?selectedItems=true');
@@ -72,34 +50,16 @@ export const CartList = () => {
         {status === 'failed' && <p className="error-text">{error}</p>}
 
         {items && items.length > 0 && (
-          <div className="cart-actions">
-            <label
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}
-            >
+          <div className="cart-actions" style={{ marginBottom: 16 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="checkbox"
                 checked={selectedItems.size === items.length && items.length > 0}
                 onChange={e => handleSelectAll(e.target.checked)}
-                style={{ marginRight: '8px' }}
+                style={{ marginRight: 8 }}
               />
               Select All ({selectedItems.size}/{items.length})
             </label>
-            {selectedItems.size > 0 && (
-              <button
-                onClick={handleCheckoutSelected}
-                style={{
-                  background: '#4A69E2',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  marginBottom: '16px',
-                }}
-              >
-                Checkout Selected ({selectedItems.size} items)
-              </button>
-            )}
           </div>
         )}
 

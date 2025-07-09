@@ -1698,7 +1698,6 @@ const VALIDATION_RULES = {
   },
   price: {
     min: 0.01,
-    max: 999999,
   },
   discount: {
     min: 0,
@@ -2030,6 +2029,10 @@ export default function ProductDetails() {
           mainImage: productData.mainImage || '',
           variants: productData.variants || { sizes: [], colors: [] },
           price: productData.price || { regular: 0, discountPercent: 0, isOnSale: false },
+          category:
+            typeof productData.category === 'object' && productData.category !== null
+              ? productData.category._id
+              : productData.category,
         };
 
         setProduct(processedProduct);
@@ -2816,18 +2819,17 @@ export default function ProductDetails() {
               <Row gutter={[16, 24]}>
                 <Col xs={24} sm={12} data-field="price">
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    <span style={{ color: 'red' }}>*</span> Regular Price ($)
+                    Regular Price * (₫)
                   </label>
                   <InputNumber
                     size="large"
                     placeholder="0.00"
                     min={0.01}
-                    max={999999}
                     step={0.01}
                     value={product.price.regular}
                     onChange={value => handleNestedChange('price', 'regular', value || 0)}
                     style={{ width: '100%' }}
-                    formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    formatter={value => `₫ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                     parser={value => value.replace(/\$\s?|(,*)/g, '')}
                     status={validationErrors.price ? 'error' : ''}
                   />
@@ -2878,7 +2880,7 @@ export default function ProductDetails() {
                 </Col>
                 <Col xs={24} sm={12}>
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    Sale Price ($)
+                    Sale Price (₫)
                   </label>
                   <div
                     style={{

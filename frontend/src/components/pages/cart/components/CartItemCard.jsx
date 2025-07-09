@@ -87,10 +87,11 @@ const CartItemCard = ({ item, isSelected, onSelectChange }) => {
 
   return (
     <div className="cart-item-card">
-      <Checkbox
+      <input
+        type="checkbox"
         checked={isSelected}
         onChange={e => onSelectChange(item._id, e.target.checked)}
-        style={{ marginRight: 12 }}
+        style={{ marginRight: 12, marginTop: 8 }}
       />
       <img src={productImage} alt={item.product.name || 'Product'} className="item-image" />
       <div className="item-details">

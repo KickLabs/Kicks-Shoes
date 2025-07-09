@@ -1,6 +1,7 @@
-import { Card, Col, Divider, Row, Typography, Input, Button, Space } from 'antd';
+import { Card, Col, Divider, Row, Typography, Input, Button, Space, message } from 'antd';
 import { useState } from 'react';
 import { formatPrice } from '../../../../utils/StringFormat';
+import { validateDiscountCode } from '../../../../services/discountService';
 import './OrderSummary.css';
 
 const { Title, Text } = Typography;
@@ -12,17 +13,37 @@ export default function OrderSummary({
   tax,
   total,
   onApplyCoupon,
+  cartItems = [],
 }) {
   const [coupon, setCoupon] = useState('');
   const [applying, setApplying] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
 
   const handleApplyCoupon = async () => {
-    if (!coupon.trim()) return;
-    setApplying(true);
-    if (onApplyCoupon) {
-      await onApplyCoupon(coupon.trim());
+    if (!coupon.trim()) {
+      message.warning('Please enter a coupon code');
+      return;
     }
-    setApplying(false);
+
+    setApplying(true);
+    try {
+      const response = await validateDiscountCode(coupon.trim(), subtotal, cartItems);
+
+      if (response.data.isValid) {
+        setAppliedDiscount(response.data);
+        if (onApplyCoupon) {
+          await onApplyCoupon(coupon.trim(), response.data.discountAmount);
+        }
+        message.success('Coupon applied successfully!');
+      } else {
+        message.error(response.data.message || 'Invalid coupon code');
+      }
+    } catch (error) {
+      console.error('Error applying coupon:', error);
+      message.error('Error applying coupon. Please try again.');
+    } finally {
+      setApplying(false);
+    }
   };
 
   return (
@@ -53,14 +74,16 @@ export default function OrderSummary({
         </Col>
       </Row>
 
-      {discount > 0 && (
+      {(discount > 0 || appliedDiscount) && (
         <Row justify="space-between" className="order-summary-row">
           <Col>
-            <Text className="order-summary-text">Discount</Text>
+            <Text className="order-summary-text">
+              Discount {appliedDiscount && `(${appliedDiscount.discount.code})`}
+            </Text>
           </Col>
           <Col>
             <Text strong style={{ fontSize: 16, color: 'rgb(74, 105, 226)' }}>
-              - {formatPrice(discount)}
+              - {formatPrice(appliedDiscount ? appliedDiscount.discountAmount : discount)}
             </Text>
           </Col>
         </Row>
