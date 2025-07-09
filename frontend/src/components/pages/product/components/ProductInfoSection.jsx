@@ -145,18 +145,28 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
         return;
       }
 
+      // Lấy giá đã giảm nếu có giảm giá, ngược lại lấy giá gốc
+      const finalPrice = product.price.isOnSale
+        ? product.price.regular * (1 - product.price.discountPercent / 100)
+        : product.price.regular;
+
       // Create a temporary cart item for buy now
       const buyNowItem = {
         product: product._id,
         quantity: 1,
         size: selectedSize,
         color: selectedColor,
-        price: product.price.regular,
+        price: finalPrice,
         productDetails: {
           name: product.name,
           mainImage: product.mainImage,
           brand: product.brand,
           category: product.category,
+          price: {
+            regular: product.price.regular,
+            isOnSale: product.price.isOnSale,
+            discountPercent: product.price.discountPercent,
+          },
         },
       };
 
@@ -275,10 +285,38 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
           title="Report product"
         />
       </h1>
-      <h2 style={{ fontSize: '2em', fontWeight: 600, color: '#4A69E2' }} className="product-price">
-        {product.price.isOnSale
-          ? formatPrice(product.price.regular * (1 - product.price.discountPercent / 100))
-          : formatPrice(product.price.regular)}
+      <h2
+        style={{
+          fontSize: '2em',
+          fontWeight: 600,
+          color: '#4A69E2',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+        }}
+        className="product-price"
+      >
+        {product.price.isOnSale ? (
+          <>
+            <span style={{ color: '#4A69E2', fontWeight: 700 }}>
+              {formatPrice(product.price.regular * (1 - product.price.discountPercent / 100))}
+            </span>
+            <span
+              style={{
+                textDecoration: 'line-through',
+                color: '#888',
+                fontSize: '0.8em',
+                marginLeft: 8,
+              }}
+            >
+              {formatPrice(product.price.regular)}
+            </span>
+          </>
+        ) : (
+          <span style={{ color: '#4A69E2', fontWeight: 700 }}>
+            {formatPrice(product.price.regular)}
+          </span>
+        )}
       </h2>
 
       {/* Color Selector */}

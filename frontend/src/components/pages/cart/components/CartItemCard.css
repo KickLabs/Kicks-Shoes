@@ -1,81 +1,161 @@
 .cart-item-card {
   display: flex;
   background-color: #fff;
-  border-radius: 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   padding: 20px;
   gap: 16px;
   align-items: flex-start;
-  width: 50vw;
-  margin: 20px auto;
+  margin-bottom: 16px;
+  transition: box-shadow 0.2s ease;
+}
+
+.cart-item-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .item-image {
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 120px;
   border-radius: 12px;
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .item-details {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  min-width: 0;
 }
 
 .item-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .item-header h3 {
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 600;
+  color: #232321;
+  flex: 1;
+  line-height: 1.3;
 }
 
 .item-price {
   color: #3a5aff;
-  font-weight: bold;
-  font-size: 1.2rem;
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
 .item-category,
 .item-color {
   margin: 0;
-  font-size: 0.95rem;
-  color: #444;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
 }
 
 .item-options {
   display: flex;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
 .select-group {
-  gap: 5px;
-  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.select-group label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .select-group select {
-  margin: 0 5px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 14px;
+  color: #232321;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.select-group select:focus {
+  outline: none;
+  border-color: #3a5aff;
 }
 
 .item-actions {
   margin-top: auto;
   display: flex;
-  gap: 20px;
+  gap: 12px;
+  align-items: center;
 }
 
 .icon-button {
-  font-size: 20px;
   background: none;
   border: none;
   cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover {
+  background-color: #f5f5f5;
+}
+
+.icon-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 768px) {
+  .cart-item-card {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .item-image {
+    width: 100px;
+    height: 100px;
+  }
+
+  .item-header h3 {
+    font-size: 16px;
+  }
+
+  .item-price {
+    font-size: 16px;
+  }
+
+  .item-options {
+    gap: 12px;
+  }
+
+  .select-group {
+    min-width: 100px;
+  }
+
+  .select-group select {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
 }

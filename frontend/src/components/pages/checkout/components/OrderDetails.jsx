@@ -38,15 +38,17 @@ export default function OrderDetails({
               name: product.productDetails.name,
               mainImage: product.productDetails.mainImage,
               description: product.productDetails.brand,
-              price: {
+              price: product.productDetails.price || {
                 regular: product.price,
                 isOnSale: false,
                 discountPercent: 0,
               },
             };
-            priceRegular = product.price;
-            priceDiscount = product.price;
-            isDiscount = false;
+            isDiscount = prod.price?.isOnSale && prod.price?.discountPercent;
+            priceRegular = prod.price?.regular || product.price;
+            priceDiscount = isDiscount
+              ? priceRegular * (1 - prod.price.discountPercent / 100)
+              : priceRegular;
           } else {
             // Regular cart item
             console.log('Processing as cart item');

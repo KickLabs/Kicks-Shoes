@@ -70,21 +70,14 @@ const discountSchema = new mongoose.Schema(
       enum: ['active', 'inactive', 'expired'],
       default: 'active',
     },
-    applicableProducts: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Product',
-      },
-    ],
-    applicableCategories: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Category',
-      },
-    ],
     description: {
       type: String,
       trim: true,
+    },
+    source: {
+      type: String,
+      enum: ['shop', 'reward_points', 'admin'],
+      default: 'shop',
     },
   },
   {
@@ -102,16 +95,26 @@ discountSchema.index({ applicableCategories: 1 });
 // Method to update status based on dates
 discountSchema.methods.updateStatus = function () {
   const now = new Date();
-  if (now > this.endDate) {
-    this.status = 'expired';
-  } else if (now < this.startDate) {
-    this.status = 'inactive';
-  } else {
-    this.status = 'active';
-  }
+
+  // Check if usage limit is reached
   if (this.usedCount >= this.usageLimit) {
     this.status = 'expired';
+    return this.status;
   }
+
+  // Check if end date has passed
+  if (now > this.endDate) {
+    this.status = 'expired';
+  }
+  // Check if start date is in the future - keep as active for future discounts
+  else if (now < this.startDate) {
+    this.status = 'active'; // Changed from 'inactive' to 'active'
+  }
+  // Currently active period
+  else {
+    this.status = 'active';
+  }
+
   return this.status;
 };
 

@@ -24,6 +24,7 @@ import {
   Divider,
   Spin,
   Alert,
+  DatePicker,
 } from 'antd';
 import {
   ShoppingOutlined,
@@ -59,6 +60,7 @@ import {
   deleteDiscount,
 } from '../../../services/dashboardService';
 import axiosInstance from '../../../services/axiosInstance';
+import { formatCompactVND, formatVND } from '../../../utils/currency';
 
 const { Search } = Input;
 const { TextArea } = Input;
@@ -150,15 +152,15 @@ export default function ShopDashboard() {
       const transformedStats = {
         totalRevenue: {
           value: response.data.totalRevenue || 0,
-          change: 0, // Calculate change if needed
+          change: response.data.totalRevenueChange || 0,
         },
         totalOrders: {
           value: response.data.totalOrders || 0,
-          change: 0,
+          change: 0, // TODO: Calculate order change if needed
         },
         totalCustomers: {
           value: response.data.totalCustomers || 0,
-          change: 0,
+          change: 0, // TODO: Calculate customer change if needed
         },
         averageRating: {
           value: response.data.averageRating || 0,
@@ -175,6 +177,8 @@ export default function ShopDashboard() {
       };
 
       setStats(transformedStats);
+      console.log('Order Status Distribution:', transformedStats.orderStatusDistribution);
+      console.log('Top Products:', transformedStats.topProducts);
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
@@ -242,10 +246,19 @@ export default function ShopDashboard() {
     try {
       const response = await getShopDiscounts();
       console.log('Discounts response:', response);
+      console.log('Discounts data:', response.data);
+      if (response.data && response.data.length > 0) {
+        console.log('First discount:', response.data[0]);
+      }
       setDiscounts(response.data || []);
     } catch (err) {
       console.error('Error fetching discounts:', err);
     }
+  };
+
+  // Function to format large numbers with abbreviations
+  const formatNumber = num => {
+    return formatCompactVND(num, { showSymbol: false });
   };
 
   // Order Management
@@ -272,7 +285,28 @@ export default function ShopDashboard() {
   // Discount Management
   const handleAddDiscount = async values => {
     try {
-      await createDiscount(values);
+      // Validate ngày
+      if (
+        values.startDate &&
+        values.endDate &&
+        new Date(values.startDate) >= new Date(values.endDate)
+      ) {
+        message.error('End date must be after start date!');
+        return;
+      }
+      // Validate value
+      if (values.type === 'percentage' && values.value > 100) {
+        message.error('Percentage discount cannot exceed 100%!');
+        return;
+      }
+      // Chuyển đổi ngày sang ISO string và set status = 'active'
+      const payload = {
+        ...values,
+        status: 'active', // Luôn active khi tạo mới
+        startDate: values.startDate ? new Date(values.startDate).toISOString() : undefined,
+        endDate: values.endDate ? new Date(values.endDate).toISOString() : undefined,
+      };
+      await createDiscount(payload);
       message.success('Discount created successfully');
       setIsAddDiscountModalVisible(false);
       discountForm.resetFields();
@@ -461,6 +495,7 @@ export default function ShopDashboard() {
     },
   ];
 
+  // Discount columns (đồng bộ với model Discount)
   const discountColumns = [
     {
       title: 'Code',
@@ -469,41 +504,74 @@ export default function ShopDashboard() {
       render: code => <span style={{ fontWeight: 600, color: '#1890ff' }}>{code}</span>,
     },
     {
-      title: 'Discount',
-      dataIndex: 'discountPercent',
-      key: 'discount',
-      render: percent => <span style={{ fontWeight: 600, color: '#52c41a' }}>{percent}%</span>,
+      title: 'Type',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type, record) => (
+        <span>{type === 'percentage' ? `${record.value}%` : formatVND(record.value)}</span>
+      ),
     },
     {
-      title: 'Valid Until',
-      dataIndex: 'validUntil',
-      key: 'validUntil',
-      render: date => new Date(date).toLocaleDateString(),
+      title: 'Max Discount',
+      dataIndex: 'maxDiscount',
+      key: 'maxDiscount',
+      render: value => (value ? formatVND(value) : '-'),
+    },
+    {
+      title: 'Min Purchase',
+      dataIndex: 'minPurchase',
+      key: 'minPurchase',
+      render: value => (value > 0 ? formatVND(value) : 'No minimum'),
     },
     {
       title: 'Usage',
-      dataIndex: 'usage',
       key: 'usage',
-      render: (usage, record) => `${usage || 0}/${record.maxUsage || 100}`,
+      render: (_, record) => (
+        <span>
+          {record.usedCount} / {record.usageLimit}
+        </span>
+      ),
+    },
+    {
+      title: 'Per User',
+      dataIndex: 'perUserLimit',
+      key: 'perUserLimit',
+      render: value => value || 1,
     },
     {
       title: 'Status',
-      dataIndex: 'isActive',
+      dataIndex: 'status',
       key: 'status',
-      render: isActive => (
-        <Tag color={isActive ? 'green' : 'red'} style={{ borderRadius: 12 }}>
-          {isActive ? 'ACTIVE' : 'INACTIVE'}
+      render: status => (
+        <Tag
+          color={status === 'active' ? 'green' : status === 'inactive' ? 'orange' : 'red'}
+          style={{ borderRadius: 12 }}
+        >
+          {status?.toUpperCase() || 'UNKNOWN'}
         </Tag>
       ),
+    },
+    {
+      title: 'Valid Period',
+      key: 'validPeriod',
+      render: (_, record) => (
+        <div style={{ fontSize: '12px' }}>
+          <div>From: {new Date(record.startDate).toLocaleDateString()}</div>
+          <div>To: {new Date(record.endDate).toLocaleDateString()}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      render: desc => <span style={{ fontSize: 12 }}>{desc}</span>,
     },
     {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />}>
-            Edit
-          </Button>
           <Button
             size="small"
             danger
@@ -549,12 +617,16 @@ export default function ShopDashboard() {
                 <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                   <Statistic
                     title="Total Revenue"
-                    value={stats?.totalRevenue?.value || 0}
-                    prefix={<DollarOutlined style={{ color: '#52c41a' }} />}
-                    valueStyle={{ color: '#52c41a', fontSize: 24, fontWeight: 600 }}
+                    value={formatCompactVND(stats?.totalRevenue?.value || 0)}
+                    valueStyle={{
+                      color: '#52c41a',
+                      fontSize: 24,
+                      fontWeight: 600,
+                    }}
                     suffix={
                       <span style={{ fontSize: 14, color: '#52c41a' }}>
-                        <RiseOutlined /> +{stats?.totalRevenue?.change || 0}%
+                        <RiseOutlined /> +
+                        {Math.round((stats?.totalRevenue?.change || 0) * 100) / 100}%
                       </span>
                     }
                   />
@@ -567,12 +639,13 @@ export default function ShopDashboard() {
                 <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                   <Statistic
                     title="Total Orders"
-                    value={stats?.totalOrders?.value || 0}
+                    value={formatNumber(stats?.totalOrders?.value || 0)}
                     prefix={<ShoppingOutlined style={{ color: '#1890ff' }} />}
                     valueStyle={{ color: '#1890ff', fontSize: 24, fontWeight: 600 }}
                     suffix={
                       <span style={{ fontSize: 14, color: '#1890ff' }}>
-                        <RiseOutlined /> +{stats?.totalOrders?.change || 0}%
+                        <RiseOutlined /> +
+                        {Math.round((stats?.totalOrders?.change || 0) * 100) / 100}%
                       </span>
                     }
                   />
@@ -585,12 +658,13 @@ export default function ShopDashboard() {
                 <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                   <Statistic
                     title="Total Products"
-                    value={stats?.totalProducts?.value || 0}
+                    value={formatNumber(stats?.totalProducts?.value || 0)}
                     prefix={<TagsOutlined style={{ color: '#722ed1' }} />}
                     valueStyle={{ color: '#722ed1', fontSize: 24, fontWeight: 600 }}
                     suffix={
                       <span style={{ fontSize: 14, color: '#722ed1' }}>
-                        <RiseOutlined /> +{stats?.totalProducts?.change || 0}%
+                        <RiseOutlined /> +
+                        {Math.round((stats?.totalProducts?.change || 0) * 100) / 100}%
                       </span>
                     }
                   />
@@ -650,18 +724,33 @@ export default function ShopDashboard() {
               <Col xs={24} lg={8}>
                 <Card
                   title="Order Status Distribution"
-                  style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+                  style={{
+                    borderRadius: 12,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    minHeight: '300px',
+                  }}
                 >
                   {stats?.orderStatusDistribution && stats.orderStatusDistribution.length > 0 ? (
                     <Pie
                       data={stats.orderStatusDistribution}
                       angleField="value"
-                      colorField="status"
-                      radius={0.8}
+                      colorField="name"
+                      radius={0.7}
                       height={300}
+                      color={['#1890ff', '#52c41a', '#faad14', '#f5222d']}
                       label={{
-                        type: 'outer',
-                        content: '{name} {percentage}',
+                        type: 'inner',
+                        offset: '-30%',
+                        content: '{percentage}',
+                        style: {
+                          fontSize: 16,
+                          fontWeight: 600,
+                          textAlign: 'center',
+                        },
+                      }}
+                      legend={{
+                        position: 'bottom',
+                        itemWidth: 120,
                       }}
                       interactions={[
                         {
@@ -734,7 +823,10 @@ export default function ShopDashboard() {
                     />
                   ) : (
                     <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-                      No product data available
+                      <div style={{ marginBottom: '10px' }}>No product data available</div>
+                      <div style={{ fontSize: '12px', color: '#999' }}>
+                        Debug: {stats?.topProducts?.length || 0} products found
+                      </div>
                     </div>
                   )}
                 </Card>
@@ -853,9 +945,20 @@ export default function ShopDashboard() {
           discountForm.resetFields();
         }}
         footer={null}
-        width={600}
+        width={700}
       >
-        <Form form={discountForm} layout="vertical" onFinish={handleAddDiscount}>
+        <Form
+          form={discountForm}
+          layout="vertical"
+          onFinish={handleAddDiscount}
+          initialValues={{
+            type: 'percentage',
+            status: 'active',
+            usageLimit: 100,
+            minPurchase: 0,
+            perUserLimit: 1,
+          }}
+        >
           <Form.Item
             name="code"
             label="Discount Code"
@@ -864,33 +967,182 @@ export default function ShopDashboard() {
             <Input placeholder="e.g., SUMMER20" />
           </Form.Item>
           <Form.Item
-            name="discountPercent"
-            label="Discount Percentage"
-            rules={[{ required: true, message: 'Please enter discount percentage!' }]}
+            name="description"
+            label="Description"
+            rules={[{ required: true, message: 'Please enter description!' }]}
+          >
+            <TextArea rows={2} placeholder="Discount description" />
+          </Form.Item>
+          <Form.Item
+            name="type"
+            label="Discount Type"
+            rules={[{ required: true, message: 'Please select discount type!' }]}
+          >
+            <Select
+              onChange={value => {
+                // Reset value when type changes
+                discountForm.setFieldsValue({ value: undefined });
+              }}
+            >
+              <Option value="percentage">Percentage (%)</Option>
+              <Option value="fixed">Fixed Amount (VND)</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}
+          >
+            {({ getFieldValue }) => {
+              const type = getFieldValue('type');
+              return (
+                <Form.Item
+                  name="value"
+                  label={`Discount Value ${type === 'percentage' ? '(%)' : '(VND)'}`}
+                  rules={[
+                    { required: true, message: 'Please enter discount value!' },
+                    { type: 'number', min: 0, message: 'Value must be at least 0!' },
+                    {
+                      validator: (_, value) => {
+                        if (type === 'percentage' && value > 100) {
+                          return Promise.reject(
+                            new Error('Percentage discount cannot exceed 100%')
+                          );
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
+                >
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    max={type === 'percentage' ? 100 : undefined}
+                    placeholder={type === 'percentage' ? '20' : '50000'}
+                    formatter={value => {
+                      if (!value) return '';
+                      return type === 'percentage' ? `${value}%` : formatVND(value);
+                    }}
+                    parser={value => value.replace(/[^\d]/g, '')}
+                  />
+                </Form.Item>
+              );
+            }}
+          </Form.Item>
+
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}
+          >
+            {({ getFieldValue }) => {
+              const type = getFieldValue('type');
+              return type === 'percentage' ? (
+                <Form.Item name="maxDiscount" label="Maximum Discount Amount (Optional)">
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    min={0}
+                    placeholder="Maximum discount amount"
+                    formatter={value => formatVND(value)}
+                    parser={value => value.replace(/[^\d]/g, '')}
+                  />
+                </Form.Item>
+              ) : null;
+            }}
+          </Form.Item>
+          <Form.Item
+            name="minPurchase"
+            label="Minimum Purchase Amount"
+            rules={[
+              { required: true, message: 'Please enter minimum purchase amount!' },
+              { type: 'number', min: 0, message: 'Minimum purchase must be at least 0!' },
+            ]}
           >
             <InputNumber
-              min={1}
-              max={100}
-              placeholder="20"
               style={{ width: '100%' }}
-              formatter={value => `${value}%`}
-              parser={value => value.replace('%', '')}
+              min={0}
+              placeholder="0"
+              formatter={value => formatVND(value)}
+              parser={value => value.replace(/[^\d]/g, '')}
             />
           </Form.Item>
           <Form.Item
-            name="maxUsage"
-            label="Maximum Usage"
-            rules={[{ required: true, message: 'Please enter maximum usage!' }]}
+            name="usageLimit"
+            label="Usage Limit"
+            rules={[
+              { required: true, message: 'Please enter usage limit!' },
+              { type: 'number', min: 1, message: 'Usage limit must be at least 1!' },
+            ]}
           >
-            <InputNumber min={1} placeholder="100" style={{ width: '100%' }} />
+            <InputNumber style={{ width: '100%' }} min={1} placeholder="100" />
           </Form.Item>
           <Form.Item
-            name="validUntil"
-            label="Valid Until"
-            rules={[{ required: true, message: 'Please select valid until date!' }]}
+            name="perUserLimit"
+            label="Per User Limit"
+            rules={[
+              { required: true, message: 'Please enter per user limit!' },
+              { type: 'number', min: 1, message: 'Per user limit must be at least 1!' },
+            ]}
           >
-            <Input type="date" />
+            <InputNumber style={{ width: '100%' }} min={1} placeholder="1" />
           </Form.Item>
+          <Form.Item
+            name="startDate"
+            label="Start Date"
+            rules={[
+              { required: true, message: 'Please select start date!' },
+              {
+                validator: (_, value) => {
+                  if (value && value.isBefore(new Date(), 'day')) {
+                    return Promise.reject(new Error('Start date cannot be in the past!'));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <DatePicker
+              style={{ width: '100%' }}
+              format="DD/MM/YYYY"
+              placeholder="DD/MM/YYYY"
+              disabledDate={current => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return current && current.isBefore(today, 'day');
+              }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="endDate"
+            label="End Date"
+            rules={[
+              { required: true, message: 'Please select end date!' },
+              ({ getFieldValue }) => ({
+                validator: (_, value) => {
+                  const startDate = getFieldValue('startDate');
+                  if (value && startDate) {
+                    const start = startDate.toDate();
+                    const end = value.toDate();
+                    if (end <= start) {
+                      return Promise.reject(new Error('End date must be after start date!'));
+                    }
+                  }
+                  return Promise.resolve();
+                },
+              }),
+            ]}
+          >
+            <DatePicker
+              style={{ width: '100%' }}
+              format="DD/MM/YYYY"
+              placeholder="DD/MM/YYYY"
+              disabledDate={current => {
+                const startDate = discountForm.getFieldValue('startDate');
+                if (!startDate) return false;
+                return current && current.isBefore(startDate, 'day');
+              }}
+            />
+          </Form.Item>
+
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
               Create Discount

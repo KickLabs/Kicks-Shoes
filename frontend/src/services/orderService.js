@@ -21,6 +21,7 @@ const orderService = {
         response: error.response?.data,
         status: error.response?.status,
         errors: error.response?.data?.errors,
+        fullError: error,
       });
 
       // Return detailed error information
@@ -29,7 +30,10 @@ const orderService = {
           .map(e => e.msg || e.message || e)
           .join(', ');
         throw new Error(errorMessages);
+      } else if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
       } else if (error.response?.data?.message) {
+        // Return the message directly without prefix
         throw new Error(error.response.data.message);
       } else {
         throw new Error(error.message || 'Failed to create order');
@@ -66,6 +70,8 @@ const orderService = {
           .map(e => e.msg || e.message || e)
           .join(', ');
         throw new Error(errorMessages);
+      } else if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
       } else if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
       } else {

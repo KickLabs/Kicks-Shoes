@@ -27,10 +27,6 @@ const CategorySchema = new Schema(
       trim: true,
       default: '',
     },
-    image: {
-      type: String,
-      default: '',
-    },
     status: {
       type: Boolean,
       default: true,
