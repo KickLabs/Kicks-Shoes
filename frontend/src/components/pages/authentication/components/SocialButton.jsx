@@ -55,7 +55,11 @@ const SocialButtons = () => {
           localStorage.setItem('refreshToken', result.refreshToken);
 
           message.success('Đăng nhập thành công!');
-          navigate('/');
+          if (result.isNewUser) {
+            navigate('/set-password');
+          } else {
+            navigate('/');
+          }
         } else {
           notification.error({
             message: 'Lỗi',
@@ -76,7 +80,7 @@ const SocialButtons = () => {
       if (!response.email) {
         return notification.error({
           message: 'Facebook Login',
-          description: 'Không lấy được email từ Facebook',
+          description: 'Cannot get email from Facebook',
         });
       }
 
@@ -101,12 +105,23 @@ const SocialButtons = () => {
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
         localStorage.setItem('accessToken', result.token);
         localStorage.setItem('refreshToken', result.refreshToken);
-        message.success('Đăng nhập thành công!');
-        navigate('/');
+
+        message.success('Login successfully!');
+
+        if (result.isNewUser) {
+          navigate('/set-password');
+        } else {
+          navigate('/');
+        }
+      } else {
+        notification.error({
+          message: 'Lỗi',
+          description: result.message || 'Login Facebook failed',
+        });
       }
     } catch (error) {
       notification.error({
-        message: 'Lỗi đăng nhập Facebook',
+        message: 'Login Facebook failed',
         description: error?.response?.data?.message || error.message,
       });
     }
