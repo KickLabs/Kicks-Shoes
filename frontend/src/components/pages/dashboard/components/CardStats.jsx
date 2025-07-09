@@ -7,6 +7,7 @@ import {
   ArrowDownOutlined,
 } from '@ant-design/icons';
 import { getShopStats } from '../../../../services/dashboardService';
+import { formatCompactVND } from '../../../../utils/currency';
 
 export default function CardStats() {
   const [stats, setStats] = useState(null);
@@ -68,29 +69,43 @@ export default function CardStats() {
     );
   }
 
+  // Function to format large numbers with abbreviations
+  const formatNumber = num => {
+    return formatCompactVND(num, { showSymbol: false });
+  };
+
+  // Function to determine font size based on value length
+  const getFontSize = value => {
+    const length = value.toString().length;
+    if (length > 12) return '14px';
+    if (length > 8) return '16px';
+    if (length > 6) return '18px';
+    return '20px';
+  };
+
   const statsData = [
     {
       title: 'Total Revenue',
-      value: `$${stats?.totalRevenue?.value?.toLocaleString() || 0}`,
-      percent: stats?.totalRevenue?.change || 0,
+      value: formatCompactVND(stats?.totalRevenue?.value || 0),
+      percent: Math.round((stats?.totalRevenue?.change || 0) * 100) / 100,
       icon: <ShoppingOutlined />,
     },
     {
       title: 'Total Orders',
-      value: stats?.totalOrders?.value?.toLocaleString() || 0,
-      percent: stats?.totalOrders?.change || 0,
+      value: formatNumber(stats?.totalOrders?.value || 0),
+      percent: Math.round((stats?.totalOrders?.change || 0) * 100) / 100,
       icon: <ShoppingOutlined />,
     },
     {
       title: 'Active Orders',
-      value: stats?.activeOrders?.value?.toLocaleString() || 0,
-      percent: stats?.activeOrders?.change || 0,
+      value: formatNumber(stats?.activeOrders?.value || 0),
+      percent: Math.round((stats?.activeOrders?.change || 0) * 100) / 100,
       icon: <ShoppingOutlined />,
     },
     {
       title: 'Shipped Orders',
-      value: stats?.shippedOrders?.value?.toLocaleString() || 0,
-      percent: stats?.shippedOrders?.change || 0,
+      value: formatNumber(stats?.shippedOrders?.value || 0),
+      percent: Math.round((stats?.shippedOrders?.change || 0) * 100) / 100,
       icon: <ShoppingOutlined />,
     },
   ];
@@ -105,7 +120,9 @@ export default function CardStats() {
           </div>
           <div className="stat-card-title">{stat.title}</div>
           <div className="stat-card-main">
-            <span className="stat-card-value">{stat.value}</span>
+            <span className="stat-card-value" style={{ fontSize: getFontSize(stat.value) }}>
+              {stat.value}
+            </span>
             <span className={`stat-card-percent ${stat.percent >= 0 ? 'positive' : 'negative'}`}>
               {stat.percent >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
               {Math.abs(stat.percent)}%

@@ -3,12 +3,10 @@ import './OrderSummary.css';
 import { useSelector } from 'react-redux';
 import { Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
 
-export const OrderSummary = () => {
+export const OrderSummary = ({ selectedItems }) => {
   const navigate = useNavigate();
   const { items, totalPrice, status, error } = useSelector(state => state.cart);
-  const [selectedItems, setSelectedItems] = useState(new Set());
 
   // Calculate totals for selected items only
   const selectedItemsData = items.filter(item => selectedItems.has(item._id));
@@ -24,20 +22,11 @@ export const OrderSummary = () => {
   const tax = totalAmount * taxRate;
   const total = totalAmount + delivery + tax;
 
-  const handleSelectAll = isSelected => {
-    if (isSelected) {
-      setSelectedItems(new Set(items.map(item => item._id)));
-    } else {
-      setSelectedItems(new Set());
-    }
-  };
-
   const handleCheckoutSelected = () => {
     if (selectedItems.size === 0) {
       alert('Please select at least one item to checkout');
       return;
     }
-
     const selectedItemsData = items.filter(item => selectedItems.has(item._id));
     localStorage.setItem('selectedCartItems', JSON.stringify(selectedItemsData));
     navigate('/checkout?selectedItems=true');

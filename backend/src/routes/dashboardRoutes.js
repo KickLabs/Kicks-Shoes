@@ -38,6 +38,14 @@ import {
   ignoreProductReport,
   resolveProductReport,
   getMyFeedbackReports,
+  getAdminDiscounts,
+  createAdminDiscount,
+
+  // Financial Reports
+  getAdminOrdersData,
+  getAdminTopProductsData,
+  getAdminShopRevenueData,
+  getAdminCustomerGrowthData,
 } from '../controllers/dashboardController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireAdmin, requireShop, requireRoles } from '../middlewares/role.middleware.js';
@@ -73,6 +81,14 @@ router.delete('/admin/products/:productId', protect, requireAdmin, deleteReporte
 router.delete('/admin/feedback/:feedbackId', protect, requireAdmin, deleteFeedback);
 router.put('/admin/reports/:id/ignore', protect, requireAdmin, ignoreProductReport);
 router.put('/admin/reports/:id/resolve', protect, requireAdmin, resolveProductReport);
+router.get('/admin/discounts', protect, requireAdmin, getAdminDiscounts);
+router.post('/admin/discounts', protect, requireAdmin, createAdminDiscount);
+
+// Financial Reports Routes
+router.get('/admin/orders-data', protect, requireAdmin, getAdminOrdersData);
+router.get('/admin/top-products', protect, requireAdmin, getAdminTopProductsData);
+router.get('/admin/shop-revenue', protect, requireAdmin, getAdminShopRevenueData);
+router.get('/admin/customer-growth', protect, requireAdmin, getAdminCustomerGrowthData);
 
 // Add after other user routes:
 router.get('/my/feedback-reports', protect, getMyFeedbackReports);

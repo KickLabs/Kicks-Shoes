@@ -12,7 +12,8 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const cartItems = useSelector(state => state.cart.items);
   const [deliveryMethod, setDeliveryMethod] = useState('standard');
-  const [discount] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [discountCode, setDiscountCode] = useState('');
   const [tax] = useState(0);
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('creditCard');
@@ -159,6 +160,7 @@ export default function CheckoutPage() {
               subtotal={subtotal}
               deliveryCost={deliveryCost}
               discount={discount}
+              discountCode={discountCode}
               tax={tax}
               total={total}
               notes={notes}
@@ -186,6 +188,11 @@ export default function CheckoutPage() {
             discount={discount}
             tax={tax}
             total={total}
+            cartItems={itemsToProcess}
+            onApplyCoupon={(code, discountAmount) => {
+              setDiscount(discountAmount || 0);
+              setDiscountCode(code);
+            }}
           />
         </Col>
       </Row>

@@ -103,11 +103,21 @@ export default function OrderDetails() {
                 return null; // Don't render anything for subsequent occurrences
               }
 
-              const fb = existingFeedbacks[productId];
+              const feedbackKey = `${productId}_${orderId}`;
+              const fb = existingFeedbacks[feedbackKey];
               const canReview = order?.status === 'delivered';
 
               if (!canReview) {
                 return <span style={{ color: '#999', fontSize: '12px' }}>Not available yet</span>;
+              }
+
+              // Check if feedback exists and is deleted (status = false)
+              if (fb && fb.status === false) {
+                return (
+                  <span style={{ color: '#ff4d4f', fontSize: '12px', fontWeight: '500' }}>
+                    You comment have violated the policy
+                  </span>
+                );
               }
 
               return fb ? (
@@ -168,10 +178,12 @@ export default function OrderDetails() {
   useEffect(() => {
     const fetchFeedbacks = async () => {
       try {
-        const res = await axiosInstance.get(`/feedback?order=${orderId}`);
+        const res = await axiosInstance.get(`/feedback/all-including-deleted?order=${orderId}`);
         const map = {};
         (res.data.data || []).forEach(fb => {
-          map[fb.product] = fb;
+          // Use combination of product and order to allow multiple reviews for same product
+          const key = `${fb.product}_${fb.order}`;
+          map[key] = fb;
         });
         setExistingFeedbacks(map);
       } catch {
@@ -194,10 +206,12 @@ export default function OrderDetails() {
   };
   const refreshFeedbacks = async () => {
     try {
-      const res = await axiosInstance.get(`/feedback?order=${orderId}`);
+      const res = await axiosInstance.get(`/feedback/all-including-deleted?order=${orderId}`);
       const map = {};
       (res.data.data || []).forEach(fb => {
-        map[fb.product] = fb;
+        // Use combination of product and order to allow multiple reviews for same product
+        const key = `${fb.product}_${fb.order}`;
+        map[key] = fb;
       });
       setExistingFeedbacks(map);
     } catch {

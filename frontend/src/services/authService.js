@@ -57,6 +57,9 @@ const authService = {
         localStorage.setItem('userInfo', JSON.stringify(user));
         return user;
       }
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
       throw new Error(response.data.message || 'Registration failed');
     } catch (error) {
       throw error;
@@ -82,6 +85,9 @@ const authService = {
       throw new Error(response.data.message || 'Login failed');
     } catch (error) {
       console.error('Login error:', error.response?.data || error.message);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
       }
@@ -126,6 +132,9 @@ const authService = {
         // Update stored user info
         localStorage.setItem('userInfo', JSON.stringify(updatedUser));
         return updatedUser;
+      }
+      if (response.data.error) {
+        throw new Error(response.data.error);
       }
       throw new Error(response.data.message || 'Profile update failed');
     } catch (error) {

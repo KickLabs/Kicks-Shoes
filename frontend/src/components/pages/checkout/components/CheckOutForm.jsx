@@ -26,6 +26,7 @@ export default function CheckoutForm({
   subtotal,
   deliveryCost,
   discount,
+  discountCode,
   tax,
   total,
   notes,
@@ -177,6 +178,7 @@ export default function CheckoutForm({
       shippingCost: deliveryCostNum,
       tax: taxNum,
       discount: discountNum,
+      discountCode: discountCode || '',
       notes: notes || '',
     };
 
@@ -317,6 +319,7 @@ export default function CheckoutForm({
         throw new Error(result.message || 'Failed to create order');
       }
     } catch (err) {
+      console.error('Cash on delivery error:', err);
       let errorMsg = 'Order creation failed';
       if (err?.response?.data?.message) {
         errorMsg = err.response.data.message;
@@ -325,6 +328,7 @@ export default function CheckoutForm({
       } else if (err?.message) {
         errorMsg = err.message;
       }
+      console.log('Error message to display:', errorMsg);
       message.error(errorMsg);
     } finally {
       setLoading(false);

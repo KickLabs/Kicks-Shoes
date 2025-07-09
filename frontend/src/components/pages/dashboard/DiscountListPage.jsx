@@ -230,7 +230,7 @@ const DiscountListPage = () => {
                     max={discountType === 'percentage' ? 100 : undefined}
                     precision={2}
                     placeholder="Enter value"
-                    addonAfter={discountType === 'percentage' ? '%' : '$'}
+                    addonAfter={discountType === 'percentage' ? '%' : 'đ'}
                   />
                 </Form.Item>
               );

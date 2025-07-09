@@ -129,6 +129,47 @@ export const getAdminUserGrowthData = async (period = 'monthly') => {
   }
 };
 
+// Financial Reports Services
+export const getAdminOrdersData = async (period = 'monthly') => {
+  try {
+    const response = await axiosInstance.get(`/dashboard/admin/orders-data?period=${period}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching admin orders data:', error);
+    throw error;
+  }
+};
+
+export const getAdminTopProductsData = async (limit = 5) => {
+  try {
+    const response = await axiosInstance.get(`/dashboard/admin/top-products?limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching admin top products data:', error);
+    throw error;
+  }
+};
+
+export const getAdminShopRevenueData = async () => {
+  try {
+    const response = await axiosInstance.get('/dashboard/admin/shop-revenue');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching admin shop revenue data:', error);
+    throw error;
+  }
+};
+
+export const getAdminCustomerGrowthData = async (period = 'monthly') => {
+  try {
+    const response = await axiosInstance.get(`/dashboard/admin/customer-growth?period=${period}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching admin customer growth data:', error);
+    throw error;
+  }
+};
+
 export const getAdminCategories = async (page = 1, limit = 10) => {
   try {
     const response = await axiosInstance.get(
@@ -139,6 +180,16 @@ export const getAdminCategories = async (page = 1, limit = 10) => {
     console.error('Error fetching admin categories:', error);
     throw error;
   }
+};
+
+export const getAdminDiscounts = async () => {
+  const response = await axiosInstance.get('/dashboard/admin/discounts');
+  return response.data;
+};
+
+export const createAdminDiscount = async data => {
+  const response = await axiosInstance.post('/dashboard/admin/discounts', data);
+  return response.data;
 };
 
 // User Management Actions
