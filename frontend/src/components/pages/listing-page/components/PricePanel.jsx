@@ -1,17 +1,12 @@
-import React from 'react';
 import { Slider } from 'antd';
 
 const PricePanel = ({ priceRange = [0, 1000], onPriceChange }) => {
-  return (
-    <Slider
-      range
-      defaultValue={priceRange}
-      min={0}
-      max={1000}
-      onAfterChange={onPriceChange}
-      value={priceRange}
-    />
-  );
+  const handlePriceChange = value => {
+    console.log('New price range:', value);
+    onPriceChange(value);
+  };
+
+  return <Slider range min={0} max={1000} value={priceRange} onChange={handlePriceChange} />;
 };
 
 export default PricePanel;
