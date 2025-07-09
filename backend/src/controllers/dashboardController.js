@@ -18,6 +18,10 @@ import Category from '../models/Category.js';
 import Report from '../models/Report.js';
 import { sendTemplatedEmail } from '../utils/sendEmail.js';
 import { emailTemplates } from '../templates/email.templates.js';
+import {
+  createRewardPointsForOrder,
+  hasOrderEarnedRewardPoints,
+} from '../services/rewardPoint.service.js';
 
 // ==================== SHOP DASHBOARD CONTROLLERS ====================
 
@@ -40,6 +44,48 @@ export const getShopStats = asyncHandler(async (req, res) => {
   ]);
   const totalRevenue = revenueData.length > 0 ? revenueData[0].total : 0;
 
+  // Calculate revenue comparison with previous month
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+
+  // Get current month revenue
+  const currentMonthRevenue = await Order.aggregate([
+    {
+      $match: {
+        status: { $in: ['delivered'] },
+        createdAt: {
+          $gte: new Date(currentYear, currentMonth, 1),
+          $lt: new Date(currentYear, currentMonth + 1, 1),
+        },
+      },
+    },
+    { $group: { _id: null, total: { $sum: '$totalPrice' } } },
+  ]);
+
+  // Get previous month revenue
+  const previousMonthRevenue = await Order.aggregate([
+    {
+      $match: {
+        status: { $in: ['delivered'] },
+        createdAt: {
+          $gte: new Date(currentYear, currentMonth - 1, 1),
+          $lt: new Date(currentYear, currentMonth, 1),
+        },
+      },
+    },
+    { $group: { _id: null, total: { $sum: '$totalPrice' } } },
+  ]);
+
+  const currentMonthTotal = currentMonthRevenue.length > 0 ? currentMonthRevenue[0].total : 0;
+  const previousMonthTotal = previousMonthRevenue.length > 0 ? previousMonthRevenue[0].total : 0;
+
+  // Calculate percentage change
+  const revenueChange =
+    previousMonthTotal > 0
+      ? ((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100
+      : 0;
+
   // Get total products (all products for now)
   const totalProducts = await Product.countDocuments();
 
@@ -53,16 +99,29 @@ export const getShopStats = asyncHandler(async (req, res) => {
   // Order status distribution
   const statusAgg = await Order.aggregate([{ $group: { _id: '$status', value: { $sum: 1 } } }]);
   const orderStatusDistribution = statusAgg.map(s => ({
-    status: s._id,
+    name: s._id,
     value: s.value,
   }));
 
   // Top selling products
   const topProductsAgg = await Order.aggregate([
-    { $unwind: '$items' },
-    { $group: { _id: '$items.product', sales: { $sum: '$items.quantity' } } },
+    {
+      $lookup: {
+        from: 'orderitems',
+        localField: '_id',
+        foreignField: 'order',
+        as: 'orderItems',
+      },
+    },
+    { $unwind: '$orderItems' },
+    {
+      $group: {
+        _id: '$orderItems.product',
+        sales: { $sum: '$orderItems.quantity' },
+      },
+    },
     { $sort: { sales: -1 } },
-    { $limit: 5 },
+    { $limit: 4 },
     {
       $lookup: {
         from: 'products',
@@ -89,6 +148,7 @@ export const getShopStats = asyncHandler(async (req, res) => {
     data: {
       totalOrders,
       totalRevenue,
+      totalRevenueChange: Math.round(revenueChange * 100) / 100, // Round to 2 decimal places
       totalProducts,
       averageRating,
       totalReviews,
@@ -141,14 +201,15 @@ export const getShopFeedback = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  const feedback = await Feedback.find()
+  // Only get active feedbacks (status = true)
+  const feedback = await Feedback.find({ status: true })
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
     .populate('user', 'fullName email')
     .populate('product', 'name images');
 
-  const total = await Feedback.countDocuments();
+  const total = await Feedback.countDocuments({ status: true });
 
   res.status(200).json({
     success: true,
@@ -170,7 +231,8 @@ export const getShopFeedback = asyncHandler(async (req, res) => {
  * @access Private (Shop)
  */
 export const getShopDiscounts = asyncHandler(async (req, res) => {
-  const discounts = await Discount.find().sort({ createdAt: -1 });
+  // Only get discounts created by shop (source = 'shop')
+  const discounts = await Discount.find({ source: 'shop' }).sort({ createdAt: -1 });
 
   res.status(200).json({
     success: true,
@@ -234,6 +296,34 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   order.status = status;
   await order.save();
 
+  // Nếu chuyển sang delivered thì cộng điểm thưởng (nếu chưa cộng)
+  if (status === 'delivered') {
+    try {
+      const hasRewardPoints = await hasOrderEarnedRewardPoints(order._id);
+      if (!hasRewardPoints) {
+        // Truy vấn lại order với đầy đủ trường
+        const fullOrder = await Order.findById(order._id).lean();
+        const reward = await createRewardPointsForOrder(fullOrder);
+        if (reward) {
+          console.log(
+            '[REWARD] Cộng điểm thành công cho order:',
+            order._id,
+            'user:',
+            order.user,
+            'points:',
+            reward.points
+          );
+        } else {
+          console.log('[REWARD] Không có điểm để cộng cho order:', order._id);
+        }
+      } else {
+        console.log('[REWARD] Đã từng cộng điểm cho order:', order._id);
+      }
+    } catch (err) {
+      console.error('[REWARD] Lỗi khi cộng điểm cho order:', order._id, err);
+    }
+  }
+
   res.status(200).json({
     success: true,
     data: order,
@@ -246,7 +336,13 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
  * @access Private (Shop)
  */
 export const createDiscount = asyncHandler(async (req, res) => {
-  const discount = await Discount.create(req.body);
+  // Set source to 'shop' when creating discount from shop dashboard
+  const discountData = {
+    ...req.body,
+    source: 'shop',
+  };
+
+  const discount = await Discount.create(discountData);
 
   res.status(201).json({
     success: true,
@@ -424,14 +520,14 @@ export const getAdminFeedback = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  const feedback = await Feedback.find()
+  const feedback = await Feedback.find({ status: { $ne: false } })
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
     .populate('user', 'fullName email')
     .populate('product', 'name images');
 
-  const total = await Feedback.countDocuments();
+  const total = await Feedback.countDocuments({ status: { $ne: false } });
 
   res.status(200).json({
     success: true,
@@ -516,6 +612,176 @@ export const getAdminUserGrowthData = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: userGrowthData,
+  });
+});
+
+/**
+ * Get admin orders data for financial reports
+ * @route GET /api/dashboard/admin/orders-data
+ * @access Private (Admin)
+ */
+export const getAdminOrdersData = asyncHandler(async (req, res) => {
+  const period = req.query.period || 'monthly';
+
+  let groupBy;
+  if (period === 'daily') {
+    groupBy = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } };
+  } else if (period === 'weekly') {
+    groupBy = { $dateToString: { format: '%Y-%U', date: '$createdAt' } };
+  } else {
+    groupBy = { $dateToString: { format: '%Y-%m', date: '$createdAt' } };
+  }
+
+  const ordersData = await Order.aggregate([
+    {
+      $match: {
+        status: { $in: ['delivered', 'shipped', 'processing'] },
+      },
+    },
+    {
+      $group: {
+        _id: groupBy,
+        orders: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: ordersData,
+  });
+});
+
+/**
+ * Get admin top products data for financial reports
+ * @route GET /api/dashboard/admin/top-products
+ * @access Private (Admin)
+ */
+export const getAdminTopProductsData = asyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit) || 5;
+
+  const topProductsData = await Order.aggregate([
+    {
+      $lookup: {
+        from: 'orderitems',
+        localField: '_id',
+        foreignField: 'order',
+        as: 'orderItems',
+      },
+    },
+    { $unwind: '$orderItems' },
+    {
+      $group: {
+        _id: '$orderItems.product',
+        sales: { $sum: '$orderItems.quantity' },
+      },
+    },
+    { $sort: { sales: -1 } },
+    { $limit: limit },
+    {
+      $lookup: {
+        from: 'products',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'product',
+      },
+    },
+    { $unwind: '$product' },
+    {
+      $project: {
+        _id: 0,
+        productName: '$product.name',
+        sales: 1,
+      },
+    },
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: topProductsData,
+  });
+});
+
+/**
+ * Get admin shop revenue data for financial reports
+ * @route GET /api/dashboard/admin/shop-revenue
+ * @access Private (Admin)
+ */
+export const getAdminShopRevenueData = asyncHandler(async (req, res) => {
+  const shopRevenueData = await Order.aggregate([
+    {
+      $lookup: {
+        from: 'stores',
+        localField: 'store',
+        foreignField: '_id',
+        as: 'store',
+      },
+    },
+    { $unwind: '$store' },
+    {
+      $match: {
+        status: { $in: ['delivered'] },
+      },
+    },
+    {
+      $group: {
+        _id: '$store._id',
+        shopName: { $first: '$store.name' },
+        revenue: { $sum: '$totalPrice' },
+      },
+    },
+    { $sort: { revenue: -1 } },
+    {
+      $project: {
+        _id: 0,
+        shopName: 1,
+        revenue: 1,
+      },
+    },
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: shopRevenueData,
+  });
+});
+
+/**
+ * Get admin customer growth data for financial reports
+ * @route GET /api/dashboard/admin/customer-growth
+ * @access Private (Admin)
+ */
+export const getAdminCustomerGrowthData = asyncHandler(async (req, res) => {
+  const period = req.query.period || 'monthly';
+
+  let groupBy;
+  if (period === 'daily') {
+    groupBy = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } };
+  } else if (period === 'weekly') {
+    groupBy = { $dateToString: { format: '%Y-%U', date: '$createdAt' } };
+  } else {
+    groupBy = { $dateToString: { format: '%Y-%m', date: '$createdAt' } };
+  }
+
+  const customerGrowthData = await User.aggregate([
+    {
+      $match: {
+        role: 'customer',
+      },
+    },
+    {
+      $group: {
+        _id: groupBy,
+        customers: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  res.status(200).json({
+    success: true,
+    data: customerGrowthData,
   });
 });
 
@@ -823,13 +1089,24 @@ export const deleteReportedProduct = asyncHandler(async (req, res) => {
 export const deleteFeedback = asyncHandler(async (req, res) => {
   const { feedbackId } = req.params;
 
+  console.log('Admin deleting feedback with ID:', feedbackId);
+
   const feedback = await Feedback.findById(feedbackId).populate('user').populate('product');
   if (!feedback) {
     throw new ErrorResponse('Feedback not found', 404);
   }
 
-  // Soft delete: set status to false
-  await Feedback.findByIdAndUpdate(feedbackId, { status: false });
+  console.log('Found feedback to delete:', {
+    id: feedback._id,
+    user: feedback.user?.fullName,
+    product: feedback.product?.name,
+    comment: feedback.comment?.substring(0, 50) + '...',
+  });
+
+  // Hard delete: remove completely from database
+  await Feedback.findByIdAndDelete(feedbackId);
+
+  console.log('Feedback deleted successfully from database');
 
   // Send notification emails
   try {
@@ -1204,5 +1481,27 @@ export const getMyFeedbackReports = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: reports,
+  });
+});
+
+// ADMIN: Get all admin discounts
+export const getAdminDiscounts = asyncHandler(async (req, res) => {
+  const discounts = await Discount.find({ source: 'admin' }).sort({ createdAt: -1 });
+  res.status(200).json({
+    success: true,
+    data: discounts,
+  });
+});
+
+// ADMIN: Create discount with source = 'admin'
+export const createAdminDiscount = asyncHandler(async (req, res) => {
+  const discountData = {
+    ...req.body,
+    source: 'admin',
+  };
+  const discount = await Discount.create(discountData);
+  res.status(201).json({
+    success: true,
+    data: discount,
   });
 });

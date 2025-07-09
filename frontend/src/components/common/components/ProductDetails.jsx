@@ -199,15 +199,18 @@ export default function ProductDetails() {
 
         const calculatedStock = calculateTotalStock(productData.inventory || []);
 
-        // Preserve ALL original data - don't override with defaults
+        // CHUẨN HÓA category thành _id nếu là object
         const processedProduct = {
           ...productData,
           stock: calculatedStock,
-          // Only set defaults if fields are actually missing/null
           images: productData.images && productData.images.length > 0 ? productData.images : [],
           mainImage: productData.mainImage || '',
           variants: productData.variants || { sizes: [], colors: [] },
           price: productData.price || { regular: 0, discountPercent: 0, isOnSale: false },
+          category:
+            typeof productData.category === 'object' && productData.category !== null
+              ? productData.category._id
+              : productData.category,
         };
 
         setProduct(processedProduct);
@@ -955,7 +958,7 @@ export default function ProductDetails() {
               <Row gutter={[16, 24]}>
                 <Col xs={24} sm={12}>
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    Regular Price * ($)
+                    Regular Price * (₫)
                   </label>
                   <InputNumber
                     size="large"
@@ -965,7 +968,7 @@ export default function ProductDetails() {
                     value={product.price.regular}
                     onChange={value => handleNestedChange('price', 'regular', value || 0)}
                     style={{ width: '100%' }}
-                    formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    formatter={value => `₫ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                     parser={value => value.replace(/\$\s?|(,*)/g, '')}
                   />
                 </Col>
@@ -1003,7 +1006,7 @@ export default function ProductDetails() {
 
                 <Col xs={24} sm={12}>
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    Sale Price ($)
+                    Sale Price (₫)
                   </label>
                   <div
                     style={{

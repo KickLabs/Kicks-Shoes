@@ -8,6 +8,7 @@
   background: #fafafa;
   height: 500px;
   overflow-y: auto;
+  width: 100%;
 }
 
 .cart-items-scroll {
@@ -15,6 +16,7 @@
   overflow-y: auto;
   margin-top: 10px;
   margin-bottom: 10px;
+  width: 100%;
 }
 
 .cart-wrapper .cart-text {

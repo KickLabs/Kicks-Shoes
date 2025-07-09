@@ -1,25 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Table,
-  Tag,
-  Button,
-  Image,
-  Space,
-  Modal,
-  message,
-  Form,
-  Input,
-  Switch,
-  Upload,
-} from 'antd';
-import {
-  EditOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  EyeOutlined,
-  UploadOutlined,
-} from '@ant-design/icons';
+import { Table, Tag, Button, Space, Modal, message, Form, Input, Switch } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import {
   activateCategory,
   deactivateCategory,
@@ -154,21 +136,6 @@ const TableCategories = ({ title, categories, onReload }) => {
   const columns = useMemo(
     () => [
       {
-        title: 'Image',
-        dataIndex: 'image',
-        key: 'image',
-        render: image => (
-          <Image
-            width={50}
-            height={50}
-            src={image || '/placeholder-category.png'}
-            alt="Category"
-            style={{ borderRadius: 8, objectFit: 'cover' }}
-            fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
-          />
-        ),
-      },
-      {
         title: 'Name',
         dataIndex: 'name',
         key: 'name',
@@ -199,12 +166,6 @@ const TableCategories = ({ title, categories, onReload }) => {
         dataIndex: 'status',
         key: 'status',
         render: status => <StatusTag status={status} />,
-      },
-      {
-        title: 'Created Date',
-        dataIndex: 'createdAt',
-        key: 'createdAt',
-        render: date => new Date(date).toLocaleDateString(),
       },
       {
         title: 'Actions',
@@ -296,14 +257,6 @@ const TableCategories = ({ title, categories, onReload }) => {
         {selectedCategory && (
           <div style={{ padding: '16px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-              <Image
-                width={80}
-                height={80}
-                src={selectedCategory.image || '/placeholder-category.png'}
-                alt={selectedCategory.name}
-                style={{ borderRadius: 8, objectFit: 'cover', marginRight: 16 }}
-                fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FgYxN"
-              />
               <div>
                 <h3 style={{ margin: 0, marginBottom: 4 }}>{selectedCategory.name}</h3>
                 <StatusTag status={selectedCategory.status} />
@@ -366,10 +319,6 @@ const TableCategories = ({ title, categories, onReload }) => {
             <Input.TextArea placeholder="Enter category description" rows={4} />
           </Form.Item>
 
-          <Form.Item name="image" label="Image URL">
-            <Input placeholder="Enter image URL (optional)" />
-          </Form.Item>
-
           <Form.Item name="status" label="Status" valuePropName="checked">
             <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
           </Form.Item>
@@ -406,10 +355,6 @@ const TableCategories = ({ title, categories, onReload }) => {
             <Input.TextArea placeholder="Enter category description" rows={4} />
           </Form.Item>
 
-          <Form.Item name="image" label="Image URL">
-            <Input placeholder="Enter image URL (optional)" />
-          </Form.Item>
-
           <Form.Item name="status" label="Status" valuePropName="checked">
             <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
           </Form.Item>
@@ -435,7 +380,6 @@ TableCategories.propTypes = {
       _id: PropTypes.string.isRequired,
       name: PropTypes.string.isRequired,
       description: PropTypes.string,
-      image: PropTypes.string,
       status: PropTypes.bool.isRequired,
       productsCount: PropTypes.number,
       createdAt: PropTypes.string.isRequired,

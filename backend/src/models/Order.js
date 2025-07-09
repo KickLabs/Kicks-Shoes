@@ -104,6 +104,11 @@ const orderSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Discount cannot be negative'],
     },
+    discountCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
     subtotal: {
       type: Number,
       required: true,

@@ -212,33 +212,8 @@ class VNPayController {
         console.log('Updated order status:', order.status);
         console.log('Updated payment status:', order.paymentStatus);
 
-        // Create reward points if payment was successful
+        // Send email notification for successful payment
         if (paymentStatus === 'paid' && order) {
-          try {
-            // Check if reward points already exist for this order
-            const hasRewardPoints = await hasOrderEarnedRewardPoints(order._id);
-
-            if (!hasRewardPoints) {
-              console.log('Creating reward points for successful payment');
-              const rewardPoint = await createRewardPointsForOrder(order);
-
-              if (rewardPoint) {
-                console.log('Reward points created successfully:', {
-                  orderId: order._id,
-                  orderNumber: order.orderNumber,
-                  pointsEarned: rewardPoint.points,
-                  rewardPointId: rewardPoint._id,
-                });
-              }
-            } else {
-              console.log('Reward points already exist for this order:', order._id);
-            }
-          } catch (error) {
-            console.error('Error creating reward points:', error);
-            // Don't fail the payment process if reward points creation fails
-          }
-
-          // Send email notification for successful payment
           try {
             const populatedOrder = await order.populate('user', 'fullName email');
             await EmailService.sendOrderConfirmationEmail(populatedOrder.user, populatedOrder);

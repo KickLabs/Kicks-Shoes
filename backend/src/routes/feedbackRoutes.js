@@ -4,6 +4,7 @@ import {
   updateFeedback,
   deleteFeedback,
   getAllFeedback,
+  getAllFeedbackIncludingDeleted,
   reportFeedback,
   adminApproveFeedback,
   getFeedback,
@@ -47,6 +48,13 @@ router.delete('/:id', protect, checkFeedbackOwner, deleteFeedback); // Xóa feed
  * @access  Public
  */
 router.get('/', getAllFeedback);
+
+/**
+ * @route   GET /api/feedback/all-including-deleted
+ * @desc    Get all feedback including deleted ones for order details
+ * @access  Private
+ */
+router.get('/all-including-deleted', protect, getAllFeedbackIncludingDeleted);
 
 /**
  * @route   POST /api/feedback

@@ -227,6 +227,7 @@ export const getAllFeedback = async (req, res) => {
       filter.product = product;
     }
 
+    // Only show active feedbacks (status = true) for shop dashboard
     filter.status = true;
 
     logger.info('Filter criteria applied', { filter }); // Log filter criteria for debugging
@@ -239,6 +240,42 @@ export const getAllFeedback = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching feedbacks:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Get all feedbacks including deleted ones (for order details)
+ * @route GET /api/feedback/all-including-deleted
+ * @desc Get all feedbacks including deleted ones for order details display
+ * @access Private
+ */
+export const getAllFeedbackIncludingDeleted = async (req, res) => {
+  try {
+    const { order, product } = req.query;
+    const filter = {};
+
+    if (order) {
+      filter.order = order;
+    }
+
+    if (product) {
+      filter.product = product;
+    }
+
+    // Include all feedbacks (both active and deleted) for order details
+    // No status filter to show deleted feedbacks for UI display
+
+    logger.info('Filter criteria applied (including deleted)', { filter });
+
+    const feedbacks = await Feedback.find(filter).populate('user', 'fullName avatar').exec();
+
+    res.status(200).json({
+      success: true,
+      data: feedbacks,
+    });
+  } catch (error) {
+    console.error('Error fetching feedbacks (including deleted):', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

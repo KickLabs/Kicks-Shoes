@@ -203,6 +203,50 @@ export const emailTemplates = {
     `,
   },
 
+  DISCOUNT_CODE: {
+    subject: 'Your Discount Code - Kicks Shoes',
+    getContent: ({ name, code, value, description, startDate, endDate, points }) => {
+      const formatDate = date => new Date(date).toLocaleDateString('vi-VN');
+      const formatCurrency = amount =>
+        new Intl.NumberFormat('vi-VN', {
+          style: 'currency',
+          currency: 'VND',
+        }).format(amount);
+
+      return `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2c3e50; margin: 0;">🎁 Your Discount Code is Ready!</h1>
+          </div>
+          <div style="background: linear-gradient(135deg, #27ae60 0%,rgb(21, 79, 45) 100%); color: white; padding: 30px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+            <h2 style="margin: 0 0 10px 0; font-size: 32px;">${code}</h2>
+            <p style="margin: 0; font-size: 18px;">${formatCurrency(value)} OFF</p>
+          </div>
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+            <p style="color: #34495e; margin: 0;">Hi ${name},</p>
+            <p style="color: #34495e; margin: 15px 0 0 0;">Congratulations! You've successfully redeemed <strong>${points} points</strong> for a discount code.</p>
+            <div style="margin: 20px 0; padding: 15px; background-color: white; border-radius: 6px; border-left: 4px solid #3498db;">
+              <h3 style="color: #2c3e50; margin: 0 0 10px 0;">Discount Details:</h3>
+              <p style="margin: 5px 0; color: #34495e;"><strong>Code:</strong> ${code}</p>
+              <p style="margin: 5px 0; color: #34495e;"><strong>Value:</strong> ${formatCurrency(value)}</p>
+              <p style="margin: 5px 0; color: #34495e;"><strong>Valid From:</strong> ${formatDate(startDate)}</p>
+              <p style="margin: 5px 0; color: #34495e;"><strong>Valid Until:</strong> ${formatDate(endDate)}</p>
+              <p style="margin: 5px 0; color: #34495e;"><strong>Usage Limit:</strong> 1 time per user</p>
+            </div>
+            <p style="color: #34495e; margin: 15px 0 0 0;">Use this code during checkout to get your discount!</p>
+          </div>
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/cart" style="background-color: #3498db; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block;">Start Shopping</a>
+          </div>
+          <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+            <p style="margin: 0;">This discount code is valid for 1 year from the redemption date.</p>
+            <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
+          </div>
+        </div>
+      `;
+    },
+  },
+
   REPORT_RESOLVED: {
     subject: 'Your Report Has Been Resolved - Kicks Shoes',
     getContent: ({

@@ -13,6 +13,14 @@ import { asyncHandler } from '../middlewares/async.middleware.js';
 import Order from '../models/Order.js';
 import EmailService from '../services/email.service.js';
 import User from '../models/User.js';
+import {
+  deductRewardPointsForOrder,
+  createRewardPointsForOrder,
+  hasOrderEarnedRewardPoints,
+} from '../services/rewardPoint.service.js';
+import VNPayService from '../services/vnpay.service.js';
+import * as RewardPointService from '../services/rewardPoint.service.js';
+import Product from '../models/Product.js';
 
 // Validation rules for order operations
 const orderValidationRules = {
@@ -37,6 +45,7 @@ const orderValidationRules = {
       .optional()
       .isFloat({ min: 0 })
       .withMessage('Discount must be a non-negative number'),
+    body('discountCode').optional().isString().withMessage('Discount code must be a string'),
     body('notes')
       .optional()
       .isString()
@@ -95,6 +104,22 @@ const validateRequest = (req, res, next) => {
   next();
 };
 
+// Tiện ích gọi refund VNPAY
+async function handleVNPayRefund(order, amount, reason, req) {
+  const vnpayService = new VNPayService();
+  await vnpayService.initialize();
+  const refundResult = await vnpayService.refundPayment({
+    txnRef: order.vnpTxnRef,
+    amount: parseInt(amount),
+    transactionDate: order.vnpPayDate,
+    transactionNo: order.vnpTransactionNo,
+    orderInfo: reason || `Refund for order ${order._id}`,
+    transactionType: '02',
+    ipAddr: req?.ip || req?.connection?.remoteAddress || '127.0.0.1',
+  });
+  return refundResult;
+}
+
 /**
  * Create a new order
  * @route POST /api/orders
@@ -120,6 +145,7 @@ export const createOrder = [
         shippingCost,
         tax,
         discount,
+        discountCode,
         notes,
         status,
         paymentStatus,
@@ -143,6 +169,7 @@ export const createOrder = [
         shippingCost,
         tax,
         discount,
+        discountCode,
         notes,
         status,
         paymentStatus,
@@ -174,7 +201,20 @@ export const createOrder = [
       });
     } catch (error) {
       logger.error('Error creating order:', error);
-      next(error);
+
+      // Return specific error message for discount validation
+      if (error.message && error.message.includes('Invalid discount code')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      // Return generic error for other cases
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to create order',
+      });
     }
   },
 ];
@@ -362,10 +402,36 @@ export const cancelOrder = async (req, res, next) => {
       });
     }
 
+    // Nếu là VNPAY và đã thanh toán thì refund VNPAY trước khi cancel
+    let refundInfo = null;
+    if (orderToCancel.paymentMethod === 'vnpay' && orderToCancel.paymentStatus === 'paid') {
+      const refundResult = await handleVNPayRefund(
+        orderToCancel,
+        orderToCancel.totalPrice,
+        reason,
+        req
+      );
+      if (!refundResult.success || !refundResult.refundSuccess) {
+        return res.status(500).json({
+          success: false,
+          message: 'VNPay refund failed: ' + (refundResult.message || refundResult.error),
+        });
+      }
+      // Lưu thông tin refund vào order
+      await OrderService.updateOrder(id, {
+        paymentStatus: 'refunded',
+        status: 'refunded',
+        refundAmount: orderToCancel.totalPrice,
+        refundReason: reason,
+        refundedAt: new Date(),
+        refundTransactionNo: refundResult.data?.transactionNo,
+        refundResponseCode: refundResult.data?.responseCode,
+      });
+      refundInfo = refundResult.data;
+    }
+
     logger.info('Cancelling order', { orderId: id, reason });
-
     const order = await OrderService.cancelOrder(id, reason);
-
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -383,11 +449,16 @@ export const cancelOrder = async (req, res, next) => {
       );
     } catch (emailError) {
       logger.error('Error sending order cancellation email:', emailError);
-      // Don't fail the request if email fails
+    }
+
+    // Trừ điểm nếu đã từng cộng cho order này
+    try {
+      await deductRewardPointsForOrder(orderToCancel);
+    } catch (e) {
+      logger.error('Error deducting reward points after cancel:', e);
     }
 
     logger.info('Order cancelled successfully', { orderId: id });
-
     res.status(200).json({
       success: true,
       message: 'Order with id ' + id + ' cancelled successfully',
@@ -396,17 +467,7 @@ export const cancelOrder = async (req, res, next) => {
         status: order.status,
         cancellationReason: order.cancellationReason,
         cancelledAt: order.cancelledAt,
-        // Include refund information if VNPay refund was processed
-        refundInfo:
-          order.paymentMethod === 'vnpay' && order.paymentStatus === 'refunded'
-            ? {
-                refundAmount: order.refundAmount,
-                refundReason: order.refundReason,
-                refundedAt: order.refundedAt,
-                refundTransactionNo: order.refundTransactionNo,
-                refundResponseCode: order.refundResponseCode,
-              }
-            : null,
+        refundInfo: refundInfo || null,
       },
     });
   } catch (error) {
@@ -424,29 +485,24 @@ export const refundOrder = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { reason, amount } = req.body;
-
-    // Input validation
     if (!id?.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Order ID is required',
       });
     }
-
     if (!reason?.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Refund reason is required',
       });
     }
-
     if (!amount || amount <= 0) {
       return res.status(400).json({
         success: false,
         message: 'Valid refund amount is required',
       });
     }
-
     const orderToRefund = await OrderService.getOrderByOrderId(id);
     if (!orderToRefund) {
       logger.warn('Refund attempt for non-existent order', { orderId: id });
@@ -455,19 +511,21 @@ export const refundOrder = async (req, res, next) => {
         message: 'Order not found',
       });
     }
-
     // Check if order is eligible for refund
     const isEligibleForRefund =
-      // Case 1: Paid and cancelled orders
-      (orderToRefund.paymentStatus === 'paid' && orderToRefund.status === 'cancelled') ||
+      // Case 1: Paid and cancelled orders (VNPAY)
+      (orderToRefund.paymentMethod === 'vnpay' &&
+        orderToRefund.paymentStatus === 'paid' &&
+        orderToRefund.status === 'cancelled') ||
       // Case 2: Delivered orders (within 7 days of delivery)
       (orderToRefund.status === 'delivered' &&
         orderToRefund.updatedAt &&
-        new Date() - new Date(orderToRefund.updatedAt) <= 7 * 24 * 60 * 60 * 1000) ||
-      // Case 3: COD orders that have been paid
+        new Date() - new Date(orderToRefund.updatedAt) <= 7 * 24 * 60 * 60 * 1000 &&
+        orderToRefund.paymentStatus === 'paid') ||
+      // Case 3: COD orders that have been paid and delivered
       (orderToRefund.paymentMethod === 'cash_on_delivery' &&
-        orderToRefund.paymentStatus === 'paid');
-
+        orderToRefund.paymentStatus === 'paid' &&
+        orderToRefund.status === 'delivered');
     if (!isEligibleForRefund) {
       logger.warn('Refund attempt for ineligible order', {
         orderId: id,
@@ -478,23 +536,21 @@ export const refundOrder = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message:
-          'Order is not eligible for refund. Only cancelled orders, delivered orders within 7 days, or paid COD orders can be refunded.',
+          'Order is not eligible for refund. Only cancelled VNPAY orders, delivered paid orders within 7 days, or paid & delivered COD orders can be refunded.',
       });
     }
-
     // Validate refund amount
-    if (amount > orderToRefund.totalAmount) {
+    if (amount > orderToRefund.totalPrice) {
       logger.warn('Refund amount exceeds order total', {
         orderId: id,
         refundAmount: amount,
-        orderTotal: orderToRefund.totalAmount,
+        orderTotal: orderToRefund.totalPrice,
       });
       return res.status(400).json({
         success: false,
         message: 'Refund amount cannot exceed order total',
       });
     }
-
     logger.info('Processing refund request', {
       orderId: id,
       refundAmount: amount,
@@ -503,33 +559,62 @@ export const refundOrder = async (req, res, next) => {
       paymentStatus: orderToRefund.paymentStatus,
       paymentMethod: orderToRefund.paymentMethod,
     });
-
-    // Process refund
-    const orderRefunded = await OrderService.refundOrder(id, {
-      reason,
-      amount,
-      originalStatus: orderToRefund.status,
-      originalPaymentStatus: orderToRefund.paymentStatus,
-    });
-
-    if (!orderRefunded) {
-      logger.error('Refund processing failed', { orderId: id });
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to process refund',
+    let refundInfo = null;
+    // Nếu là VNPAY đã thanh toán thì gọi refund VNPAY
+    if (orderToRefund.paymentMethod === 'vnpay' && orderToRefund.paymentStatus === 'paid') {
+      const refundResult = await handleVNPayRefund(orderToRefund, amount, reason, req);
+      if (!refundResult.success || !refundResult.refundSuccess) {
+        return res.status(500).json({
+          success: false,
+          message: 'VNPay refund failed: ' + (refundResult.message || refundResult.error),
+        });
+      }
+      await OrderService.updateOrder(id, {
+        paymentStatus: 'refunded',
+        status: 'refunded',
+        refundAmount: amount,
+        refundReason: reason,
+        refundedAt: new Date(),
+        refundTransactionNo: refundResult.data?.transactionNo,
+        refundResponseCode: refundResult.data?.responseCode,
       });
+      refundInfo = refundResult.data;
     }
-
+    // Nếu là COD đã giao hàng và đã thanh toán thì refund bằng điểm thưởng
+    if (
+      orderToRefund.paymentMethod === 'cash_on_delivery' &&
+      orderToRefund.paymentStatus === 'paid' &&
+      orderToRefund.status === 'delivered'
+    ) {
+      // Cộng điểm thưởng tương ứng số tiền refund
+      await RewardPointService.create({
+        user: orderToRefund.user,
+        order: orderToRefund._id,
+        points: amount, // 1 point = 1 VND
+        type: 'refund',
+        description: `Refund for order ${orderToRefund._id}`,
+      });
+      await OrderService.updateOrder(id, {
+        status: 'refunded',
+        refundAmount: amount,
+        refundReason: reason,
+        refundedAt: new Date(),
+      });
+      refundInfo = { pointsRefunded: amount };
+    }
+    // Trừ điểm nếu đã từng cộng cho order này
+    try {
+      await deductRewardPointsForOrder(orderToRefund);
+    } catch (e) {
+      logger.error('Error deducting reward points after refund:', e);
+    }
     logger.info('Refund processed successfully', {
       orderId: id,
       refundAmount: amount,
-      orderStatus: orderRefunded.status,
-      paymentStatus: orderRefunded.paymentStatus,
     });
-
     // Send email notification for order refund
     try {
-      const populatedOrder = await orderRefunded.populate('user', 'fullName email');
+      const populatedOrder = await orderToRefund.populate('user', 'fullName email');
       await EmailService.sendOrderStatusUpdateEmail(
         populatedOrder.user,
         populatedOrder,
@@ -537,21 +622,16 @@ export const refundOrder = async (req, res, next) => {
       );
     } catch (emailError) {
       logger.error('Error sending order refund email:', emailError);
-      // Don't fail the request if email fails
     }
-
     return res.status(200).json({
       success: true,
       data: {
-        orderId: orderRefunded._id,
-        status: orderRefunded.status,
-        paymentStatus: orderRefunded.paymentStatus,
-        refundAmount: orderRefunded.refundAmount,
-        refundReason: orderRefunded.refundReason,
-        refundedAt: orderRefunded.refundedAt,
-        // Include VNPay refund details if available
-        refundTransactionNo: orderRefunded.refundTransactionNo,
-        refundResponseCode: orderRefunded.refundResponseCode,
+        orderId: orderToRefund._id,
+        status: 'refunded',
+        refundAmount: amount,
+        refundReason: reason,
+        refundedAt: new Date(),
+        refundInfo,
       },
       message: 'Refund processed successfully',
     });
@@ -616,6 +696,49 @@ export const updateOrderStatus = async (req, res, next) => {
         success: false,
         message: 'Order not found',
       });
+    }
+
+    // Nếu chuyển sang delivered thì cộng điểm thưởng (nếu chưa cộng)
+    if (status.toLowerCase() === 'delivered') {
+      try {
+        const hasRewardPoints = await hasOrderEarnedRewardPoints(order._id);
+        if (!hasRewardPoints) {
+          // Truy vấn lại order với đầy đủ trường
+          const fullOrder = await Order.findById(order._id)
+            .populate({
+              path: 'items',
+              populate: { path: 'product' },
+            })
+            .lean();
+          // Cộng sales cho từng sản phẩm trong order items
+          if (fullOrder && Array.isArray(fullOrder.items)) {
+            for (const item of fullOrder.items) {
+              if (item.product && item.quantity) {
+                await Product.findByIdAndUpdate(item.product._id || item.product, {
+                  $inc: { sales: item.quantity },
+                });
+              }
+            }
+          }
+          const reward = await createRewardPointsForOrder(fullOrder);
+          if (reward) {
+            console.log(
+              '[REWARD] Cộng điểm thành công cho order:',
+              order._id,
+              'user:',
+              order.user,
+              'points:',
+              reward.points
+            );
+          } else {
+            console.log('[REWARD] Không có điểm để cộng cho order:', order._id);
+          }
+        } else {
+          console.log('[REWARD] Đã từng cộng điểm cho order:', order._id);
+        }
+      } catch (err) {
+        console.error('[REWARD] Lỗi khi cộng điểm cho order:', order._id, err);
+      }
     }
 
     // Send email notification for status change
