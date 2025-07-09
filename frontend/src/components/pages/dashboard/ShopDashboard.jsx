@@ -639,7 +639,7 @@ export default function ShopDashboard() {
                 <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                   <Statistic
                     title="Total Orders"
-                    value={formatNumber(stats?.totalOrders?.value || 0)}
+                    value={stats?.totalOrders?.value || 0}
                     prefix={<ShoppingOutlined style={{ color: '#1890ff' }} />}
                     valueStyle={{ color: '#1890ff', fontSize: 24, fontWeight: 600 }}
                     suffix={
@@ -658,7 +658,7 @@ export default function ShopDashboard() {
                 <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                   <Statistic
                     title="Total Products"
-                    value={formatNumber(stats?.totalProducts?.value || 0)}
+                    value={stats?.totalProducts?.value || 0}
                     prefix={<TagsOutlined style={{ color: '#722ed1' }} />}
                     valueStyle={{ color: '#722ed1', fontSize: 24, fontWeight: 600 }}
                     suffix={
