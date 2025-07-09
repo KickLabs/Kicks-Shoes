@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { Form, Input, Typography, message } from "antd";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import "./Authenticate.css";
-import EmailLoginButton from "../components/EmailLoginButton";
-import { useAuth } from "../../../../contexts/AuthContext";
+import React, { useState } from 'react';
+import { Form, Input, Typography, message } from 'antd';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import './Authenticate.css';
+import EmailLoginButton from '../components/EmailLoginButton';
+import { useAuth } from '../../../../contexts/AuthContext';
 const { Title } = Typography;
 
 const ResetPasswordForm = () => {
@@ -11,24 +11,44 @@ const ResetPasswordForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { resetPassword } = useAuth();
-  const token = searchParams.get("token");
+  const token = searchParams.get('token');
 
-  const onFinish = async (values) => {
+  const validatePassword = (_, value) => {
+    if (!value) {
+      return Promise.reject('Please input your password!');
+    }
+    if (value.length < 8) {
+      return Promise.reject('Password must be at least 8 characters!');
+    }
+    if (!/[A-Z]/.test(value)) {
+      return Promise.reject('Password must contain at least one uppercase letter!');
+    }
+    if (!/[a-z]/.test(value)) {
+      return Promise.reject('Password must contain at least one lowercase letter!');
+    }
+    if (!/[0-9]/.test(value)) {
+      return Promise.reject('Password must contain at least one number!');
+    }
+    if (!/[@$!%*?&]/.test(value)) {
+      return Promise.reject('Password must contain at least one special character (@$!%*?&)!');
+    }
+    return Promise.resolve();
+  };
+
+  const onFinish = async values => {
     if (!token) {
-      message.error("Invalid or missing reset token");
+      message.error('Invalid or missing reset token');
       return;
     }
 
     try {
       setLoading(true);
       await resetPassword(token, values.password);
-      message.success("Password has been reset successfully!");
-      navigate("/login");
+      message.success('Password has been reset successfully!');
+      navigate('/login');
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message;
-      message.error(
-        errorMessage || "Failed to reset password. Please try again."
-      );
+      message.error(errorMessage || 'Failed to reset password. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -43,11 +63,11 @@ const ResetPasswordForm = () => {
               Invalid Reset Link
             </Title>
             <Typography.Paragraph className="invalid-link-description">
-              This password reset link is invalid or has expired. Please request
-              a new password reset link.
+              This password reset link is invalid or has expired. Please request a new password
+              reset link.
             </Typography.Paragraph>
             <Typography.Link
-              onClick={() => navigate("/forgot-password")}
+              onClick={() => navigate('/forgot-password')}
               className="request-new-link"
             >
               Request New Reset Link
@@ -78,8 +98,10 @@ const ResetPasswordForm = () => {
           <Form.Item
             name="password"
             rules={[
-              { required: true, message: "Please input your new password!" },
-              { min: 6, message: "Password must be at least 6 characters!" },
+              {
+                validator: validatePassword,
+              },
+              { required: true, message: 'Please input your new password!' },
             ]}
           >
             <Input.Password size="large" placeholder="New Password" />
@@ -87,15 +109,15 @@ const ResetPasswordForm = () => {
 
           <Form.Item
             name="confirmPassword"
-            dependencies={["password"]}
+            dependencies={['password']}
             rules={[
-              { required: true, message: "Please confirm your password!" },
+              { required: true, message: 'Please confirm your password!' },
               ({ getFieldValue }) => ({
                 validator(_, value) {
-                  if (!value || getFieldValue("password") === value) {
+                  if (!value || getFieldValue('password') === value) {
                     return Promise.resolve();
                   }
-                  return Promise.reject(new Error("Passwords do not match!"));
+                  return Promise.reject(new Error('Passwords do not match!'));
                 },
               }),
             ]}
