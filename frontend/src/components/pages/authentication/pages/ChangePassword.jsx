@@ -48,7 +48,7 @@ const ChangePassword = () => {
       await logout();
       navigate('/login');
     } catch (error) {
-      message.error(error.message || 'Failed to change password');
+      message.error('Current password is incorrect');
     } finally {
       setLoading(false);
     }
