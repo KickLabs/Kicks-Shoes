@@ -35,9 +35,7 @@ const DiscountListPage = () => {
   const fetchDiscounts = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get(
-        `/api/discounts?page=${currentPage}&limit=${pageSize}`
-      );
+      const response = await axiosInstance.get(`/discounts?page=${currentPage}&limit=${pageSize}`);
       setDiscounts(response.data.data);
       setTotalDiscounts(response.data.pagination.totalItems);
     } catch (error) {
@@ -91,7 +89,7 @@ const DiscountListPage = () => {
 
   const handleDelete = async id => {
     try {
-      await axiosInstance.delete(`/api/discounts/${id}`);
+      await axiosInstance.delete(`/discounts/${id}`);
       message.success('Discount deleted successfully');
       fetchDiscounts();
     } catch (error) {
@@ -114,10 +112,10 @@ const DiscountListPage = () => {
 
       if (editingDiscount) {
         const { type, ...updateData } = data;
-        await axiosInstance.put(`/api/discounts/${editingDiscount._id}`, updateData);
+        await axiosInstance.put(`/discounts/${editingDiscount._id}`, updateData);
         message.success('Discount updated successfully');
       } else {
-        await axiosInstance.post('/api/discounts', data);
+        await axiosInstance.post('/discounts', data);
         message.success('Discount created successfully');
       }
 
