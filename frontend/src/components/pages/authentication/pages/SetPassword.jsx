@@ -46,10 +46,10 @@ const SetPassword = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      message.success('Mật khẩu đã được thiết lập!');
+      message.success('Password has been set!');
       navigate('/');
     } catch (error) {
-      message.error(error?.response?.data?.message || 'Thất bại, thử lại.');
+      message.error(error?.response?.data?.message || 'Fail, try again!');
     } finally {
       setLoading(false);
     }

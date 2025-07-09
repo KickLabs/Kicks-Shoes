@@ -27,7 +27,7 @@ const SocialButtons = () => {
         if (!data?.email) {
           notification.error({
             message: 'Google Login',
-            description: 'Không thể lấy email từ Google',
+            description: 'Cannot get email from Google',
           });
         }
 
@@ -54,7 +54,7 @@ const SocialButtons = () => {
           localStorage.setItem('accessToken', result.token); // ✅ key đúng với api.js
           localStorage.setItem('refreshToken', result.refreshToken);
 
-          message.success('Đăng nhập thành công!');
+          message.success('Login successful!');
           if (result.isNewUser) {
             navigate('/set-password');
           } else {
@@ -63,12 +63,12 @@ const SocialButtons = () => {
         } else {
           notification.error({
             message: 'Lỗi',
-            description: result.message || 'Đăng nhập thất bại',
+            description: result.message || 'Login failed!',
           });
         }
       } catch (err) {
         notification.error({
-          message: 'Lỗi đăng nhập Google',
+          message: 'Google login error',
           description: err?.response?.data?.message || err.message,
         });
       }
