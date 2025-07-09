@@ -1089,24 +1089,13 @@ export const deleteReportedProduct = asyncHandler(async (req, res) => {
 export const deleteFeedback = asyncHandler(async (req, res) => {
   const { feedbackId } = req.params;
 
-  console.log('Admin deleting feedback with ID:', feedbackId);
-
   const feedback = await Feedback.findById(feedbackId).populate('user').populate('product');
   if (!feedback) {
     throw new ErrorResponse('Feedback not found', 404);
   }
 
-  console.log('Found feedback to delete:', {
-    id: feedback._id,
-    user: feedback.user?.fullName,
-    product: feedback.product?.name,
-    comment: feedback.comment?.substring(0, 50) + '...',
-  });
-
-  // Hard delete: remove completely from database
-  await Feedback.findByIdAndDelete(feedbackId);
-
-  console.log('Feedback deleted successfully from database');
+  // Soft delete: set status to false
+  await Feedback.findByIdAndUpdate(feedbackId, { status: false });
 
   // Send notification emails
   try {

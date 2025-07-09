@@ -7,9 +7,7 @@
 
 import { body, validationResult } from 'express-validator';
 import { OrderService } from '../services/order.service.js';
-import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
-import { asyncHandler } from '../middlewares/async.middleware.js';
 import Order from '../models/Order.js';
 import EmailService from '../services/email.service.js';
 import User from '../models/User.js';
@@ -183,6 +181,17 @@ export const createOrder = [
       });
 
       logger.info('Order created successfully', { orderId: order._id });
+
+      // Send email confirmation
+      try {
+        const user = await User.findById(req.user._id);
+
+        // Order is already populated from OrderService
+        await EmailService.sendOrderConfirmationEmail(user, order);
+      } catch (emailError) {
+        logger.error('Error sending order confirmation email:', emailError);
+        // Don't fail the request if email fails
+      }
 
       // Send email confirmation
       try {

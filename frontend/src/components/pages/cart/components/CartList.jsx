@@ -8,7 +8,6 @@ import { useNavigate } from 'react-router-dom';
 export const CartList = ({ selectedItems, handleItemSelect, handleSelectAll }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
   const { items, totalPrice, status, error } = useSelector(state => state.cart);
 
   useEffect(() => {
