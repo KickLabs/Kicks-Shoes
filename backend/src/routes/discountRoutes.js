@@ -5,33 +5,68 @@ import {
   createDiscount,
   updateDiscount,
   deleteDiscount,
-  validateDiscount
+  validateDiscount,
 } from '../controllers/discountController.js';
+import { validateDiscountCode } from '../services/discount.service.js';
+import { protect, requireAdmin } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
-// Get all discounts with optional filtering
-// GET /api/discounts?isActive=true&page=1&limit=10&category=categoryId&product=productId
-router.get('/', getAllDiscounts);
+// Public routes
+router.get('/active', async (req, res) => {
+  try {
+    const { getActiveDiscounts } = await import('../services/discount.service.js');
+    const discounts = await getActiveDiscounts();
 
-// Get single discount by ID
-// GET /api/discounts/:id
-router.get('/:id', getDiscountById);
+    res.status(200).json({
+      success: true,
+      data: discounts,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching active discounts',
+      error: error.message,
+    });
+  }
+});
 
 // Validate discount code
-// GET /api/discounts/validate/:code
+router.post('/validate', async (req, res) => {
+  try {
+    const { code, cartTotal, cartItems } = req.body;
+    const userId = req.user?.id;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'Discount code is required',
+      });
+    }
+
+    const result = await validateDiscountCode(code, userId, cartTotal || 0, cartItems || []);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error validating discount',
+      error: error.message,
+    });
+  }
+});
+
+// Protected routes (Admin only)
+router.use(protect, requireAdmin);
+
+router.get('/', getAllDiscounts);
+router.get('/:id', getDiscountById);
+router.post('/', createDiscount);
+router.put('/:id', updateDiscount);
+router.delete('/:id', deleteDiscount);
 router.get('/validate/:code', validateDiscount);
 
-// Create new discount
-// POST /api/discounts
-router.post('/', createDiscount);
-
-// Update discount
-// PUT /api/discounts/:id
-router.put('/:id', updateDiscount);
-
-// Delete discount
-// DELETE /api/discounts/:id
-router.delete('/:id', deleteDiscount);
-
-export default router; 
+export default router;

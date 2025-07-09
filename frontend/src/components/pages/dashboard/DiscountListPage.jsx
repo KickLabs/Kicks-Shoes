@@ -1,294 +1,381 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Pagination,
+  Card,
+  Table,
   Button,
   Modal,
   Form,
   Input,
-  InputNumber,
+  Select,
   DatePicker,
-  message,
-  Popconfirm,
-  Radio,
-  Table,
+  InputNumber,
   Space,
   Tag,
+  message,
+  Popconfirm,
+  Tooltip,
 } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import TabHeader from '../../common/components/TabHeader';
-import { useContext } from 'react';
-import { ActiveTabContext } from '../../common/components/ActiveTabContext';
-import TableDiscounts from './components/TableDiscounts';
-import axiosInstance from '@/services/axiosInstance';
-import moment from 'moment';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import {
+  getAllDiscounts,
+  createDiscount,
+  updateDiscount,
+  deleteDiscount,
+} from '../../../services/discountService';
+import { formatVND } from '../../../utils/currency';
 
-const DiscountListPage = () => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+const { Option } = Select;
+const { TextArea } = Input;
+
+export default function DiscountListPage() {
   const [discounts, setDiscounts] = useState([]);
-  const [totalDiscounts, setTotalDiscounts] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState(null);
   const [form] = Form.useForm();
-  const pageSize = 9;
+
+  useEffect(() => {
+    fetchDiscounts();
+  }, []);
 
   const fetchDiscounts = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get(
-        `/api/discounts?page=${currentPage}&limit=${pageSize}`
-      );
-      setDiscounts(response.data.data);
-      setTotalDiscounts(response.data.pagination.totalItems);
+      const response = await getAllDiscounts();
+      setDiscounts(response.data || []);
     } catch (error) {
+      console.error('Error fetching discounts:', error);
       message.error('Failed to fetch discounts');
-      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchDiscounts();
-  }, [currentPage]);
-
-  const handlePageChange = page => {
-    setCurrentPage(page);
-  };
-
-  const { setActiveTab } = useContext(ActiveTabContext);
-
-  useEffect(() => {
-    setActiveTab('5');
-  }, [setActiveTab]);
-
-  const showModal = (discount = null) => {
-    setEditingDiscount(discount);
-    if (discount) {
-      form.setFieldsValue({
-        code: discount.code,
-        description: discount.description,
-        type: discount.type,
-        value: discount.value,
-        maxDiscount: discount.maxDiscount,
-        startDate: moment(discount.startDate),
-        endDate: moment(discount.endDate),
-        minPurchase: discount.minPurchase,
-        usageLimit: discount.usageLimit,
-        status: discount.status,
-      });
-    } else {
-      form.resetFields();
-    }
-    setIsModalVisible(true);
-  };
-
-  const handleCancel = () => {
-    setIsModalVisible(false);
+  const handleCreate = () => {
     setEditingDiscount(null);
     form.resetFields();
+    setModalVisible(true);
+  };
+
+  const handleEdit = record => {
+    setEditingDiscount(record);
+    form.setFieldsValue({
+      code: record.code,
+      description: record.description,
+      type: record.type,
+      value: record.value,
+      maxDiscount: record.maxDiscount,
+      minPurchase: record.minPurchase,
+      startDate: record.startDate ? new Date(record.startDate) : null,
+      endDate: record.endDate ? new Date(record.endDate) : null,
+      usageLimit: record.usageLimit,
+      status: record.status,
+      perUserLimit: record.perUserLimit,
+    });
+    setModalVisible(true);
   };
 
   const handleDelete = async id => {
     try {
-      await axiosInstance.delete(`/api/discounts/${id}`);
+      await deleteDiscount(id);
       message.success('Discount deleted successfully');
       fetchDiscounts();
     } catch (error) {
+      console.error('Error deleting discount:', error);
       message.error('Failed to delete discount');
-      console.error(error);
     }
   };
 
   const handleSubmit = async values => {
     try {
-      const data = {
+      const discountData = {
         ...values,
-        startDate: values.startDate.toISOString(),
-        endDate: values.endDate.toISOString(),
-        applicableProducts: [],
-        applicableCategories: [],
-        usedCount: editingDiscount?.usedCount || 0,
-        status: values.status || 'active',
+        startDate: values.startDate?.toISOString(),
+        endDate: values.endDate?.toISOString(),
       };
 
       if (editingDiscount) {
-        const { type, ...updateData } = data;
-        await axiosInstance.put(`/api/discounts/${editingDiscount._id}`, updateData);
+        await updateDiscount(editingDiscount._id, discountData);
         message.success('Discount updated successfully');
       } else {
-        await axiosInstance.post('/api/discounts', data);
+        await createDiscount(discountData);
         message.success('Discount created successfully');
       }
 
-      setIsModalVisible(false);
-      form.resetFields();
+      setModalVisible(false);
       fetchDiscounts();
     } catch (error) {
-      if (error.response?.data?.message) {
-        message.error(error.response.data.message);
-      } else {
-        message.error('Failed to save discount');
-      }
-      console.error(error);
+      console.error('Error saving discount:', error);
+      message.error('Failed to save discount');
     }
   };
 
+  const getStatusColor = status => {
+    switch (status) {
+      case 'active':
+        return 'green';
+      case 'inactive':
+        return 'orange';
+      case 'expired':
+        return 'red';
+      default:
+        return 'default';
+    }
+  };
+
+  const columns = [
+    {
+      title: 'Code',
+      dataIndex: 'code',
+      key: 'code',
+      render: code => <span style={{ fontWeight: 600 }}>{code}</span>,
+    },
+    {
+      title: 'Type',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type, record) => (
+        <span>{type === 'percentage' ? `${record.value}%` : formatVND(record.value)}</span>
+      ),
+    },
+    {
+      title: 'Max Discount',
+      dataIndex: 'maxDiscount',
+      key: 'maxDiscount',
+      render: value => (value ? formatVND(value) : '-'),
+    },
+    {
+      title: 'Min Purchase',
+      dataIndex: 'minPurchase',
+      key: 'minPurchase',
+      render: value => (value > 0 ? formatVND(value) : 'No minimum'),
+    },
+    {
+      title: 'Usage',
+      key: 'usage',
+      render: (_, record) => (
+        <span>
+          {record.usedCount} / {record.usageLimit}
+        </span>
+      ),
+    },
+    {
+      title: 'Per User',
+      dataIndex: 'perUserLimit',
+      key: 'perUserLimit',
+      render: value => value || 1,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      render: status => (
+        <Tag color={getStatusColor(status)}>{status.charAt(0).toUpperCase() + status.slice(1)}</Tag>
+      ),
+    },
+    {
+      title: 'Valid Period',
+      key: 'validPeriod',
+      render: (_, record) => (
+        <div style={{ fontSize: '12px' }}>
+          <div>From: {new Date(record.startDate).toLocaleDateString()}</div>
+          <div>To: {new Date(record.endDate).toLocaleDateString()}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      render: desc => <span style={{ fontSize: 12 }}>{desc}</span>,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Space>
+          <Tooltip title="Edit">
+            <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
+          </Tooltip>
+          <Popconfirm
+            title="Are you sure you want to delete this discount?"
+            onConfirm={() => handleDelete(record._id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Tooltip title="Delete">
+              <Button type="text" danger icon={<DeleteOutlined />} />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   return (
-    <>
-      <div className="all-products-header">
-        <TabHeader breadcrumb="Discount Management" />
-        <Button onClick={() => showModal()} type="primary">
-          ADD NEW DISCOUNT
-        </Button>
-      </div>
-      <TableDiscounts
-        title="Discount List"
-        discounts={discounts}
-        loading={loading}
-        onEdit={showModal}
-        onDelete={handleDelete}
-      />
-      <div className="pagination-container">
-        <Pagination
-          current={currentPage}
-          total={totalDiscounts}
-          pageSize={pageSize}
-          onChange={handlePageChange}
+    <div>
+      <Card
+        title="Manage Discounts"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            Create Discount
+          </Button>
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={discounts}
+          rowKey="_id"
+          loading={loading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+          }}
         />
-      </div>
+      </Card>
 
       <Modal
-        title={editingDiscount ? 'Edit Discount' : 'Add New Discount'}
-        open={isModalVisible}
-        onCancel={handleCancel}
+        title={editingDiscount ? 'Edit Discount' : 'Create Discount'}
+        open={modalVisible}
+        onCancel={() => setModalVisible(false)}
         footer={null}
-        width={600}
+        width={700}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{
+            type: 'percentage',
+            status: 'active',
+            usageLimit: 100,
+            minPurchase: 0,
+            perUserLimit: 1,
+          }}
+        >
           <Form.Item
             name="code"
             label="Discount Code"
-            rules={[{ required: true, message: 'Please input the discount code!' }]}
+            rules={[{ required: true, message: 'Please enter discount code' }]}
           >
-            <Input placeholder="Enter discount code" disabled={!!editingDiscount} />
+            <Input placeholder="e.g., SUMMER20" />
           </Form.Item>
 
           <Form.Item
             name="description"
             label="Description"
-            rules={[{ required: true, message: 'Please input the description!' }]}
+            rules={[{ required: true, message: 'Please enter description' }]}
           >
-            <Input.TextArea placeholder="Enter description" />
+            <TextArea rows={2} placeholder="Discount description" />
           </Form.Item>
 
           <Form.Item
             name="type"
             label="Discount Type"
-            rules={[{ required: true, message: 'Please select the discount type!' }]}
+            rules={[{ required: true, message: 'Please select discount type' }]}
           >
-            <Radio.Group disabled={!!editingDiscount}>
-              <Radio value="percentage">Percentage</Radio>
-              <Radio value="fixed">Fixed Amount</Radio>
-            </Radio.Group>
+            <Select>
+              <Option value="percentage">Percentage</Option>
+              <Option value="fixed">Fixed Amount</Option>
+            </Select>
           </Form.Item>
 
           <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}
+            name="value"
+            label="Discount Value"
+            rules={[{ required: true, message: 'Please enter discount value' }]}
           >
-            {({ getFieldValue }) => {
-              const discountType = getFieldValue('type');
-              return (
-                <Form.Item
-                  name="value"
-                  label="Discount Value"
-                  rules={[
-                    { required: true, message: 'Please input the discount value!' },
-                    {
-                      type: 'number',
-                      min: 0.01,
-                      message: 'Value must be greater than 0!',
-                    },
-                    {
-                      validator: async (_, value) => {
-                        if (value === undefined || value === null) {
-                          return Promise.reject('Please input the discount value!');
-                        }
-                        if (value <= 0) {
-                          return Promise.reject('Value must be greater than 0!');
-                        }
-                        if (discountType === 'percentage' && value > 100) {
-                          return Promise.reject('Percentage discount cannot exceed 100%');
-                        }
-                        return Promise.resolve();
-                      },
-                    },
-                  ]}
-                >
-                  <InputNumber
-                    style={{ width: '100%' }}
-                    min={0.01}
-                    max={discountType === 'percentage' ? 100 : undefined}
-                    precision={2}
-                    placeholder="Enter value"
-                    addonAfter={discountType === 'percentage' ? '%' : '$'}
-                  />
-                </Form.Item>
-              );
-            }}
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0}
+              max={100}
+              placeholder="20"
+              formatter={value => {
+                const type = form.getFieldValue('type');
+                return type === 'percentage' ? `${value}%` : formatVND(value);
+              }}
+              parser={value => value.replace(/[^\d]/g, '')}
+            />
           </Form.Item>
 
-          <Form.Item
-            name="maxDiscount"
-            label="Maximum Discount Amount"
-            rules={[{ required: true, message: 'Please input the maximum discount!' }]}
-          >
-            <InputNumber min={0} placeholder="Enter maximum discount" style={{ width: '100%' }} />
+          <Form.Item name="maxDiscount" label="Maximum Discount (Optional)">
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0}
+              placeholder="Maximum discount amount"
+              formatter={value => formatVND(value)}
+              parser={value => value.replace(/[^\d]/g, '')}
+            />
           </Form.Item>
 
           <Form.Item
             name="minPurchase"
             label="Minimum Purchase Amount"
-            rules={[{ required: true, message: 'Please input the minimum purchase!' }]}
+            rules={[{ required: true, message: 'Please enter minimum purchase amount' }]}
           >
-            <InputNumber min={0} placeholder="Enter minimum purchase" style={{ width: '100%' }} />
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0}
+              placeholder="0"
+              formatter={value => formatVND(value)}
+              parser={value => value.replace(/[^\d]/g, '')}
+            />
           </Form.Item>
 
           <Form.Item
             name="usageLimit"
             label="Usage Limit"
-            rules={[{ required: true, message: 'Please input the usage limit!' }]}
+            rules={[{ required: true, message: 'Please enter usage limit' }]}
           >
-            <InputNumber min={1} placeholder="Enter usage limit" style={{ width: '100%' }} />
+            <InputNumber style={{ width: '100%' }} min={1} placeholder="100" />
+          </Form.Item>
+
+          <Form.Item
+            name="perUserLimit"
+            label="Per User Limit"
+            rules={[{ required: true, message: 'Please enter per user limit' }]}
+          >
+            <InputNumber style={{ width: '100%' }} min={1} placeholder="1" />
           </Form.Item>
 
           <Form.Item
             name="startDate"
             label="Start Date"
-            rules={[{ required: true, message: 'Please select the start date!' }]}
+            rules={[{ required: true, message: 'Please select start date' }]}
           >
-            <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" style={{ width: '100%' }} />
+            <DatePicker style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             name="endDate"
             label="End Date"
-            rules={[{ required: true, message: 'Please select the end date!' }]}
+            rules={[{ required: true, message: 'Please select end date' }]}
           >
-            <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" style={{ width: '100%' }} />
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item name="applicableProducts" label="Applicable Products (IDs, comma separated)">
+            <Input placeholder="Leave blank for all products" />
+          </Form.Item>
+
+          <Form.Item
+            name="applicableCategories"
+            label="Applicable Categories (IDs, comma separated)"
+          >
+            <Input placeholder="Leave blank for all categories" />
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" style={{ marginRight: 8 }}>
-              {editingDiscount ? 'Update' : 'Create'}
-            </Button>
-            <Button onClick={handleCancel}>Cancel</Button>
+            <Space>
+              <Button type="primary" htmlType="submit">
+                {editingDiscount ? 'Update' : 'Create'}
+              </Button>
+              <Button onClick={() => setModalVisible(false)}>Cancel</Button>
+            </Space>
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </div>
   );
-};
-
-export default DiscountListPage;
+}

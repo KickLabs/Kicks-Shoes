@@ -46,7 +46,7 @@ const ProductCard = ({ product }) => {
           <div className="custom-product-stats-label">Remaining Products</div>
           <div className="custom-product-progress-bar">
             <div className="custom-product-progress-inner" />
-            <span className="custom-product-progress-value">{product.remaining}</span>
+            <span className="custom-product-progress-value">{product.stock}</span>
           </div>
         </div>
       </div>

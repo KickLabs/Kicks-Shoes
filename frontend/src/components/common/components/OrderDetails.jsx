@@ -84,33 +84,6 @@ export default function OrderDetails() {
       render: (_, r) => `${r.size} / ${r.color}`,
     },
     { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
-    { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => `$${v?.toFixed(2)}` },
-    {
-      title: 'Review',
-      key: 'review',
-      render: (_, record) => {
-        const fb = existingFeedbacks[record.product._id];
-        return fb ? (
-          <>
-            <Button type="link" onClick={() => openFeedbackModal(record.product._id, fb._id)}>
-              Edit
-            </Button>
-            <Button type="link" danger onClick={() => handleDeleteFeedback(fb._id)}>
-              Delete
-            </Button>
-          </>
-        ) : (
-          <Button
-            type="link"
-            className="feedback-btn"
-            onClick={() => openFeedbackModal(record.product._id)}
-          >
-            Leave Review
-          </Button>
-        );
-      },
-    },
-    { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
     { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => formatPrice(v || 0) },
     // Only show Review column for customers
     ...(user?.role === 'customer'
@@ -130,11 +103,21 @@ export default function OrderDetails() {
                 return null; // Don't render anything for subsequent occurrences
               }
 
-              const fb = existingFeedbacks[productId];
+              const feedbackKey = `${productId}_${orderId}`;
+              const fb = existingFeedbacks[feedbackKey];
               const canReview = order?.status === 'delivered';
 
               if (!canReview) {
                 return <span style={{ color: '#999', fontSize: '12px' }}>Not available yet</span>;
+              }
+
+              // Check if feedback exists and is deleted (status = false)
+              if (fb && fb.status === false) {
+                return (
+                  <span style={{ color: '#ff4d4f', fontSize: '12px', fontWeight: '500' }}>
+                    You comment have violated the policy
+                  </span>
+                );
               }
 
               return fb ? (
@@ -195,10 +178,12 @@ export default function OrderDetails() {
   useEffect(() => {
     const fetchFeedbacks = async () => {
       try {
-        const res = await axiosInstance.get(`/feedback?order=${orderId}`);
+        const res = await axiosInstance.get(`/feedback/all-including-deleted?order=${orderId}`);
         const map = {};
         (res.data.data || []).forEach(fb => {
-          map[fb.product] = fb;
+          // Use combination of product and order to allow multiple reviews for same product
+          const key = `${fb.product}_${fb.order}`;
+          map[key] = fb;
         });
         setExistingFeedbacks(map);
       } catch {
@@ -221,10 +206,12 @@ export default function OrderDetails() {
   };
   const refreshFeedbacks = async () => {
     try {
-      const res = await axiosInstance.get(`/feedback?order=${orderId}`);
+      const res = await axiosInstance.get(`/feedback/all-including-deleted?order=${orderId}`);
       const map = {};
       (res.data.data || []).forEach(fb => {
-        map[fb.product] = fb;
+        // Use combination of product and order to allow multiple reviews for same product
+        const key = `${fb.product}_${fb.order}`;
+        map[key] = fb;
       });
       setExistingFeedbacks(map);
     } catch {
