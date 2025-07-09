@@ -25,6 +25,12 @@ const axiosInstance = axios.create({
 });
 
 axiosInstance.interceptors.request.use(config => {
+  // Đừng đặt Content-Type cho multipart/form-data vì Axios sẽ tự đặt boundary
+  if (config.data instanceof FormData) {
+    // Khi gửi FormData, để Axios tự động thiết lập Content-Type với boundary
+    delete config.headers['Content-Type'];
+  }
+
   // 1) ưu tiên lấy từ accessToken
   let token = localStorage.getItem('accessToken');
   // 2) nếu không có, thử lấy từ key 'token'
@@ -39,6 +45,7 @@ axiosInstance.interceptors.request.use(config => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
