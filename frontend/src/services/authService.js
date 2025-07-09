@@ -116,11 +116,11 @@ const authService = {
   // Update user profile
   async updateProfile(userData) {
     try {
-      const response = await axiosInstance.put(`/auth/update-profile`, userData, {
-        headers: {
-          ...(userData instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-        },
-      });
+      // Đối với FormData, không cần thiết lập Content-Type, Axios sẽ tự xử lý
+      const response = await axiosInstance.put(`/auth/update-profile`, userData);
+
+      console.log('Profile update response:', response.data);
+
       if (response.data.success) {
         const updatedUser = response.data.data;
         // Update stored user info
