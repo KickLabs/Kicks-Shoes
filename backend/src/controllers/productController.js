@@ -1,15 +1,8 @@
-/**
- * @fileoverview Improved Product Controller
- * @created 2025-06-08
- * @file productController.js
- * @description Improved controller with better error handling
- */
-
-import { validationResult } from 'express-validator';
 import { ProductService } from '../services/product.service.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
 import Report from '../models/Report.js';
+import Product from '../models/Product.js';
 
 /**
  * Create a new product
@@ -37,7 +30,6 @@ export const createProduct = async (req, res, next) => {
       stack: error.stack,
     });
 
-    // Handle Mongoose validation errors
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
@@ -50,7 +42,6 @@ export const createProduct = async (req, res, next) => {
       });
     }
 
-    // Handle duplicate key errors
     if (error.code === 11000) {
       const duplicateField = Object.keys(error.keyPattern)[0];
       return res.status(400).json({
@@ -60,7 +51,6 @@ export const createProduct = async (req, res, next) => {
       });
     }
 
-    // Handle cast errors (invalid ObjectId, etc.)
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
@@ -70,7 +60,6 @@ export const createProduct = async (req, res, next) => {
       });
     }
 
-    // Generic error response
     res.status(500).json({
       success: false,
       message: error.message || 'Internal server error',
@@ -80,7 +69,7 @@ export const createProduct = async (req, res, next) => {
 };
 
 /**
- * Update product
+ * FIXED: Update product with proper finalPrice recalculation
  * @route PUT /api/products/:id
  * @access Private/Admin
  */
@@ -91,13 +80,62 @@ export const updateProduct = async (req, res, next) => {
 
     logger.info('Updating product', { productId, updateData: req.body });
 
-    const updatedProduct = await ProductService.updateProduct(productId, req.body);
-    if (!updatedProduct) {
+    // FIXED: Use direct MongoDB update to trigger middleware
+    const product = await Product.findById(productId);
+    if (!product) {
       return res.status(404).json({
         success: false,
         message: 'Product not found',
       });
     }
+
+    // Update fields manually to ensure middleware is triggered
+    if (req.body.name) product.name = req.body.name.trim();
+    if (req.body.summary !== undefined) product.summary = req.body.summary?.trim() || '';
+    if (req.body.description !== undefined)
+      product.description = req.body.description?.trim() || '';
+    if (req.body.brand) product.brand = req.body.brand;
+    if (req.body.category) product.category = req.body.category;
+
+    // IMPORTANT: Update price fields to trigger finalPrice recalculation
+    if (req.body.price) {
+      product.price = {
+        regular: Number(req.body.price.regular) || 0,
+        discountPercent: Number(req.body.price.discountPercent) || 0,
+        isOnSale: Boolean(req.body.price.isOnSale),
+      };
+      console.log('Updated price:', product.price);
+    }
+
+    if (req.body.variants) {
+      product.variants = {
+        sizes: req.body.variants.sizes || [],
+        colors: req.body.variants.colors || [],
+      };
+    }
+
+    if (req.body.inventory !== undefined) {
+      product.inventory = Array.isArray(req.body.inventory) ? req.body.inventory : [];
+    }
+
+    if (req.body.images !== undefined) {
+      product.images = Array.isArray(req.body.images) ? req.body.images : [];
+    }
+
+    if (req.body.mainImage !== undefined) {
+      product.mainImage = req.body.mainImage || '';
+    }
+
+    if (req.body.tags !== undefined) {
+      product.tags = Array.isArray(req.body.tags) ? req.body.tags : [];
+    }
+
+    if (req.body.status !== undefined) product.status = Boolean(req.body.status);
+    if (req.body.stock !== undefined) product.stock = Number(req.body.stock) || 0;
+    if (req.body.isNew !== undefined) product.isNew = Boolean(req.body.isNew);
+
+    // Save the product (this will trigger pre-save middleware and recalculate finalPrice)
+    const updatedProduct = await product.save();
 
     logger.info('Product updated successfully', { productId });
     res.status(200).json({
@@ -112,7 +150,6 @@ export const updateProduct = async (req, res, next) => {
       stack: error.stack,
     });
 
-    // Handle validation errors
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
@@ -129,6 +166,33 @@ export const updateProduct = async (req, res, next) => {
       success: false,
       message: error.message || 'Internal server error',
       ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
+    });
+  }
+};
+
+// ADDED: New endpoint to manually recalculate finalPrice
+export const recalculateFinalPrice = async (req, res, next) => {
+  try {
+    const productId = req.params.id;
+    console.log('Recalculating final price for product:', productId);
+
+    const updatedProduct = await Product.updateProductFinalPrice(productId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Final price recalculated successfully',
+      data: {
+        productId: updatedProduct._id,
+        name: updatedProduct.name,
+        price: updatedProduct.price,
+        finalPrice: updatedProduct.finalPrice,
+      },
+    });
+  } catch (error) {
+    console.error('Error recalculating final price:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error',
     });
   }
 };
@@ -222,7 +286,6 @@ export const getProductById = async (req, res, next) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    // Destructure all possible filters from query
     const {
       size,
       color,
@@ -237,7 +300,6 @@ export const getAllProducts = async (req, res) => {
       limit = 9,
     } = req.query;
 
-    // Build a single query object for the service
     const query = {
       size: size ? Number(size) : undefined,
       color: color || undefined,
@@ -294,11 +356,6 @@ export const getRecommendProductsForProductDetails = async (req, res) => {
   }
 };
 
-/**
- * Report a product
- * @route POST /api/products/:id/report
- * @access Private (user)
- */
 export const reportProduct = async (req, res, next) => {
   try {
     const productId = req.params.id;
@@ -318,7 +375,6 @@ export const reportProduct = async (req, res, next) => {
     });
     await report.save();
 
-    // Send notification emails
     try {
       const User = (await import('../models/User.js')).default;
       const Product = (await import('../models/Product.js')).default;
@@ -328,7 +384,6 @@ export const reportProduct = async (req, res, next) => {
       const shopUser = await User.findOne({ role: 'shop' });
       const reporterUser = await User.findById(req.user.id);
 
-      // Email to shop about new report
       if (shopUser && shopUser.email && product) {
         await sendTemplatedEmail({
           email: shopUser.email,
@@ -343,7 +398,6 @@ export const reportProduct = async (req, res, next) => {
         });
       }
 
-      // Email to reporter confirming report
       if (reporterUser && reporterUser.email && product) {
         await sendTemplatedEmail({
           email: reporterUser.email,
@@ -358,7 +412,6 @@ export const reportProduct = async (req, res, next) => {
       }
     } catch (emailError) {
       console.error('Error sending notification emails:', emailError);
-      // Don't fail the report if email fails
     }
 
     res.status(201).json({ success: true, message: 'Product reported successfully', data: report });
@@ -372,11 +425,6 @@ export const reportProduct = async (req, res, next) => {
   }
 };
 
-/**
- * Get all reports of current user
- * @route GET /api/reports/my
- * @access Private (user)
- */
 export const getMyReports = async (req, res) => {
   try {
     const reports = await Report.find({ reporter: req.user.id })

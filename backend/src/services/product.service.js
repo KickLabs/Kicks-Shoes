@@ -1,14 +1,13 @@
 /**
- * @fileoverview Fixed Product Service
+ * @fileoverview Updated Product Service with Final Price Filtering
  * @created 2025-06-08
  * @file product.service.js
- * @description Fixed service to match frontend data structure
+ * @description Updated service to filter by finalPrice instead of regular price
  */
 
 import Product from '../models/Product.js';
 import mongoose from 'mongoose';
 import logger from '../utils/logger.js';
-import Category from '../models/Category.js';
 
 /**
  * Service class for handling product operations
@@ -25,38 +24,35 @@ export class ProductService {
 
       const {
         name,
-        summary, // Frontend sends 'summary', not 'description'
+        summary,
         description,
         price,
         category,
         brand,
         images,
-        mainImage, // Add mainImage support
+        mainImage,
         variants,
-        inventory, // Add inventory support
+        inventory,
         tags,
         status,
         stock,
         sales,
         rating,
-        isNew, // Add isNew support
+        isNew,
       } = productData;
 
-      // FIXED: Only validate truly required fields
       if (!name || !category || !brand) {
         throw new Error('Missing required fields: name, category, brand');
       }
 
-      // FIXED: Validate price structure
       if (!price || typeof price !== 'object' || price.regular === undefined) {
         throw new Error('Invalid price structure');
       }
 
-      // FIXED: Create product with all frontend fields
       const product = new Product({
         name: name.trim(),
-        summary: summary?.trim() || '', // Use summary from frontend
-        description: description?.trim() || '', // Optional description
+        summary: summary?.trim() || '',
+        description: description?.trim() || '',
         price: {
           regular: Number(price.regular) || 0,
           discountPercent: Number(price.discountPercent) || 0,
@@ -64,19 +60,19 @@ export class ProductService {
         },
         category,
         brand,
-        images: Array.isArray(images) ? images : [], // Handle empty arrays
-        mainImage: mainImage || '', // Add mainImage
+        images: Array.isArray(images) ? images : [],
+        mainImage: mainImage || '',
         variants: {
-          sizes: variants?.sizes || [], // Handle auto-generated variants
+          sizes: variants?.sizes || [],
           colors: variants?.colors || [],
         },
-        inventory: Array.isArray(inventory) ? inventory : [], // Add inventory
+        inventory: Array.isArray(inventory) ? inventory : [],
         tags: Array.isArray(tags) ? tags : [],
         status: status !== undefined ? Boolean(status) : true,
         stock: Number(stock) || 0,
         sales: Number(sales) || 0,
         rating: Number(rating) || 0,
-        isNew: Boolean(isNew), // Add isNew
+        isNew: Boolean(isNew),
       });
 
       const savedProduct = await product.save();
@@ -107,7 +103,6 @@ export class ProductService {
         throw new Error('Invalid product ID');
       }
 
-      // Clean and validate update data
       const cleanUpdateData = {};
 
       if (updateData.name) cleanUpdateData.name = updateData.name.trim();
@@ -190,7 +185,6 @@ export class ProductService {
 
       for (const productData of productsData) {
         try {
-          // Use the same validation as createProduct
           if (!productData.name || !productData.brand || !productData.category) {
             throw new Error('Missing required fields: name, brand, category');
           }
@@ -295,6 +289,7 @@ export class ProductService {
 
   /**
    * Get all products with optional filters, sorting and pagination
+   * Updated to filter by finalPrice instead of regular price
    * @param {Object} query - Query parameters for filtering, sorting, and pagination
    * @returns {Promise<{products: Array<Product>, total: number}>} List of matching products and total count
    */
@@ -333,44 +328,34 @@ export class ProductService {
         filter.$or = [{ 'variants.colors': { $in: [color] } }, { 'inventory.color': color }];
       }
     }
+
+    // UPDATED: Filter by finalPrice instead of regular price
     if (minPrice || maxPrice) {
-      filter['price.regular'] = {};
-      if (minPrice) filter['price.regular'].$gte = minPrice;
-      if (maxPrice) filter['price.regular'].$lte = maxPrice;
+      filter.finalPrice = {};
+      if (minPrice) filter.finalPrice.$gte = Number(minPrice);
+      if (maxPrice) filter.finalPrice.$lte = Number(maxPrice);
     }
 
-    // Handle sorting for nested fields
+    // Handle sorting
     let sortOptions = {};
     if (sortBy === 'price.regular') {
-      // For nested price field, we need to handle it specially
       sortOptions = { 'price.regular': order === 'asc' ? 1 : -1 };
     } else if (sortBy === 'price') {
-      // Alias for price.regular
-      sortOptions = { 'price.regular': order === 'asc' ? 1 : -1 };
+      // UPDATED: Sort by finalPrice when price is requested
+      sortOptions = { finalPrice: order === 'asc' ? 1 : -1 };
+    } else if (sortBy === 'finalPrice') {
+      // Allow explicit finalPrice sorting
+      sortOptions = { finalPrice: order === 'asc' ? 1 : -1 };
     } else if (sortBy === 'sales') {
-      // Handle sales field - ensure it exists and has default value
       sortOptions = { sales: order === 'asc' ? 1 : -1 };
-      // Add a default value for products without sales field
       filter.sales = { $exists: true };
     } else {
-      // For regular fields
       sortOptions = { [sortBy]: order === 'asc' ? 1 : -1 };
     }
 
     const skip = (page - 1) * limit;
-    console.log('Product filter:', JSON.stringify(filter, null, 2));
+    console.log('Product filter (using finalPrice):', JSON.stringify(filter, null, 2));
     console.log('Sort options:', JSON.stringify(sortOptions, null, 2));
-    console.log('Filter parameters:', {
-      size,
-      color,
-      brand,
-      category,
-      minPrice,
-      maxPrice,
-      isNew,
-      sortBy,
-      order,
-    });
 
     const total = await Product.countDocuments(filter);
     const products = await Product.find(filter)
@@ -385,6 +370,7 @@ export class ProductService {
 
   /**
    * Get new drops with optional filters and pagination
+   * Updated to filter by finalPrice
    * @param {Object} options - { page, limit, filters }
    * @returns {Promise<{data: Array<Product>, total: number, page: number, limit: number, totalPages: number}>}
    */
@@ -392,16 +378,14 @@ export class ProductService {
     const filter = { isNew: true, status: true };
     if (filters.brand) filter.brand = filters.brand;
     if (filters.category) filter.category = filters.category;
-    if (filters.minPrice)
-      filter['price.regular'] = {
-        ...(filter['price.regular'] || {}),
-        $gte: Number(filters.minPrice),
-      };
-    if (filters.maxPrice)
-      filter['price.regular'] = {
-        ...(filter['price.regular'] || {}),
-        $lte: Number(filters.maxPrice),
-      };
+
+    // UPDATED: Use finalPrice for filtering
+    if (filters.minPrice || filters.maxPrice) {
+      filter.finalPrice = {};
+      if (filters.minPrice) filter.finalPrice.$gte = Number(filters.minPrice);
+      if (filters.maxPrice) filter.finalPrice.$lte = Number(filters.maxPrice);
+    }
+
     if (filters.size) filter['variants.sizes'] = { $in: [filters.size] };
     if (filters.color) filter['variants.colors'] = { $in: [filters.color] };
 

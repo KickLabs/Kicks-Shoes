@@ -9,15 +9,11 @@ const ProductCard = ({ product }) => {
   const [isFavourite, setIsFavourite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const displayPrice = product.price.isOnSale
-    ? product.price.regular * (1 - product.price.discountPercent / 100)
-    : product.price.regular;
+  const displayPrice = product.finalPrice || product.price?.regular || 0;
 
-  // Check if product is in favourites on component mount
   useEffect(() => {
     const checkFavouriteStatus = async () => {
       try {
-        // Check if user is logged in before making API call
         const userInfo = localStorage.getItem('userInfo');
         if (!userInfo) {
           setIsFavourite(false);
@@ -27,7 +23,6 @@ const ProductCard = ({ product }) => {
         setIsFavourite(response.isFavourite);
       } catch (error) {
         console.error('Error checking favourite status:', error);
-        // If error occurs (e.g., not authenticated), set to false
         setIsFavourite(false);
       }
     };
@@ -37,10 +32,8 @@ const ProductCard = ({ product }) => {
 
   const handleFavouriteToggle = async () => {
     try {
-      // Check if user is logged in before making API call
       const userInfo = localStorage.getItem('userInfo');
       if (!userInfo) {
-        // Redirect to login page if not authenticated
         window.location.href = '/login';
         return;
       }
@@ -54,7 +47,6 @@ const ProductCard = ({ product }) => {
       }
     } catch (error) {
       console.error('Error toggling favourite:', error);
-      // If error occurs (e.g., token expired), redirect to login
       if (error.message?.includes('Not authorized') || error.message?.includes('401')) {
         window.location.href = '/login';
       }
