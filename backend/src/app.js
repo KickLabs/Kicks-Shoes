@@ -42,6 +42,9 @@ import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import chatRoutes from './routes/chatRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -59,10 +62,20 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://10.0.2.2:3000', // Android emulator
+      'http://10.0.2.2:5173', // Android emulator with different port
+      'http://localhost:19006', // Expo dev server
+      'http://127.0.0.1:19006', // Expo dev server alternative
+      'exp://localhost:19000', // Expo Go
+      'exp://127.0.0.1:19000', // Expo Go alternative
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   })
 );
 app.use(morgan('dev'));
@@ -94,6 +107,7 @@ app.use('/api/favourites', favouriteRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
+app.use('/api/chat', chatRoutes);
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
@@ -102,9 +116,34 @@ startDiscountStatusUpdateCron();
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0'; // Cho phép lắng nghe mọi địa chỉ mạng
+const server = http.createServer(app);
 
-app.listen(PORT, () => {
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'http://localhost:3000', // Cho web dev
+      'http://10.0.2.2:3000', // Cho Android emulator
+      'http://localhost:5173', // Vite dev server
+      'http://127.0.0.1:5173', // Alternative localhost
+      'http://localhost:19006', // Expo dev server
+      'http://127.0.0.1:19006', // Expo dev server alternative
+      'exp://localhost:19000', // Expo Go
+      'exp://127.0.0.1:19000', // Expo Go alternative
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  },
+});
+
+import setupSocketHandlers from './socket.js';
+setupSocketHandlers(io);
+
+server.listen(PORT, HOST, () => {
   logger.info(`Server is running on port ${PORT}`);
 });
 
 export default app;
+export { server, io };
