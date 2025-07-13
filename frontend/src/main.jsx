@@ -345,10 +345,10 @@ const router = createBrowserRouter([
             ),
           },
           {
-            path: 'settings',
+            path: 'chat',
             element: (
               <ShopOwnerProtectedRoute>
-                <ShopDashboard />
+                <ChatPage />
               </ShopOwnerProtectedRoute>
             ),
           },

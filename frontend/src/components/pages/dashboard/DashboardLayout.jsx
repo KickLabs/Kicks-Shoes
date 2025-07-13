@@ -5,6 +5,7 @@ import Sidebar from '../../common/components/Sidebar';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import { ActiveTabContext } from '../../common/components/ActiveTabContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
   DashboardOutlined,
   AppstoreOutlined,
@@ -14,6 +15,7 @@ import {
   UserOutlined,
   BarChartOutlined,
   ExclamationCircleOutlined,
+  CommentOutlined,
 } from '@ant-design/icons';
 
 const { Content } = Layout;
@@ -45,11 +47,14 @@ const shopTabs = [
   { key: '3', name: 'Orders', icon: <UnorderedListOutlined />, path: '/shop/orders' },
   { key: '4', name: 'Feedback', icon: <MessageOutlined />, path: '/shop/feedback' },
   { key: '5', name: 'Discounts', icon: <WalletOutlined />, path: '/shop/discounts' },
+  { key: '6', name: 'Chat', icon: <CommentOutlined />, path: '/shop/chat' },
 ];
 
 export default function DashboardLayout() {
   const [activeTab, setActiveTab] = useState('1');
+  const [chatOpen, setChatOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
 
   // Determine which tabs to show based on current path
   const getTabs = () => {
@@ -75,6 +80,44 @@ export default function DashboardLayout() {
           </Content>
           <Footer />
         </Layout>
+        {chatOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 90,
+              right: 32,
+              width: 400,
+              height: 600,
+              background: '#fff',
+              borderRadius: 16,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+              zIndex: 2002,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <div
+              style={{
+                padding: 8,
+                borderBottom: '1px solid #eee',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span style={{ fontWeight: 600, fontSize: 16 }}>Shop Chat</span>
+              <button
+                style={{ border: 'none', background: 'none', fontSize: 18, cursor: 'pointer' }}
+                onClick={() => setChatOpen(false)}
+              >
+                Đóng
+              </button>
+            </div>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <ChatPage role="shop" shopId={user?._id} />
+            </div>
+          </div>
+        )}
       </Layout>
     </ActiveTabContext.Provider>
   );

@@ -61,6 +61,9 @@ import {
 } from '../../../services/dashboardService';
 import axiosInstance from '../../../services/axiosInstance';
 import { formatCompactVND, formatVND } from '../../../utils/currency';
+import ChatPage from '../../common/components/ChatPage';
+import { MessageOutlined } from '@ant-design/icons';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const { Search } = Input;
 const { TextArea } = Input;
@@ -68,6 +71,7 @@ const { Option } = Select;
 
 export default function ShopDashboard() {
   const location = useLocation();
+  const { user } = useAuth();
 
   // State for real data
   const [stats, setStats] = useState(null);
@@ -90,6 +94,7 @@ export default function ShopDashboard() {
   const [reportDescription, setReportDescription] = useState('');
   const [reportEvidence, setReportEvidence] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Determine current view from URL path
   const getCurrentView = () => {
@@ -933,7 +938,60 @@ export default function ShopDashboard() {
   };
 
   return (
-    <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>
+    <div
+      style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh', position: 'relative' }}
+    >
+      {/* Nút mở chat nổi ở góc phải */}
+      <Button
+        type="primary"
+        shape="circle"
+        icon={<MessageOutlined />}
+        size="large"
+        style={{
+          position: 'fixed',
+          bottom: 32,
+          right: 32,
+          zIndex: 1001,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+        }}
+        onClick={() => setChatOpen(true)}
+      />
+      {/* Popup chat */}
+      {chatOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 90,
+            right: 32,
+            width: 400,
+            height: 600,
+            background: '#fff',
+            borderRadius: 16,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+            zIndex: 1002,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              padding: 8,
+              borderBottom: '1px solid #eee',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <span style={{ fontWeight: 600, fontSize: 16 }}>Shop Chat</span>
+            <Button type="text" onClick={() => setChatOpen(false)}>
+              Đóng
+            </Button>
+          </div>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ChatPage role="shop" shopId={user?._id} />
+          </div>
+        </div>
+      )}
       {renderView()}
 
       {/* Add Discount Modal */}
@@ -1142,7 +1200,6 @@ export default function ShopDashboard() {
               }}
             />
           </Form.Item>
-
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
               Create Discount
