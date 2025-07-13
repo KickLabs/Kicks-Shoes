@@ -21,12 +21,19 @@ export const protect = async (req, res, next) => {
     let token;
 
     // Get token from header
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
+    const authHeader = req.headers.authorization;
+
+    logger.info('RAW HEADER AUTHORIZATION:', authHeader);
+    logger.info('HEADER TYPE:', typeof authHeader);
+
+    if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
     }
 
-    if (!token) {
-      return next(new ErrorResponse('Not authorized to access this route', 401));
+    logger.info('TOKEN RECEIVED:', token);
+
+    if (!token || token === 'undefined' || token === 'null' || token.trim() === '') {
+      return next(new ErrorResponse('No valid token provided', 401));
     }
 
     try {
@@ -58,6 +65,7 @@ export const protect = async (req, res, next) => {
       logger.error('Token verification failed', {
         error: error.message,
         stack: error.stack,
+        token,
       });
       return next(new ErrorResponse('Not authorized to access this route', 401));
     }

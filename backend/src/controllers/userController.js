@@ -217,3 +217,20 @@ export const toggleUserStatus = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+/**
+ * Get shop user
+ * @route GET /api/users/shop
+ * @access Public
+ */
+export const getShopUser = async (req, res) => {
+  try {
+    const shopUser = await User.findOne({ role: 'shop' }).select('-password');
+    if (!shopUser) {
+      return res.status(404).json({ message: 'Shop not found' });
+    }
+    res.json(shopUser);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

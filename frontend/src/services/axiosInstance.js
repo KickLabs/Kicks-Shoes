@@ -19,8 +19,20 @@
 // src/services/axiosInstance.js
 import axios from 'axios';
 
+const getBaseURL = () => {
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:3000/api';
+  }
+
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+
+  return '/api';
+};
+
 const axiosInstance = axios.create({
-  baseURL: '/api',
+  baseURL: getBaseURL(),
   headers: { 'Content-Type': 'application/json' },
 });
 

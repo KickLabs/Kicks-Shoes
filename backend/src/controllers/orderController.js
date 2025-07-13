@@ -298,6 +298,41 @@ export const getOrderById = async (req, res, next) => {
 };
 
 /**
+ * Get orders for current user
+ * @route GET /api/orders/my-orders
+ * @access Private
+ */
+export const getMyOrders = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const userId = req.user.id; // Get current user ID from token
+
+    logger.info('Getting orders for current user:', { userId, page, limit, status });
+
+    const result = await OrderService.getOrderByUserId(userId, {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      status,
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'No orders found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    logger.error('Error getting current user orders:', error);
+    next(error);
+  }
+};
+
+/**
  * Get orders by user ID
  * @route GET /api/orders/user/:userId
  * @access Private
@@ -786,4 +821,5 @@ export const orderRoutes = {
   cancelOrder,
   refundOrder,
   updateOrderStatus,
+  getMyOrders,
 };
