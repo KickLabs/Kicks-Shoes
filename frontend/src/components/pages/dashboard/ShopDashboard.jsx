@@ -1200,7 +1200,6 @@ export default function ShopDashboard() {
               }}
             />
           </Form.Item>
-
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
               Create Discount
