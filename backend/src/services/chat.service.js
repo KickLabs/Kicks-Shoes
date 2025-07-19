@@ -31,12 +31,12 @@ export const saveMessage = async ({ conversationId, sender, receiver, content })
 export const getConversationsByUser = async userId => {
   return Conversation.find({ participants: userId })
     .sort({ lastUpdated: -1 })
-    .populate('participants', 'name email');
+    .populate('participants', 'fullName username email avatar');
 };
 
 export const getMessagesByConversation = async conversationId => {
   return Message.find({ conversationId })
     .sort({ timestamp: 1 })
-    .populate('sender', 'name email')
-    .populate('receiver', 'name email');
+    .populate('sender', 'fullName username email avatar')
+    .populate('receiver', 'fullName username email avatar');
 };

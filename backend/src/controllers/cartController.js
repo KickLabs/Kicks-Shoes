@@ -49,7 +49,7 @@ export const getCart = async (req, res) => {
 export const addOrUpdateItem = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { product, quantity, size, color, price } = req.body;
+    const { product, quantity, size, color, price, image } = req.body;
 
     // Validate required fields
     if (!product) {
@@ -83,11 +83,14 @@ export const addOrUpdateItem = async (req, res) => {
     );
 
     if (existingItem) {
-      // Nếu đã có, cập nhật quantity
+      // Nếu đã có, cập nhật quantity và image
       existingItem.quantity += quantity;
+      if (image) {
+        existingItem.image = image;
+      }
     } else {
       // Nếu chưa có, thêm mới
-      cart.items.push({ product, quantity, size, color, price });
+      cart.items.push({ product, quantity, size, color, price, image });
     }
 
     recalculateTotalPrice(cart);
