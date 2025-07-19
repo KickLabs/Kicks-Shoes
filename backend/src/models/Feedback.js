@@ -56,6 +56,11 @@ const feedbackSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    deletedBy: {
+      type: String,
+      enum: ['user', 'admin', null],
+      default: null,
+    },
   },
   {
     timestamps: true,

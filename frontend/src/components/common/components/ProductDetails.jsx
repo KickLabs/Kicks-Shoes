@@ -386,9 +386,6 @@ export default function ProductDetails() {
     const token = userInfo ? JSON.parse(userInfo).token : null;
     return {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'Cache-Control': 'no-cache',
-      Pragma: 'no-cache',
-      Expires: '0',
     };
   };
 
@@ -1045,7 +1042,7 @@ export default function ProductDetails() {
                   <span>Basic Information</span>
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1221,7 +1218,7 @@ export default function ProductDetails() {
                   <span>Pricing & Sales</span>
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1317,7 +1314,7 @@ export default function ProductDetails() {
                   <span>Product Variants (Auto-Generated from Inventory)</span>
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1445,7 +1442,7 @@ export default function ProductDetails() {
                   Add Inventory Item
                 </Button>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1536,7 +1533,7 @@ export default function ProductDetails() {
                   <span>Additional Information</span>
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1606,7 +1603,7 @@ export default function ProductDetails() {
                   <Badge count={fileList.length} style={{ backgroundColor: '#1890ff' }} />
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -1712,7 +1709,7 @@ export default function ProductDetails() {
 
         {/* Action Buttons */}
         <Card
-          bordered={false}
+          variant="borderless"
           style={{
             borderRadius: 12,
             marginTop: 24,
@@ -1906,7 +1903,7 @@ export default function ProductDetails() {
         </Modal>
 
         {/* Custom CSS for row highlighting */}
-        <style jsx>{`
+        <style>{`
           .low-stock-row {
             background-color: #fff7e6 !important;
           }
