@@ -79,7 +79,7 @@ const AppHeader = () => {
       p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.brand?.toLowerCase().includes(search.toLowerCase()) ||
-        p.category?.toLowerCase().includes(search.toLowerCase())
+        (p.category?.name && p.category.name.toLowerCase().includes(search.toLowerCase()))
     );
     setFiltered(result);
     setShowDropdown(true);

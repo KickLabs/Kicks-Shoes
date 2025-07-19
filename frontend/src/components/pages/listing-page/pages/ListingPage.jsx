@@ -21,11 +21,11 @@ const ListingPage = () => {
 
   const sortOptions = [
     { value: 'createdAt-desc', label: 'Latest', sortBy: 'createdAt', sortOrder: 'desc' },
-    { value: 'price-asc', label: 'Price: Low to High', sortBy: 'price.regular', sortOrder: 'asc' },
+    { value: 'price-asc', label: 'Price: Low to High', sortBy: 'finalPrice', sortOrder: 'asc' },
     {
       value: 'price-desc',
       label: 'Price: High to Low',
-      sortBy: 'price.regular',
+      sortBy: 'finalPrice',
       sortOrder: 'desc',
     },
     { value: 'name-asc', label: 'Name: A-Z', sortBy: 'name', sortOrder: 'asc' },

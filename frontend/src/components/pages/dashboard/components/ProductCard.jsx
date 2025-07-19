@@ -14,7 +14,9 @@ const ProductCard = ({ product }) => {
             <div>
               <div className="custom-product-name">{product.name}</div>
               <div className="custom-product-type">{product.type}</div>
-              <div className="custom-product-price">{formatPrice(product.price.regular)}</div>
+              <div className="custom-product-price">
+                {formatPrice(product.finalPrice || product.price.regular)}
+              </div>
             </div>
           </div>
         </div>

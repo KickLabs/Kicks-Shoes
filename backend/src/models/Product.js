@@ -173,7 +173,7 @@ const productSchema = new Schema(
 
 productSchema.index({ name: 'text', brand: 'text', description: 'text' });
 productSchema.index({ 'inventory.size': 1, 'inventory.color': 1 });
-productSchema.index({ finalPrice: 1 }); // Add index for finalPrice filtering
+// finalPrice index is already defined in the schema, so we don't need to add it again
 
 productSchema.virtual('discountedPrice').get(function () {
   if (!this.price.isOnSale) return this.price.regular;
@@ -251,12 +251,15 @@ productSchema.pre(['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate'], async 
   const update = this.getUpdate();
   console.log('Update data:', JSON.stringify(update, null, 2));
 
+  // Handle both $set and direct field updates
+  const updateData = update.$set || update;
+
   if (
-    update.$set &&
-    (update.$set.price ||
-      update.$set['price.regular'] ||
-      update.$set['price.isOnSale'] ||
-      update.$set['price.discountPercent'])
+    updateData &&
+    (updateData.price ||
+      updateData['price.regular'] ||
+      updateData['price.isOnSale'] ||
+      updateData['price.discountPercent'])
   ) {
     console.log('Price fields detected in update, calculating finalPrice...');
 
@@ -264,10 +267,10 @@ productSchema.pre(['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate'], async 
 
     if (docToUpdate) {
       const currentPrice = docToUpdate.price || {};
-      const updatedPrice = update.$set.price || {
-        regular: update.$set['price.regular'] ?? currentPrice.regular,
-        isOnSale: update.$set['price.isOnSale'] ?? currentPrice.isOnSale,
-        discountPercent: update.$set['price.discountPercent'] ?? currentPrice.discountPercent,
+      const updatedPrice = updateData.price || {
+        regular: updateData['price.regular'] ?? currentPrice.regular,
+        isOnSale: updateData['price.isOnSale'] ?? currentPrice.isOnSale,
+        discountPercent: updateData['price.discountPercent'] ?? currentPrice.discountPercent,
       };
 
       console.log('Current price:', currentPrice);
@@ -283,8 +286,12 @@ productSchema.pre(['updateOne', 'findOneAndUpdate', 'findByIdAndUpdate'], async 
 
       console.log('Calculated finalPrice:', finalPrice);
 
-      if (!update.$set) update.$set = {};
-      update.$set.finalPrice = finalPrice;
+      // Update the finalPrice in the update operation
+      if (update.$set) {
+        update.$set.finalPrice = finalPrice;
+      } else {
+        update.finalPrice = finalPrice;
+      }
     }
   }
 

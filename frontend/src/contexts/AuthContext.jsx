@@ -8,11 +8,30 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (user) {
-      setUser(user);
-    }
-    setLoading(false);
+    const initializeAuth = async () => {
+      try {
+        const user = authService.getCurrentUser();
+        if (user) {
+          // Check with server to ensure user is not banned
+          const serverUser = await authService.getCurrentUserFromServer();
+          if (serverUser) {
+            setUser(serverUser);
+          } else {
+            // User is banned or token is invalid, clear everything
+            setUser(null);
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        // Clear everything on error
+        authService.logout();
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async credentials => {

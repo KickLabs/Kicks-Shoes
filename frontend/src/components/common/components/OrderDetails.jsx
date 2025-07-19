@@ -111,12 +111,25 @@ export default function OrderDetails() {
                 return <span style={{ color: '#999', fontSize: '12px' }}>Not available yet</span>;
               }
 
-              // Check if feedback exists and is deleted (status = false)
-              if (fb && fb.status === false) {
+              // Check if feedback exists and is deleted by admin (status = false and deletedBy = 'admin')
+              if (fb && fb.status === false && fb.deletedBy === 'admin') {
                 return (
                   <span style={{ color: '#ff4d4f', fontSize: '12px', fontWeight: '500' }}>
-                    You comment have violated the policy
+                    Your comment has violated the policy
                   </span>
+                );
+              }
+
+              // If feedback doesn't exist (was hard deleted by user), allow them to review again
+              if (!fb) {
+                return (
+                  <Button
+                    type="link"
+                    className="feedback-btn"
+                    onClick={() => openFeedbackModal(productId)}
+                  >
+                    Leave Review
+                  </Button>
                 );
               }
 

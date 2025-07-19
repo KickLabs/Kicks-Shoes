@@ -1094,8 +1094,8 @@ export const deleteFeedback = asyncHandler(async (req, res) => {
     throw new ErrorResponse('Feedback not found', 404);
   }
 
-  // Soft delete: set status to false
-  await Feedback.findByIdAndUpdate(feedbackId, { status: false });
+  // Soft delete: set status to false and mark as deleted by admin
+  await Feedback.findByIdAndUpdate(feedbackId, { status: false, deletedBy: 'admin' });
 
   // Send notification emails
   try {
@@ -1322,8 +1322,8 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
     const shopUser = await User.findOne({ role: 'shop' });
 
     if (resolution === 'delete_comment') {
-      // Soft delete: cập nhật status = false
-      await Feedback.findByIdAndUpdate(report.targetId, { status: false });
+      // Soft delete: cập nhật status = false and mark as deleted by admin
+      await Feedback.findByIdAndUpdate(report.targetId, { status: false, deletedBy: 'admin' });
 
       console.log('Processing delete_comment resolution:', {
         shopUser: shopUser ? { email: shopUser.email, fullName: shopUser.fullName } : null,

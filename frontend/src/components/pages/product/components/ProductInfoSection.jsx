@@ -98,13 +98,18 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
         return;
       }
 
+      // Lấy giá đã giảm nếu có giảm giá, ngược lại lấy giá gốc
+      const finalPrice = product.price.isOnSale
+        ? product.price.regular * (1 - product.price.discountPercent / 100)
+        : product.price.regular;
+
       await dispatch(
         addOrUpdateCartItem({
           product: product._id,
           quantity: 1,
           size: selectedSize,
           color: selectedColor,
-          price: product.price.regular,
+          price: finalPrice,
         })
       ).unwrap();
       message.success('Added to cart successfully!');

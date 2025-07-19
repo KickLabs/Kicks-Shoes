@@ -53,15 +53,21 @@ export class FeedbackService {
     }
   }
 
-  static async deleteFeedback(feedbackId) {
+  static async deleteFeedback(feedbackId, deletedBy = 'user') {
     try {
-      // Soft delete: set status to false instead of hard delete
-      const feedback = await Feedback.findByIdAndUpdate(
-        feedbackId,
-        { status: false },
-        { new: true }
-      );
-      return feedback;
+      if (deletedBy === 'user') {
+        // Hard delete for user self-deletion to avoid duplicate review issues
+        const feedback = await Feedback.findByIdAndDelete(feedbackId);
+        return feedback;
+      } else {
+        // Soft delete for admin deletion
+        const feedback = await Feedback.findByIdAndUpdate(
+          feedbackId,
+          { status: false, deletedBy },
+          { new: true }
+        );
+        return feedback;
+      }
     } catch (error) {
       throw new Error(error);
     }
