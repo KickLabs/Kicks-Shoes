@@ -163,17 +163,6 @@ export default function Header({ userRole = 'ADMIN' }) {
     return baseItems;
   };
 
-  const accountMenu = (
-    <Menu
-      items={getAccountMenuItems()}
-      style={{
-        minWidth: 200,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
-        borderRadius: 8,
-      }}
-    />
-  );
-
   const getRoleDisplayName = () => {
     switch (userRole) {
       case 'ADMIN':
@@ -286,7 +275,11 @@ export default function Header({ userRole = 'ADMIN' }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <BellOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
 
-        <Dropdown overlay={accountMenu} trigger={['click']} placement="bottomRight">
+        <Dropdown
+          menu={{ items: getAccountMenuItems() }}
+          trigger={['click']}
+          placement="bottomRight"
+        >
           <Button
             type="default"
             ref={accountBtnRef}

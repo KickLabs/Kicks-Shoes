@@ -118,7 +118,8 @@ export const updateFeedback = async (req, res, next) => {
 export const deleteFeedback = async (req, res, next) => {
   try {
     const feedbackId = req.params.id;
-    const deletedFeedback = await FeedbackService.deleteFeedback(feedbackId);
+    // User is deleting their own feedback
+    const deletedFeedback = await FeedbackService.deleteFeedback(feedbackId, 'user');
     if (!deletedFeedback) {
       return res.status(404).json({ success: false, message: 'Feedback not found' });
     }
@@ -410,8 +411,8 @@ export const adminApproveFeedback = async (req, res, next) => {
     }
 
     if (req.method === 'DELETE') {
-      // Soft delete: set status to false
-      await Feedback.findByIdAndUpdate(feedbackId, { status: false });
+      // Soft delete: set status to false and mark as deleted by admin
+      await Feedback.findByIdAndUpdate(feedbackId, { status: false, deletedBy: 'admin' });
 
       report.status = 'resolved';
       report.resolution = 'ban';

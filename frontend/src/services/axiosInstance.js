@@ -61,4 +61,58 @@ axiosInstance.interceptors.request.use(config => {
   return config;
 });
 
+// Add response interceptor
+axiosInstance.interceptors.response.use(
+  response => response,
+  async error => {
+    const originalRequest = error.config;
+
+    // Handle user banned (403)
+    if (error.response?.status === 403) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userInfo');
+      localStorage.removeItem('token');
+      window.location.href = '/banned';
+      return Promise.reject(error);
+    }
+
+    // Only handle token expiration (401) for non-auth endpoints
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url.includes('/refresh-token') &&
+      !originalRequest.url.includes('/change-password') &&
+      !originalRequest.url.includes('/login')
+    ) {
+      originalRequest._retry = true;
+      try {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        const response = await axiosInstance.post(`/auth/refresh-token`, {
+          refreshToken,
+        });
+
+        if (response.data.success) {
+          const { accessToken } = response.data.data;
+          localStorage.setItem('accessToken', accessToken);
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return axiosInstance(originalRequest);
+        }
+      } catch (refreshError) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userInfo');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default axiosInstance;

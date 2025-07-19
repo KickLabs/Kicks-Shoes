@@ -58,6 +58,16 @@ export const protect = async (req, res, next) => {
         return next(new ErrorResponse('Please verify your email before accessing this route', 401));
       }
 
+      // Check if user is banned
+      if (!user.status) {
+        return next(
+          new ErrorResponse(
+            'Your account has been deactivated. Please contact support for assistance.',
+            403
+          )
+        );
+      }
+
       // Add user to request
       req.user = user;
       next();
@@ -112,7 +122,7 @@ export const optionalAuth = async (req, res, next) => {
 
       // Trong requireRoles hoặc authorize
 
-      if (user && user.isVerified) {
+      if (user && user.isVerified && user.status) {
         req.user = user;
       } else {
         req.user = null;
