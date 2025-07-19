@@ -16,7 +16,7 @@ const ChatWidget = () => {
   // Kết nối socket khi component mount
   useEffect(() => {
     if (user) {
-      socketRef.current = io('http://localhost:5000');
+      socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000');
 
       // Lắng nghe tin nhắn mới để cập nhật unread count
       socketRef.current.on('receive_message', message => {

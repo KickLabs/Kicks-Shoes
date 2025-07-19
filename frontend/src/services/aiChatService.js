@@ -3,11 +3,20 @@
  * Handles streaming responses and conversation management
  */
 
-const AI_API_URL = 'https://ai.ftes.vn/api/ai/rag_agent_template/stream';
-const AI_TOKEN =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4N2I5MTE5ZmNkYzNhMTkxNzM4MDljNSJ9.IenR1lNVA93YIWBlbFaEwsoZWCLPXTyoHXLeBQ08bGo';
-const BOT_ID = '5ca474c4214b25c218cf7583';
-const API_KEY = 'AIzaSyAw0d1JGa3LQCFDd1UcThWzqKDqOOQdU2U';
+const AI_API_URL = import.meta.env.VITE_AI_API_URL;
+const AI_TOKEN = import.meta.env.VITE_AI_TOKEN;
+const BOT_ID = import.meta.env.VITE_BOT_ID;
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+// Validate required environment variables
+if (!AI_API_URL || !AI_TOKEN || !BOT_ID || !API_KEY) {
+  console.error('Missing required environment variables for AI Chat Service:');
+  console.error('VITE_AI_API_URL:', !!AI_API_URL);
+  console.error('VITE_AI_TOKEN:', !!AI_TOKEN);
+  console.error('VITE_BOT_ID:', !!BOT_ID);
+  console.error('VITE_GEMINI_API_KEY:', !!API_KEY);
+  console.error('Please check your .env file configuration.');
+}
 
 class AIChatService {
   constructor() {
@@ -82,6 +91,13 @@ class AIChatService {
    */
   async sendMessage(message, onStream, onComplete, onError) {
     try {
+      // Kiểm tra environment variables
+      if (!AI_API_URL || !AI_TOKEN || !BOT_ID || !API_KEY) {
+        throw new Error(
+          'Missing required environment variables for AI Chat Service. Please check your .env file.'
+        );
+      }
+
       // Tạo context cho AI tư vấn sản phẩm giày
       const productContext = `Bạn là AI tư vấn sản phẩm giày chuyên nghiệp. Bạn có kiến thức sâu rộng về:
       - Các loại giày: sneaker, boot, sandal, loafer, oxford, etc.
