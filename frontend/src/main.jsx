@@ -250,7 +250,7 @@ const router = createBrowserRouter([
             path: 'discounts',
             element: (
               <AdminProtectedRoute>
-                <AdminDashboard />
+                <DiscountListPage />
               </AdminProtectedRoute>
             ),
           },
