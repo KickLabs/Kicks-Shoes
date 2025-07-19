@@ -847,7 +847,7 @@ const ChatPage = props => {
                   style={{
                     border: '1px solid #d9d9d9',
                     borderRadius: '6px',
-                    height: '40px',
+                    height: '50px',
                     backgroundColor: '#ffffff',
                     color: '#000000',
                   }}

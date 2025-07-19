@@ -36,7 +36,7 @@
   position: relative;
   z-index: 10;
   margin-top: auto;
-  top: -93px;
+  top: -64px;
 }
 
 .chat-page.widget-mode .chat-main {
@@ -63,7 +63,7 @@
 
 .chat-page.widget-mode .chat-messages {
   padding: 12px;
-  padding-bottom: 93px;
+  padding-bottom: 64px;
 }
 
 .chat-header {
