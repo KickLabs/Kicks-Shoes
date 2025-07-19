@@ -216,7 +216,7 @@ export const deleteFeedback = async (req, res, next) => {
  */
 export const getAllFeedback = async (req, res) => {
   try {
-    const { order, product } = req.query;
+    const { order, product, user } = req.query;
     const filter = {};
 
     if (order) {
@@ -225,6 +225,10 @@ export const getAllFeedback = async (req, res) => {
 
     if (product) {
       filter.product = product;
+    }
+
+    if (user) {
+      filter.user = user;
     }
 
     // Only show active feedbacks (status = true) for shop dashboard
