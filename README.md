@@ -45,7 +45,7 @@ cd kicks-shoes
 2. Install dependencies for all parts of the project:
 
 ```bash
-npm run install-all
+npm run install-all --legacy-peer-deps
 ```
 
 3. Create a `.env` file in the backend directory with the following variables:
