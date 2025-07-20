@@ -19,7 +19,11 @@ import './ChatPage.css';
 
 const { Text } = Typography;
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  (window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : 'https://kicks-shoes-backend-2025-509fffbae16a.herokuapp.com');
 
 const ChatPage = props => {
   const { user } = useAuth();
