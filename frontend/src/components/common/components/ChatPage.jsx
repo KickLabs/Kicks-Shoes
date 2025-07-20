@@ -15,11 +15,16 @@ import { useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import { useAuth } from '../../../contexts/AuthContext';
 import aiChatService from '../../../services/aiChatService';
+import api from '../../../config/api.config';
 import './ChatPage.css';
 
 const { Text } = Typography;
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  (window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : 'https://kicks-shoes-backend-2025-509fffbae16a.herokuapp.com');
 
 const ChatPage = props => {
   const { user } = useAuth();
@@ -82,11 +87,11 @@ const ChatPage = props => {
   // Lấy shopId cho customer
   useEffect(() => {
     if (role === 'customer' && !shopIdState) {
-      fetch('/api/users/shop')
-        .then(res => res.json())
-        .then(data => {
-          if (data && data._id) {
-            setShopIdState(data._id);
+      api
+        .get('/users/shop')
+        .then(res => {
+          if (res.data && res.data._id) {
+            setShopIdState(res.data._id);
           }
         })
         .catch(err => {
@@ -116,8 +121,8 @@ const ChatPage = props => {
       const fetchChats = async () => {
         setIsLoading(true);
         try {
-          const res = await fetch(`/api/chat/conversations?userId=${shopId}`);
-          const data = await res.json();
+          const res = await api.get(`/chat/conversations?userId=${shopId}`);
+          const data = res.data;
 
           // Map data và format conversations
           const mappedConversations = data.map(conversation => ({
@@ -159,8 +164,20 @@ const ChatPage = props => {
     if (selectedChat.isAI) {
       // Load messages từ localStorage cho AI (đã được set userId)
       const savedMessages = aiChatService.loadMessages();
-      setMessages(savedMessages);
       console.log('Loaded AI messages for user:', userId, savedMessages);
+      if (savedMessages && savedMessages.length > 0) {
+        setMessages(savedMessages);
+      } else {
+        // Nếu không có messages, hiển thị welcome message
+        setMessages([
+          {
+            content: 'Hello, I am AI Product Consulting. How can I help you?',
+            sender: 'ai',
+            timestamp: new Date(),
+            isAI: true,
+          },
+        ]);
+      }
       return;
     }
 
@@ -181,15 +198,11 @@ const ChatPage = props => {
       const createConversation = async () => {
         try {
           conversationCreatedRef.current = true;
-          const res = await fetch('/api/chat/conversation', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId,
-              shopId: selectedChat.shopUserId || '6845be4f54a7582c1d2109b8',
-            }),
+          const res = await api.post('/chat/conversation', {
+            userId,
+            shopId: selectedChat.shopUserId || '6845be4f54a7582c1d2109b8',
           });
-          const conversation = await res.json();
+          const conversation = res.data;
 
           // Cập nhật selectedChat với conversationId thật
           setSelectedChat(prev => ({ ...prev, _id: conversation._id }));
@@ -208,8 +221,8 @@ const ChatPage = props => {
       const loadMessages = async () => {
         setIsLoading(true);
         try {
-          const res = await fetch(`/api/chat/messages/${selectedChat._id}`);
-          const data = await res.json();
+          const res = await api.get(`/chat/messages/${selectedChat._id}`);
+          const data = res.data;
           setMessages(data);
           socketRef.current.emit('join_conversation', selectedChat._id);
 
@@ -231,20 +244,16 @@ const ChatPage = props => {
         setIsLoading(true);
         try {
           // Tìm conversation giữa user hiện tại và shop user
-          const res = await fetch(`/api/chat/conversation`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId,
-              shopId: '6845be4f54a7582c1d2109b8',
-            }),
+          const res = await api.post(`/chat/conversation`, {
+            userId,
+            shopId: '6845be4f54a7582c1d2109b8',
           });
-          const conversation = await res.json();
+          const conversation = res.data;
           console.log('Shop conversation:', conversation);
 
           if (conversation._id) {
-            const messagesRes = await fetch(`/api/chat/messages/${conversation._id}`);
-            const messagesData = await messagesRes.json();
+            const messagesRes = await api.get(`/chat/messages/${conversation._id}`);
+            const messagesData = messagesRes.data;
             setMessages(messagesData);
             socketRef.current.emit('join_conversation', conversation._id);
 
@@ -416,15 +425,11 @@ const ChatPage = props => {
       // Tạo conversation nếu chưa có
       const createShopConversation = async () => {
         try {
-          const res = await fetch('/api/chat/conversation', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId,
-              shopId: '6845be4f54a7582c1d2109b8',
-            }),
+          const res = await api.post('/chat/conversation', {
+            userId,
+            shopId: '6845be4f54a7582c1d2109b8',
           });
-          const conversation = await res.json();
+          const conversation = res.data;
 
           if (conversation._id) {
             // Gửi tin nhắn sau khi tạo conversation
@@ -545,9 +550,9 @@ const ChatPage = props => {
                         <Avatar
                           src={
                             chat.isAI
-                              ? '/src/assets/images/logoavt.png'
+                              ? 'https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png'
                               : chat.isShop
-                                ? '/src/assets/images/logoavt.png'
+                                ? 'https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png'
                                 : chat.participants?.find(p => p._id !== shopId)?.avatar ||
                                   user?.avatar
                           }
@@ -655,146 +660,140 @@ const ChatPage = props => {
                     </div>
                   </div>
                 )}
-                <List
-                  itemLayout="horizontal"
-                  dataSource={messages}
-                  renderItem={message => {
-                    // Debug log để kiểm tra
-                    console.log('Message:', message);
-                    console.log('Current userId:', userId);
-                    console.log('Message sender:', message.sender);
-                    console.log('Message sender._id:', message.sender?._id);
+                {console.log('Messages to render:', messages)}
+                {/* Test message để kiểm tra render */}
+                {messages.length === 0 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                    <div>No messages yet. Start a conversation!</div>
+                  </div>
+                )}
+                {messages.map((message, index) => {
+                  console.log('Rendering message:', message);
+                  // Debug log để kiểm tra
+                  console.log('Message:', message);
+                  console.log('Current userId:', userId);
+                  console.log('Message sender:', message.sender);
+                  console.log('Message sender._id:', message.sender?._id);
 
-                    const isCurrentUser =
-                      message.sender === userId ||
-                      message.sender?._id === userId ||
-                      (typeof message.sender === 'string' && message.sender === userId) ||
-                      (typeof message.sender === 'object' && message.sender._id === userId) ||
-                      (typeof userId === 'string' && message.sender === userId) ||
-                      (typeof userId === 'string' && message.sender?._id === userId);
-                    const isAI = message.isAI === true || message.sender === 'ai';
-                    const isFromShop =
-                      message.sender === '6845be4f54a7582c1d2109b8' ||
-                      message.sender?._id === '6845be4f54a7582c1d2109b8';
+                  // Đơn giản hóa logic xác định user
+                  const isAI = message.isAI === true || message.sender === 'ai';
+                  const isFromShop =
+                    message.sender === '6845be4f54a7582c1d2109b8' ||
+                    message.sender?._id === '6845be4f54a7582c1d2109b8';
 
-                    console.log('isCurrentUser:', isCurrentUser);
-                    console.log('isFromShop:', isFromShop);
+                  // Xác định xem có phải tin nhắn của user hiện tại không
+                  let finalIsCurrentUser = false;
 
-                    // Fallback: nếu không xác định được user hiện tại, dựa vào role
-                    let finalIsCurrentUser = isCurrentUser;
-                    if (!finalIsCurrentUser && role === 'customer') {
-                      // Nếu là customer và tin nhắn không phải từ shop, thì là tin nhắn của customer
-                      finalIsCurrentUser = !isFromShop && !isAI;
-                    } else if (!finalIsCurrentUser && role === 'shop') {
-                      // Nếu là shop và tin nhắn từ shop user, thì là tin nhắn của shop
-                      finalIsCurrentUser = isFromShop;
+                  if (isAI) {
+                    finalIsCurrentUser = false; // AI messages luôn ở bên trái
+                  } else if (isFromShop) {
+                    finalIsCurrentUser = role === 'shop'; // Shop messages ở bên phải nếu user là shop
+                  } else {
+                    // Tin nhắn từ customer
+                    finalIsCurrentUser = role === 'customer'; // Customer messages ở bên phải nếu user là customer
+                  }
+
+                  // Lấy thông tin user từ message hoặc participants
+                  const getSenderName = () => {
+                    if (isAI) return 'AI Product Consulting';
+                    if (isFromShop) return 'Shop Support';
+                    if (finalIsCurrentUser) {
+                      return role === 'shop' ? 'Shop' : 'You';
                     }
 
-                    console.log('finalIsCurrentUser:', finalIsCurrentUser);
-
-                    // Lấy thông tin user từ message hoặc participants
-                    const getSenderName = () => {
-                      if (isAI) return 'AI Product Consulting';
-                      if (isFromShop) return 'Shop Support';
-                      if (isCurrentUser) {
-                        return role === 'shop' ? 'Shop' : 'You';
-                      }
-
-                      // Debug log
-                      console.log('Message sender:', message.sender);
-                      console.log('Selected chat participants:', selectedChat?.participants);
-                      console.log('Role:', role);
-
-                      // Tìm user trong participants của conversation
-                      if (selectedChat?.participants) {
-                        const senderUser = selectedChat.participants.find(
-                          p => p._id === message.sender || p._id === message.sender?._id
-                        );
-                        console.log('Found sender user:', senderUser);
-                        if (senderUser) {
-                          const name = senderUser.fullName || senderUser.username || 'Customer';
-                          console.log('Using name:', name);
-                          return name;
-                        }
-                      }
-
-                      // Nếu không tìm thấy trong participants, thử lấy từ message.sender nếu có thông tin
-                      if (message.sender && typeof message.sender === 'object') {
-                        const name =
-                          message.sender.fullName || message.sender.username || 'Customer';
-                        console.log('Using name from message.sender:', name);
+                    // Tìm user trong participants của conversation
+                    if (selectedChat?.participants) {
+                      const senderUser = selectedChat.participants.find(
+                        p => p._id === message.sender || p._id === message.sender?._id
+                      );
+                      if (senderUser) {
+                        const name = senderUser.fullName || senderUser.username || 'Customer';
                         return name;
                       }
+                    }
 
-                      // Fallback
-                      const fallbackName = role === 'shop' ? 'Customer' : 'Shop Support';
-                      console.log('Using fallback name:', fallbackName);
-                      return fallbackName;
-                    };
+                    // Nếu không tìm thấy trong participants, thử lấy từ message.sender nếu có thông tin
+                    if (message.sender && typeof message.sender === 'object') {
+                      const name = message.sender.fullName || message.sender.username || 'Customer';
+                      return name;
+                    }
 
-                    const senderName = getSenderName();
+                    // Fallback
+                    const fallbackName = role === 'shop' ? 'Customer' : 'Shop Support';
+                    return fallbackName;
+                  };
 
-                    return (
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: finalIsCurrentUser ? 'flex-end' : 'flex-start',
-                          marginBottom: 12,
-                          padding: '0 16px',
-                          alignItems: 'flex-end',
-                        }}
-                      >
-                        {/* Avatar for non-current user messages */}
-                        {!finalIsCurrentUser && (
-                          <Avatar
-                            src={
-                              isAI
-                                ? '/src/assets/images/logoavt.png'
-                                : isFromShop
-                                  ? '/src/assets/images/logoavt.png'
-                                  : selectedChat?.participants?.find(
-                                      p => p._id === message.sender || p._id === message.sender?._id
-                                    )?.avatar || user?.avatar
+                  const senderName = getSenderName();
+
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        justifyContent: finalIsCurrentUser ? 'flex-end' : 'flex-start',
+                        marginBottom: 12,
+                        padding: '0 16px',
+                        alignItems: 'flex-end',
+                      }}
+                    >
+                      {/* Avatar for non-current user messages */}
+                      {!finalIsCurrentUser && (
+                        <Avatar
+                          src={
+                            isAI
+                              ? 'https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png'
+                              : isFromShop
+                                ? 'https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png'
+                                : selectedChat?.participants?.find(
+                                    p => p._id === message.sender || p._id === message.sender?._id
+                                  )?.avatar || user?.avatar
+                          }
+                          size={32}
+                          style={{ marginRight: 8, marginBottom: 4 }}
+                          onError={e => {
+                            if (e && e.target) {
+                              e.target.style.display = 'none';
                             }
-                            size={32}
-                            style={{ marginRight: 8, marginBottom: 4 }}
-                            onError={e => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        )}
+                          }}
+                        />
+                      )}
 
-                        <div
-                          className={`message-bubble ${
-                            finalIsCurrentUser ? 'current-user' : isAI ? 'ai' : 'other'
-                          }`}
-                        >
-                          <div className="message-sender">{senderName}</div>
-                          <div className="message-content">
+                      <div
+                        className={`message-bubble ${
+                          finalIsCurrentUser ? 'current-user' : isAI ? 'ai' : 'other'
+                        }`}
+                      >
+                        <div className="message-sender">{senderName}</div>
+                        <div className="message-content">
+                          {message.content ? (
                             <ReactMarkdown>{message.content}</ReactMarkdown>
-                          </div>
-                          <div className="message-time">
-                            {message.timestamp
-                              ? new Date(message.timestamp).toLocaleTimeString()
-                              : ''}
-                          </div>
+                          ) : (
+                            <div>No content available</div>
+                          )}
                         </div>
-
-                        {/* Avatar for current user messages */}
-                        {isCurrentUser && (
-                          <Avatar
-                            src={user?.avatar}
-                            size={32}
-                            style={{ marginLeft: 8, marginBottom: 4 }}
-                            onError={e => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        )}
+                        <div className="message-time">
+                          {message.timestamp
+                            ? new Date(message.timestamp).toLocaleTimeString()
+                            : ''}
+                        </div>
                       </div>
-                    );
-                  }}
-                />
+
+                      {/* Avatar for current user messages */}
+                      {finalIsCurrentUser && (
+                        <Avatar
+                          src={user?.avatar}
+                          size={32}
+                          style={{ marginLeft: 8, marginBottom: 4 }}
+                          onError={e => {
+                            if (e && e.target) {
+                              e.target.style.display = 'none';
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
                 {/* Streaming message display */}
                 {streamingMessage && (
                   <div
@@ -807,11 +806,13 @@ const ChatPage = props => {
                     }}
                   >
                     <Avatar
-                      src="/src/assets/images/logoavt.png"
+                      src="https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png"
                       size={32}
                       style={{ marginRight: 8, marginBottom: 4 }}
                       onError={e => {
-                        e.target.style.display = 'none';
+                        if (e && e.target) {
+                          e.target.style.display = 'none';
+                        }
                       }}
                     />
                     <div className="message-bubble ai">
