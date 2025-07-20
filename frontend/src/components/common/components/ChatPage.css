@@ -292,7 +292,7 @@
   border-radius: 18px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
-  display: none;
+  display: block;
 }
 
 .message-bubble:hover {
@@ -360,6 +360,68 @@
   white-space: pre-wrap;
   overflow-wrap: break-word;
   word-break: break-word;
+}
+
+/* Markdown styling */
+.message-bubble .message-content strong,
+.message-bubble .message-content b {
+  font-weight: 700;
+  color: inherit;
+}
+
+.message-bubble .message-content em,
+.message-bubble .message-content i {
+  font-style: italic;
+  color: inherit;
+}
+
+.message-bubble .message-content ul,
+.message-bubble .message-content ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.message-bubble .message-content li {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.message-bubble .message-content p {
+  margin: 8px 0;
+}
+
+.message-bubble .message-content h1,
+.message-bubble .message-content h2,
+.message-bubble .message-content h3,
+.message-bubble .message-content h4,
+.message-bubble .message-content h5,
+.message-bubble .message-content h6 {
+  margin: 12px 0 8px 0;
+  font-weight: 600;
+  color: inherit;
+}
+
+.message-bubble .message-content code {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.message-bubble .message-content pre {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.message-bubble .message-content blockquote {
+  border-left: 3px solid rgba(0, 0, 0, 0.2);
+  margin: 8px 0;
+  padding-left: 12px;
+  font-style: italic;
 }
 
 .message-bubble .message-content p {
