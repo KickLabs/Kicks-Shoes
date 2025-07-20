@@ -142,24 +142,21 @@ const SocialButtons = () => {
         </Button>
       </div>
 
-      {/* Facebook Login (dùng thư viện) */}
+      {/* Facebook Login - Simple */}
       <div style={{ width: '100%' }}>
-        <FacebookLogin
-          appId={import.meta.env.VITE_FACEBOOK_APP_ID}
-          onSuccess={handleFacebookResponse}
-          onFail={err => {
-            console.log('Facebook login failed:', err);
-          }}
-          onProfileSuccess={msg => {
-            console.log('Facebook profile success:', msg);
+        <Button
+          className="social facebook"
+          block
+          onClick={() => {
+            console.log('Facebook button clicked');
+            notification.info({
+              message: 'Facebook Login',
+              description: 'Facebook login feature is coming soon!',
+            });
           }}
         >
-          {({ onClick }) => (
-            <Button className="social facebook" block onClick={onClick}>
-              <img className="social-logo" src={facebook} alt="facebook" />
-            </Button>
-          )}
-        </FacebookLogin>
+          <img className="social-logo" src={facebook} alt="facebook" />
+        </Button>
       </div>
     </div>
   );

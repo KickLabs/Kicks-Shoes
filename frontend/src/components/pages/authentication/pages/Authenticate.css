@@ -1,6 +1,6 @@
 .login-page {
   padding: 20px;
-  font-family: "Rubik", sans-serif;
+  font-family: 'Rubik', sans-serif;
   color: #ccc;
   display: flex;
   justify-content: center;
@@ -47,7 +47,7 @@
   width: 100%;
   box-sizing: border-box;
   color: #79767c;
-  font-family: "Rubik";
+  font-family: 'Rubik';
   font-size: 16px;
   font-style: normal;
   font-weight: 400;
@@ -85,7 +85,7 @@ input:-webkit-autofill:active {
   text-align: left;
 }
 
-.checkbox input[type="checkbox"] {
+.checkbox input[type='checkbox'] {
   flex-shrink: 0;
   cursor: pointer;
   accent-color: #000;
@@ -411,7 +411,7 @@ span.ant-checkbox-label {
 
 /* 5. Chèn dấu tick trắng bằng pseudo-element ::before */
 .gender-radio-group .ant-radio-checked .ant-radio-inner::before {
-  content: "✖";
+  content: '✖';
   color: #ffffff;
   font-size: 14px;
   font-weight: bold;
