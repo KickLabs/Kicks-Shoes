@@ -550,9 +550,9 @@ const ChatPage = props => {
                         <Avatar
                           src={
                             chat.isAI
-                              ? '/src/assets/images/logoavt.png'
+                              ? 'https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png'
                               : chat.isShop
-                                ? '/src/assets/images/logoavt.png'
+                                ? 'https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png'
                                 : chat.participants?.find(p => p._id !== shopId)?.avatar ||
                                   user?.avatar
                           }
@@ -741,9 +741,9 @@ const ChatPage = props => {
                         <Avatar
                           src={
                             isAI
-                              ? '/src/assets/images/logoavt.png'
+                              ? 'https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png'
                               : isFromShop
-                                ? '/src/assets/images/logoavt.png'
+                                ? 'https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png'
                                 : selectedChat?.participants?.find(
                                     p => p._id === message.sender || p._id === message.sender?._id
                                   )?.avatar || user?.avatar
@@ -806,7 +806,7 @@ const ChatPage = props => {
                     }}
                   >
                     <Avatar
-                      src="/src/assets/images/logoavt.png"
+                      src="https://res.cloudinary.com/dumuhtrwr/image/upload/v1752928150/kicks-shoes/avatars/file_pdkyiy.png"
                       size={32}
                       style={{ marginRight: 8, marginBottom: 4 }}
                       onError={e => {
