@@ -7,7 +7,7 @@ import google from '../../../../assets/images/google-logo.png';
 import apple from '../../../../assets/images/apple-logo.png';
 import appleWhite from '../../../../assets/images/apple-logo-white.png';
 import facebook from '../../../../assets/images/facebook-logo.png';
-import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
+import FacebookLogin from '@greatsumini/react-facebook-login';
 
 const SocialButtons = () => {
   const { setUser } = useAuth();
@@ -146,15 +146,20 @@ const SocialButtons = () => {
       <div style={{ width: '100%' }}>
         <FacebookLogin
           appId={import.meta.env.VITE_FACEBOOK_APP_ID}
-          autoLoad={false}
-          fields="name,email,picture"
-          callback={handleFacebookResponse}
-          render={renderProps => (
-            <Button className="social facebook" block onClick={renderProps.onClick}>
+          onSuccess={handleFacebookResponse}
+          onFail={err => {
+            console.log('Facebook login failed:', err);
+          }}
+          onProfileSuccess={msg => {
+            console.log('Facebook profile success:', msg);
+          }}
+        >
+          {({ onClick }) => (
+            <Button className="social facebook" block onClick={onClick}>
               <img className="social-logo" src={facebook} alt="facebook" />
             </Button>
           )}
-        />
+        </FacebookLogin>
       </div>
     </div>
   );
