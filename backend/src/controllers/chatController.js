@@ -24,14 +24,22 @@ export const getMessages = async (req, res) => {
 // POST /api/chat/conversation
 export const createOrFindConversation = async (req, res) => {
   let { userId, shopId } = req.body;
+  console.log('Creating conversation with:', { userId, shopId });
+
   if (!userId) return res.status(400).json({ message: 'Missing userId' });
   if (!shopId) {
-    const shopUser = await User.findOne({ role: 'shop' });
-    if (!shopUser) return res.status(404).json({ message: 'Shop not found' });
-    shopId = shopUser._id;
+    // Sử dụng shop ID cứng nếu không có shopId
+    shopId = '6845be4f54a7582c1d2109b8';
   }
-  const conversation = await findOrCreateConversation(userId, shopId);
-  res.json(conversation);
+
+  try {
+    const conversation = await findOrCreateConversation(userId, shopId);
+    console.log('Created/found conversation:', conversation);
+    res.json(conversation);
+  } catch (error) {
+    console.error('Error creating conversation:', error);
+    res.status(500).json({ message: 'Error creating conversation', error: error.message });
+  }
 };
 
 // POST /api/chat/message
