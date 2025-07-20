@@ -15,6 +15,7 @@ import { useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import { useAuth } from '../../../contexts/AuthContext';
 import aiChatService from '../../../services/aiChatService';
+import api from '../../../config/api.config';
 import './ChatPage.css';
 
 const { Text } = Typography;
@@ -86,11 +87,11 @@ const ChatPage = props => {
   // Lấy shopId cho customer
   useEffect(() => {
     if (role === 'customer' && !shopIdState) {
-      fetch('/api/users/shop')
-        .then(res => res.json())
-        .then(data => {
-          if (data && data._id) {
-            setShopIdState(data._id);
+      api
+        .get('/users/shop')
+        .then(res => {
+          if (res.data && res.data._id) {
+            setShopIdState(res.data._id);
           }
         })
         .catch(err => {
@@ -120,8 +121,8 @@ const ChatPage = props => {
       const fetchChats = async () => {
         setIsLoading(true);
         try {
-          const res = await fetch(`/api/chat/conversations?userId=${shopId}`);
-          const data = await res.json();
+          const res = await api.get(`/chat/conversations?userId=${shopId}`);
+          const data = res.data;
 
           // Map data và format conversations
           const mappedConversations = data.map(conversation => ({
@@ -197,15 +198,11 @@ const ChatPage = props => {
       const createConversation = async () => {
         try {
           conversationCreatedRef.current = true;
-          const res = await fetch('/api/chat/conversation', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId,
-              shopId: selectedChat.shopUserId || '6845be4f54a7582c1d2109b8',
-            }),
+          const res = await api.post('/chat/conversation', {
+            userId,
+            shopId: selectedChat.shopUserId || '6845be4f54a7582c1d2109b8',
           });
-          const conversation = await res.json();
+          const conversation = res.data;
 
           // Cập nhật selectedChat với conversationId thật
           setSelectedChat(prev => ({ ...prev, _id: conversation._id }));
@@ -224,8 +221,8 @@ const ChatPage = props => {
       const loadMessages = async () => {
         setIsLoading(true);
         try {
-          const res = await fetch(`/api/chat/messages/${selectedChat._id}`);
-          const data = await res.json();
+          const res = await api.get(`/chat/messages/${selectedChat._id}`);
+          const data = res.data;
           setMessages(data);
           socketRef.current.emit('join_conversation', selectedChat._id);
 
@@ -247,20 +244,16 @@ const ChatPage = props => {
         setIsLoading(true);
         try {
           // Tìm conversation giữa user hiện tại và shop user
-          const res = await fetch(`/api/chat/conversation`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId,
-              shopId: '6845be4f54a7582c1d2109b8',
-            }),
+          const res = await api.post(`/chat/conversation`, {
+            userId,
+            shopId: '6845be4f54a7582c1d2109b8',
           });
-          const conversation = await res.json();
+          const conversation = res.data;
           console.log('Shop conversation:', conversation);
 
           if (conversation._id) {
-            const messagesRes = await fetch(`/api/chat/messages/${conversation._id}`);
-            const messagesData = await messagesRes.json();
+            const messagesRes = await api.get(`/chat/messages/${conversation._id}`);
+            const messagesData = messagesRes.data;
             setMessages(messagesData);
             socketRef.current.emit('join_conversation', conversation._id);
 
@@ -432,15 +425,11 @@ const ChatPage = props => {
       // Tạo conversation nếu chưa có
       const createShopConversation = async () => {
         try {
-          const res = await fetch('/api/chat/conversation', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId,
-              shopId: '6845be4f54a7582c1d2109b8',
-            }),
+          const res = await api.post('/chat/conversation', {
+            userId,
+            shopId: '6845be4f54a7582c1d2109b8',
           });
-          const conversation = await res.json();
+          const conversation = res.data;
 
           if (conversation._id) {
             // Gửi tin nhắn sau khi tạo conversation
