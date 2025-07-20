@@ -104,19 +104,25 @@ const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
   cors: {
-    origin: [
-      process.env.FRONTEND_URL || 'http://localhost:5173',
-      'http://localhost:3000', // Cho web dev
-      'http://10.0.2.2:3000', // Cho Android emulator
-      'http://localhost:5173', // Vite dev server
-      'http://127.0.0.1:5173', // Alternative localhost
-      'http://localhost:19006', // Expo dev server
-      'http://127.0.0.1:19006', // Expo dev server alternative
-      'exp://localhost:19000', // Expo Go
-      'exp://127.0.0.1:19000', // Expo Go alternative
-      'https://kicks-shoes-2025.web.app',
-      'https://kicks-shoes-2025.firebaseapp.com',
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'https://kicks-shoes-2025.web.app',
+        'https://kicks-shoes-2025.firebaseapp.com',
+      ];
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log('Socket CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],

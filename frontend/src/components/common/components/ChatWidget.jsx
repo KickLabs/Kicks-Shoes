@@ -16,7 +16,12 @@ const ChatWidget = () => {
   // Kết nối socket khi component mount
   useEffect(() => {
     if (user) {
-      socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000');
+      socketRef.current = io(
+        import.meta.env.VITE_SOCKET_URL ||
+          (window.location.hostname === 'localhost'
+            ? 'http://localhost:3000'
+            : 'https://kicks-shoes-backend-2025-509fffbae16a.herokuapp.com')
+      );
 
       // Lắng nghe tin nhắn mới để cập nhật unread count
       socketRef.current.on('receive_message', message => {
