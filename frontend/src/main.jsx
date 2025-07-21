@@ -63,6 +63,7 @@ import ResetPasswordForm from './components/pages/authentication/pages/ResetPass
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import SetPassword from './components/pages/authentication/pages/SetPassword';
 import ReportTab from './components/pages/account/components/ReportTab';
+import Banned from './components/pages/authentication/pages/Banned';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -167,6 +168,10 @@ const router = createBrowserRouter([
       {
         path: 'login-admin',
         element: <LoginAdmin />,
+      },
+      {
+        path: 'banned',
+        element: <Banned />,
       },
       {
         path: 'register',
@@ -345,10 +350,10 @@ const router = createBrowserRouter([
             ),
           },
           {
-            path: 'settings',
+            path: 'chat',
             element: (
               <ShopOwnerProtectedRoute>
-                <ShopDashboard />
+                <ChatPage />
               </ShopOwnerProtectedRoute>
             ),
           },

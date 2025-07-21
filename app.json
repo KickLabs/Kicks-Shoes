@@ -1,0 +1,22 @@
+{
+  "name": "kicks-shoes",
+  "description": "Kicks Shoes E-commerce Platform",
+  "repository": "https://github.com/KickLabs/Kicks-Shoes",
+  "logo": "https://node-js-sample.herokuapp.com/node.png",
+  "keywords": ["node", "express", "react", "mongodb"],
+  "env": {
+    "NODE_ENV": {
+      "description": "Environment",
+      "value": "production"
+    },
+    "PORT": {
+      "description": "Port for the application",
+      "value": "5000"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}

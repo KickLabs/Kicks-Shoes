@@ -4,6 +4,7 @@ import Footer from './../common/components/Footer';
 import AppHeader from './../common/components/Header';
 import ScrollToTop from '../../utils/ScrollToTop';
 import { AuthProvider } from '../../contexts/AuthContext';
+import ChatWidget from './../common/components/ChatWidget';
 
 function App() {
   const location = useLocation();
@@ -90,6 +91,7 @@ function App() {
           {!shouldHideHeaderFooter && <AppHeader />}
           <Outlet />
           {!shouldHideHeaderFooter && <Footer />}
+          <ChatWidget />
         </div>
       </ConfigProvider>
     </AuthProvider>

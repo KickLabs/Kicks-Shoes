@@ -339,7 +339,8 @@ export class ProductService {
     // Handle sorting
     let sortOptions = {};
     if (sortBy === 'price.regular') {
-      sortOptions = { 'price.regular': order === 'asc' ? 1 : -1 };
+      // FIXED: Use finalPrice instead of regular price for sorting
+      sortOptions = { finalPrice: order === 'asc' ? 1 : -1 };
     } else if (sortBy === 'price') {
       // UPDATED: Sort by finalPrice when price is requested
       sortOptions = { finalPrice: order === 'asc' ? 1 : -1 };

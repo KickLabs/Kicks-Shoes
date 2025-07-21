@@ -22,11 +22,34 @@ import { protect, optionalAuth } from '../middlewares/auth.middleware.js';
 import { requireAdmin, requireShop } from '../middlewares/role.middleware.js';
 import upload from '../middlewares/upload.middleware.js';
 import { handleUpload } from '../config/cloudinary.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
+// Lấy user có role shop (public API) - đặt đầu tiên
+router.get('/shop', async (req, res) => {
+  try {
+    const shopUser = await User.findOne({ role: 'shop' });
+    if (!shopUser) return res.status(404).json({ message: 'Shop not found' });
+    res.json(shopUser);
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Public routes (optional auth)
 router.get('/profile/:username', optionalAuth, getUserProfile);
+
+// Lấy profile user hiện tại (cần token)
+router.get('/profile', protect, async (req, res, next) => {
+  try {
+    const user = req.user;
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ data: user });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Protected routes
 router.put('/profile', protect, upload.single('avatar'), handleUpload, updateUserProfile);

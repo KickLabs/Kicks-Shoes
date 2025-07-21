@@ -35,7 +35,15 @@ axiosInstance.interceptors.response.use(
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('userInfo');
-        window.location.href = '/login';
+
+        // Check if it's a ban error (403) or just token expired (401)
+        if (error.response?.status === 403) {
+          // User is banned, redirect to banned page
+          window.location.href = '/banned';
+        } else {
+          // Token expired, redirect to login
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }
@@ -109,6 +117,27 @@ const authService = {
   getCurrentUser() {
     const userInfo = localStorage.getItem('userInfo');
     return userInfo ? JSON.parse(userInfo) : null;
+  },
+
+  // Get current user from server (with status check)
+  async getCurrentUserFromServer() {
+    try {
+      const response = await axiosInstance.get('/auth/me');
+      if (response.data.success) {
+        const user = response.data.data;
+        // Update stored user info
+        localStorage.setItem('userInfo', JSON.stringify(user));
+        return user;
+      }
+      throw new Error(response.data.message || 'Failed to get user info');
+    } catch (error) {
+      // If user is banned or token is invalid, clear storage and return null
+      if (error.response?.status === 403 || error.response?.status === 401) {
+        this.logout();
+        return null;
+      }
+      throw error;
+    }
   },
 
   getAccessToken() {

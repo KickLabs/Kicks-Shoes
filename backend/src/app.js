@@ -17,12 +17,12 @@
  */
 
 import compression from 'compression';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import connectDB from './config/database.js';
+import { corsMiddleware } from './config/cors.config.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
@@ -42,6 +42,9 @@ import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import chatRoutes from './routes/chatRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -57,14 +60,7 @@ const app = express();
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+app.use(corsMiddleware);
 app.use(morgan('dev'));
 app.use(helmet());
 app.use(compression());
@@ -94,6 +90,7 @@ app.use('/api/favourites', favouriteRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
+app.use('/api/chat', chatRoutes);
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
@@ -102,9 +99,42 @@ startDiscountStatusUpdateCron();
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0'; // Cho phép lắng nghe mọi địa chỉ mạng
+const server = http.createServer(app);
 
-app.listen(PORT, () => {
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'https://kicks-shoes-2025.web.app',
+        'https://kicks-shoes-2025.firebaseapp.com',
+      ];
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log('Socket CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  },
+});
+
+import setupSocketHandlers from './socket.js';
+setupSocketHandlers(io);
+
+server.listen(PORT, HOST, () => {
   logger.info(`Server is running on port ${PORT}`);
 });
 
 export default app;
+export { server, io };

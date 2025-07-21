@@ -10,6 +10,7 @@ import { Router } from 'express';
 import {
   createOrder,
   getOrders,
+  getMyOrders,
   getOrderById,
   getOrdersByUserId,
   updateOrder,
@@ -36,6 +37,13 @@ router.post('/', protect, createOrder);
  * @access  Private
  */
 router.get('/', protect, getOrders);
+
+/**
+ * @route   GET /api/orders/my-orders
+ * @desc    Get orders for current user
+ * @access  Private
+ */
+router.get('/my-orders', protect, getMyOrders);
 
 /**
  * @route   GET /api/orders/:id

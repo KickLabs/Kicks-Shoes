@@ -83,12 +83,12 @@ export default function BestSellers() {
               <div className="best-seller-info">
                 <div className="best-seller-name">{item.name}</div>
                 <div className="best-seller-price">
-                  {formatPrice(item.price?.regular || item.price || 0)}
+                  {formatPrice(item.finalPrice || item.price?.regular || item.price || 0)}
                 </div>
               </div>
               <div className="best-seller-meta">
                 <div className="best-seller-price-bold">
-                  {formatPrice(item.price?.regular || item.price || 0)}
+                  {formatPrice(item.finalPrice || item.price?.regular || item.price || 0)}
                 </div>
                 <div className="best-seller-sales">{item.sales || 0} sales</div>
               </div>

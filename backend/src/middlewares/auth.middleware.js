@@ -21,12 +21,19 @@ export const protect = async (req, res, next) => {
     let token;
 
     // Get token from header
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
+    const authHeader = req.headers.authorization;
+
+    logger.info('RAW HEADER AUTHORIZATION:', authHeader);
+    logger.info('HEADER TYPE:', typeof authHeader);
+
+    if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
     }
 
-    if (!token) {
-      return next(new ErrorResponse('Not authorized to access this route', 401));
+    logger.info('TOKEN RECEIVED:', token);
+
+    if (!token || token === 'undefined' || token === 'null' || token.trim() === '') {
+      return next(new ErrorResponse('No valid token provided', 401));
     }
 
     try {
@@ -51,6 +58,16 @@ export const protect = async (req, res, next) => {
         return next(new ErrorResponse('Please verify your email before accessing this route', 401));
       }
 
+      // Check if user is banned
+      if (!user.status) {
+        return next(
+          new ErrorResponse(
+            'Your account has been deactivated. Please contact support for assistance.',
+            403
+          )
+        );
+      }
+
       // Add user to request
       req.user = user;
       next();
@@ -58,6 +75,7 @@ export const protect = async (req, res, next) => {
       logger.error('Token verification failed', {
         error: error.message,
         stack: error.stack,
+        token,
       });
       return next(new ErrorResponse('Not authorized to access this route', 401));
     }
@@ -104,7 +122,7 @@ export const optionalAuth = async (req, res, next) => {
 
       // Trong requireRoles hoặc authorize
 
-      if (user && user.isVerified) {
+      if (user && user.isVerified && user.status) {
         req.user = user;
       } else {
         req.user = null;

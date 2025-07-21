@@ -15,7 +15,7 @@ export const getCart = createAsyncThunk('cart/get', async (_, thunkAPI) => {
 export const addOrUpdateCartItem = createAsyncThunk('cart/addOrUpdate', async (item, thunkAPI) => {
   try {
     console.log('Adding/updating cart item:', item);
-    const res = await axiosInstance.post('/cart/items', item);
+    const res = await axiosInstance.post('/cart', item);
     console.log('Add/update cart response:', res.data);
     return res.data;
   } catch (error) {
@@ -29,7 +29,7 @@ export const updateCartItem = createAsyncThunk(
   async ({ itemId, updateData }, thunkAPI) => {
     try {
       console.log('Updating cart item:', { itemId, updateData });
-      const res = await axiosInstance.put(`/cart/items/${itemId}`, updateData);
+      const res = await axiosInstance.put(`/cart/${itemId}`, updateData);
       console.log('Update cart response:', res.data);
       return res.data;
     } catch (error) {
@@ -42,7 +42,7 @@ export const updateCartItem = createAsyncThunk(
 export const removeCartItem = createAsyncThunk('cart/removeItem', async (itemId, thunkAPI) => {
   try {
     console.log('Removing cart item:', itemId);
-    const res = await axiosInstance.delete(`/cart/items/${itemId}`);
+    const res = await axiosInstance.delete(`/cart/${itemId}`);
     console.log('Remove cart response:', res.data);
     return res.data;
   } catch (error) {

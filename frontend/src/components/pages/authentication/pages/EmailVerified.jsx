@@ -1,6 +1,6 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { Card, Typography, Button, Result } from "antd";
-import { CheckCircleOutlined, LoginOutlined } from "@ant-design/icons";
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Card, Typography, Button, Result } from 'antd';
+import { CheckCircleOutlined, LoginOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -10,8 +10,8 @@ const EmailVerified = () => {
   const { email, isVerified } = location.state || {};
 
   if (!email || !isVerified) {
-    navigate("/email-verification-failed", {
-      state: { error: "Invalid verification state" },
+    navigate('/email-verification-failed', {
+      state: { error: 'Invalid verification state' },
     });
     return null;
   }
@@ -23,13 +23,9 @@ const EmailVerified = () => {
           status="success"
           title="Email Verified Successfully!"
           subTitle={`Your email ${email} has been verified. You can now log in to your account.`}
-          icon={<CheckCircleOutlined style={{ color: "#52c41a" }} />}
+          icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
           extra={[
-            <Button
-              type="primary"
-              icon={<LoginOutlined />}
-              onClick={() => navigate("/login")}
-            >
+            <Button type="primary" icon={<LoginOutlined />} onClick={() => navigate('/login')}>
               Go to Login
             </Button>,
           ]}

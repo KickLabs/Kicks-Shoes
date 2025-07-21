@@ -117,7 +117,6 @@ const VALIDATION_RULES = {
   },
   price: {
     min: 0.01,
-    max: 999999,
   },
   discount: {
     min: 0,
@@ -387,9 +386,6 @@ export default function ProductDetails() {
     const token = userInfo ? JSON.parse(userInfo).token : null;
     return {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'Cache-Control': 'no-cache',
-      Pragma: 'no-cache',
-      Expires: '0',
     };
   };
 
@@ -444,6 +440,10 @@ export default function ProductDetails() {
           mainImage: productData.mainImage || '',
           variants: productData.variants || { sizes: [], colors: [] },
           price: productData.price || { regular: 0, discountPercent: 0, isOnSale: false },
+          category:
+            typeof productData.category === 'object' && productData.category !== null
+              ? productData.category._id
+              : productData.category,
         };
 
         setProduct(processedProduct);
@@ -1042,7 +1042,7 @@ export default function ProductDetails() {
                   <span>Basic Information</span>
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1218,7 +1218,7 @@ export default function ProductDetails() {
                   <span>Pricing & Sales</span>
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1228,18 +1228,17 @@ export default function ProductDetails() {
               <Row gutter={[16, 24]}>
                 <Col xs={24} sm={12} data-field="price">
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    <span style={{ color: 'red' }}>*</span> Regular Price ($)
+                    Regular Price * (₫)
                   </label>
                   <InputNumber
                     size="large"
                     placeholder="0.00"
                     min={0.01}
-                    max={999999}
                     step={0.01}
                     value={product.price.regular}
                     onChange={value => handleNestedChange('price', 'regular', value || 0)}
                     style={{ width: '100%' }}
-                    formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    formatter={value => `₫ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                     parser={value => value.replace(/\$\s?|(,*)/g, '')}
                     status={validationErrors.price ? 'error' : ''}
                   />
@@ -1290,7 +1289,7 @@ export default function ProductDetails() {
                 </Col>
                 <Col xs={24} sm={12}>
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    Sale Price ($)
+                    Sale Price (₫)
                   </label>
                   <div
                     style={{
@@ -1315,7 +1314,7 @@ export default function ProductDetails() {
                   <span>Product Variants (Auto-Generated from Inventory)</span>
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1443,7 +1442,7 @@ export default function ProductDetails() {
                   Add Inventory Item
                 </Button>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1534,7 +1533,7 @@ export default function ProductDetails() {
                   <span>Additional Information</span>
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 marginBottom: 24,
@@ -1604,7 +1603,7 @@ export default function ProductDetails() {
                   <Badge count={fileList.length} style={{ backgroundColor: '#1890ff' }} />
                 </Space>
               }
-              bordered={false}
+              variant="borderless"
               style={{
                 borderRadius: 12,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -1710,7 +1709,7 @@ export default function ProductDetails() {
 
         {/* Action Buttons */}
         <Card
-          bordered={false}
+          variant="borderless"
           style={{
             borderRadius: 12,
             marginTop: 24,
@@ -1904,7 +1903,7 @@ export default function ProductDetails() {
         </Modal>
 
         {/* Custom CSS for row highlighting */}
-        <style jsx>{`
+        <style>{`
           .low-stock-row {
             background-color: #fff7e6 !important;
           }
