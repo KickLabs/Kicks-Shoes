@@ -796,7 +796,16 @@ export const verifyEmail = async (req, res, next) => {
     // Get token from query params
     const token = req.query.token;
 
+    // Helper: xác định request AJAX
+    const isAjax =
+      req.xhr ||
+      req.headers.accept?.includes('application/json') ||
+      req.headers['x-requested-with'] === 'XMLHttpRequest';
+
     if (!token) {
+      if (isAjax) {
+        return res.status(400).json({ success: false, error: 'Verification token is required' });
+      }
       return res.redirect(
         `${process.env.FRONTEND_URL}/email-verification-failed?error=Verification token is required`
       );
@@ -811,6 +820,11 @@ export const verifyEmail = async (req, res, next) => {
     });
 
     if (!user) {
+      if (isAjax) {
+        return res
+          .status(400)
+          .json({ success: false, error: 'Invalid or expired verification token' });
+      }
       return res.redirect(
         `${process.env.FRONTEND_URL}/email-verification-failed?error=Invalid or expired verification token`
       );
@@ -824,6 +838,9 @@ export const verifyEmail = async (req, res, next) => {
 
     logger.info('Email verified successfully', { userId: user._id });
 
+    if (isAjax) {
+      return res.json({ success: true, data: { email: user.email, isVerified: true } });
+    }
     // Redirect to success page
     return res.redirect(
       `${process.env.FRONTEND_URL}/email-verified?email=${encodeURIComponent(user.email)}`
@@ -833,10 +850,15 @@ export const verifyEmail = async (req, res, next) => {
       error: error.message,
       stack: error.stack,
     });
+    const isAjax =
+      req.xhr ||
+      req.headers.accept?.includes('application/json') ||
+      req.headers['x-requested-with'] === 'XMLHttpRequest';
+    if (isAjax) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
     return res.redirect(
-      `${
-        process.env.FRONTEND_URL
-      }/email-verification-failed?error=${encodeURIComponent(error.message)}`
+      `${process.env.FRONTEND_URL}/email-verification-failed?error=${encodeURIComponent(error.message)}`
     );
   }
 };
