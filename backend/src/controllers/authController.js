@@ -398,7 +398,7 @@ export const loginWithGoogle = async (req, res) => {
         email,
         username,
         password: fakePassword,
-        avatar: picture?.data?.url,
+        avatar: picture, // thay vì picture.data.url
         isVerified: true,
         role: 'customer',
         address: '',
@@ -408,8 +408,8 @@ export const loginWithGoogle = async (req, res) => {
       });
       await user.save();
     } else {
-      if (picture?.data?.url && user.avatar !== picture.data.url) {
-        user.avatar = picture.data.url;
+      if (picture && user.avatar !== picture) {
+        user.avatar = picture;
         await user.save();
       }
     }
@@ -466,7 +466,7 @@ export const loginWithFacebook = async (req, res) => {
         email,
         username,
         password: fakePassword,
-        avatar: picture?.data?.url,
+        avatar: picture,
         isVerified: true,
         role: 'customer',
         address: '',
@@ -476,8 +476,8 @@ export const loginWithFacebook = async (req, res) => {
       });
       await user.save();
     } else {
-      if (picture?.data?.url && user.avatar !== picture.data.url) {
-        user.avatar = picture.data.url;
+      if (picture && user.avatar !== picture) {
+        user.avatar = picture;
         await user.save();
       }
     }
