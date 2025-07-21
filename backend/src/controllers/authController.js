@@ -16,6 +16,7 @@ import jwt from 'jsonwebtoken';
 import { sendTemplatedEmail } from '../utils/sendEmail.js';
 import logger from '../utils/logger.js';
 import { generateToken } from '../utils/jwt.js';
+import axios from 'axios';
 
 const otpStore = new Map();
 
@@ -377,8 +378,15 @@ const createTokens = userId => {
  */
 export const loginWithGoogle = async (req, res) => {
   try {
-    const { email, name, picture } = req.body;
-    if (!email) return res.status(400).json({ message: 'Missing email from Google' });
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'Missing Google access token' });
+
+    const googleUser = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const { email, name, picture } = googleUser.data;
+    if (!email) return res.status(400).json({ message: 'Google did not return email' });
 
     let user = await User.findOne({ email });
     let isNewUser = false;
@@ -386,19 +394,18 @@ export const loginWithGoogle = async (req, res) => {
     if (!user) {
       isNewUser = true;
       const fakePassword = Math.random().toString(36).slice(-8);
-      let baseUsername = email.split('@')[0],
-        username = baseUsername,
-        counter = 1;
+      let username = email.split('@')[0],
+        count = 1;
       while (await User.exists({ username })) {
-        username = `${baseUsername}${counter++}`;
+        username = `${email.split('@')[0]}${count++}`;
       }
 
-      user = new User({
+      user = await User.create({
         fullName: name || 'Google User',
         email,
         username,
         password: fakePassword,
-        avatar: picture, // thay vì picture.data.url
+        avatar: picture,
         isVerified: true,
         role: 'customer',
         address: '',
@@ -406,31 +413,23 @@ export const loginWithGoogle = async (req, res) => {
         reward_point: 0,
         gender: 'other',
       });
-      await user.save();
-    } else {
-      if (picture && user.avatar !== picture) {
-        user.avatar = picture;
-        await user.save();
-      }
     }
 
-    const { token, refreshToken } = createTokens(user._id);
+    const { token: jwt, refreshToken } = createTokens(user._id);
     const userObj = user.toObject();
     delete userObj.password;
     delete userObj.__v;
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: isNewUser
-        ? 'Create account & login Google successfully'
-        : 'Login Google successfully',
+      message: isNewUser ? 'Registered & logged in with Google' : 'Logged in with Google',
       user: userObj,
-      token,
+      token: jwt,
       refreshToken,
       isNewUser,
     });
-  } catch (error) {
-    console.error('Google login error:', error);
+  } catch (err) {
+    console.error('Google login error:', err);
     res.status(500).json({ success: false, message: 'Login Google failed' });
   }
 };
@@ -445,8 +444,18 @@ export const loginWithGoogle = async (req, res) => {
  */
 export const loginWithFacebook = async (req, res) => {
   try {
-    const { email, name, picture } = req.body;
-    if (!email) return res.status(400).json({ message: 'Missing email from Facebook' });
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'Missing Facebook access token' });
+
+    const fbRes = await axios.get(`https://graph.facebook.com/me`, {
+      params: {
+        fields: 'name,email,picture',
+        access_token: token,
+      },
+    });
+
+    const { email, name, picture } = fbRes.data;
+    if (!email) return res.status(400).json({ message: 'Facebook did not return email' });
 
     let user = await User.findOne({ email });
     let isNewUser = false;
@@ -454,19 +463,18 @@ export const loginWithFacebook = async (req, res) => {
     if (!user) {
       isNewUser = true;
       const fakePassword = Math.random().toString(36).slice(-8);
-      let baseUsername = email.split('@')[0],
-        username = baseUsername,
-        counter = 1;
+      let username = email.split('@')[0],
+        count = 1;
       while (await User.exists({ username })) {
-        username = `${baseUsername}${counter++}`;
+        username = `${email.split('@')[0]}${count++}`;
       }
 
-      user = new User({
+      user = await User.create({
         fullName: name || 'Facebook User',
         email,
         username,
         password: fakePassword,
-        avatar: picture,
+        avatar: picture?.data?.url,
         isVerified: true,
         role: 'customer',
         address: '',
@@ -474,31 +482,23 @@ export const loginWithFacebook = async (req, res) => {
         reward_point: 0,
         gender: 'other',
       });
-      await user.save();
-    } else {
-      if (picture && user.avatar !== picture) {
-        user.avatar = picture;
-        await user.save();
-      }
     }
 
-    const { token, refreshToken } = createTokens(user._id);
+    const { token: jwt, refreshToken } = createTokens(user._id);
     const userObj = user.toObject();
     delete userObj.password;
     delete userObj.__v;
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: isNewUser
-        ? 'Create account & login Facebook successfully'
-        : 'Login Facebook successfully',
+      message: isNewUser ? 'Registered & logged in with Facebook' : 'Logged in with Facebook',
       user: userObj,
-      token,
+      token: jwt,
       refreshToken,
       isNewUser,
     });
-  } catch (error) {
-    console.error('Facebook login error:', error);
+  } catch (err) {
+    console.error('Facebook login error:', err);
     res.status(500).json({ success: false, message: 'Login Facebook failed' });
   }
 };

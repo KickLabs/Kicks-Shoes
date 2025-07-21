@@ -15,32 +15,15 @@ const SocialButtons = () => {
   const navigate = useNavigate();
 
   // -------- GOOGLE LOGIN --------
+  // Đã có sẵn ở phần bạn gửi, sửa lại chỗ Google cho đúng luồng:
   const loginGoogle = useGoogleLogin({
     onSuccess: async tokenResponse => {
       try {
-        // B1: Lấy thông tin user từ Google
-        const { data } = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: {
-            Authorization: `Bearer ${tokenResponse.access_token}`,
-          },
-        });
-
-        if (!data?.email) {
-          notification.error({
-            message: 'Google Login',
-            description: 'Cannot get email from Google',
-          });
-        }
-
-        // B2: Gửi dữ liệu về server để login
         const res = await axios.post(`${API_BASE}/api/auth/google-login`, {
-          email: data.email,
-          name: data.name,
-          picture: data.picture,
+          token: tokenResponse.access_token,
         });
 
         const result = res.data;
-
         if (result.success) {
           const userInfo = {
             _id: result.user._id,
@@ -49,22 +32,16 @@ const SocialButtons = () => {
             fullName: result.user.fullName,
             role: result.user.role,
           };
-
           setUser(userInfo);
           localStorage.setItem('userInfo', JSON.stringify(userInfo));
-          localStorage.setItem('accessToken', result.token); // ✅ key đúng với api.js
+          localStorage.setItem('accessToken', result.token);
           localStorage.setItem('refreshToken', result.refreshToken);
-
           message.success('Login successful!');
-          if (result.isNewUser) {
-            navigate('/set-password');
-          } else {
-            navigate('/');
-          }
+          navigate(result.isNewUser ? '/set-password' : '/');
         } else {
           notification.error({
-            message: 'Lỗi',
-            description: result.message || 'Login failed!',
+            message: 'Login failed',
+            description: result.message,
           });
         }
       } catch (err) {
@@ -76,23 +53,15 @@ const SocialButtons = () => {
     },
   });
 
+  // Facebook: Giữ nguyên phần callback nhưng sửa thành gửi token về:
   const handleFacebookResponse = async response => {
     try {
-      if (!response.email) {
-        return notification.error({
-          message: 'Facebook Login',
-          description: 'Cannot get email from Facebook',
-        });
-      }
-
+      const { accessToken } = response;
       const res = await axios.post(`${API_BASE}/api/auth/facebook-login`, {
-        email: response.email,
-        name: response.name,
-        picture: response.picture?.data?.url,
+        token: accessToken,
       });
 
       const result = res.data;
-
       if (result.success) {
         const userInfo = {
           _id: result.user._id,
@@ -101,28 +70,21 @@ const SocialButtons = () => {
           fullName: result.user.fullName,
           role: result.user.role,
         };
-
         setUser(userInfo);
         localStorage.setItem('userInfo', JSON.stringify(userInfo));
         localStorage.setItem('accessToken', result.token);
         localStorage.setItem('refreshToken', result.refreshToken);
-
-        message.success('Login successfully!');
-
-        if (result.isNewUser) {
-          navigate('/set-password');
-        } else {
-          navigate('/');
-        }
+        message.success('Login successful!');
+        navigate(result.isNewUser ? '/set-password' : '/');
       } else {
         notification.error({
-          message: 'Lỗi',
-          description: result.message || 'Login Facebook failed',
+          message: 'Login failed',
+          description: result.message,
         });
       }
     } catch (error) {
       notification.error({
-        message: 'Login Facebook failed',
+        message: 'Facebook login error',
         description: error?.response?.data?.message || error.message,
       });
     }
