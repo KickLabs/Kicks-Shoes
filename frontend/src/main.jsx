@@ -64,6 +64,8 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import SetPassword from './components/pages/authentication/pages/SetPassword';
 import ReportTab from './components/pages/account/components/ReportTab';
 import Banned from './components/pages/authentication/pages/Banned';
+import PrivacyPolicy from './components/pages/privacy/PrivacyPolicy';
+import DeleteUserData from './components/pages/privacy/DeleteUserData';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -184,6 +186,14 @@ const router = createBrowserRouter([
       {
         path: 'product/:id',
         element: <ProductDetailPage />,
+      },
+      {
+        path: 'privacy-policy',
+        element: <PrivacyPolicy />,
+      },
+      {
+        path: 'delete-user-data',
+        element: <DeleteUserData />,
       },
       // Admin Dashboard Routes
       {
