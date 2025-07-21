@@ -1,13 +1,9 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { toast } from "react-toastify";
-import { Card, Typography, Button, Result } from "antd";
-import {
-  CloseCircleOutlined,
-  MailOutlined,
-  LoginOutlined,
-} from "@ant-design/icons";
+import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { Card, Typography, Button, Result } from 'antd';
+import { CloseCircleOutlined, MailOutlined, LoginOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -15,7 +11,7 @@ const EmailVerificationFailed = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isResending, setIsResending] = useState(false);
-  const error = location.state?.error || "Verification failed";
+  const error = location.state?.error || 'Verification failed';
   const email = location.state?.email;
   const showResendButton = location.state?.showResendButton;
 
@@ -24,20 +20,15 @@ const EmailVerificationFailed = () => {
       setIsResending(true);
 
       if (!email) {
-        toast.error("Email address not found");
+        toast.error('Email address not found');
         return;
       }
 
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/resend-verification`,
-        { email }
-      );
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/resend-verification`, { email });
 
-      toast.success("Verification email sent successfully!");
+      toast.success('Verification email sent successfully!');
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to resend verification email"
-      );
+      toast.error(error.response?.data?.message || 'Failed to resend verification email');
     } finally {
       setIsResending(false);
     }
@@ -50,7 +41,7 @@ const EmailVerificationFailed = () => {
           status="error"
           title="Email Verification Failed"
           subTitle={error}
-          icon={<CloseCircleOutlined style={{ color: "#ff4d4f" }} />}
+          icon={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
           extra={[
             showResendButton && email && (
               <Button
@@ -63,11 +54,7 @@ const EmailVerificationFailed = () => {
                 Resend Verification Email
               </Button>
             ),
-            <Button
-              type="default"
-              icon={<LoginOutlined />}
-              onClick={() => navigate("/login")}
-            >
+            <Button type="default" icon={<LoginOutlined />} onClick={() => navigate('/login')}>
               Back to Login
             </Button>,
           ]}
