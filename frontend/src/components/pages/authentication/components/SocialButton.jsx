@@ -7,7 +7,7 @@ import google from '../../../../assets/images/google-logo.png';
 import apple from '../../../../assets/images/apple-logo.png';
 import appleWhite from '../../../../assets/images/apple-logo-white.png';
 import facebook from '../../../../assets/images/facebook-logo.png';
-import FacebookLogin from '@greatsumini/react-facebook-login';
+import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
 
 const SocialButtons = () => {
   const { setUser } = useAuth();
@@ -142,21 +142,19 @@ const SocialButtons = () => {
         </Button>
       </div>
 
-      {/* Facebook Login - Simple */}
+      {/* Facebook Login (dùng thư viện) */}
       <div style={{ width: '100%' }}>
-        <Button
-          className="social facebook"
-          block
-          onClick={() => {
-            console.log('Facebook button clicked');
-            notification.info({
-              message: 'Facebook Login',
-              description: 'Facebook login feature is coming soon!',
-            });
-          }}
-        >
-          <img className="social-logo" src={facebook} alt="facebook" />
-        </Button>
+        <FacebookLogin
+          appId={import.meta.env.VITE_FACEBOOK_APP_ID}
+          autoLoad={false}
+          fields="name,email,picture"
+          callback={handleFacebookResponse}
+          render={renderProps => (
+            <Button className="social facebook" block onClick={renderProps.onClick}>
+              <img className="social-logo" src={facebook} alt="facebook" />
+            </Button>
+          )}
+        />
       </div>
     </div>
   );
