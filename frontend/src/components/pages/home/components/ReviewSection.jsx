@@ -30,7 +30,6 @@ export const ReviewSection = () => {
     <div className="review-wrapper">
       <div className="review-header">
         <h4>Review</h4>
-        <Button>Seclect all</Button>
       </div>
       <div className="review-list">
         {reviewList.map((review, index) => (

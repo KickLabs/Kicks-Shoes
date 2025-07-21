@@ -1,4 +1,6 @@
 import React from 'react';
+import { Avatar } from 'antd';
+import { FaStar } from 'react-icons/fa';
 import './ReviewCard.css';
 
 const ReviewCard = ({ review }) => {
@@ -6,24 +8,30 @@ const ReviewCard = ({ review }) => {
     return null;
   }
 
+  const renderStars = n =>
+    Array.from({ length: n }).map((_, i) => (
+      <FaStar key={i} style={{ color: '#fadb14', marginRight: 2 }} />
+    ));
+
   return (
     <div className="review-card">
-      <div className="review-top">
-        <div className="review-text">
-          <h3>{review.title}</h3>
-          <p>{review.comment}</p>
-          <div className="review-rating">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <span key={i} className="star">
-                ★
-              </span>
-            ))}
-            <span className="rating-number">{review.rating.toFixed(1)}</span>
-          </div>
-        </div>
-        <img className="user-avatar" src={review.userImage} alt={review.userName} />
+      <div className="review-top" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Avatar src={review.user?.avatar || 'default-avatar-url'} />
+        <strong>{review.user?.fullName || 'Anonymous'}</strong>
       </div>
-      <img className="review-image" src={review.image} alt="product" />
+
+      <div className="review-rating">
+        {renderStars(review.rating)}
+        <span className="rating-number">{review.rating.toFixed(1)}</span>
+      </div>
+
+      <p className="review-content">{review.comment}</p>
+
+      {review.images.length > 0 && (
+        <div className="review-image">
+          <img src={review.images[0]} alt="Review Image" />
+        </div>
+      )}
     </div>
   );
 };

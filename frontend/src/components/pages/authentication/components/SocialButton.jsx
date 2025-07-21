@@ -8,6 +8,7 @@ import apple from '../../../../assets/images/apple-logo.png';
 import appleWhite from '../../../../assets/images/apple-logo-white.png';
 import facebook from '../../../../assets/images/facebook-logo.png';
 import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const SocialButtons = () => {
   const { setUser } = useAuth();
@@ -32,7 +33,7 @@ const SocialButtons = () => {
         }
 
         // B2: Gửi dữ liệu về server để login
-        const res = await axios.post('/api/auth/google-login', {
+        const res = await axios.post(`${API_BASE}/api/auth/google-login`, {
           email: data.email,
           name: data.name,
           picture: data.picture,
@@ -84,7 +85,7 @@ const SocialButtons = () => {
         });
       }
 
-      const res = await axios.post('/api/auth/facebook-login', {
+      const res = await axios.post(`${API_BASE}/api/auth/facebook-login`, {
         email: response.email,
         name: response.name,
         picture: response.picture?.data?.url,
