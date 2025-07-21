@@ -9,6 +9,7 @@ const ListingPage = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const isNewParam = queryParams.get('isNew') === 'true';
+  const categoryParam = queryParams.get('category');
 
   const [products, setProducts] = useState([]);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -43,13 +44,14 @@ const ListingPage = () => {
         limit: pageSize,
         sortBy,
         order: sortOrder,
+        // Thêm category từ query string nếu có
+        category: categoryParam || newFilters.category,
       };
 
       // Add filters only if they have values
       if (newFilters.size) params.size = newFilters.size;
       if (newFilters.color) params.color = newFilters.color;
       if (newFilters.brand) params.brand = newFilters.brand;
-      if (newFilters.category) params.category = newFilters.category;
       if (newFilters.minPrice !== undefined && newFilters.minPrice > 0)
         params.minPrice = newFilters.minPrice;
       if (newFilters.maxPrice !== undefined && newFilters.maxPrice < 1000)
@@ -73,7 +75,7 @@ const ListingPage = () => {
   useEffect(() => {
     fetchProducts(filters, currentPage);
     // eslint-disable-next-line
-  }, [filters, currentPage, isNewParam, sortBy, sortOrder]);
+  }, [filters, currentPage, isNewParam, sortBy, sortOrder, categoryParam]);
 
   const handleFilterChange = newFilters => {
     console.log('Filter changed:', newFilters);
