@@ -11,6 +11,7 @@ const corsOptions = {
       'http://127.0.0.1:5173',
       'https://kicks-shoes-2025.web.app',
       'https://kicks-shoes-2025.firebaseapp.com',
+      'http://192.168.1.71:3000', // Thêm IP hiện tại cho HTTP CORS
     ];
 
     if (allowedOrigins.indexOf(origin) !== -1) {

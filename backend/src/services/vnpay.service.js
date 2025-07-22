@@ -18,12 +18,27 @@ class VNPayService {
     if (this.initialized) return;
 
     try {
+      // Log current environment variables for debugging
+      console.log('[VNPay] Environment check:', {
+        VNPAY_TMN_CODE: process.env.VNPAY_TMN_CODE ? '***SET***' : 'NOT_SET',
+        VNPAY_SECURE_SECRET: process.env.VNPAY_SECURE_SECRET ? '***SET***' : 'NOT_SET',
+        VNPAY_HOST: process.env.VNPAY_HOST || 'NOT_SET',
+        VNPAY_RETURN_URL: process.env.VNPAY_RETURN_URL || 'NOT_SET',
+        NODE_ENV: process.env.NODE_ENV || 'NOT_SET'
+      });
+
       // Validate configuration on service initialization
       validateVNPayConfig();
+      console.log('[VNPay] Configuration validation passed');
+      
       this.vnpay = await createVNPayInstance(process.env.NODE_ENV || 'development');
+      console.log('[VNPay] Instance created successfully');
+      
       this.initialized = true;
+      console.log('[VNPay] Service initialized successfully');
     } catch (error) {
-      console.error('VNPay configuration error:', error.message);
+      console.error('[VNPay] Initialization failed:', error.message);
+      console.error('[VNPay] Full error:', error);
       throw error;
     }
   }
@@ -50,7 +65,16 @@ class VNPayService {
    */
   async createPaymentUrl(paymentData, options = {}) {
     try {
+      console.log('[VNPay] createPaymentUrl called with:', {
+        amount: paymentData.amount,
+        orderId: paymentData.orderId,
+        orderInfo: paymentData.orderInfo,
+        ipAddr: paymentData.ipAddr,
+        returnUrl: paymentData.returnUrl
+      });
+
       await this.ensureInitialized();
+      console.log('[VNPay] Service initialized, proceeding with payment URL creation');
 
       const {
         amount,
@@ -63,16 +87,24 @@ class VNPayService {
         currency = 'VND',
       } = paymentData;
 
-      // Generate transaction reference if not provided
-      const txnRef =
-        orderId || `TXN_${Date.now()}_${generateRandomString(6, { onlyNumber: true })}`;
+      // Generate transaction reference - ONLY NUMBERS (0-9), max 20 chars as per VNPay requirement
+      let txnRef;
+      if (orderId) {
+        // Extract only numbers from orderId
+        const numbersOnly = orderId.replace(/[^0-9]/g, '');
+        txnRef = numbersOnly.length >= 10 ? numbersOnly.substring(0, 20) : `${Date.now().toString().slice(-10)}${numbersOnly}`.substring(0, 20);
+      } else {
+        txnRef = `${Date.now().toString().slice(-10)}${generateRandomString(10, { onlyNumber: true })}`.substring(0, 20);
+      }
+
+      console.log('[VNPay] Generated txnRef (numbers only):', txnRef);
 
       const paymentParams = {
-        vnp_Amount: amount, // Will be multiplied by 100 in VNPay service
+        vnp_Amount: Math.round(amount), // Ensure integer amount
         vnp_TxnRef: txnRef,
-        vnp_OrderInfo: orderInfo || `Payment for order ${txnRef}`,
+        vnp_OrderInfo: `Payment for order ${txnRef}`, // Simple English text only
         vnp_IpAddr: ipAddr || '127.0.0.1',
-        vnp_ReturnUrl: returnUrl || process.env.VNPAY_RETURN_URL,
+        vnp_ReturnUrl: returnUrl || process.env.VNPAY_RETURN_URL || 'http://192.168.108.172:3000/api/payment/return', // Ensure returnUrl is always present
         vnp_Locale: locale,
         vnp_CurrCode: currency,
       };
@@ -82,21 +114,39 @@ class VNPayService {
         paymentParams.vnp_ExpireDate = expireDate;
       }
 
+      console.log('[VNPay] Payment params prepared:', {
+        ...paymentParams,
+        vnp_Amount: paymentParams.vnp_Amount + ' (will be multiplied by 100)'
+      });
+
       // Create payment URL
+      console.log('[VNPay] Calling buildPaymentUrl...');
       const paymentUrl = this.vnpay.buildPaymentUrl(paymentParams, {
         withHash: options.withHash || false,
         logger: options.logger || { type: 'omit', fields: ['secureSecret'] },
       });
 
-      return {
+      console.log('[VNPay] Payment URL created successfully:', paymentUrl.substring(0, 100) + '...');
+
+      const result = {
         success: true,
         paymentUrl,
         txnRef,
         amount: amount,
         orderInfo: paymentParams.vnp_OrderInfo,
       };
+
+      console.log('[VNPay] createPaymentUrl result:', {
+        success: result.success,
+        txnRef: result.txnRef,
+        amount: result.amount,
+        paymentUrlLength: result.paymentUrl.length
+      });
+
+      return result;
     } catch (error) {
-      console.error('Error creating payment URL:', error);
+      console.error('[VNPay] Error creating payment URL:', error);
+      console.error('[VNPay] Error stack:', error.stack);
       return {
         success: false,
         error: error.message,

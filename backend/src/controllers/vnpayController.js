@@ -42,9 +42,9 @@ class VNPayController {
     const paymentData = {
       amount: parseInt(amount),
       orderId,
-      orderInfo,
-      ipAddr: ipAddr || req.ip || req.connection.remoteAddress,
-      returnUrl,
+      orderInfo: `Payment for order ${orderId || 'ORDER'}`, // Simple English text
+      ipAddr: ipAddr || req.ip || req.connection.remoteAddress || '127.0.0.1',
+      returnUrl: returnUrl || process.env.VNPAY_RETURN_URL || 'http://192.168.108.172:3000/api/payment/return',
       expireDate,
       locale: locale || 'vn',
       currency: currency || 'VND',
@@ -368,42 +368,28 @@ class VNPayController {
 
     console.log('=== VNPay Return Processing Completed ===');
 
-    // Set response headers for better debugging
-    res.set({
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      Pragma: 'no-cache',
-      Expires: '0',
-    });
+    // Redirect to app with payment result instead of returning JSON
+    const appUrl = process.env.FRONTEND_URL || 'https://kicks-shoes-2025.web.app';
+    const redirectUrl = new URL('/payment/result', appUrl);
+    
+    // Add payment result as query parameters
+    redirectUrl.searchParams.append('success', result.paymentSuccess ? 'true' : 'false');
+    redirectUrl.searchParams.append('message', result.message || 'Payment processed');
+    redirectUrl.searchParams.append('txnRef', result.data?.txnRef || '');
+    redirectUrl.searchParams.append('amount', result.data?.amount?.toString() || '0');
+    redirectUrl.searchParams.append('responseCode', queryParams.vnp_ResponseCode || '');
+    
+    if (order) {
+      redirectUrl.searchParams.append('orderId', order._id.toString());
+      redirectUrl.searchParams.append('orderNumber', order.orderNumber || '');
+      redirectUrl.searchParams.append('orderStatus', order.status || '');
+      redirectUrl.searchParams.append('paymentStatus', order.paymentStatus || '');
+    }
 
-    res.status(200).json({
-      success: true,
-      message: result.paymentSuccess ? 'Payment successful' : 'Payment failed',
-      data: {
-        verified: result.verified,
-        paymentSuccess: result.paymentSuccess,
-        message: result.message,
-        transactionData: {
-          ...result.data,
-          orderDetails: order
-            ? {
-                orderNumber: order.orderNumber,
-                status: order.status,
-                paymentStatus: order.paymentStatus,
-                paymentMethod: order.paymentMethod,
-                shippingAddress: order.shippingAddress,
-                shippingMethod: order.shippingMethod,
-                createdAt: order.createdAt,
-                updatedAt: order.updatedAt,
-                notes: order.notes,
-                totalPrice: order.totalPrice,
-                user: order.user,
-                items: order.items,
-              }
-            : null,
-        },
-      },
-    });
+    console.log('Redirecting to app:', redirectUrl.toString());
+
+    // Redirect to app
+    res.redirect(302, redirectUrl.toString());
   });
 
   /**

@@ -16,10 +16,16 @@ router.use(protect);
 // Create new reward point
 router.post('/', createRewardPoint);
 
-// Get user's reward points
+// Get current user's reward points
+router.get('/user', getUserRewardPoints);
+
+// Get user's reward points by userId
 router.get('/user/:userId', getUserRewardPoints);
 
-// Get user's total points
+// Get user's total points (current user)
+router.get('/total', getUserTotalPoints);
+
+// Get user's total points by userId
 router.get('/user/:userId/total', getUserTotalPoints);
 
 // Redeem points for discount

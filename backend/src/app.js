@@ -89,7 +89,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/favourites', favouriteRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api', uploadRoutes);
-app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
+app.use('/api/payment', vnpayRoutes); // Added VNPay payment routes
 app.use('/api/chat', chatRoutes);
 
 // Start cron jobs
@@ -114,6 +114,8 @@ const io = new SocketIOServer(server, {
         'http://127.0.0.1:5173',
         'https://kicks-shoes-2025.web.app',
         'https://kicks-shoes-2025.firebaseapp.com',
+        'http://10.13.13.210:3000', // Thêm IP LAN cho phép socket
+        'http://192.168.1.71:3000', // Thêm IP hiện tại cho socket
       ];
 
       if (allowedOrigins.indexOf(origin) !== -1) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Input, Select, DatePicker, Spin, message, Form } from 'antd';
+import { Button, Input, Select, DatePicker, Spin, message, Form, Tabs } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '@/services/axiosInstance';
 
@@ -14,11 +14,13 @@ import {
   InfoCircleOutlined,
   CheckCircleOutlined,
   GiftOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import '../account.css';
 import TabHeader from '../../../common/components/TabHeader';
 import { useAuth } from '../../../../contexts/AuthContext';
 import dayjs from 'dayjs';
+import ChatPage from '../../../common/components/ChatPage';
 
 export default function ProfileTab() {
   const { user, updateProfile } = useAuth();
@@ -27,6 +29,7 @@ export default function ProfileTab() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [totalPoints, setTotalPoints] = useState(0);
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('profile');
 
   useEffect(() => {
     if (user) {
@@ -138,182 +141,209 @@ export default function ProfileTab() {
     <>
       <TabHeader breadcrumb="Profile" />
       <div className="profile-tab-container">
-        <div className="profile-header">
-          <div className="profile-avatar">
-            <img
-              src={
-                user.avatar ||
-                'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png'
-              }
-              alt="avatar"
-              onError={e => {
-                console.log('Avatar load error, falling back to default');
-                e.target.src =
-                  'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png';
-                return true; // Prevent infinite error loop
-              }}
-            />
-            <label className="change-avatar-btn">
-              <EditOutlined />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                style={{ display: 'none' }}
-              />
-            </label>
-          </div>
-          <div className="profile-info">
-            <h2>
-              {user.fullName}
-              <span className="status" style={{ marginLeft: 8 }}>
-                <CheckCircleOutlined style={{ marginRight: 4 }} /> Active
-              </span>
-            </h2>
-            <div className="email">
-              <MailOutlined /> {user.email}
-            </div>
-            <div
-              className="point"
-              onClick={() => navigate('/account/reward-points')}
-              style={{
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '8px 16px',
-                background: '#f0f2f5',
-                borderRadius: '6px',
-                transition: 'background 0.3s',
-                ':hover': {
-                  background: '#e6e8eb',
-                },
-              }}
-            >
-              <GiftOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-              Points: {totalPoints}
-            </div>
-          </div>
-        </div>
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          className="profile-sections-form"
-          style={{ width: '100%' }}
-        >
-          <div className="profile-sections-row" style={{ display: 'flex', gap: 32 }}>
-            <div className="profile-section" style={{ flex: 1 }}>
-              <div className="profile-section-title">Personal Information</div>
-              <Form.Item
-                name="fullName"
-                label={
-                  <label>
-                    <UserOutlined /> Full Name
-                  </label>
-                }
-              >
-                <Input />
-              </Form.Item>
-              <Form.Item
-                name="dateOfBirth"
-                label={
-                  <label>
-                    <CalendarOutlined /> Date of Birth
-                  </label>
-                }
-              >
-                <DatePicker style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item
-                name="gender"
-                label={
-                  <label>
-                    <ManOutlined /> Gender
-                  </label>
-                }
-              >
-                <Select>
-                  <Select.Option value="male">Male</Select.Option>
-                  <Select.Option value="female">Female</Select.Option>
-                  <Select.Option value="other">Other</Select.Option>
-                </Select>
-              </Form.Item>
-              <Form.Item
-                name="aboutMe"
-                label={
-                  <label>
-                    <InfoCircleOutlined /> About Me
-                  </label>
-                }
-              >
-                <Input.TextArea rows={2} placeholder="A short introduction about yourself..." />
-              </Form.Item>
-            </div>
-            <div className="profile-section" style={{ flex: 1 }}>
-              <div className="profile-section-title">Account Information</div>
-              <Form.Item
-                name="email"
-                label={
-                  <label>
-                    <MailOutlined /> Email
-                  </label>
-                }
-              >
-                <Input disabled />
-              </Form.Item>
-              <Form.Item
-                name="username"
-                label={
-                  <label>
-                    <UserOutlined /> Username
-                  </label>
-                }
-              >
-                <Input />
-              </Form.Item>
-              <Form.Item
-                name="phone"
-                label={
-                  <label>
-                    <PhoneOutlined /> Phone Number
-                  </label>
-                }
-              >
-                <Input />
-              </Form.Item>
-              <Form.Item
-                name="address"
-                label={
-                  <label>
-                    <HomeOutlined /> Address
-                  </label>
-                }
-              >
-                <Input />
-              </Form.Item>
-              <Form.Item
-                label={
-                  <label>
-                    <CalendarOutlined /> Join Date
-                  </label>
-                }
-              >
-                <Input value={new Date(user.createdAt).toLocaleDateString()} disabled />
-              </Form.Item>
-            </div>
-          </div>
-        </Form>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <Button
-            type="primary"
-            className="save-btn"
-            loading={loading}
-            style={{ minWidth: 180, fontWeight: 600, fontSize: 18 }}
-            onClick={() => form.submit()}
-          >
-            Save Changes
-          </Button>
-        </div>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'profile',
+              label: (
+                <span>
+                  <UserOutlined /> Thông tin cá nhân
+                </span>
+              ),
+              children: (
+                <>
+                  <div className="profile-header">
+                    <div className="profile-avatar">
+                      <img
+                        src={
+                          user.avatar ||
+                          'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png'
+                        }
+                        alt="avatar"
+                        onError={e => {
+                          console.log('Avatar load error, falling back to default');
+                          e.target.src =
+                            'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png';
+                          return true; // Prevent infinite error loop
+                        }}
+                      />
+                      <label className="change-avatar-btn">
+                        <EditOutlined />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                    </div>
+                    <div className="profile-info">
+                      <h2>
+                        {user.fullName}
+                        <span className="status" style={{ marginLeft: 8 }}>
+                          <CheckCircleOutlined style={{ marginRight: 4 }} /> Active
+                        </span>
+                      </h2>
+                      <div className="email">
+                        <MailOutlined /> {user.email}
+                      </div>
+                      <div
+                        className="point"
+                        onClick={() => navigate('/account/reward-points')}
+                        style={{
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '8px 16px',
+                          background: '#f0f2f5',
+                          borderRadius: '6px',
+                          transition: 'background 0.3s',
+                          ':hover': {
+                            background: '#e6e8eb',
+                          },
+                        }}
+                      >
+                        <GiftOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                        Points: {totalPoints}
+                      </div>
+                    </div>
+                  </div>
+                  <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleSubmit}
+                    className="profile-sections-form"
+                    style={{ width: '100%' }}
+                  >
+                    <div className="profile-sections-row" style={{ display: 'flex', gap: 32 }}>
+                      <div className="profile-section" style={{ flex: 1 }}>
+                        <div className="profile-section-title">Personal Information</div>
+                        <Form.Item
+                          name="fullName"
+                          label={
+                            <label>
+                              <UserOutlined /> Full Name
+                            </label>
+                          }
+                        >
+                          <Input />
+                        </Form.Item>
+                        <Form.Item
+                          name="dateOfBirth"
+                          label={
+                            <label>
+                              <CalendarOutlined /> Date of Birth
+                            </label>
+                          }
+                        >
+                          <DatePicker style={{ width: '100%' }} />
+                        </Form.Item>
+                        <Form.Item
+                          name="gender"
+                          label={
+                            <label>
+                              <ManOutlined /> Gender
+                            </label>
+                          }
+                        >
+                          <Select>
+                            <Select.Option value="male">Male</Select.Option>
+                            <Select.Option value="female">Female</Select.Option>
+                            <Select.Option value="other">Other</Select.Option>
+                          </Select>
+                        </Form.Item>
+                        <Form.Item
+                          name="aboutMe"
+                          label={
+                            <label>
+                              <InfoCircleOutlined /> About Me
+                            </label>
+                          }
+                        >
+                          <Input.TextArea rows={2} placeholder="A short introduction about yourself..." />
+                        </Form.Item>
+                      </div>
+                      <div className="profile-section" style={{ flex: 1 }}>
+                        <div className="profile-section-title">Account Information</div>
+                        <Form.Item
+                          name="email"
+                          label={
+                            <label>
+                              <MailOutlined /> Email
+                            </label>
+                          }
+                        >
+                          <Input disabled />
+                        </Form.Item>
+                        <Form.Item
+                          name="username"
+                          label={
+                            <label>
+                              <UserOutlined /> Username
+                            </label>
+                          }
+                        >
+                          <Input />
+                        </Form.Item>
+                        <Form.Item
+                          name="phone"
+                          label={
+                            <label>
+                              <PhoneOutlined /> Phone Number
+                            </label>
+                          }
+                        >
+                          <Input />
+                        </Form.Item>
+                        <Form.Item
+                          name="address"
+                          label={
+                            <label>
+                              <HomeOutlined /> Address
+                            </label>
+                          }
+                        >
+                          <Input />
+                        </Form.Item>
+                        <Form.Item
+                          label={
+                            <label>
+                              <CalendarOutlined /> Join Date
+                            </label>
+                          }
+                        >
+                          <Input value={new Date(user.createdAt).toLocaleDateString()} disabled />
+                        </Form.Item>
+                      </div>
+                    </div>
+                  </Form>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <Button
+                      type="primary"
+                      className="save-btn"
+                      loading={loading}
+                      style={{ minWidth: 180, fontWeight: 600, fontSize: 18 }}
+                      onClick={() => form.submit()}
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </>
+              ),
+            },
+            {
+              key: 'chat',
+              label: (
+                <span>
+                  <MessageOutlined /> Chat
+                </span>
+              ),
+              children: <ChatPage isWidget={false} />,
+            },
+          ]}
+        />
       </div>
     </>
   );

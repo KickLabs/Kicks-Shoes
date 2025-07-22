@@ -90,13 +90,17 @@ const createRewardPoint = [
 
 /**
  * Get all reward points for a user
- * @route GET /api/reward-points/user/:userId
+ * @route GET /api/reward-points/user (current user)
+ * @route GET /api/reward-points/user/:userId (specific user)
  * @access Private
  */
 const getUserRewardPoints = async (req, res, next) => {
   try {
-    const { userId } = req.params;
+    // Use userId from params if provided, otherwise use current user's ID
+    const userId = req.params.userId || req.user._id || req.user.id;
     const { page = 1, limit = 10, type, status } = req.query;
+
+    logger.info('Getting reward points for user:', { userId, currentUser: req.user._id });
 
     const query = { user: userId };
     if (type) query.type = type;
@@ -134,12 +138,16 @@ const getUserRewardPoints = async (req, res, next) => {
 
 /**
  * Get user's total active reward points
- * @route GET /api/reward-points/user/:userId/total
+ * @route GET /api/reward-points/total (current user)
+ * @route GET /api/reward-points/user/:userId/total (specific user)
  * @access Private
  */
 const getUserTotalPointsController = async (req, res, next) => {
   try {
-    const { userId } = req.params;
+    // Use userId from params if provided, otherwise use current user's ID
+    const userId = req.params.userId || req.user._id || req.user.id;
+
+    logger.info('Getting total points for user:', { userId, currentUser: req.user._id });
 
     const totalPoints = await getUserTotalPoints(userId);
 
@@ -198,7 +206,7 @@ const redeemPoints = [
         usageLimit: 1,
         perUserLimit: 1,
         status: 'active',
-        source: 'redeem',
+        source: 'reward_points',
       });
 
       // Create reward point record for redemption
