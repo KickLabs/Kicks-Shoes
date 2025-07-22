@@ -446,17 +446,22 @@ export const loginWithGoogle = async (req, res) => {
 export const loginWithFacebook = async (req, res) => {
   try {
     const { email, name, picture } = req.body;
-    if (!email) return res.status(400).json({ message: 'Missing email from Facebook' });
+
+    if (!email) {
+      return res.status(400).json({ message: 'Missing email from Facebook' });
+    }
 
     let user = await User.findOne({ email });
     let isNewUser = false;
 
     if (!user) {
       isNewUser = true;
+
       const fakePassword = Math.random().toString(36).slice(-8);
-      let baseUsername = email.split('@')[0],
-        username = baseUsername,
-        counter = 1;
+      let baseUsername = email.split('@')[0];
+      let username = baseUsername;
+      let counter = 1;
+
       while (await User.exists({ username })) {
         username = `${baseUsername}${counter++}`;
       }
@@ -474,6 +479,7 @@ export const loginWithFacebook = async (req, res) => {
         reward_point: 0,
         gender: 'other',
       });
+
       await user.save();
     } else {
       if (picture && user.avatar !== picture) {
@@ -487,7 +493,7 @@ export const loginWithFacebook = async (req, res) => {
     delete userObj.password;
     delete userObj.__v;
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: isNewUser
         ? 'Create account & login Facebook successfully'
@@ -499,7 +505,7 @@ export const loginWithFacebook = async (req, res) => {
     });
   } catch (error) {
     console.error('Facebook login error:', error);
-    res.status(500).json({ success: false, message: 'Login Facebook failed' });
+    return res.status(500).json({ success: false, message: 'Login Facebook failed' });
   }
 };
 
