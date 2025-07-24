@@ -396,6 +396,27 @@ export const getAdminStats = asyncHandler(async (req, res) => {
   // Get total stores
   const totalStores = await Store.countDocuments();
 
+  // Get total categories
+  const totalCategories = await Category.countDocuments();
+
+  // Get total conversations (using Conversation model if exists, fallback to 0)
+  let totalConversations = 0;
+  try {
+    // Try to import Conversation model dynamically
+    const { default: Conversation } = await import('../models/Conversation.js');
+    totalConversations = await Conversation.countDocuments();
+  } catch (error) {
+    // If Conversation model doesn't exist, try other chat-related models
+    try {
+      const { default: Message } = await import('../models/Message.js');
+      totalConversations = await Message.distinct('conversationId').then(ids => ids.length);
+    } catch (err) {
+      // If no chat models exist, keep totalConversations as 0
+      console.log('[AdminStats] No conversation/chat models found, using 0 for totalConversations');
+      totalConversations = 0;
+    }
+  }
+
   // Get recent orders
   const recentOrders = await Order.find()
     .sort({ createdAt: -1 })
@@ -410,6 +431,8 @@ export const getAdminStats = asyncHandler(async (req, res) => {
       totalRevenue,
       totalProducts,
       totalStores,
+      totalCategories,
+      totalConversations,
       recentOrders,
     },
   });

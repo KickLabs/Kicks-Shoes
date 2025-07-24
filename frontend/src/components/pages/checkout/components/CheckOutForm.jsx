@@ -148,9 +148,14 @@ export default function CheckoutForm({
         id: productId,
         quantity: p.quantity || 1,
         price,
-        size: p.size,
-        color: p.color,
+        ...(p.size ? { size: p.size } : {}),
+        ...(p.color ? { color: p.color } : {}),
       };
+    });
+
+    // Loại bỏ các trường undefined/null trong từng product
+    const cleanProducts = orderProducts.map(prod => {
+      return Object.fromEntries(Object.entries(prod).filter(([_, v]) => v !== undefined && v !== null));
     });
 
     const subtotalNum = orderProducts.reduce((sum, p) => sum + p.price * p.quantity, 0);
@@ -168,7 +173,7 @@ export default function CheckoutForm({
       `${shippingValues.firstName || ''} ${shippingValues.lastName || ''}, ${shippingValues.address || ''}, ${shippingValues.phone || ''}`.trim();
 
     const orderData = {
-      products: orderProducts,
+      products: cleanProducts,
       subtotal: subtotalNum,
       totalPrice: totalNum,
       totalAmount: totalNum,
@@ -178,18 +183,21 @@ export default function CheckoutForm({
       shippingCost: deliveryCostNum,
       tax: taxNum,
       discount: discountNum,
-      discountCode: discountCode || '',
-      notes: notes || '',
+      ...(discountCode && String(discountCode).trim() !== '' ? { discountCode: String(discountCode) } : {}),
+      ...(notes ? { notes } : {}),
     };
 
+    // Loại bỏ các trường undefined/null trong orderData
+    const cleanOrderData = Object.fromEntries(Object.entries(orderData).filter(([_, v]) => v !== undefined && v !== null));
+
     // Debug logging
-    console.log('Prepared order data:', orderData);
+    console.log('Prepared order data (CLEAN):', cleanOrderData);
     console.log('Original products:', products);
-    console.log('Order products:', orderProducts);
+    console.log('Order products:', cleanProducts);
     console.log('Delivery method:', deliveryMethod);
     console.log('Is buy now:', isBuyNow);
 
-    return orderData;
+    return cleanOrderData;
   };
 
   const handlePaymentMethodChange = method => {
@@ -310,7 +318,13 @@ export default function CheckoutForm({
         paymentDate: new Date().toISOString(),
       };
 
-      const result = await orderService.createOrder(codOrderData);
+      // Loại bỏ các trường undefined/null
+      const cleanCodOrderData = Object.fromEntries(Object.entries(codOrderData).filter(([_, v]) => v !== undefined && v !== null));
+
+      // Debug log dữ liệu gửi lên
+      console.log('COD ORDER PAYLOAD:', cleanCodOrderData);
+
+      const result = await orderService.createOrder(cleanCodOrderData);
 
       if (result.success) {
         message.success('Order created successfully! Payment will be collected on delivery.');
@@ -318,18 +332,16 @@ export default function CheckoutForm({
       } else {
         throw new Error(result.message || 'Failed to create order');
       }
-    } catch (err) {
-      console.error('Cash on delivery error:', err);
-      let errorMsg = 'Order creation failed';
-      if (err?.response?.data?.message) {
-        errorMsg = err.response.data.message;
-      } else if (err?.response?.data?.errors) {
-        errorMsg = err.response.data.errors.map(e => e.msg || e.message || e).join(', ');
-      } else if (err?.message) {
-        errorMsg = err.message;
+    } catch (error) {
+      // Show lỗi chi tiết từ backend nếu có
+      if (error.response?.data?.errors) {
+        message.error(error.response.data.errors.map(e => e.msg || e.message || JSON.stringify(e)).join(', '));
+      } else if (error.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error(error.message || 'Unknown error occurred');
       }
-      console.log('Error message to display:', errorMsg);
-      message.error(errorMsg);
+      console.error('COD order error:', error);
     } finally {
       setLoading(false);
     }

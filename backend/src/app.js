@@ -116,6 +116,7 @@ const io = new SocketIOServer(server, {
         'https://kicks-shoes-2025.firebaseapp.com',
         'http://10.13.13.210:3000', // Thêm IP LAN cho phép socket
         'http://192.168.1.71:3000', // Thêm IP hiện tại cho socket
+        'http://10.13.13.119:3000', // Thêm IP hiện tại cho socket
       ];
 
       if (allowedOrigins.indexOf(origin) !== -1) {

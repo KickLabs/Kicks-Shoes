@@ -18,8 +18,9 @@ const orderService = {
     } catch (error) {
       console.error('OrderService createOrder error:', {
         message: error.message,
-        response: error.response?.data,
+        response: error.response,
         status: error.response?.status,
+        data: error.response?.data,
         errors: error.response?.data?.errors,
         fullError: error,
       });
@@ -27,14 +28,17 @@ const orderService = {
       // Return detailed error information
       if (error.response?.data?.errors) {
         const errorMessages = error.response.data.errors
-          .map(e => e.msg || e.message || e)
+          .map(e => e.msg || e.message || JSON.stringify(e))
           .join(', ');
         throw new Error(errorMessages);
       } else if (error.response?.data?.error) {
         throw new Error(error.response.data.error);
       } else if (error.response?.data?.message) {
-        // Return the message directly without prefix
         throw new Error(error.response.data.message);
+      } else if (typeof error.response?.data === 'string') {
+        throw new Error(error.response.data);
+      } else if (error.response?.data) {
+        throw new Error(JSON.stringify(error.response.data));
       } else {
         throw new Error(error.message || 'Failed to create order');
       }
