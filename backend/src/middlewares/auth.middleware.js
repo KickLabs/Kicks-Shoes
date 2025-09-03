@@ -23,14 +23,9 @@ export const protect = async (req, res, next) => {
     // Get token from header
     const authHeader = req.headers.authorization;
 
-    logger.info('RAW HEADER AUTHORIZATION:', authHeader);
-    logger.info('HEADER TYPE:', typeof authHeader);
-
     if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
     }
-
-    logger.info('TOKEN RECEIVED:', token);
 
     if (!token || token === 'undefined' || token === 'null' || token.trim() === '') {
       return next(new ErrorResponse('No valid token provided', 401));

@@ -76,11 +76,18 @@ class LiveStreamService {
       this.socketToRoom.set(socketId, { roomId, role: 'host', userId });
 
       // Update stream status to live
-      await LiveStream.findByIdAndUpdate(room.streamData._id, {
-        status: 'live',
-        isActive: true,
-        startedAt: new Date(),
-      });
+      const updatedStream = await LiveStream.findByIdAndUpdate(
+        room.streamData._id,
+        {
+          status: 'live',
+          isActive: true,
+          startedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      // Update in-memory room data
+      room.streamData = updatedStream;
 
       // Create system message
       await LiveStreamChat.createSystemMessage(room.streamData._id, roomId, 'stream_started', {
@@ -121,6 +128,12 @@ class LiveStreamService {
           streamData,
         });
         room = this.rooms.get(roomId);
+      } else {
+        // Refresh stream data from database to get latest status
+        const freshStreamData = await LiveStream.findOne({ roomId });
+        if (freshStreamData) {
+          room.streamData = freshStreamData;
+        }
       }
 
       // Check if stream is active

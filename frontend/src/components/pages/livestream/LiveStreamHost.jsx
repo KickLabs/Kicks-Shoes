@@ -92,6 +92,14 @@ const LiveStreamHost = () => {
   const handleStartStreaming = async () => {
     try {
       await startCamera();
+
+      // Update stream status in database
+      await livestreamService.updateLiveStream(roomId, {
+        status: 'live',
+        isActive: true,
+        startedAt: new Date().toISOString(),
+      });
+
       setIsLive(true);
       message.success('Livestream started successfully!');
     } catch (error) {
@@ -229,7 +237,7 @@ const LiveStreamHost = () => {
                 className="local-video"
                 style={{
                   width: '100%',
-                  height: '400px',
+                  height: '500px',
                   backgroundColor: '#000',
                   borderRadius: '8px',
                 }}
@@ -311,7 +319,11 @@ const LiveStreamHost = () => {
         {/* Sidebar */}
         <Col xs={24} lg={8}>
           {/* Product Management */}
-          <Card title="Feature Products" className="product-card" style={{ marginBottom: '16px' }}>
+          <Card
+            title="Feature Products"
+            className="product-card"
+            style={{ height: '55vh', marginBottom: '16px' }}
+          >
             <Space direction="vertical" style={{ width: '100%' }}>
               <Select
                 placeholder="Select a product to feature"

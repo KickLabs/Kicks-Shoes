@@ -62,10 +62,20 @@ const LiveStreamViewer = () => {
   useEffect(() => {
     const loadStreamData = async () => {
       try {
+        console.log('Loading stream data for roomId:', roomId);
         const response = await livestreamService.getLiveStream(roomId);
+        console.log('Stream data response:', response.data);
         setStreamData(response.data.liveStream);
         setIsLive(response.data.isLive);
         setLoading(false);
+
+        // Debug log
+        console.log('Stream status:', {
+          isActive: response.data.liveStream.isActive,
+          status: response.data.liveStream.status,
+          isLive: response.data.isLive,
+          roomStatus: response.data.roomStatus,
+        });
       } catch (error) {
         console.error('Error loading stream data:', error);
         setLoading(false);
@@ -200,7 +210,7 @@ const LiveStreamViewer = () => {
                 className="remote-video"
                 style={{
                   width: '100%',
-                  height: '400px',
+                  height: '500px',
                   backgroundColor: '#000',
                   borderRadius: '8px',
                 }}
@@ -288,7 +298,7 @@ const LiveStreamViewer = () => {
         {/* Sidebar */}
         <Col xs={24} lg={8}>
           {/* Shop Information */}
-          <Card className="store-card" style={{ marginBottom: '16px' }}>
+          <Card className="store-card" style={{ marginBottom: '16px', height: '67vh' }}>
             <div className="store-info">
               <Space>
                 <Avatar icon={<ShopOutlined />} size="large" />
@@ -300,7 +310,7 @@ const LiveStreamViewer = () => {
                 </div>
               </Space>
               <Button
-                type="primary"
+                type="default"
                 onClick={handleVisitStore}
                 style={{ marginTop: '12px', width: '100%' }}
               >

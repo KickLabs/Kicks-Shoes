@@ -27,12 +27,14 @@ const liveStreamChatSchema = new mongoose.Schema(
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: function () {
+        return this.senderRole !== 'system';
+      },
       index: true,
     },
     senderRole: {
       type: String,
-      enum: ['host', 'viewer', 'moderator', 'admin'],
+      enum: ['host', 'viewer', 'moderator', 'admin', 'system'],
       default: 'viewer',
       index: true,
     },

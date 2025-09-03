@@ -22,7 +22,7 @@ import {
   removeFeaturedProduct,
   getLiveStreamAnalytics,
 } from '../controllers/livestreamController.js';
-import { authorize } from '../middlewares/auth.middleware.js';
+import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
 
 const router = express.Router();
@@ -78,15 +78,15 @@ router.get('/active', getActiveLiveStreams);
 router.get('/upcoming', getUpcomingLiveStreams);
 
 // Protected routes - require authentication (specific routes before parameterized)
-router.get('/my-streams', authorize, requireRoles('shop', 'admin'), getMyLiveStreams);
-router.get('/all', authorize, requireRoles('shop', 'admin'), getAllLiveStreams);
+router.get('/my-streams', protect, requireRoles('shop', 'admin'), getMyLiveStreams);
+router.get('/all', protect, requireRoles('shop', 'admin'), getAllLiveStreams);
 
 // Public parameterized routes (must come after specific routes)
 router.get('/:roomId', getLiveStream);
 router.get('/:roomId/chat', getChatMessages);
 router.post(
   '/',
-  authorize,
+  protect,
   requireRoles('shop', 'admin'),
   createLiveStreamValidation,
   createLiveStream
@@ -94,19 +94,19 @@ router.post(
 
 router.put(
   '/:roomId',
-  authorize,
+  protect,
   requireRoles('shop', 'admin'),
   updateLiveStreamValidation,
   updateLiveStream
 );
 
-router.post('/:roomId/end', authorize, requireRoles('shop', 'admin'), endLiveStream);
+router.post('/:roomId/end', protect, requireRoles('shop', 'admin'), endLiveStream);
 
-router.delete('/:roomId', authorize, requireRoles('shop', 'admin'), deleteLiveStream);
+router.delete('/:roomId', protect, requireRoles('shop', 'admin'), deleteLiveStream);
 
 router.post(
   '/:roomId/feature-product',
-  authorize,
+  protect,
   requireRoles('shop', 'admin'),
   addFeaturedProductValidation,
   addFeaturedProduct
@@ -114,11 +114,11 @@ router.post(
 
 router.delete(
   '/:roomId/feature-product/:productId',
-  authorize,
+  protect,
   requireRoles('shop', 'admin'),
   removeFeaturedProduct
 );
 
-router.get('/:roomId/analytics', authorize, requireRoles('shop', 'admin'), getLiveStreamAnalytics);
+router.get('/:roomId/analytics', protect, requireRoles('shop', 'admin'), getLiveStreamAnalytics);
 
 export default router;

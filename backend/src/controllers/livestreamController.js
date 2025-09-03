@@ -101,13 +101,17 @@ export const getLiveStream = asyncHandler(async (req, res) => {
   // Get room status from service
   const roomStatus = liveStreamService.getRoomStatus(roomId);
 
+  // Check if stream is live based on database status and room status
+  const isLive =
+    liveStream.isActive && liveStream.status === 'live' && (roomStatus?.isActive || false);
+
   res.json({
     success: true,
     data: {
       liveStream,
       roomStatus,
-      isLive: roomStatus?.isActive || false,
-      viewerCount: roomStatus?.viewerCount || 0,
+      isLive,
+      viewerCount: roomStatus?.viewerCount || liveStream.stats?.currentViewers || 0,
     },
   });
 });
@@ -267,11 +271,12 @@ export const updateLiveStream = asyncHandler(async (req, res) => {
     throw new ErrorResponse('Not authorized to update this livestream', 403);
   }
 
-  if (liveStream.status === 'live') {
-    throw new ErrorResponse('Cannot update livestream while it is live', 400);
-  }
+  const { title, description, scheduledAt, settings, status, isActive, startedAt } = req.body;
 
-  const { title, description, scheduledAt, settings } = req.body;
+  // Allow status updates for starting/ending stream
+  if (liveStream.status === 'live' && !status && !isActive && !startedAt) {
+    throw new ErrorResponse('Cannot update livestream content while it is live', 400);
+  }
 
   const updateData = {};
   if (title) updateData.title = title;
@@ -283,6 +288,11 @@ export const updateLiveStream = asyncHandler(async (req, res) => {
       ...settings,
     };
   }
+
+  // Handle status updates for starting/ending stream
+  if (status !== undefined) updateData.status = status;
+  if (isActive !== undefined) updateData.isActive = isActive;
+  if (startedAt) updateData.startedAt = new Date(startedAt);
 
   const updatedStream = await LiveStream.findByIdAndUpdate(liveStream._id, updateData, {
     new: true,

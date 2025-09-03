@@ -10,6 +10,7 @@ import {
   ShoppingCartOutlined,
   DashboardOutlined,
   VideoCameraOutlined,
+  ShopOutlined,
 } from '@ant-design/icons';
 import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal } from 'antd';
 import logo from '@assets/Logo.svg';
@@ -128,6 +129,7 @@ const AppHeader = () => {
     },
     {
       key: 'products',
+      icon: <ShopOutlined style={{ marginRight: 4 }} />,
       label: 'Products',
     },
     {
@@ -146,6 +148,7 @@ const AppHeader = () => {
     },
     {
       key: 'products',
+      icon: <ShopOutlined style={{ marginRight: 4 }} />,
       label: 'Products',
     },
     {

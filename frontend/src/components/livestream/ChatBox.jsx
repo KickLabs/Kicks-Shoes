@@ -15,11 +15,15 @@ const { Text, Title } = Typography;
 const ChatBox = ({ messages = [], onSendMessage, disabled = false, className = '' }) => {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      container.scrollTop = container.scrollHeight;
+    }
   }, [messages]);
 
   const handleSendMessage = () => {
@@ -151,7 +155,7 @@ const ChatBox = ({ messages = [], onSendMessage, disabled = false, className = '
         </Title>
       </div>
 
-      <div className="chat-messages">
+      <div style={{ height: '330px' }} className="chat-messages">
         {messages.length === 0 ? (
           <div className="empty-chat">
             <Text type="secondary">No messages yet. Start the conversation!</Text>
@@ -162,7 +166,15 @@ const ChatBox = ({ messages = [], onSendMessage, disabled = false, className = '
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-input">
+      <div
+        className="chat-input"
+        style={{
+          display: 'flex',
+          width: '100%',
+          alignItems: 'center',
+          transition: 'all 0.3s ease',
+        }}
+      >
         <Space.Compact style={{ width: '100%' }}>
           <Input
             ref={inputRef}
@@ -173,16 +185,17 @@ const ChatBox = ({ messages = [], onSendMessage, disabled = false, className = '
             disabled={disabled}
             maxLength={500}
             className="message-input"
+            style={{
+              flex: 1,
+              borderRadius: '12px',
+              transition: 'all 0.3s ease',
+              border: '1px solid #d9d9d9',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = '#40a9ff')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = '#d9d9d9')}
+            onFocus={e => (e.currentTarget.style.boxShadow = '0 0 5px #40a9ff')}
+            onBlur={e => (e.currentTarget.style.boxShadow = 'none')}
           />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSendMessage}
-            disabled={disabled || !inputValue.trim()}
-            className="send-button"
-          >
-            Send
-          </Button>
         </Space.Compact>
       </div>
     </Card>

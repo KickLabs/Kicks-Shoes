@@ -173,7 +173,7 @@ const LiveStreamPage = () => {
           tab={
             <span>
               <PlayCircleOutlined />
-              Live Now ({activeStreams.length})
+              <span>Live Now ({activeStreams.length})</span>
             </span>
           }
           key="live"
@@ -188,8 +188,6 @@ const LiveStreamPage = () => {
             </Row>
           ) : (
             <Empty
-              image="/api/placeholder/400/300"
-              imageStyle={{ height: 200 }}
               description={
                 <div>
                   <Title level={4}>No Live Streams</Title>
@@ -207,7 +205,7 @@ const LiveStreamPage = () => {
           tab={
             <span>
               <ClockCircleOutlined />
-              Upcoming ({upcomingStreams.length})
+              <span>Upcoming ({upcomingStreams.length})</span>
             </span>
           }
           key="upcoming"
@@ -222,8 +220,6 @@ const LiveStreamPage = () => {
             </Row>
           ) : (
             <Empty
-              image="/api/placeholder/400/300"
-              imageStyle={{ height: 200 }}
               description={
                 <div>
                   <Title level={4}>No Upcoming Streams</Title>
