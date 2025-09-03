@@ -49,6 +49,7 @@ import {
 } from '@ant-design/icons';
 import { Line, Bar, Pie } from '@ant-design/charts';
 import AllProducts from './AllProducts';
+import LiveStreamManagement from './LiveStreamManagement';
 import {
   getShopStats,
   getShopOrders,
@@ -104,6 +105,7 @@ export default function ShopDashboard() {
     if (path === '/shop/orders') return 'orders';
     if (path === '/shop/feedback') return 'feedback';
     if (path === '/shop/discounts') return 'discounts';
+    if (path === '/shop/livestream') return 'livestream';
     return 'dashboard';
   };
 
@@ -931,6 +933,9 @@ export default function ShopDashboard() {
             />
           </Card>
         );
+
+      case 'livestream':
+        return <LiveStreamManagement />;
 
       default:
         return <div>Page not found</div>;

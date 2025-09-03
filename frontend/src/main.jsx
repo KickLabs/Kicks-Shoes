@@ -67,6 +67,12 @@ import Banned from './components/pages/authentication/pages/Banned';
 import PrivacyPolicy from './components/pages/privacy/PrivacyPolicy';
 import DeleteUserData from './components/pages/privacy/DeleteUserData';
 
+// LiveStream Components
+import CreateLiveStream from './components/pages/livestream/CreateLiveStream';
+import LiveStreamHost from './components/pages/livestream/LiveStreamHost';
+import LiveStreamViewer from './components/pages/livestream/LiveStreamViewer';
+import LiveStreamPage from './components/pages/livestream/LiveStreamPage';
+
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
 
@@ -367,6 +373,30 @@ const router = createBrowserRouter([
               </ShopOwnerProtectedRoute>
             ),
           },
+          {
+            path: 'livestream',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShopDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'livestream/create',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <CreateLiveStream />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'livestream/host/:roomId',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <LiveStreamHost />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
         ],
       },
       {
@@ -438,6 +468,14 @@ const router = createBrowserRouter([
       {
         path: 'payment/return',
         element: <PaymentStatus />,
+      },
+      {
+        path: 'livestream',
+        element: <LiveStreamPage />,
+      },
+      {
+        path: 'livestream/:roomId',
+        element: <LiveStreamViewer />,
       },
     ],
   },

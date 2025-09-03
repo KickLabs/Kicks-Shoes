@@ -9,6 +9,8 @@ import {
   LockOutlined,
   ShoppingCartOutlined,
   DashboardOutlined,
+  VideoCameraOutlined,
+  ShopOutlined,
 } from '@ant-design/icons';
 import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal } from 'antd';
 import logo from '@assets/Logo.svg';
@@ -127,7 +129,13 @@ const AppHeader = () => {
     },
     {
       key: 'products',
+      icon: <ShopOutlined style={{ marginRight: 4 }} />,
       label: 'Products',
+    },
+    {
+      key: 'livestream',
+      icon: <VideoCameraOutlined style={{ color: 'red', marginRight: 4 }} />,
+      label: 'Livestream',
     },
   ];
 
@@ -140,7 +148,13 @@ const AppHeader = () => {
     },
     {
       key: 'products',
+      icon: <ShopOutlined style={{ marginRight: 4 }} />,
       label: 'Products',
+    },
+    {
+      key: 'livestream',
+      icon: <VideoCameraOutlined style={{ color: 'red', marginRight: 4 }} />,
+      label: 'Livestream',
     },
   ];
 
@@ -149,6 +163,8 @@ const AppHeader = () => {
       navigate('/listing-page?isNew=true');
     } else if (e.key === 'products') {
       navigate('/listing-page');
+    } else if (e.key === 'livestream') {
+      navigate('/livestream');
     }
   };
 
