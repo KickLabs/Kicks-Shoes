@@ -39,6 +39,7 @@ import { default as shopRoutes, default as storeRoutes } from './routes/storeRou
 import userRoutes from './routes/userRoutes.js';
 import cartRoutes from './routes/cartRoutes.js'; // Added from feature/HueSuong/cart-be
 import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
+import livestreamRoutes from './routes/livestreamRoutes.js'; // Added LiveStream routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
@@ -91,6 +92,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
 app.use('/api/chat', chatRoutes);
+app.use('/api/livestream', livestreamRoutes); // Added LiveStream routes
 
 // Start cron jobs
 startDiscountStatusUpdateCron();

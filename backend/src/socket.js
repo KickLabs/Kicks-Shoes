@@ -1,7 +1,10 @@
 import logger from './utils/logger.js';
 import { saveMessage } from './services/chat.service.js';
+import { setupLiveStreamHandlers } from './services/livestreamSocket.service.js';
 
 export default function setupSocketHandlers(io) {
+  // Setup LiveStream handlers
+  setupLiveStreamHandlers(io);
   io.on('connection', socket => {
     logger.info(`Socket connected: ${socket.id}`);
 

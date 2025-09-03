@@ -9,6 +9,7 @@ import {
   LockOutlined,
   ShoppingCartOutlined,
   DashboardOutlined,
+  VideoCameraOutlined,
 } from '@ant-design/icons';
 import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal } from 'antd';
 import logo from '@assets/Logo.svg';
@@ -129,6 +130,11 @@ const AppHeader = () => {
       key: 'products',
       label: 'Products',
     },
+    {
+      key: 'livestream',
+      icon: <VideoCameraOutlined style={{ color: 'red', marginRight: 4 }} />,
+      label: 'Livestream',
+    },
   ];
 
   // Dropdown menu items (for mobile)
@@ -142,6 +148,11 @@ const AppHeader = () => {
       key: 'products',
       label: 'Products',
     },
+    {
+      key: 'livestream',
+      icon: <VideoCameraOutlined style={{ color: 'red', marginRight: 4 }} />,
+      label: 'Livestream',
+    },
   ];
 
   const handleMenuClick = e => {
@@ -149,6 +160,8 @@ const AppHeader = () => {
       navigate('/listing-page?isNew=true');
     } else if (e.key === 'products') {
       navigate('/listing-page');
+    } else if (e.key === 'livestream') {
+      navigate('/livestream');
     }
   };
 
