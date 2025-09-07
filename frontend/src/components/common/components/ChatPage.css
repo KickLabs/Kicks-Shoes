@@ -240,6 +240,27 @@
   max-width: 200px;
 }
 
+.chat-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.video-call-btn {
+  color: #52c41a;
+  transition: all 0.2s ease;
+}
+
+.video-call-btn:hover {
+  color: #389e0d;
+  background: rgba(82, 196, 26, 0.1);
+}
+
+.video-call-btn:disabled {
+  color: #d9d9d9;
+  cursor: not-allowed;
+}
+
 .clear-chat-btn {
   color: #e74c3c;
   transition: all 0.2s ease;
@@ -692,4 +713,39 @@
 
 .chat-messages .ant-list-item {
   animation: slideIn 0.3s ease-out;
+}
+
+/* Video Call Toast Styles */
+.video-call-toast {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 2px solid #52c41a !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(82, 196, 26, 0.3) !important;
+  min-width: 350px !important;
+}
+
+.video-call-toast .Toastify__toast-body {
+  padding: 16px !important;
+  color: #333 !important;
+}
+
+/* Animation for video call toast */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 8px 32px rgba(82, 196, 26, 0.3);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 12px 48px rgba(82, 196, 26, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8px 32px rgba(82, 196, 26, 0.3);
+  }
+}
+
+.video-call-toast {
+  animation: pulse 2s infinite;
 }
