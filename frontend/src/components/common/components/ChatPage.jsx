@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { Input, Button, List, Avatar, Typography, Badge, Popconfirm, Tooltip } from 'antd';
+import {
+  Input,
+  Button,
+  List,
+  Avatar,
+  Typography,
+  Badge,
+  Popconfirm,
+  Tooltip,
+  Modal,
+  notification,
+} from 'antd';
+import { toast } from 'react-toastify';
 import {
   SendOutlined,
   UserOutlined,
@@ -7,6 +19,8 @@ import {
   ShopOutlined,
   DeleteOutlined,
   ClearOutlined,
+  VideoCameraOutlined,
+  PhoneOutlined,
 } from '@ant-design/icons';
 import TabHeader from './TabHeader';
 import { ActiveTabContext } from './ActiveTabContext';
@@ -30,7 +44,7 @@ const ChatPage = props => {
   const { user } = useAuth();
   // Ưu tiên prop, fallback sang context
   const role = props.role || (user?.role === 'shop' ? 'shop' : 'customer');
-  const userId = props.userId || (user?.role === 'customer' ? user?._id : undefined);
+  const userId = props.userId || user?._id;
   const shopId = props.shopId || (user?.role === 'shop' ? user?._id : user?.shopId);
   const isWidget = props.isWidget || false;
 
@@ -55,6 +69,20 @@ const ChatPage = props => {
   const [shopIdState, setShopIdState] = useState(shopId);
   const conversationCreatedRef = useRef(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [shopUserId, setShopUserId] = useState(null);
+
+  // Video call states
+  const [isVideoCallModalOpen, setIsVideoCallModalOpen] = useState(false);
+  const [isVideoCallActive, setIsVideoCallActive] = useState(false);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
+  const [incomingCallData, setIncomingCallData] = useState(null);
+  const [localVideoStream, setLocalVideoStream] = useState(null);
+  const [remoteVideoStream, setRemoteVideoStream] = useState(null);
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const peerConnectionRef = useRef(null);
+  const notificationRef = useRef(null);
+  const ringtoneRef = useRef(null);
 
   // Định nghĩa AI chat object
   const aiChat = {
@@ -78,13 +106,77 @@ const ChatPage = props => {
 
   // Kết nối socket khi mount
   useEffect(() => {
+    console.log('🚀 Initializing socket connection to:', SOCKET_URL);
     socketRef.current = io(SOCKET_URL, { transports: ['websocket'] });
+
+    // Debug socket connection
+    socketRef.current.on('connect', () => {
+      console.log('🔌 Socket connected for video calls');
+      console.log('🆔 Socket ID:', socketRef.current.id);
+    });
+
+    socketRef.current.on('disconnect', () => {
+      console.log('🔌 Socket disconnected');
+    });
+
+    socketRef.current.on('connect_error', error => {
+      console.error('❌ Socket connection error:', error);
+    });
+
+    // Listen for global video call accept events
+    const handleGlobalVideoCallAccepted = event => {
+      console.log('🎯 Received global video call accepted event:', event.detail);
+      const callData = event.detail;
+
+      // Set incoming call data and immediately open modal
+      setIncomingCallData(callData);
+      setIsIncomingCall(false); // Clear incoming call state
+      setIsVideoCallActive(true);
+      setIsVideoCallModalOpen(true);
+
+      console.log('✅ Global video call accepted - modal will open');
+    };
+
+    window.addEventListener('globalVideoCallAccepted', handleGlobalVideoCallAccepted);
+
+    // Check for pending video call from redirect
+    const checkPendingVideoCall = () => {
+      const pendingCall = sessionStorage.getItem('pendingVideoCall');
+      if (pendingCall) {
+        try {
+          const callData = JSON.parse(pendingCall);
+          console.log('📞 Found pending video call from redirect:', callData);
+
+          // Clear from sessionStorage
+          sessionStorage.removeItem('pendingVideoCall');
+
+          // Trigger the same logic as global accept
+          setTimeout(() => {
+            handleGlobalVideoCallAccepted({ detail: callData });
+          }, 1000); // Small delay to ensure page is fully loaded
+        } catch (error) {
+          console.error('Error parsing pending video call:', error);
+          sessionStorage.removeItem('pendingVideoCall');
+        }
+      }
+    };
+
+    // Check for pending call after socket is connected
+    setTimeout(checkPendingVideoCall, 500);
+
     return () => {
       socketRef.current.disconnect();
+      // Clean up video call resources
+      stopRingtone();
+      if (notificationRef.current) {
+        toast.dismiss();
+      }
+      // Clean up global event listener
+      window.removeEventListener('globalVideoCallAccepted', handleGlobalVideoCallAccepted);
     };
   }, []);
 
-  // Lấy shopId cho customer
+  // Lấy shopId cho customer và shopUserId cho video calls
   useEffect(() => {
     if (role === 'customer' && !shopIdState) {
       api
@@ -92,13 +184,28 @@ const ChatPage = props => {
         .then(res => {
           if (res.data && res.data._id) {
             setShopIdState(res.data._id);
+            setShopUserId(res.data._id); // Lưu shop user ID cho video calls
+            console.log('🏪 Shop user ID:', res.data._id);
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching shop:', err);
+        });
+    } else if (!shopUserId) {
+      // Lấy shop user ID cho tất cả cases
+      api
+        .get('/users/shop')
+        .then(res => {
+          if (res.data && res.data._id) {
+            setShopUserId(res.data._id);
+            console.log('🏪 Shop user ID:', res.data._id);
           }
         })
         .catch(err => {
           console.error('Error fetching shop:', err);
         });
     }
-  }, [role, shopIdState]);
+  }, [role, shopIdState, shopUserId]);
 
   // Lấy danh sách chat
   useEffect(() => {
@@ -112,7 +219,7 @@ const ChatPage = props => {
         pinned: false,
         isAI: false,
         isShop: true,
-        shopUserId: '6845be4f54a7582c1d2109b8', // ID cụ thể của shop user
+        shopUserId: shopUserId, // ID động của shop user
       };
       setChatList([aiChat, shopChat]);
       setSelectedChat(aiChat); // Mặc định chọn AI
@@ -200,7 +307,7 @@ const ChatPage = props => {
           conversationCreatedRef.current = true;
           const res = await api.post('/chat/conversation', {
             userId,
-            shopId: selectedChat.shopUserId || '6845be4f54a7582c1d2109b8',
+            shopId: selectedChat.shopUserId || shopUserId,
           });
           const conversation = res.data;
 
@@ -224,6 +331,7 @@ const ChatPage = props => {
           const res = await api.get(`/chat/messages/${selectedChat._id}`);
           const data = res.data;
           setMessages(data);
+          console.log('🏠 Joining conversation:', selectedChat._id);
           socketRef.current.emit('join_conversation', selectedChat._id);
 
           // Debug log
@@ -246,7 +354,7 @@ const ChatPage = props => {
           // Tìm conversation giữa user hiện tại và shop user
           const res = await api.post(`/chat/conversation`, {
             userId,
-            shopId: '6845be4f54a7582c1d2109b8',
+            shopId: shopUserId,
           });
           const conversation = res.data;
           console.log('Shop conversation:', conversation);
@@ -293,7 +401,7 @@ const ChatPage = props => {
             };
           }
           // Cập nhật cho shop chat nếu tin nhắn từ shop user
-          if (chat.isShop && msg.sender === '6845be4f54a7582c1d2109b8') {
+          if (chat.isShop && msg.sender === shopUserId) {
             return {
               ...chat,
               lastMessage: msg.content,
@@ -304,11 +412,121 @@ const ChatPage = props => {
         })
       );
     };
+
+    // Video call event handlers - Only handle local chat page events
+    const handleIncomingCall = data => {
+      console.log('🔔 Local incoming video call received in chat page:', data);
+
+      // Only handle if user is the receiver and we're in chat page
+      if (data.to !== userId) return;
+
+      setIncomingCallData(data);
+      setIsIncomingCall(true);
+
+      // Note: Global notification is handled by VideoCallProvider
+      console.log('📱 Local video call state updated');
+    };
+
+    const handleCallAccepted = data => {
+      // Stop ringtone and close notification
+      stopRingtone();
+      if (notificationRef.current) {
+        toast.dismiss();
+        notificationRef.current = null;
+      }
+
+      setIsVideoCallActive(true);
+      setIsVideoCallModalOpen(true);
+    };
+
+    const handleCallRejected = data => {
+      // Stop ringtone and close notification
+      stopRingtone();
+      if (notificationRef.current) {
+        toast.dismiss();
+        notificationRef.current = null;
+      }
+
+      // Clean up and show notification
+      setIsVideoCallModalOpen(false);
+      setIsVideoCallActive(false);
+      setIsIncomingCall(false);
+      setIncomingCallData(null);
+
+      // Show rejection message
+      toast.info('Video call cancelled by the other party', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+    };
+
+    const handleCallEnded = data => {
+      // Stop ringtone and close notification
+      stopRingtone();
+      if (notificationRef.current) {
+        toast.dismiss();
+        notificationRef.current = null;
+      }
+
+      endVideoCall();
+    };
+
+    const handleWebRTCOffer = async data => {
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+
+        socketRef.current.emit('video_call_answer', {
+          from: userId || user?._id,
+          to: data.from,
+          answer: answer,
+          conversationId: selectedChat?._id,
+        });
+      }
+    };
+
+    const handleWebRTCAnswer = async data => {
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(data.answer)
+        );
+      }
+    };
+
+    const handleWebRTCIceCandidate = async data => {
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    };
+
     socketRef.current.on('receive_message', handleReceive);
+    socketRef.current.on('video_call_request', handleIncomingCall);
+    socketRef.current.on('video_call_accepted', handleCallAccepted);
+    socketRef.current.on('video_call_rejected', handleCallRejected);
+    socketRef.current.on('video_call_ended', handleCallEnded);
+    socketRef.current.on('video_call_offer', handleWebRTCOffer);
+    socketRef.current.on('video_call_answer', handleWebRTCAnswer);
+    socketRef.current.on('video_call_ice_candidate', handleWebRTCIceCandidate);
+
+    console.log('🎧 Video call event listeners registered');
+
+    // Test if socket events are working
+    socketRef.current.on('test_event', data => {
+      console.log('🧪 Test event received:', data);
+    });
+
     return () => {
       socketRef.current.off('receive_message', handleReceive);
+      socketRef.current.off('video_call_request', handleIncomingCall);
+      socketRef.current.off('video_call_accepted', handleCallAccepted);
+      socketRef.current.off('video_call_rejected', handleCallRejected);
+      socketRef.current.off('video_call_ended', handleCallEnded);
+      socketRef.current.off('video_call_offer', handleWebRTCOffer);
+      socketRef.current.off('video_call_answer', handleWebRTCAnswer);
+      socketRef.current.off('video_call_ice_candidate', handleWebRTCIceCandidate);
     };
-  }, []);
+  }, [selectedChat]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -436,7 +654,7 @@ const ChatPage = props => {
             const msg = {
               conversationId: conversation._id,
               sender: userId,
-              receiver: '6845be4f54a7582c1d2109b8',
+              receiver: shopUserId,
               content: newMessage,
             };
             socketRef.current.emit('send_message', msg);
@@ -464,7 +682,7 @@ const ChatPage = props => {
       receiver = selectedChat.participants?.find(id => id !== shopId) || selectedChat.userId;
     } else {
       // Customer gửi cho shop
-      receiver = selectedChat.shopUserId || '6845be4f54a7582c1d2109b8';
+      receiver = selectedChat.shopUserId || shopUserId;
     }
 
     if (!receiver) {
@@ -493,6 +711,425 @@ const ChatPage = props => {
     setMessages([]);
     aiChatService.clearMessages();
     aiChatService.resetConversation();
+  };
+
+  // Video call functions
+  const ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ];
+
+  // Create ringtone audio
+  const createRingtone = () => {
+    if (!ringtoneRef.current) {
+      // Create a simple ringtone using Web Audio API
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+
+      ringtoneRef.current = { oscillator, gainNode, audioContext };
+    }
+  };
+
+  const playRingtone = () => {
+    try {
+      createRingtone();
+      const { oscillator, audioContext } = ringtoneRef.current;
+
+      // Play ringtone pattern
+      const playTone = (frequency, duration, delay = 0) => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+
+        osc.frequency.setValueAtTime(frequency, audioContext.currentTime + delay);
+        gain.gain.setValueAtTime(0.3, audioContext.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + delay + duration);
+
+        osc.start(audioContext.currentTime + delay);
+        osc.stop(audioContext.currentTime + delay + duration);
+      };
+
+      // Ring pattern: high-low-high-low
+      playTone(800, 0.3, 0);
+      playTone(600, 0.3, 0.4);
+      playTone(800, 0.3, 0.8);
+      playTone(600, 0.3, 1.2);
+    } catch (error) {
+      console.warn('Could not play ringtone:', error);
+    }
+  };
+
+  const stopRingtone = () => {
+    if (ringtoneRef.current) {
+      try {
+        const { audioContext } = ringtoneRef.current;
+        audioContext.close();
+        ringtoneRef.current = null;
+      } catch (error) {
+        console.warn('Error stopping ringtone:', error);
+      }
+    }
+  };
+
+  const initializePeerConnection = () => {
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+    pc.onicecandidate = event => {
+      if (event.candidate && socketRef.current) {
+        const fromId = userId || user?._id;
+        const toId =
+          role === 'customer'
+            ? shopUserId
+            : selectedChat?.userId || selectedChat?.participants?.find(p => p._id !== shopId)?._id;
+
+        console.log('🧊 Sending ICE candidate:', { from: fromId, to: toId });
+
+        socketRef.current.emit('video_call_ice_candidate', {
+          from: fromId,
+          to: toId,
+          candidate: event.candidate,
+          conversationId: selectedChat?._id,
+        });
+      }
+    };
+
+    pc.ontrack = event => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+        setRemoteVideoStream(event.streams[0]);
+      }
+    };
+
+    return pc;
+  };
+
+  const startVideoCall = async () => {
+    if (!selectedChat || selectedChat.isAI) return;
+
+    // Check if user is logged in
+    if (!userId) {
+      toast.error('Please login to make a video call.', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    // If this is a shop chat without real conversation ID, create one first
+    if (selectedChat._id === 'shop' && role === 'customer') {
+      try {
+        const res = await api.post('/chat/conversation', {
+          userId,
+          shopId: shopUserId,
+        });
+        const conversation = res.data;
+
+        // Update selectedChat with real conversation ID
+        setSelectedChat(prev => ({ ...prev, _id: conversation._id }));
+
+        // Wait a moment for the state to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        console.log('✅ Created conversation for video call:', conversation._id);
+      } catch (error) {
+        console.error('Error creating conversation for video call:', error);
+        toast.error('Can not create conversation.', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+    }
+
+    // Check if we have a valid conversation ID
+    const conversationId =
+      selectedChat._id === 'shop' ? 'temp-shop-conversation' : selectedChat._id;
+    if (!conversationId || conversationId === 'ai') {
+      toast.error('Please select a conversation to make a video call.', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    try {
+      // Get user media
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      setLocalVideoStream(stream);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      // Initialize peer connection
+      const pc = initializePeerConnection();
+      peerConnectionRef.current = pc;
+
+      // Add local stream to peer connection
+      stream.getTracks().forEach(track => {
+        pc.addTrack(track, stream);
+      });
+
+      // Create offer
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      // Send call request
+      let receiverId;
+      if (role === 'customer') {
+        // Customer gọi shop: lấy ID của user có role = 'shop'
+        receiverId = shopUserId; // Shop user ID từ API
+        if (!receiverId) {
+          toast.error('Can not get shop information.', {
+            position: 'top-right',
+            autoClose: 3000,
+          });
+          return;
+        }
+      } else {
+        // Shop gọi customer: lấy ID của customer từ conversation
+        receiverId =
+          selectedChat.userId || selectedChat.participants?.find(p => p._id !== shopId)?._id;
+        if (!receiverId) {
+          toast.error('Can not find receiver.', {
+            position: 'top-right',
+            autoClose: 3000,
+          });
+          return;
+        }
+      }
+
+      const finalConversationId = selectedChat._id === 'shop' ? conversationId : selectedChat._id;
+      const callData = {
+        to: receiverId,
+        from: userId || user?._id, // Đảm bảo có from ID
+        fromName: user?.fullName || user?.username || (role === 'customer' ? 'Customer' : 'Shop'),
+        offer: offer,
+        conversationId: finalConversationId,
+      };
+
+      // Validation trước khi gửi
+      if (!callData.from || !callData.to) {
+        console.error('❌ Invalid call data:', callData);
+        toast.error('Information error.', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        return;
+      }
+
+      // Debug để kiểm tra data trước khi gửi
+      console.log('🔍 Call data validation:', {
+        to: receiverId,
+        from: userId || user?._id,
+        hasOffer: !!offer,
+        conversationId: finalConversationId,
+      });
+
+      console.log('📞 Sending video call request:', callData);
+      console.log('🔌 Socket connected?', socketRef.current.connected);
+      console.log('🆔 Socket ID:', socketRef.current.id);
+
+      // Join conversation room if not already joined
+      if (finalConversationId && finalConversationId !== 'temp-shop-conversation') {
+        console.log('🏠 Joining conversation for video call:', finalConversationId);
+        socketRef.current.emit('join_conversation', finalConversationId);
+      }
+
+      socketRef.current.emit('video_call_request', callData);
+      console.log('✅ Video call request emitted');
+
+      setIsVideoCallModalOpen(true);
+
+      // Show success notification
+      toast.success('Connecting video call. Please wait for the other party to accept.', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+    } catch (error) {
+      console.error('Error starting video call:', error);
+      toast.error('Can not access camera/microphone. Please check your access permissions.', {
+        position: 'top-right',
+        autoClose: 4000,
+      });
+    }
+  };
+
+  const acceptVideoCall = async () => {
+    if (!incomingCallData) return;
+
+    // Stop ringtone and close notification
+    stopRingtone();
+    if (notificationRef.current) {
+      toast.dismiss();
+      notificationRef.current = null;
+    }
+
+    try {
+      // Get user media
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      setLocalVideoStream(stream);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      // Initialize peer connection
+      const pc = initializePeerConnection();
+      peerConnectionRef.current = pc;
+
+      // Add local stream to peer connection
+      stream.getTracks().forEach(track => {
+        pc.addTrack(track, stream);
+      });
+
+      // Accept the call
+      socketRef.current.emit('video_call_accept', {
+        from: userId || user?._id,
+        to: incomingCallData.from,
+        conversationId: incomingCallData.conversationId,
+      });
+
+      setIsIncomingCall(false);
+      setIsVideoCallActive(true);
+      setIsVideoCallModalOpen(true);
+      setIncomingCallData(null);
+    } catch (error) {
+      console.error('Error accepting video call:', error);
+      toast.error('Can not access camera/microphone. Please check your access permissions.', {
+        position: 'top-right',
+        autoClose: 4000,
+      });
+    }
+  };
+
+  // Auto start media when modal opens from global accept
+  useEffect(() => {
+    if (isVideoCallModalOpen && isVideoCallActive && incomingCallData && !localVideoStream) {
+      console.log('🎬 Auto-starting media for global accepted call');
+
+      // Get user media without calling acceptVideoCall again
+      navigator.mediaDevices
+        .getUserMedia({
+          video: true,
+          audio: true,
+        })
+        .then(stream => {
+          setLocalVideoStream(stream);
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = stream;
+          }
+
+          // Initialize peer connection
+          const pc = initializePeerConnection();
+          peerConnectionRef.current = pc;
+
+          // Add local stream to peer connection
+          stream.getTracks().forEach(track => {
+            pc.addTrack(track, stream);
+          });
+
+          console.log('✅ Auto-started media for global accepted call');
+        })
+        .catch(error => {
+          console.error('Error accessing media for global accept:', error);
+          toast.error('Can not access camera/microphone. Please check your access permissions.', {
+            position: 'top-right',
+            autoClose: 4000,
+          });
+        });
+    }
+  }, [isVideoCallModalOpen, isVideoCallActive, incomingCallData, localVideoStream]);
+
+  const rejectVideoCall = () => {
+    if (!incomingCallData) return;
+
+    // Stop ringtone and close notification
+    stopRingtone();
+    if (notificationRef.current) {
+      toast.dismiss();
+      notificationRef.current = null;
+    }
+
+    socketRef.current.emit('video_call_reject', {
+      from: userId || user?._id,
+      to: incomingCallData.from,
+      conversationId: incomingCallData.conversationId,
+    });
+
+    setIsIncomingCall(false);
+    setIncomingCallData(null);
+  };
+
+  const endVideoCall = () => {
+    // Stop ringtone and close notification
+    stopRingtone();
+    if (notificationRef.current) {
+      toast.dismiss();
+      notificationRef.current = null;
+    }
+
+    // Clean up local stream
+    if (localVideoStream) {
+      localVideoStream.getTracks().forEach(track => track.stop());
+      setLocalVideoStream(null);
+    }
+
+    // Clean up remote stream
+    setRemoteVideoStream(null);
+
+    // Close peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    // Clear video elements
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    // Emit end call event
+    if (isVideoCallActive) {
+      const receiverId = role === 'customer' ? shopUserId : selectedChat?.userId;
+      socketRef.current.emit('video_call_end', {
+        from: userId || user?._id,
+        to: receiverId,
+        conversationId: selectedChat?._id,
+      });
+    }
+
+    // Reset states
+    setIsVideoCallModalOpen(false);
+    setIsVideoCallActive(false);
+    setIsIncomingCall(false);
+    setIncomingCallData(null);
+
+    // Show end call notification
+    if (isVideoCallActive) {
+      toast.info('Video call ended.', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+    }
   };
 
   // Function để truncate text
@@ -606,24 +1243,39 @@ const ChatPage = props => {
                     {selectedChat.isAI ? 'AI Product Consulting' : selectedChat.name}
                   </Text>
                 </div>
-                {selectedChat.isAI && messages.length > 0 && (
-                  <Tooltip title="Clear chat history">
-                    <Popconfirm
-                      title="Clear chat history"
-                      description="Are you sure you want to clear the chat history?"
-                      onConfirm={handleClearChat}
-                      okText="Delete"
-                      cancelText="Cancel"
-                    >
+                <div className="chat-actions">
+                  {/* Video Call Button - Only show for non-AI chats */}
+                  {!selectedChat.isAI && (
+                    <Tooltip title="Start video call">
                       <Button
                         type="text"
-                        icon={<ClearOutlined />}
+                        icon={<VideoCameraOutlined />}
                         size="small"
-                        className="clear-chat-btn"
+                        className="video-call-btn"
+                        onClick={startVideoCall}
+                        disabled={isVideoCallActive}
                       />
-                    </Popconfirm>
-                  </Tooltip>
-                )}
+                    </Tooltip>
+                  )}
+                  {selectedChat.isAI && messages.length > 0 && (
+                    <Tooltip title="Clear chat history">
+                      <Popconfirm
+                        title="Clear chat history"
+                        description="Are you sure you want to clear the chat history?"
+                        onConfirm={handleClearChat}
+                        okText="Delete"
+                        cancelText="Cancel"
+                      >
+                        <Button
+                          type="text"
+                          icon={<ClearOutlined />}
+                          size="small"
+                          className="clear-chat-btn"
+                        />
+                      </Popconfirm>
+                    </Tooltip>
+                  )}
+                </div>
               </div>
               <div className="chat-messages" ref={messagesEndRef}>
                 {isLoading && messages.length === 0 && (
@@ -678,8 +1330,7 @@ const ChatPage = props => {
                   // Đơn giản hóa logic xác định user
                   const isAI = message.isAI === true || message.sender === 'ai';
                   const isFromShop =
-                    message.sender === '6845be4f54a7582c1d2109b8' ||
-                    message.sender?._id === '6845be4f54a7582c1d2109b8';
+                    message.sender === shopUserId || message.sender?._id === shopUserId;
 
                   // Xác định xem có phải tin nhắn của user hiện tại không
                   let finalIsCurrentUser = false;
@@ -890,6 +1541,99 @@ const ChatPage = props => {
           )}
         </div>
       </div>
+
+      {/* Video Call Modal */}
+      <Modal
+        title="Video Call"
+        open={isVideoCallModalOpen}
+        onCancel={endVideoCall}
+        footer={[
+          <Button key="end" danger onClick={endVideoCall}>
+            End Call
+          </Button>,
+        ]}
+        width={800}
+        style={{ top: 20 }}
+      >
+        <div style={{ display: 'flex', gap: '16px', minHeight: '400px' }}>
+          {/* Remote video (larger) */}
+          <div
+            style={{ flex: 1, position: 'relative', backgroundColor: '#000', borderRadius: '8px' }}
+          >
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              style={{
+                width: '100%',
+                height: '400px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+              }}
+            />
+            {!remoteVideoStream && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  color: 'white',
+                  textAlign: 'center',
+                }}
+              >
+                <VideoCameraOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
+                <div>Đang chờ kết nối...</div>
+              </div>
+            )}
+          </div>
+
+          {/* Local video (smaller, overlay) */}
+          <div style={{ width: '200px', position: 'relative' }}>
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              style={{
+                width: '100%',
+                height: '150px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+                backgroundColor: '#000',
+              }}
+            />
+            <div style={{ marginTop: '8px', textAlign: 'center', fontSize: '12px', color: '#666' }}>
+              You
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Incoming Call Modal */}
+      <Modal
+        title="Incoming Video Call"
+        open={isIncomingCall}
+        onCancel={rejectVideoCall}
+        footer={[
+          <Button key="reject" onClick={rejectVideoCall}>
+            <PhoneOutlined /> Reject
+          </Button>,
+          <Button key="accept" type="primary" onClick={acceptVideoCall}>
+            <VideoCameraOutlined /> Accept
+          </Button>,
+        ]}
+        closable={false}
+        maskClosable={false}
+      >
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <Avatar size={64} icon={<UserOutlined />} style={{ marginBottom: '16px' }} />
+          <div style={{ fontSize: '16px', marginBottom: '8px' }}>
+            {incomingCallData?.fromName || (role === 'customer' ? 'Shop Support' : 'Customer')}
+          </div>
+          <div style={{ color: '#666' }}>is calling you...</div>
+        </div>
+      </Modal>
     </div>
   );
 };

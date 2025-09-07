@@ -3,7 +3,42 @@
 }
 
 * {
-  font-family: "Rubik", sans-serif;
+  font-family: 'Rubik', sans-serif;
   margin: 0;
   padding: 0;
+}
+
+/* Global Video Call Toast Styles */
+.video-call-toast {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 2px solid #52c41a !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(82, 196, 26, 0.3) !important;
+  min-width: 350px !important;
+}
+
+.video-call-toast .Toastify__toast-body {
+  padding: 16px !important;
+  color: #333 !important;
+}
+
+/* Animation for video call toast */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 8px 32px rgba(82, 196, 26, 0.3);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 12px 48px rgba(82, 196, 26, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8px 32px rgba(82, 196, 26, 0.3);
+  }
+}
+
+.video-call-toast {
+  animation: pulse 2s infinite;
 }
