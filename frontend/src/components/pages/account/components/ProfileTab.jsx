@@ -25,6 +25,7 @@ export default function ProfileTab() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
+  const [profileImageFile, setProfileImageFile] = useState(null);
   const [totalPoints, setTotalPoints] = useState(0);
   const navigate = useNavigate();
 
@@ -86,6 +87,21 @@ export default function ProfileTab() {
     }
   };
 
+  const handleProfileImageChange = e => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const previewImg = document.querySelector('.profile-profileImage img');
+        if (previewImg) {
+          previewImg.src = reader.result;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async values => {
     try {
       setLoading(true);
@@ -108,10 +124,20 @@ export default function ProfileTab() {
         console.log('Adding avatar file:', avatarFile.name);
       }
 
+      // Thêm file profileImage nếu có
+      if (profileImageFile) {
+        formData.append('profileImage', profileImageFile);
+        console.log('Adding profileImage file:', profileImageFile.name);
+      }
+
       // Ghi log FormData để debug
       console.log('Form data entries:');
       for (let pair of formData.entries()) {
-        console.log(pair[0] + ': ' + (pair[0] === 'avatar' ? 'File object' : pair[1]));
+        console.log(
+          pair[0] +
+            ': ' +
+            (pair[0] === 'avatar' || pair[0] === 'profileImage' ? 'File object' : pair[1])
+        );
       }
 
       const updatedUser = await updateProfile(formData);
@@ -122,6 +148,12 @@ export default function ProfileTab() {
         const previewImg = document.querySelector('.profile-avatar img');
         if (previewImg) {
           previewImg.src = updatedUser.avatar;
+        }
+      }
+      if (updatedUser && updatedUser.profileImage) {
+        const previewImg2 = document.querySelector('.profile-profileImage img');
+        if (previewImg2) {
+          previewImg2.src = updatedUser.profileImage;
         }
       }
 
@@ -247,6 +279,54 @@ export default function ProfileTab() {
                 }
               >
                 <Input.TextArea rows={2} placeholder="A short introduction about yourself..." />
+              </Form.Item>
+              <Form.Item
+                label={
+                  <label>
+                    {' '}
+                    <UserOutlined />
+                    Profile Image
+                  </label>
+                }
+              >
+                <div
+                  className="profile-profileImage"
+                  style={{ display: 'flex', alignItems: 'center', gap: 12 }}
+                >
+                  <img
+                    src={
+                      user.profileImage ||
+                      user.avatar ||
+                      'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png'
+                    }
+                    alt="profile"
+                    style={{
+                      width: 225,
+                      height: 300,
+                      objectFit: 'cover',
+                      borderRadius: 8,
+                      border: '1px solid #eee',
+                    }}
+                    onError={e => {
+                      e.target.src =
+                        'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png';
+                      return true;
+                    }}
+                  />
+                  <label
+                    className="change-avatar-btn"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                  >
+                    <EditOutlined />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProfileImageChange}
+                      style={{ display: 'none' }}
+                    />
+                    <span>Change Profile Image</span>
+                  </label>
+                </div>
               </Form.Item>
             </div>
             <div className="profile-section" style={{ flex: 1 }}>

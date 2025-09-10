@@ -565,9 +565,12 @@ export const updateProfile = async (req, res, next) => {
     if (gender) updateFields.gender = gender;
     if (aboutMe) updateFields.aboutMe = aboutMe;
 
-    // Handle avatar file if present
-    if (req.file) {
-      updateFields.avatar = req.file.path;
+    // Handle files from multer.fields
+    if (req.files && req.files.avatar && req.files.avatar[0]) {
+      updateFields.avatar = req.files.avatar[0].path;
+    }
+    if (req.files && req.files.profileImage && req.files.profileImage[0]) {
+      updateFields.profileImage = req.files.profileImage[0].path;
     }
 
     const user = await User.findByIdAndUpdate(
