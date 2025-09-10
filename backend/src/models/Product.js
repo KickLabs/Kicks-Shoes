@@ -11,10 +11,10 @@ const { Schema } = mongoose;
 const InventoryItemSchema = new Schema(
   {
     size: {
-      type: Number,
+      type: String,
       required: true,
-      min: [30, 'Size must be at least 30'],
-      max: [50, 'Size cannot exceed 50'],
+      // min: [30, 'Size must be at least 30'],
+      // max: [50, 'Size cannot exceed 50'],
     },
     color: {
       type: String,
@@ -160,6 +160,12 @@ const productSchema = new Schema(
     isNew: {
       type: Boolean,
       default: false,
+      index: true,
+    },
+    type: {
+      type: String,
+      enum: ['shoes', 'fashion'], // shoes = giày, fashion = quần áo
+      required: true,
       index: true,
     },
   },
