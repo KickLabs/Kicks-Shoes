@@ -100,7 +100,15 @@ router.get('/me', protect, getMe);
  * @desc    Update user profile
  * @access  Private
  */
-router.put('/update-profile', protect, upload.single('avatar'), updateProfile);
+router.put(
+  '/update-profile',
+  protect,
+  upload.fields([
+    { name: 'avatar', maxCount: 1 },
+    { name: 'profileImage', maxCount: 1 },
+  ]),
+  updateProfile
+);
 
 /**
  * @route   PUT /api/auth/change-password

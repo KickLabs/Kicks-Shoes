@@ -5,6 +5,7 @@ import { setupLiveStreamHandlers } from './services/livestreamSocket.service.js'
 export default function setupSocketHandlers(io) {
   // Setup LiveStream handlers
   setupLiveStreamHandlers(io);
+
   // User-socket mapping để gửi events trực tiếp đến user
   const userSocketMap = new Map();
 
