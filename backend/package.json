@@ -11,6 +11,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@google/genai": "^1.19.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "compression": "^1.8.0",

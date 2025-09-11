@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Typography, Modal, message } from 'antd';
+import { Button, Typography, Modal, message, Upload, Spin } from 'antd';
 import { formatPrice } from '../../../../utils/StringFormat';
 import './ProductInfoSection.css';
 import SizePanel from './SizePanel';
@@ -9,6 +9,7 @@ import { addOrUpdateCartItem } from '../../cart/cartService';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '@/services/axiosInstance';
+// Using Next.js route /api/tryon directly; remove legacy tryonService usage
 
 const { Paragraph } = Typography;
 
@@ -25,6 +26,12 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
   const [reportDescription, setReportDescription] = useState('');
   const [reportEvidence, setReportEvidence] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
+  // Try-on state
+  const [tryOnOpen, setTryOnOpen] = useState(false);
+  const [personFile, setPersonFile] = useState(null);
+  const [garmentFile, setGarmentFile] = useState(null);
+  const [tryOnLoading, setTryOnLoading] = useState(false);
+  const [tryOnImageUrl, setTryOnImageUrl] = useState(null);
 
   // Check if product is in favourites on component mount
   useEffect(() => {
@@ -390,6 +397,110 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
           <Button onClick={() => handleAddCart()} size="large" className="cart-btn">
             ADD TO CART
           </Button>
+          <Button
+            onClick={async () => {
+              // Auto start try-on using user's profile image and product main image
+              try {
+                setTryOnImageUrl(null);
+                setTryOnOpen(true);
+                setTryOnLoading(true);
+
+                const personImageUrl = user?.profileImage || user?.avatar;
+                const garmentImageUrl = product?.mainImage;
+
+                if (!personImageUrl) {
+                  message.error(
+                    'No profile image found. Please upload your profile image in Account > Profile.'
+                  );
+                  setTryOnLoading(false);
+                  return;
+                }
+                if (!garmentImageUrl) {
+                  message.error('Product image not available for try-on.');
+                  setTryOnLoading(false);
+                  return;
+                }
+
+                const supportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+                const reencodeToJpeg = async (blob, filenameFallback) => {
+                  try {
+                    const imageBitmap = await createImageBitmap(blob).catch(() => null);
+                    if (!imageBitmap) throw new Error('decode_failed');
+                    const canvas = document.createElement('canvas');
+                    canvas.width = imageBitmap.width;
+                    canvas.height = imageBitmap.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(imageBitmap, 0, 0);
+                    const reencodedBlob = await new Promise(resolve =>
+                      canvas.toBlob(b => resolve(b), 'image/jpeg', 0.92)
+                    );
+                    if (!reencodedBlob) throw new Error('reencode_failed');
+                    return new File([reencodedBlob], filenameFallback, { type: 'image/jpeg' });
+                  } catch (e) {
+                    return new File([blob], filenameFallback, {
+                      type: blob.type || 'application/octet-stream',
+                    });
+                  }
+                };
+
+                const urlToSupportedFile = async (url, filenameFallback) => {
+                  const res = await fetch(url, { credentials: 'omit' });
+                  if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+                  const contentType = res.headers.get('content-type') || '';
+                  const blob = await res.blob();
+                  const type = blob.type || contentType;
+                  if (supportedTypes.includes(type)) {
+                    return new File([blob], filenameFallback, { type });
+                  }
+                  return reencodeToJpeg(
+                    blob,
+                    filenameFallback.endsWith('.jpg') ? filenameFallback : `${filenameFallback}.jpg`
+                  );
+                };
+
+                const [personAutoFile, garmentAutoFile] = await Promise.all([
+                  urlToSupportedFile(personImageUrl, 'person.jpg'),
+                  urlToSupportedFile(garmentImageUrl, 'garment.jpg'),
+                ]);
+
+                const formData = new FormData();
+                formData.append('userImage', personAutoFile);
+                formData.append('clothingImage', garmentAutoFile);
+
+                const tryOnUrl =
+                  (import.meta.env && import.meta.env.VITE_TRYON_API_URL) || '/api/tryon';
+                const res = await fetch(tryOnUrl, {
+                  method: 'POST',
+                  body: formData,
+                });
+                if (!res.ok) {
+                  const errJson = await res.json().catch(() => ({}));
+                  throw new Error(errJson?.error || `Try-on failed (${res.status})`);
+                }
+                const data = await res.json();
+                const url =
+                  data?.image ||
+                  (data?.imageBase64 ? `data:image/png;base64,${data.imageBase64}` : null);
+                if (!url) throw new Error('No image returned from try-on');
+                setTryOnImageUrl(url);
+              } catch (err) {
+                const status = err?.response?.status;
+                if (status === 401) message.error('Unauthorized. Please login.');
+                else if (status === 402) message.error('Insufficient credits.');
+                else if (status === 429)
+                  message.error('Too many requests. Please try again later.');
+                else message.error(err?.response?.data?.message || err.message || 'Try-on failed');
+              } finally {
+                setTryOnLoading(false);
+              }
+            }}
+            size="large"
+            className="cart-btn"
+            style={{ background: '#222', color: '#fff' }}
+          >
+            TRY ON
+          </Button>
           <button
             className="icon-btn"
             onClick={handleToggleFavourite}
@@ -487,6 +598,45 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
             style={{ width: '100%', padding: 6, marginTop: 4 }}
             placeholder="Paste evidence link (optional)"
           />
+        </div>
+      </Modal>
+
+      {/* Try-On Modal */}
+      <Modal
+        title="Virtual Try-On"
+        open={tryOnOpen}
+        onCancel={() => {
+          if (!tryOnLoading) setTryOnOpen(false);
+        }}
+        footer={null}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Paragraph type="secondary">
+            Using your profile image and this product's image to generate a try-on preview.
+          </Paragraph>
+
+          {tryOnLoading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Spin />
+              <span>Generating try-on image...</span>
+            </div>
+          )}
+
+          {tryOnImageUrl && (
+            <div style={{ marginTop: 12 }}>
+              <img
+                src={tryOnImageUrl}
+                alt="Try-on result"
+                style={{ width: '100%', borderRadius: 8 }}
+              />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button onClick={() => setTryOnOpen(false)} disabled={tryOnLoading}>
+              Close
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>

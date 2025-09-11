@@ -354,6 +354,9 @@ export class ProductService {
       sortOptions = { [sortBy]: order === 'asc' ? 1 : -1 };
     }
 
+    // ALWAYS add a deterministic tie-breaker to prevent duplicates/omissions across pages
+    sortOptions._id = order === 'asc' ? 1 : -1;
+
     const skip = (page - 1) * limit;
     console.log('Product filter (using finalPrice):', JSON.stringify(filter, null, 2));
     console.log('Sort options:', JSON.stringify(sortOptions, null, 2));
