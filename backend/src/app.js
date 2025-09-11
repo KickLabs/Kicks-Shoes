@@ -40,6 +40,7 @@ import userRoutes from './routes/userRoutes.js';
 import cartRoutes from './routes/cartRoutes.js'; // Added from feature/HueSuong/cart-be
 import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
 import livestreamRoutes from './routes/livestreamRoutes.js'; // Added LiveStream routes
+import tryonRoutes from './routes/tryonRoutes.js';
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
@@ -93,6 +94,7 @@ app.use('/api', uploadRoutes);
 app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
 app.use('/api/chat', chatRoutes);
 app.use('/api/livestream', livestreamRoutes); // Added LiveStream routes
+app.use('/api/tryon', tryonRoutes);
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
