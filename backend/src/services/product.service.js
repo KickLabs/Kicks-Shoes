@@ -301,6 +301,7 @@ export class ProductService {
     minPrice,
     maxPrice,
     isNew,
+    productType,
     sortBy = 'createdAt',
     order = 'desc',
     page = 1,
@@ -310,11 +311,18 @@ export class ProductService {
     if (brand) filter.brand = brand;
     if (category) filter.category = category;
     if (isNew) filter.isNew = true;
+    if (productType) filter.productType = productType;
     if (size) {
+      // Support both numeric sizes (shoes) and string sizes (clothing/accessories)
+      const numericSize = isNaN(Number(size)) ? null : Number(size);
+      const stringSize = size.toString();
+
       filter.$or = [
-        { 'variants.sizes': { $in: [Number(size)] } },
-        { 'inventory.size': Number(size) },
-      ];
+        { 'variants.sizes': { $in: [stringSize] } },
+        ...(numericSize ? [{ 'inventory.size': numericSize }] : []),
+        { 'inventory.clothingSize': stringSize },
+        ...(stringSize === 'OneSize' ? [{ 'inventory.isOneSize': true }] : []),
+      ].filter(Boolean);
     }
     if (color) {
       if (filter.$or) {

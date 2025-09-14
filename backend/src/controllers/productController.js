@@ -294,6 +294,7 @@ export const getAllProducts = async (req, res) => {
       minPrice,
       maxPrice,
       isNew,
+      productType,
       sortBy = 'createdAt',
       order = 'desc',
       page = 1,
@@ -301,13 +302,14 @@ export const getAllProducts = async (req, res) => {
     } = req.query;
 
     const query = {
-      size: size ? Number(size) : undefined,
+      size: size ? (isNaN(Number(size)) ? size : Number(size)) : undefined, // Support both string and number sizes
       color: color || undefined,
       brand: brand || undefined,
       category: category || undefined,
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       isNew: isNew === 'true' ? true : undefined,
+      productType: productType || undefined,
       sortBy,
       order,
       page: Number(page),

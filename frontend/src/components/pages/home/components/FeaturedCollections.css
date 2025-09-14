@@ -1,0 +1,147 @@
+.featured-collections {
+  padding: 60px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.featured-collections-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.featured-collections-header h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #232321;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.featured-collections-header p {
+  font-size: 1.1rem;
+  color: #666;
+  margin: 0;
+}
+
+.featured-collections-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  gap: 16px;
+}
+
+.featured-collections-loading p {
+  color: #666;
+  font-size: 16px;
+}
+
+.collection-section {
+  margin-bottom: 60px;
+}
+
+.collection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 0 10px;
+}
+
+.collection-title-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.collection-icon {
+  font-size: 2rem;
+}
+
+.collection-header h3 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #232321;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.collection-subtitle {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 4px 0 0 0;
+  font-style: italic;
+}
+
+.collection-products {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  padding: 0 10px;
+}
+
+.collection-product-card {
+  transition: transform 0.3s ease;
+}
+
+.collection-product-card:hover {
+  transform: translateY(-4px);
+}
+
+.no-products {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #ddd;
+}
+
+.no-products p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .featured-collections {
+    padding: 40px 15px;
+  }
+
+  .featured-collections-header h2 {
+    font-size: 2rem;
+  }
+
+  .collection-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .collection-header h3 {
+    font-size: 1.5rem;
+  }
+
+  .collection-products {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .collection-products {
+    grid-template-columns: 1fr;
+  }
+
+  .featured-collections-header h2 {
+    font-size: 1.8rem;
+  }
+
+  .collection-header h3 {
+    font-size: 1.3rem;
+  }
+}

@@ -5,15 +5,27 @@
   font-weight: 700;
   line-height: normal;
   text-transform: uppercase;
-
   font-size: clamp(0.5rem, 8vw, 6.4rem);
+  margin-bottom: 16px;
 }
+
 .landing-moto h1 {
   color: var(--Dark-Gray, #232321);
   white-space: nowrap;
+  margin-bottom: 12px;
 }
 
 .landing-moto .right {
   color: var(--Blue, #4a69e2);
 }
 
+.landing-subtitle {
+  text-align: center;
+  font-family: Rubik;
+  font-size: clamp(0.9rem, 2vw, 1.2rem);
+  font-weight: 400;
+  color: #666;
+  text-transform: none;
+  margin: 0;
+  font-style: italic;
+}

@@ -37,6 +37,10 @@ import DiscountListPage from './components/pages/dashboard/DiscountListPage';
 import UserManagementPage from './components/pages/dashboard/UserManagementPage';
 import HomePage from './components/pages/home/pages/HomePage';
 import ListingPage from './components/pages/listing-page/pages/ListingPage';
+import ShoesPage from './components/pages/listing-page/pages/ShoesPage';
+import ClothingPage from './components/pages/listing-page/pages/ClothingPage';
+import AccessoryPage from './components/pages/listing-page/pages/AccessoryPage';
+import OtherPage from './components/pages/listing-page/pages/OtherPage';
 import ProductDetailPage from './components/pages/product/pages/ProductDetailPage';
 import Account from './components/pages/account/Account';
 import ProfileTab from './components/pages/account/components/ProfileTab';
@@ -189,6 +193,22 @@ const router = createBrowserRouter([
       {
         path: 'listing-page',
         element: <ListingPage />,
+      },
+      {
+        path: 'shoes',
+        element: <ShoesPage />,
+      },
+      {
+        path: 'clothing',
+        element: <ClothingPage />,
+      },
+      {
+        path: 'accessories',
+        element: <AccessoryPage />,
+      },
+      {
+        path: 'other',
+        element: <OtherPage />,
       },
       {
         path: 'product/:id',

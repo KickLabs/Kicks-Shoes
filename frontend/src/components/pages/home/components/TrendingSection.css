@@ -1,0 +1,213 @@
+.trending-section {
+  padding: 60px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+  border-radius: 20px;
+  margin-bottom: 40px;
+}
+
+.trending-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.trending-header h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #232321;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.trending-header p {
+  font-size: 1.1rem;
+  color: #666;
+  margin: 0;
+}
+
+.trending-tabs {
+  margin-bottom: 40px;
+}
+
+.trending-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+}
+
+.trending-tabs .ant-tabs-tab {
+  padding: 12px 24px;
+  font-weight: 500;
+  border-radius: 25px;
+  margin: 0 8px;
+  transition: all 0.3s ease;
+}
+
+.trending-tabs .ant-tabs-tab:hover {
+  background: rgba(74, 105, 226, 0.1);
+}
+
+.trending-tabs .ant-tabs-tab-active {
+  background: #4a69e2;
+  color: white !important;
+}
+
+.trending-tabs .ant-tabs-tab-active .tab-label {
+  color: white;
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.tab-icon {
+  font-size: 18px;
+}
+
+.trending-content {
+  min-height: 400px;
+}
+
+.trending-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #4a69e2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.trending-loading p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
+}
+
+.trending-products {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.trending-product-card {
+  transition: transform 0.3s ease;
+}
+
+.trending-product-card:hover {
+  transform: translateY(-4px);
+}
+
+.no-trending-products {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  border: 2px dashed #ddd;
+}
+
+.no-products-icon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.no-trending-products h3 {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.no-trending-products p {
+  color: #666;
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+.trending-view-all {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+/* Custom Ant Design Tab Styles */
+.trending-tabs .ant-tabs-ink-bar {
+  display: none;
+}
+
+.trending-tabs .ant-tabs-nav-wrap {
+  justify-content: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .trending-section {
+    padding: 40px 15px;
+    margin-bottom: 20px;
+  }
+
+  .trending-header h2 {
+    font-size: 2rem;
+  }
+
+  .trending-products {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+  }
+
+  .trending-tabs .ant-tabs-tab {
+    padding: 8px 16px;
+    margin: 0 4px;
+  }
+
+  .tab-label {
+    font-size: 14px;
+  }
+
+  .tab-icon {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .trending-products {
+    grid-template-columns: 1fr;
+  }
+
+  .trending-header h2 {
+    font-size: 1.8rem;
+  }
+
+  .no-products-icon {
+    font-size: 3rem;
+  }
+
+  .no-trending-products h3 {
+    font-size: 1.3rem;
+  }
+}
