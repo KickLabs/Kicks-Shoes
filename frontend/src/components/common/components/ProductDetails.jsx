@@ -1,45 +1,45 @@
-import { useState, useEffect, useContext, useCallback } from 'react';
-import { formatPrice } from '../../../utils/StringFormat';
+import axiosInstance from '@/services/axiosInstance';
 import {
-  DeleteOutlined,
-  PlusOutlined,
-  InfoCircleOutlined,
-  DollarOutlined,
-  TagsOutlined,
-  PictureOutlined,
-  EditOutlined,
-  ShoppingOutlined,
-  WarningOutlined,
   CheckCircleOutlined,
+  DeleteOutlined,
+  DollarOutlined,
+  EditOutlined,
   ExclamationCircleOutlined,
+  InfoCircleOutlined,
+  PictureOutlined,
+  PlusOutlined,
+  ShoppingOutlined,
+  TagsOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import {
+  Alert,
+  Badge,
   Button,
   Card,
   Col,
+  Form,
+  Image,
   Input,
+  InputNumber,
   message,
+  Modal,
+  Popconfirm,
   Row,
   Select,
-  Upload,
-  InputNumber,
-  Switch,
   Space,
-  Typography,
-  Form,
-  Table,
-  Modal,
-  Tag,
-  Image,
-  Badge,
   Spin,
-  Popconfirm,
-  Alert,
   Statistic,
+  Switch,
+  Table,
+  Tag,
   Tooltip,
+  Typography,
+  Upload,
 } from 'antd';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axiosInstance from '@/services/axiosInstance';
+import { formatPrice } from '../../../utils/StringFormat';
 import { ActiveTabContext } from './ActiveTabContext';
 import TabHeader from './TabHeader';
 
@@ -55,6 +55,7 @@ const emptyProduct = {
   description: '',
   brand: '',
   category: '',
+  productType: '', // Default to shoes
   sku: '',
   tags: [],
   status: true,
@@ -115,6 +116,9 @@ const VALIDATION_RULES = {
     minLength: 20,
     maxLength: 1000,
   },
+  productType: {
+    required: true,
+  },
   price: {
     min: 0.01,
   },
@@ -142,6 +146,7 @@ const validateField = (field, value, customRules = {}) => {
       name: 'Product name',
       summary: 'Product summary',
       description: 'Product description',
+      productType: 'Product type',
       price: 'Price',
       discount: 'Discount',
     };
@@ -712,6 +717,7 @@ export default function ProductDetails() {
         description: product.description.trim(),
         brand: product.brand,
         category: product.category,
+        productType: product.productType || 'shoes', // Include productType
         price: {
           regular: Number(product.price.regular) || 0,
           discountPercent: Number(product.price.discountPercent) || 0,
@@ -1176,6 +1182,31 @@ export default function ProductDetails() {
                     </div>
                   )}
                 </Col>
+                <Col xs={24} sm={12} data-field="productType">
+                  <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                    <span style={{ color: 'red' }}>*</span> Product Type
+                  </label>
+                  <Select
+                    size="large"
+                    placeholder="Select product type"
+                    value={product.productType}
+                    onChange={value => handleChange('productType', value)}
+                    style={{ width: '100%' }}
+                    status={validationErrors.productType ? 'error' : ''}
+                  >
+                    <Option value="shoes">Shoes</Option>
+                    <Option value="clothing">Clothing</Option>
+                    <Option value="accessory">Accessory</Option>
+                    <Option value="other">Other</Option>
+                  </Select>
+                  {validationErrors.productType && (
+                    <div style={{ marginTop: 4 }}>
+                      <Text type="danger" style={{ fontSize: '12px', display: 'block' }}>
+                        {validationErrors.productType.join(', ')}
+                      </Text>
+                    </div>
+                  )}
+                </Col>
                 <Col xs={24} sm={12}>
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
                     Total Stock Quantity (Auto-calculated)
@@ -1228,18 +1259,16 @@ export default function ProductDetails() {
               <Row gutter={[16, 24]}>
                 <Col xs={24} sm={12} data-field="price">
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    Regular Price * (₫)
+                    <span style={{ color: 'red' }}>*</span> Price (VNĐ)
                   </label>
                   <InputNumber
                     size="large"
-                    placeholder="0.00"
-                    min={0.01}
-                    step={0.01}
-                    value={product.price.regular}
-                    onChange={value => handleNestedChange('price', 'regular', value || 0)}
                     style={{ width: '100%' }}
-                    formatter={value => `₫ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    parser={value => value.replace(/\$\s?|(,*)/g, '')}
+                    min={0}
+                    value={product.price.regular}
+                    onChange={value => handleNestedChange('price', 'regular', value)}
+                    formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' ₫'}
+                    parser={value => value.replace(/\₫\s?|(,*)/g, '')}
                     status={validationErrors.price ? 'error' : ''}
                   />
                   {validationErrors.price && (

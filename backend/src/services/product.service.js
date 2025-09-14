@@ -5,8 +5,8 @@
  * @description Updated service to filter by finalPrice instead of regular price
  */
 
-import Product from '../models/Product.js';
 import mongoose from 'mongoose';
+import Product from '../models/Product.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -29,6 +29,7 @@ export class ProductService {
         price,
         category,
         brand,
+        productType = 'shoes', // Default to shoes if not provided
         images,
         mainImage,
         variants,
@@ -60,6 +61,7 @@ export class ProductService {
         },
         category,
         brand,
+        productType, // Include productType
         images: Array.isArray(images) ? images : [],
         mainImage: mainImage || '',
         variants: {
@@ -112,6 +114,7 @@ export class ProductService {
         cleanUpdateData.description = updateData.description?.trim() || '';
       if (updateData.brand) cleanUpdateData.brand = updateData.brand;
       if (updateData.category) cleanUpdateData.category = updateData.category;
+      if (updateData.productType) cleanUpdateData.productType = updateData.productType;
 
       if (updateData.price) {
         cleanUpdateData.price = {
