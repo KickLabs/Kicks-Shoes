@@ -1,4 +1,4 @@
-import "./LandingSlogan.css"
+import './LandingSlogan.css';
 export const LandingSlogan = () => {
   return (
     <div className="landing-moto">

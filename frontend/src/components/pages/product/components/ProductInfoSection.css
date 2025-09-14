@@ -1,7 +1,7 @@
 .product-info {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 16px;
   max-width: 420px;
   margin: 0 auto;
 }
@@ -241,4 +241,107 @@
   cursor: not-allowed;
   border: 1px solid #ddd;
   opacity: 0.6;
+}
+
+/* Try-On Modal Styles */
+.try-on-modal .ant-modal-content {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 20px 60px rgba(74, 105, 226, 0.15) !important;
+}
+
+.try-on-modal .ant-modal-header {
+  border-bottom: none !important;
+  padding: 24px 24px 0 24px !important;
+  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%) !important;
+}
+
+.try-on-modal .ant-modal-body {
+  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%) !important;
+  padding: 0 24px 24px 24px !important;
+}
+
+.try-on-modal .ant-modal-close {
+  top: 16px !important;
+  right: 16px !important;
+}
+
+.try-on-modal .ant-modal-close-x {
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  font-size: 16px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 50% !important;
+  color: #666 !important;
+  transition: all 0.3s ease !important;
+}
+
+.try-on-modal .ant-modal-close-x:hover {
+  background: rgba(255, 255, 255, 1) !important;
+  color: #333 !important;
+  transform: scale(1.1) !important;
+}
+
+/* Try-On Loading Animation */
+@keyframes tryOnPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 8px 32px rgba(74, 105, 226, 0.2);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 12px 48px rgba(74, 105, 226, 0.3);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8px 32px rgba(74, 105, 226, 0.2);
+  }
+}
+
+.try-on-loading-container {
+  animation: tryOnPulse 2s infinite;
+}
+
+/* Try-On Result Image Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.try-on-result-image {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* Try-On Button Styles */
+.try-on-btn-primary {
+  background: linear-gradient(135deg, #4a69e2 0%, #3b5dd1 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(74, 105, 226, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.try-on-btn-primary:hover {
+  background: linear-gradient(135deg, #3b5dd1 0%, #2d4bc0 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(74, 105, 226, 0.4) !important;
+}
+
+.try-on-btn-secondary {
+  background: rgba(74, 105, 226, 0.1) !important;
+  border: 2px solid #4a69e2 !important;
+  color: #4a69e2 !important;
+  transition: all 0.3s ease !important;
+}
+
+.try-on-btn-secondary:hover {
+  background: rgba(74, 105, 226, 0.2) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 16px rgba(74, 105, 226, 0.2) !important;
 }

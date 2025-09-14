@@ -32,9 +32,21 @@
 .categories-grid {
   margin-left: 3vw;
   border-radius: 30px 0 0 0;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
   overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .categories-grid {
+    grid-template-columns: 1fr;
+    margin-left: 1vw;
+  }
+
+  .categories-section {
+    padding: 40px 0 0px 12px;
+  }
 }
 .categories-nav {
   margin-right: 50px;

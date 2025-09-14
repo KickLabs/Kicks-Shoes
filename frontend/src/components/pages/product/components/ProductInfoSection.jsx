@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Typography, Modal, message, Upload, Spin } from 'antd';
+import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import { formatPrice } from '../../../../utils/StringFormat';
 import './ProductInfoSection.css';
 import SizePanel from './SizePanel';
@@ -32,6 +33,30 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
   const [garmentFile, setGarmentFile] = useState(null);
   const [tryOnLoading, setTryOnLoading] = useState(false);
   const [tryOnImageUrl, setTryOnImageUrl] = useState(null);
+
+  // Helper function to find inventory item based on product type
+  const findInventoryItem = (size, color) => {
+    if (!product.inventory || !Array.isArray(product.inventory)) return null;
+
+    if (product.productType === 'shoes') {
+      return product.inventory.find(item => item.size === size && item.color === color);
+    } else if (product.productType === 'clothing') {
+      return product.inventory.find(item => item.clothingSize === size && item.color === color);
+    } else if (product.productType === 'accessory') {
+      return product.inventory.find(item => item.isOneSize === true && item.color === color);
+    } else if (product.productType === 'other') {
+      return product.inventory.find(
+        item =>
+          item.color === color &&
+          (item.size === size ||
+            item.clothingSize === size ||
+            (size === 'OneSize' && item.isOneSize))
+      );
+    }
+
+    // Fallback for unknown product types
+    return product.inventory.find(item => item.size === size && item.color === color);
+  };
 
   // Check if product is in favourites on component mount
   useEffect(() => {
@@ -96,9 +121,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       }
 
       // Check if the selected size and color combination is available
-      const inventoryItem = product.inventory.find(
-        item => item.size === selectedSize && item.color === selectedColor
-      );
+      const inventoryItem = findInventoryItem(selectedSize, selectedColor);
 
       if (!inventoryItem || inventoryItem.quantity === 0) {
         message.error('This size and color combination is not available');
@@ -148,9 +171,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       }
 
       // Check if the selected size and color combination is available
-      const inventoryItem = product.inventory.find(
-        item => item.size === selectedSize && item.color === selectedColor
-      );
+      const inventoryItem = findInventoryItem(selectedSize, selectedColor);
 
       if (!inventoryItem || inventoryItem.quantity === 0) {
         message.error('This size and color combination is not available');
@@ -232,29 +253,91 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
     hex: colorHexMap[color] || '#CCCCCC',
   }));
 
+  // Get size options based on product type
+  const getSizeOptions = () => {
+    switch (product.productType) {
+      case 'shoes':
+        return [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
+      case 'clothing':
+        return ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
+      case 'accessory':
+        return ['OneSize'];
+      case 'other':
+        return ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', 'OneSize'];
+      default:
+        return [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
+    }
+  };
+
   // Inventory theo màu đang chọn
   const colorInventory = hasInventory
     ? product.inventory.filter(item => item.color === selectedColor)
     : [];
-  // Các size còn hàng với quantity > 0 nếu có inventory, ngược lại lấy toàn bộ từ variants
-  const availableSizes = hasInventory
-    ? Array.from(new Set(colorInventory.filter(i => i.quantity > 0).map(i => i.size)))
-    : safeVariants.sizes || [];
-  // Chuẩn hóa danh sách size (30-50)
-  const allSizes = hasInventory
-    ? [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
-    : safeVariants.sizes || [];
-  // Dữ liệu size cho SizePanel (disable nếu không có hàng)
+
+  // Get available sizes from inventory based on product type
+  const getAvailableSizesFromInventory = () => {
+    if (!hasInventory) return safeVariants.sizes || [];
+
+    const availableSizes = [];
+    colorInventory.forEach(item => {
+      if (item.quantity > 0) {
+        // For shoes, use numeric size
+        if (product.productType === 'shoes' && item.size) {
+          availableSizes.push(item.size);
+        }
+        // For clothing, use clothingSize
+        else if (product.productType === 'clothing' && item.clothingSize) {
+          availableSizes.push(item.clothingSize);
+        }
+        // For accessories, use isOneSize
+        else if (product.productType === 'accessory' && item.isOneSize) {
+          availableSizes.push('OneSize');
+        }
+        // For other, check all size types
+        else if (product.productType === 'other') {
+          if (item.size) availableSizes.push(item.size);
+          if (item.clothingSize) availableSizes.push(item.clothingSize);
+          if (item.isOneSize) availableSizes.push('OneSize');
+        }
+      }
+    });
+    return Array.from(new Set(availableSizes));
+  };
+
+  const availableSizes = getAvailableSizesFromInventory();
+
+  // Get all possible sizes for this product type
+  const allSizes = hasInventory ? getSizeOptions() : safeVariants.sizes || [];
+
+  // Create size data for SizePanel
   const sizeData = hasInventory
     ? allSizes.map(size => {
-        const inventoryEntry = colorInventory.find(item => item.size === size);
+        let inventoryEntry = null;
+
+        // Find inventory entry based on product type
+        if (product.productType === 'shoes') {
+          inventoryEntry = colorInventory.find(item => item.size === size);
+        } else if (product.productType === 'clothing') {
+          inventoryEntry = colorInventory.find(item => item.clothingSize === size);
+        } else if (product.productType === 'accessory') {
+          inventoryEntry = colorInventory.find(item => item.isOneSize === true);
+        } else if (product.productType === 'other') {
+          inventoryEntry = colorInventory.find(
+            item =>
+              item.size === size ||
+              item.clothingSize === size ||
+              (size === 'OneSize' && item.isOneSize)
+          );
+        }
+
         return {
           value: size,
           disabled: !inventoryEntry || inventoryEntry.quantity === 0,
         };
       })
     : allSizes.map(size => ({ value: size, disabled: false }));
-  // Nếu không có size khả dụng
+
+  // Check if no sizes are available
   const noSizeAvailable = availableSizes.length === 0;
 
   // Log dữ liệu đầu vào để debug
@@ -286,6 +369,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       </div>
 
       {/* Name + Price */}
+
       <h1 style={{ fontSize: '2.5em', fontWeight: 600 }} className="product-name">
         {product.name}{' '}
         <Button
@@ -297,6 +381,39 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
           title="Report product"
         />
       </h1>
+      {/* Product Type Info */}
+      <div className="variant-block">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <span
+            style={{
+              fontSize: '12px',
+              background: '#4A69E2',
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              textTransform: 'uppercase',
+              fontWeight: '500',
+            }}
+          >
+            {product.productType || 'Product'}
+          </span>
+          {product.attributes?.gender && (
+            <span
+              style={{
+                fontSize: '12px',
+                background: '#52C41A',
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                textTransform: 'capitalize',
+                fontWeight: '500',
+              }}
+            >
+              {product.attributes.gender}
+            </span>
+          )}
+        </div>
+      </div>
       <h2
         style={{
           fontSize: '2em',
@@ -357,7 +474,22 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       {/* Size Selector */}
       <div className="variant-block">
         <div className="size-header">
-          <h3 className="variant-label">Size</h3>
+          <h3 className="variant-label">
+            Size
+            {product.productType === 'shoes' && (
+              <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>(EU)</span>
+            )}
+            {product.productType === 'clothing' && (
+              <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>
+                (Letter Size)
+              </span>
+            )}
+            {product.productType === 'accessory' && (
+              <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>
+                (Universal)
+              </span>
+            )}
+          </h3>
           <h4
             className="variant-label"
             style={{
@@ -379,16 +511,116 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       </div>
 
       <Modal
-        title="Size Chart"
+        title={`Size Chart - ${product.productType?.charAt(0).toUpperCase() + product.productType?.slice(1) || 'Product'}`}
         open={isModalOpen}
         footer={null}
         onCancel={() => setIsModalOpen(false)}
+        width={700}
       >
-        <img
-          src="https://cdn.shopify.com/s/files/1/0250/7640/4884/files/men-size-chart.jpg"
-          alt="Size Chart"
-          style={{ width: '100%', borderRadius: 8 }}
-        />
+        {product.productType === 'shoes' && (
+          <div>
+            <h4 style={{ marginBottom: 16, color: '#4A69E2' }}>EU Shoe Sizes</h4>
+            <img
+              src="https://cdn.shopify.com/s/files/1/0250/7640/4884/files/men-size-chart.jpg"
+              alt="Shoe Size Chart"
+              style={{ width: '100%', borderRadius: 8 }}
+            />
+            <div style={{ marginTop: 12, fontSize: '12px', color: '#666' }}>
+              <p>• Sizes are in European (EU) standard</p>
+              <p>• For best fit, measure your foot length and compare with the chart</p>
+            </div>
+          </div>
+        )}
+
+        {product.productType === 'clothing' && (
+          <div>
+            <h4 style={{ marginBottom: 16, color: '#4A69E2' }}>Clothing Size Guide</h4>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '8px',
+                marginBottom: 16,
+              }}
+            >
+              <div style={{ padding: '8px', background: '#f5f5f5', fontWeight: 'bold' }}>Size</div>
+              <div style={{ padding: '8px', background: '#f5f5f5', fontWeight: 'bold' }}>
+                Chest (cm)
+              </div>
+              <div style={{ padding: '8px', background: '#f5f5f5', fontWeight: 'bold' }}>
+                Waist (cm)
+              </div>
+              <div style={{ padding: '8px', background: '#f5f5f5', fontWeight: 'bold' }}>
+                Hip (cm)
+              </div>
+
+              <div style={{ padding: '8px' }}>XS</div>
+              <div style={{ padding: '8px' }}>86-91</div>
+              <div style={{ padding: '8px' }}>71-76</div>
+              <div style={{ padding: '8px' }}>86-91</div>
+
+              <div style={{ padding: '8px' }}>S</div>
+              <div style={{ padding: '8px' }}>91-96</div>
+              <div style={{ padding: '8px' }}>76-81</div>
+              <div style={{ padding: '8px' }}>91-96</div>
+
+              <div style={{ padding: '8px' }}>M</div>
+              <div style={{ padding: '8px' }}>96-101</div>
+              <div style={{ padding: '8px' }}>81-86</div>
+              <div style={{ padding: '8px' }}>96-101</div>
+
+              <div style={{ padding: '8px' }}>L</div>
+              <div style={{ padding: '8px' }}>101-106</div>
+              <div style={{ padding: '8px' }}>86-91</div>
+              <div style={{ padding: '8px' }}>101-106</div>
+
+              <div style={{ padding: '8px' }}>XL</div>
+              <div style={{ padding: '8px' }}>106-111</div>
+              <div style={{ padding: '8px' }}>91-96</div>
+              <div style={{ padding: '8px' }}>106-111</div>
+
+              <div style={{ padding: '8px' }}>XXL</div>
+              <div style={{ padding: '8px' }}>111-116</div>
+              <div style={{ padding: '8px' }}>96-101</div>
+              <div style={{ padding: '8px' }}>111-116</div>
+            </div>
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              <p>• Measurements are in centimeters</p>
+              <p>• For best fit, measure your body and compare with the chart</p>
+            </div>
+          </div>
+        )}
+
+        {product.productType === 'accessory' && (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <h4 style={{ marginBottom: 16, color: '#4A69E2' }}>Universal Size</h4>
+            <div
+              style={{
+                background: '#f5f7ff',
+                padding: '20px',
+                borderRadius: '8px',
+                border: '2px dashed #4A69E2',
+              }}
+            >
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎒</div>
+              <p style={{ fontSize: '16px', fontWeight: '500', margin: 0 }}>One Size Fits All</p>
+              <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+                This accessory is designed to fit universally
+              </p>
+            </div>
+          </div>
+        )}
+
+        {(product.productType === 'other' || !product.productType) && (
+          <div>
+            <h4 style={{ marginBottom: 16, color: '#4A69E2' }}>Size Information</h4>
+            <p>Please refer to the product description for specific sizing details.</p>
+            <div style={{ fontSize: '12px', color: '#666', marginTop: 16 }}>
+              <p>• Contact support for size guidance</p>
+              <p>• Check product reviews for fit information</p>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Buttons */}
@@ -399,6 +631,13 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
           </Button>
           <Button
             onClick={async () => {
+              // Check if user is logged in first
+              if (!user) {
+                message.warning('You need to login to try on products.');
+                navigate('/login');
+                return;
+              }
+
               // Auto start try-on using user's profile image and product main image
               try {
                 setTryOnImageUrl(null);
@@ -603,37 +842,280 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
 
       {/* Try-On Modal */}
       <Modal
-        title="Virtual Try-On"
+        title={
+          <div
+            style={{
+              textAlign: 'center',
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1a1a1a',
+              paddingBottom: '10px',
+              borderBottom: '2px solid #4A69E2',
+            }}
+          >
+            Virtual Try-On
+          </div>
+        }
         open={tryOnOpen}
         onCancel={() => {
           if (!tryOnLoading) setTryOnOpen(false);
         }}
         footer={null}
+        width={600}
+        centered
+        className="try-on-modal"
+        style={{
+          borderRadius: '16px',
+          overflow: 'hidden',
+        }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Paragraph type="secondary">
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
+            padding: '20px 0',
+          }}
+        >
+          <Paragraph
+            type="secondary"
+            style={{
+              textAlign: 'center',
+              fontSize: '14px',
+              margin: 0,
+              color: '#666',
+            }}
+          >
             Using your profile image and this product's image to generate a try-on preview.
           </Paragraph>
 
           {tryOnLoading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Spin />
-              <span>Generating try-on image...</span>
+            <div
+              className="try-on-loading-container"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 16,
+                padding: '40px 20px',
+                background: 'linear-gradient(135deg, #f5f7ff 0%, #e8f0ff 100%)',
+                borderRadius: '12px',
+                border: '2px dashed #4A69E2',
+              }}
+            >
+              <Spin size="large" style={{ color: '#4A69E2' }} />
+              <div
+                style={{
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  color: '#4A69E2',
+                }}
+              >
+                Generating try-on image...
+              </div>
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: '#666',
+                  textAlign: 'center',
+                }}
+              >
+                This may take a few moments. Please wait.
+              </div>
             </div>
           )}
 
-          {tryOnImageUrl && (
-            <div style={{ marginTop: 12 }}>
-              <img
-                src={tryOnImageUrl}
-                alt="Try-on result"
-                style={{ width: '100%', borderRadius: 8 }}
-              />
+          {tryOnImageUrl && !tryOnLoading && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+              }}
+            >
+              <div
+                className="try-on-result-image"
+                style={{
+                  position: 'relative',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  boxShadow: '0 8px 32px rgba(74, 105, 226, 0.15)',
+                  border: '3px solid #4A69E2',
+                }}
+              >
+                <img
+                  src={tryOnImageUrl}
+                  alt="Try-on result"
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    background: 'rgba(74, 105, 226, 0.9)',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                  }}
+                >
+                  ✨ AI Generated
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  justifyContent: 'center',
+                }}
+              >
+                <Button
+                  type="primary"
+                  className="try-on-btn-primary"
+                  icon={<ReloadOutlined />}
+                  onClick={async () => {
+                    // Retry try-on
+                    try {
+                      setTryOnImageUrl(null);
+                      setTryOnLoading(true);
+
+                      const personImageUrl = user?.profileImage || user?.avatar;
+                      const garmentImageUrl = product?.mainImage;
+
+                      const urlToSupportedFile = async (url, filenameFallback) => {
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error(`fetch_failed: ${res.status}`);
+                        const blob = await res.blob();
+
+                        const supportedTypes = [
+                          'image/jpeg',
+                          'image/jpg',
+                          'image/png',
+                          'image/webp',
+                        ];
+                        if (supportedTypes.includes(blob.type)) {
+                          return new File([blob], filenameFallback, { type: blob.type });
+                        }
+
+                        const reencodeToJpeg = async (blob, filenameFallback) => {
+                          try {
+                            const imageBitmap = await createImageBitmap(blob).catch(() => null);
+                            if (!imageBitmap) throw new Error('decode_failed');
+                            const canvas = document.createElement('canvas');
+                            canvas.width = imageBitmap.width;
+                            canvas.height = imageBitmap.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(imageBitmap, 0, 0);
+                            return new Promise(resolve => {
+                              canvas.toBlob(resolve, 'image/jpeg', 0.9);
+                            }).then(
+                              blob => new File([blob], filenameFallback, { type: 'image/jpeg' })
+                            );
+                          } catch {
+                            return new File([blob], filenameFallback, { type: blob.type });
+                          }
+                        };
+
+                        return reencodeToJpeg(
+                          blob,
+                          filenameFallback.endsWith('.jpg')
+                            ? filenameFallback
+                            : `${filenameFallback}.jpg`
+                        );
+                      };
+
+                      const [personAutoFile, garmentAutoFile] = await Promise.all([
+                        urlToSupportedFile(personImageUrl, 'person.jpg'),
+                        urlToSupportedFile(garmentImageUrl, 'garment.jpg'),
+                      ]);
+
+                      const formData = new FormData();
+                      formData.append('userImage', personAutoFile);
+                      formData.append('clothingImage', garmentAutoFile);
+
+                      const tryOnUrl =
+                        (import.meta.env && import.meta.env.VITE_TRYON_API_URL) || '/api/tryon';
+                      const res = await fetch(tryOnUrl, {
+                        method: 'POST',
+                        body: formData,
+                      });
+
+                      if (!res.ok) {
+                        const errJson = await res.json().catch(() => ({}));
+                        throw new Error(errJson?.error || `Try-on failed (${res.status})`);
+                      }
+
+                      const data = await res.json();
+                      const url =
+                        data?.image ||
+                        (data?.imageBase64 ? `data:image/png;base64,${data.imageBase64}` : null);
+                      if (!url) throw new Error('No image returned from try-on');
+                      setTryOnImageUrl(url);
+                    } catch (err) {
+                      message.error(err.message || 'Try-on failed');
+                    } finally {
+                      setTryOnLoading(false);
+                    }
+                  }}
+                  disabled={tryOnLoading}
+                  style={{
+                    borderRadius: '8px',
+                    fontWeight: '500',
+                  }}
+                >
+                  Try Again
+                </Button>
+
+                <Button
+                  type="default"
+                  className="try-on-btn-secondary"
+                  icon={<DownloadOutlined />}
+                  onClick={() => {
+                    // Download image
+                    const link = document.createElement('a');
+                    link.href = tryOnImageUrl;
+                    link.download = `try-on-${product?.name || 'product'}-${Date.now()}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    message.success('Image downloaded successfully!');
+                  }}
+                  style={{
+                    borderRadius: '8px',
+                    fontWeight: '500',
+                  }}
+                >
+                  Download
+                </Button>
+              </div>
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button onClick={() => setTryOnOpen(false)} disabled={tryOnLoading}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              justifyContent: 'center',
+              paddingTop: '10px',
+            }}
+          >
+            <Button
+              onClick={() => setTryOnOpen(false)}
+              disabled={tryOnLoading}
+              size="large"
+              style={{
+                borderRadius: '8px',
+                minWidth: '100px',
+                fontWeight: '500',
+              }}
+            >
               Close
             </Button>
           </div>

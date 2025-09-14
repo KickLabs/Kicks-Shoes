@@ -5,6 +5,14 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.category-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(74, 105, 226, 0.15);
 }
 
 .category-card img {
@@ -16,29 +24,52 @@
 .category-info {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin: 16px 0 16px 15px;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .category-info h3 {
   color: var(--Dark-Gray, #232321);
   font-family: Rubik;
-  font-size: 36px;
+  font-size: 28px;
   font-style: normal;
   font-weight: 600;
   line-height: normal;
   text-transform: uppercase;
-  width: 40%;
+  margin: 0;
+}
+
+.category-subtitle {
+  color: #666;
+  font-family: Rubik;
+  font-size: 14px;
+  font-weight: 400;
+  margin: 0;
+  opacity: 0.8;
 }
 
 .category-btn {
-  background: #232321;
+  background: #4a69e2;
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 8px;
-  cursor: pointer;
-  font-size: 1rem;
   padding: 8px 12px;
-  margin-right: 40px;
+  cursor: pointer;
+  font-size: 16px;
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  transition: all 0.3s ease;
+}
+
+.category-info {
+  position: relative;
+  height: 80px;
+}
+
+.category-btn:hover {
+  background: #3b5dd1;
+  transform: scale(1.1);
 }

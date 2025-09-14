@@ -7,7 +7,7 @@ import CategoryPanel from './CategoryPanel';
 import PricePanel from './PricePanel';
 import { useState, useEffect } from 'react';
 
-const FilterSidebar = ({ onFiltersChange }) => {
+const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedBrand, setSelectedBrand] = useState(null);
@@ -22,6 +22,53 @@ const FilterSidebar = ({ onFiltersChange }) => {
     selectedCategory,
     selectedPrice[0] > 0 || selectedPrice[1] < 1000,
   ].filter(Boolean).length;
+
+  // Get size options based on product type
+  const getSizeOptions = () => {
+    switch (productType) {
+      case 'shoes':
+        return [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
+      case 'clothing':
+        return ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
+      case 'accessory':
+        return ['OneSize'];
+      case 'other':
+        return ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', 'OneSize'];
+      default:
+        return [
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          'XS',
+          'S',
+          'M',
+          'L',
+          'XL',
+          'XXL',
+          '3XL',
+          '4XL',
+          'OneSize',
+        ];
+    }
+  };
 
   // Pass selected filter values to parent
   useEffect(() => {
@@ -62,9 +109,7 @@ const FilterSidebar = ({ onFiltersChange }) => {
       label: 'SIZE',
       children: (
         <SizePanel
-          sizes={[
-            30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
-          ]}
+          sizes={getSizeOptions()}
           selectedSize={selectedSize}
           onSizeSelect={s => setSelectedSize(s === selectedSize ? null : s)}
         />

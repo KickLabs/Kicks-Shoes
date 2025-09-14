@@ -128,9 +128,31 @@ const AppHeader = () => {
       label: 'New Drops',
     },
     {
-      key: 'products',
+      key: 'shop',
       icon: <ShopOutlined style={{ marginRight: 4 }} />,
-      label: 'Products',
+      label: 'Shop',
+      children: [
+        {
+          key: 'all-products',
+          label: 'All Products',
+        },
+        {
+          key: 'shoes',
+          label: 'Shoes',
+        },
+        {
+          key: 'clothing',
+          label: 'Clothing',
+        },
+        {
+          key: 'accessories',
+          label: 'Accessories',
+        },
+        {
+          key: 'other',
+          label: 'Other',
+        },
+      ],
     },
     {
       key: 'livestream',
@@ -147,9 +169,31 @@ const AppHeader = () => {
       label: 'New Drops',
     },
     {
-      key: 'products',
+      key: 'shop',
       icon: <ShopOutlined style={{ marginRight: 4 }} />,
-      label: 'Products',
+      label: 'Shop',
+      children: [
+        {
+          key: 'all-products',
+          label: 'All Products',
+        },
+        {
+          key: 'shoes',
+          label: 'Shoes',
+        },
+        {
+          key: 'clothing',
+          label: 'Clothing',
+        },
+        {
+          key: 'accessories',
+          label: 'Accessories',
+        },
+        {
+          key: 'other',
+          label: 'Other',
+        },
+      ],
     },
     {
       key: 'livestream',
@@ -161,8 +205,16 @@ const AppHeader = () => {
   const handleMenuClick = e => {
     if (e.key === 'new') {
       navigate('/listing-page?isNew=true');
-    } else if (e.key === 'products') {
+    } else if (e.key === 'all-products') {
       navigate('/listing-page');
+    } else if (e.key === 'shoes') {
+      navigate('/shoes');
+    } else if (e.key === 'clothing') {
+      navigate('/clothing');
+    } else if (e.key === 'accessories') {
+      navigate('/accessories');
+    } else if (e.key === 'other') {
+      navigate('/other');
     } else if (e.key === 'livestream') {
       navigate('/livestream');
     }
