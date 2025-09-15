@@ -11,13 +11,13 @@ import {
   createProduct,
   deleteProduct,
   getAllProducts,
+  getMyReports,
   getNewDrops,
   getProductById,
   getRecommendProductsForProductDetails,
-  updateProduct,
+  recalculateFinalPrice,
   reportProduct,
-  getMyReports,
-  recalculateFinalPrice, // NEW: Import the new function
+  updateProduct,
 } from '../controllers/productController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
@@ -28,7 +28,7 @@ const router = Router();
 router.get('/', getAllProducts);
 router.get('/new-drops', getNewDrops);
 router.get('/recommend/:productId', getRecommendProductsForProductDetails);
-router.get('/:id', getProductById);
+// Note: /:id route moved after specific routes to avoid conflicts
 
 // Private routes (admin/shop only)
 router.post('/add', protect, requireRoles('admin', 'shop'), createProduct);
@@ -50,5 +50,8 @@ router.get('/public/:id', getProductById);
 router.get('/products', getAllProducts);
 router.post('/:id/report', protect, reportProduct);
 router.get('/reports/my', protect, getMyReports);
+
+// Dynamic route for getting product by ID - must be last to avoid conflicts
+router.get('/:id', getProductById);
 
 export default router;
