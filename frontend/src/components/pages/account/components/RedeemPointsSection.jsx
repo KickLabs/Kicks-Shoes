@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Form,
@@ -10,9 +10,12 @@ import {
   Typography,
   Divider,
   Alert,
+  App,
 } from 'antd';
 import { GiftOutlined, DollarOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import axiosInstance from '../../../../services/axiosInstance';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const { Text, Title } = Typography;
 
@@ -20,6 +23,16 @@ export default function RedeemPointsSection({ availablePoints, onSuccess }) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Check authentication on component mount
+  useEffect(() => {
+    if (!user) {
+      message.error('You must be logged in to redeem points');
+      navigate('/login');
+    }
+  }, [user, navigate]);
 
   // Logic kinh tế: 1 điểm = 1000 VND, với các mức đổi khác nhau
   const redemptionOptions = [
@@ -81,14 +94,43 @@ export default function RedeemPointsSection({ availablePoints, onSuccess }) {
 
   const handleSubmit = async () => {
     try {
+      // Check authentication before proceeding
+      if (!user) {
+        message.error('You must be logged in to redeem points');
+        navigate('/login');
+        return;
+      }
+
       const values = await form.validateFields();
       setLoading(true);
 
-      const response = await axiosInstance.post('/reward-points/redeem', {
+      // Debug authentication token
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      console.log('Authentication token exists:', !!token);
+      console.log('Token first 20 chars:', token ? token.substring(0, 20) + '...' : 'No token');
+
+      console.log('Submitting redemption request:', {
         points: values.points,
         discountAmount: values.discount,
-        description: `Redeemed ${values.points} points for ${values.discount.toLocaleString()} VND discount`,
       });
+
+      // Make sure we have the proper headers
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await axiosInstance.post(
+        '/reward-points/redeem',
+        {
+          points: values.points,
+          discountAmount: values.discount,
+          description: `Redeemed ${values.points} points for ${values.discount.toLocaleString()} VND discount`,
+        },
+        { headers }
+      );
+
+      console.log('Redemption response:', response.data);
 
       if (response.data.success) {
         const discountData = response.data.data.discount;
@@ -105,7 +147,14 @@ export default function RedeemPointsSection({ availablePoints, onSuccess }) {
       }
     } catch (error) {
       console.error('Error redeeming points:', error);
-      if (error.response?.data?.message) {
+      console.error('Error details:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Error headers:', error.response?.headers);
+
+      if (error.response?.status === 401) {
+        message.error('Your session has expired. Please log in again.');
+        navigate('/login');
+      } else if (error.response?.data?.message) {
         message.error(error.response.data.message);
       } else {
         message.error('Failed to redeem points. Please try again.');
@@ -124,180 +173,185 @@ export default function RedeemPointsSection({ availablePoints, onSuccess }) {
 
   if (availablePoints < 10) {
     return (
-      <Card
-        style={{
-          marginBottom: 24,
-          borderRadius: 12,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          border: '1px solid #e8e8e8',
-        }}
-      >
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          <GiftOutlined style={{ fontSize: 48, color: '#d9d9d9', marginBottom: 16 }} />
-          <Title level={4} style={{ color: '#666', marginBottom: 8 }}>
-            Need More Points to Redeem
-          </Title>
-          <Text type="secondary">
-            You need at least 10 points to redeem for discounts. Keep shopping to earn more points!
-          </Text>
-        </div>
-      </Card>
+      <App>
+        <Card
+          style={{
+            marginBottom: 24,
+            borderRadius: 12,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            border: '1px solid #e8e8e8',
+          }}
+        >
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <GiftOutlined style={{ fontSize: 48, color: '#d9d9d9', marginBottom: 16 }} />
+            <Title level={4} style={{ color: '#666', marginBottom: 8 }}>
+              Need More Points to Redeem
+            </Title>
+            <Text type="secondary">
+              You need at least 10 points to redeem for discounts. Keep shopping to earn more
+              points!
+            </Text>
+          </div>
+        </Card>
+      </App>
     );
   }
 
   return (
-    <Card
-      style={{
-        borderRadius: 12,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        border: '1px solid #e8e8e8',
-        margin: 30,
-      }}
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <DollarOutlined style={{ color: '#1890ff' }} />
-          <span>Redeem Points for Discount</span>
-        </div>
-      }
-    >
-      {/* Available Points Info */}
-      <Alert
-        message={`Available Points: ${availablePoints.toLocaleString()} points`}
-        type="info"
-        showIcon
-        icon={<GiftOutlined />}
-        style={{ marginBottom: 24 }}
-      />
-
-      {/* Redemption Options */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={5} style={{ marginBottom: 16 }}>
-          Choose Redemption Option
-        </Title>
-        <Row gutter={[16, 16]}>
-          {redemptionOptions.map(option => (
-            <Col xs={24} sm={12} md={6} key={option.id}>
-              <Card
-                hoverable
-                size="small"
-                style={{
-                  border:
-                    selectedOption?.id === option.id ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s',
-                }}
-                onClick={() => handleOptionSelect(option)}
-              >
-                <div style={{ textAlign: 'center' }}>
-                  <Title level={5} style={{ color: '#1890ff', marginBottom: 8 }}>
-                    {option.name}
-                  </Title>
-                  <div style={{ marginBottom: 8 }}>
-                    <Text strong style={{ fontSize: 16, color: '#52c41a' }}>
-                      {option.points} points
-                    </Text>
-                  </div>
-                  <div style={{ marginBottom: 8 }}>
-                    <Text strong style={{ fontSize: 18, color: '#f5222d' }}>
-                      {formatCurrency(option.discount)}
-                    </Text>
-                  </div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {option.description}
-                  </Text>
-                  <div style={{ marginTop: 8 }}>
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                      Rate: 1 point = {formatCurrency(option.ratio)}
-                    </Text>
-                  </div>
-                </div>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      </div>
-
-      {/* Custom Redemption */}
-      <Divider>Or Custom Amount</Divider>
-
-      <Form form={form} layout="vertical">
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item
-              name="points"
-              label="Points to Redeem"
-              rules={[
-                { required: true, message: 'Please enter points to redeem' },
-                { type: 'number', min: 10, message: 'Minimum 10 points required' },
-                {
-                  validator: (_, value) => {
-                    if (value > availablePoints) {
-                      return Promise.reject('Not enough points available');
-                    }
-                    return Promise.resolve();
-                  },
-                },
-              ]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                placeholder="Enter points"
-                min={10}
-                max={availablePoints}
-                onChange={handleCustomPoints}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item name="discount" label="Discount Amount (VND)">
-              <InputNumber
-                style={{ width: '100%' }}
-                placeholder="Calculated automatically"
-                disabled
-                formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        {/* Info Section */}
-        <Card
-          style={{
-            marginTop: 16,
-            background: '#f6ffed',
-            border: '1px solid #b7eb8f',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <InfoCircleOutlined style={{ color: '#52c41a', marginTop: 2 }} />
-            <div>
-              <Text strong style={{ color: '#52c41a' }}>
-                How it works:
-              </Text>
-              <ul style={{ margin: '8px 0 0 0', paddingLeft: 16 }}>
-                <li>10-49 points: 1 point = 1,000 VND</li>
-                <li>50-99 points: 1 point = 1,100 VND (10% bonus)</li>
-                <li>100-199 points: 1 point = 1,200 VND (20% bonus)</li>
-                <li>200+ points: 1 point = 1,250 VND (25% bonus)</li>
-                <li>500+ points: 1 point = 1,300 VND (30% bonus)</li>
-              </ul>
-            </div>
+    <App>
+      <Card
+        style={{
+          borderRadius: 12,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          border: '1px solid #e8e8e8',
+          margin: 30,
+        }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <DollarOutlined style={{ color: '#1890ff' }} />
+            <span>Redeem Points for Discount</span>
           </div>
-        </Card>
+        }
+      >
+        {/* Available Points Info */}
+        <Alert
+          message={`Available Points: ${availablePoints.toLocaleString()} points`}
+          type="info"
+          showIcon
+          icon={<GiftOutlined />}
+          style={{ marginBottom: 24 }}
+        />
 
-        {/* Action Buttons */}
-        <div style={{ marginTop: 24, textAlign: 'right' }}>
-          <Button
-            type="primary"
-            loading={loading}
-            onClick={handleSubmit}
-            disabled={!form.getFieldValue('points')}
-            size="large"
-          >
-            Redeem Points
-          </Button>
+        {/* Redemption Options */}
+        <div style={{ marginBottom: 24 }}>
+          <Title level={5} style={{ marginBottom: 16 }}>
+            Choose Redemption Option
+          </Title>
+          <Row gutter={[16, 16]}>
+            {redemptionOptions.map(option => (
+              <Col xs={24} sm={12} md={6} key={option.id}>
+                <Card
+                  hoverable
+                  size="small"
+                  style={{
+                    border:
+                      selectedOption?.id === option.id ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                  }}
+                  onClick={() => handleOptionSelect(option)}
+                >
+                  <div style={{ textAlign: 'center' }}>
+                    <Title level={5} style={{ color: '#1890ff', marginBottom: 8 }}>
+                      {option.name}
+                    </Title>
+                    <div style={{ marginBottom: 8 }}>
+                      <Text strong style={{ fontSize: 16, color: '#52c41a' }}>
+                        {option.points} points
+                      </Text>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <Text strong style={{ fontSize: 18, color: '#f5222d' }}>
+                        {formatCurrency(option.discount)}
+                      </Text>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {option.description}
+                    </Text>
+                    <div style={{ marginTop: 8 }}>
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        Rate: 1 point = {formatCurrency(option.ratio)}
+                      </Text>
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
         </div>
-      </Form>
-    </Card>
+
+        {/* Custom Redemption */}
+        <Divider>Or Custom Amount</Divider>
+
+        <Form form={form} layout="vertical">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="points"
+                label="Points to Redeem"
+                rules={[
+                  { required: true, message: 'Please enter points to redeem' },
+                  { type: 'number', min: 10, message: 'Minimum 10 points required' },
+                  {
+                    validator: (_, value) => {
+                      if (value > availablePoints) {
+                        return Promise.reject('Not enough points available');
+                      }
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  placeholder="Enter points"
+                  min={10}
+                  max={availablePoints}
+                  onChange={handleCustomPoints}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="discount" label="Discount Amount (VND)">
+                <InputNumber
+                  style={{ width: '100%' }}
+                  placeholder="Calculated automatically"
+                  disabled
+                  formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* Info Section */}
+          <Card
+            style={{
+              marginTop: 16,
+              background: '#f6ffed',
+              border: '1px solid #b7eb8f',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <InfoCircleOutlined style={{ color: '#52c41a', marginTop: 2 }} />
+              <div>
+                <Text strong style={{ color: '#52c41a' }}>
+                  How it works:
+                </Text>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: 16 }}>
+                  <li>10-49 points: 1 point = 1,000 VND</li>
+                  <li>50-99 points: 1 point = 1,100 VND (10% bonus)</li>
+                  <li>100-199 points: 1 point = 1,200 VND (20% bonus)</li>
+                  <li>200+ points: 1 point = 1,250 VND (25% bonus)</li>
+                  <li>500+ points: 1 point = 1,300 VND (30% bonus)</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
+
+          {/* Action Buttons */}
+          <div style={{ marginTop: 24, textAlign: 'right' }}>
+            <Button
+              type="primary"
+              loading={loading}
+              onClick={handleSubmit}
+              disabled={!form.getFieldValue('points')}
+              size="large"
+            >
+              Redeem Points
+            </Button>
+          </div>
+        </Form>
+      </Card>
+    </App>
   );
 }
