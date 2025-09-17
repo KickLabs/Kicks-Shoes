@@ -1,45 +1,45 @@
-import { useState, useEffect, useContext, useCallback } from 'react';
-import { formatPrice } from '../../../utils/StringFormat';
+import axiosInstance from '@/services/axiosInstance';
 import {
-  DeleteOutlined,
-  PlusOutlined,
-  InfoCircleOutlined,
-  DollarOutlined,
-  TagsOutlined,
-  PictureOutlined,
-  EditOutlined,
-  ShoppingOutlined,
-  WarningOutlined,
   CheckCircleOutlined,
+  DeleteOutlined,
+  DollarOutlined,
+  EditOutlined,
   ExclamationCircleOutlined,
+  InfoCircleOutlined,
+  PictureOutlined,
+  PlusOutlined,
+  ShoppingOutlined,
+  TagsOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import {
+  Alert,
+  Badge,
   Button,
   Card,
   Col,
+  Form,
+  Image,
   Input,
+  InputNumber,
   message,
+  Modal,
+  Popconfirm,
   Row,
   Select,
-  Upload,
-  InputNumber,
-  Switch,
   Space,
-  Typography,
-  Form,
-  Table,
-  Modal,
-  Tag,
-  Image,
-  Badge,
   Spin,
-  Popconfirm,
-  Alert,
   Statistic,
+  Switch,
+  Table,
+  Tag,
   Tooltip,
+  Typography,
+  Upload,
 } from 'antd';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axiosInstance from '@/services/axiosInstance';
+import { formatPrice } from '../../../utils/StringFormat';
 import { ActiveTabContext } from './ActiveTabContext';
 import TabHeader from './TabHeader';
 
@@ -55,6 +55,7 @@ const emptyProduct = {
   description: '',
   brand: '',
   category: '',
+  productType: '', // Default to shoes
   sku: '',
   tags: [],
   status: true,
@@ -77,7 +78,20 @@ const emptyProduct = {
 };
 
 const brandOptions = ['Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance', 'Converse', 'Vans'];
-const sizeOptions = Array.from({ length: 21 }, (_, i) => 30 + i);
+
+// Dynamic size options based on product type
+const getSizeOptions = productType => {
+  switch (productType) {
+    case 'shoes':
+      return Array.from({ length: 21 }, (_, i) => 30 + i);
+    case 'clothing':
+      return ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
+    case 'accessory':
+      return ['OneSize'];
+    default:
+      return Array.from({ length: 21 }, (_, i) => 30 + i);
+  }
+};
 const colorOptions = [
   { label: 'Black', value: 'Black', hex: '#000000' },
   { label: 'White', value: 'White', hex: '#FFFFFF' },
@@ -115,6 +129,9 @@ const VALIDATION_RULES = {
     minLength: 20,
     maxLength: 1000,
   },
+  productType: {
+    required: true,
+  },
   price: {
     min: 0.01,
   },
@@ -142,6 +159,7 @@ const validateField = (field, value, customRules = {}) => {
       name: 'Product name',
       summary: 'Product summary',
       description: 'Product description',
+      productType: 'Product type',
       price: 'Price',
       discount: 'Discount',
     };
@@ -203,6 +221,9 @@ const validateProduct = (product, isEdit = false, originalProduct = null) => {
   const descriptionErrors = validateField('description', product.description);
   if (descriptionErrors.length > 0) errors.description = descriptionErrors;
 
+  const productTypeErrors = validateField('productType', product.productType);
+  if (productTypeErrors.length > 0) errors.productType = productTypeErrors;
+
   if (!product.category) {
     errors.category = ['Category is required'];
   }
@@ -239,7 +260,17 @@ const validateProduct = (product, isEdit = false, originalProduct = null) => {
   }
 
   if (product.inventory && product.inventory.length > 0) {
-    const combinations = product.inventory.map(item => `${item.size}-${item.color}`);
+    const combinations = product.inventory.map(item => {
+      const sizeKey =
+        product.productType === 'shoes'
+          ? item.size
+          : product.productType === 'clothing'
+            ? item.clothingSize
+            : product.productType === 'accessory'
+              ? 'OneSize'
+              : item.size || item.clothingSize;
+      return `${sizeKey}-${item.color}`;
+    });
     if (combinations.length !== new Set(combinations).size) {
       errors.inventory = [
         ...(errors.inventory || []),
@@ -269,8 +300,25 @@ const calculateTotalStock = inventory => {
   return inventory.reduce((total, item) => total + (item.quantity || 0), 0);
 };
 
-const updateVariantsFromInventory = inventory => {
-  const sizes = [...new Set(inventory.map(item => item.size).filter(Boolean))];
+const updateVariantsFromInventory = (inventory, productType) => {
+  let sizes = [];
+
+  if (productType === 'shoes') {
+    sizes = [...new Set(inventory.map(item => item.size).filter(Boolean))];
+  } else if (productType === 'clothing') {
+    sizes = [...new Set(inventory.map(item => item.clothingSize).filter(Boolean))];
+  } else if (productType === 'accessory') {
+    sizes = inventory.length > 0 ? ['OneSize'] : [];
+  } else {
+    // For 'other' type, try both size and clothingSize
+    sizes = [
+      ...new Set([
+        ...inventory.map(item => item.size).filter(Boolean),
+        ...inventory.map(item => item.clothingSize).filter(Boolean),
+      ]),
+    ];
+  }
+
   const colors = [...new Set(inventory.map(item => item.color).filter(Boolean))];
   return { sizes, colors };
 };
@@ -311,8 +359,20 @@ export default function ProductDetails() {
   const [inventoryForm] = Form.useForm();
 
   const handleChange = (field, value) => {
-    const updatedProduct = { ...product, [field]: value };
-    setProduct(updatedProduct);
+    if (field === 'productType') {
+      // When productType changes, clear inventory and reset variants
+      const updatedProduct = {
+        ...product,
+        [field]: value,
+        inventory: [],
+        variants: { sizes: [], colors: [] },
+        stock: 0,
+      };
+      setProduct(updatedProduct);
+    } else {
+      const updatedProduct = { ...product, [field]: value };
+      setProduct(updatedProduct);
+    }
 
     if (validationErrors[field]) {
       const fieldErrors = validateField(field, value);
@@ -440,6 +500,7 @@ export default function ProductDetails() {
           mainImage: productData.mainImage || '',
           variants: productData.variants || { sizes: [], colors: [] },
           price: productData.price || { regular: 0, discountPercent: 0, isOnSale: false },
+          productType: productData.productType || 'shoes', // Ensure productType is set
           category:
             typeof productData.category === 'object' && productData.category !== null
               ? productData.category._id
@@ -467,7 +528,7 @@ export default function ProductDetails() {
 
   useEffect(() => {
     const newStock = calculateTotalStock(product.inventory);
-    const newVariants = updateVariantsFromInventory(product.inventory);
+    const newVariants = updateVariantsFromInventory(product.inventory, product.productType);
     const updatedProduct = {
       ...product,
       stock: newStock,
@@ -480,7 +541,7 @@ export default function ProductDetails() {
       delete newErrors.inventory;
       setValidationErrors(newErrors);
     }
-  }, [product.inventory, validationErrors]);
+  }, [product.inventory, product.productType, validationErrors]);
 
   const calculateSalePrice = () => {
     if (product.price.regular && product.price.discountPercent) {
@@ -553,7 +614,26 @@ export default function ProductDetails() {
   const openInventoryModal = item => {
     setEditingInventoryItem(item || null);
     if (item) {
-      inventoryForm.setFieldsValue(item);
+      // Set form values based on product type
+      const formValues = {
+        color: item.color,
+        quantity: item.quantity,
+        images: item.images || [],
+      };
+
+      // Set size field based on product type
+      if (product.productType === 'shoes') {
+        formValues.size = item.size;
+      } else if (product.productType === 'clothing') {
+        formValues.size = item.clothingSize;
+      } else if (product.productType === 'accessory') {
+        formValues.size = 'OneSize';
+      } else {
+        formValues.size = item.size || item.clothingSize;
+      }
+
+      inventoryForm.setFieldsValue(formValues);
+
       if (item.images && item.images.length > 0) {
         setInventoryImageFileList(
           item.images.map((img, idx) => ({
@@ -601,25 +681,56 @@ export default function ProductDetails() {
         })
         .filter(Boolean);
 
+      // Create inventory item based on product type
       const newItem = {
-        size: values.size,
         color: values.color,
         quantity: values.quantity,
         isAvailable: values.quantity > 0,
         images: processedImages,
       };
 
+      // Add size field based on product type
+      if (product.productType === 'shoes') {
+        newItem.size = values.size;
+      } else if (product.productType === 'clothing') {
+        newItem.clothingSize = values.size;
+      } else if (product.productType === 'accessory') {
+        newItem.isOneSize = true;
+      } else {
+        // For 'other' type, use size field
+        newItem.size = values.size;
+      }
+
       let updatedInventory;
       if (editingInventoryItem) {
-        updatedInventory = product.inventory.map(item =>
-          item.size === editingInventoryItem.size && item.color === editingInventoryItem.color
-            ? newItem
-            : item
-        );
+        updatedInventory = product.inventory.map(item => {
+          // Compare based on product type
+          const isSameSize =
+            product.productType === 'shoes'
+              ? item.size === editingInventoryItem.size
+              : product.productType === 'clothing'
+                ? item.clothingSize === editingInventoryItem.clothingSize
+                : product.productType === 'accessory'
+                  ? item.isOneSize === editingInventoryItem.isOneSize
+                  : item.size === editingInventoryItem.size;
+
+          return isSameSize && item.color === editingInventoryItem.color ? newItem : item;
+        });
       } else {
-        const existingItem = product.inventory.find(
-          item => item.size === values.size && item.color === values.color
-        );
+        const existingItem = product.inventory.find(item => {
+          // Compare based on product type
+          const isSameSize =
+            product.productType === 'shoes'
+              ? item.size === values.size
+              : product.productType === 'clothing'
+                ? item.clothingSize === values.size
+                : product.productType === 'accessory'
+                  ? item.isOneSize === true
+                  : item.size === values.size;
+
+          return isSameSize && item.color === values.color;
+        });
+
         if (existingItem) {
           message.error('This size and color combination already exists!');
           return;
@@ -650,9 +761,19 @@ export default function ProductDetails() {
   };
 
   const deleteInventoryItem = (size, color) => {
-    const updatedInventory = product.inventory.filter(
-      item => !(item.size === size && item.color === color)
-    );
+    const updatedInventory = product.inventory.filter(item => {
+      // Compare based on product type
+      const isSameSize =
+        product.productType === 'shoes'
+          ? item.size === size
+          : product.productType === 'clothing'
+            ? item.clothingSize === size
+            : product.productType === 'accessory'
+              ? item.isOneSize === true
+              : item.size === size;
+
+      return !(isSameSize && item.color === color);
+    });
     const updatedProduct = {
       ...product,
       inventory: updatedInventory,
@@ -712,6 +833,7 @@ export default function ProductDetails() {
         description: product.description.trim(),
         brand: product.brand,
         category: product.category,
+        productType: product.productType || 'shoes', // Include productType
         price: {
           regular: Number(product.price.regular) || 0,
           discountPercent: Number(product.price.discountPercent) || 0,
@@ -774,6 +896,7 @@ export default function ProductDetails() {
         description: product.description.trim(),
         brand: product.brand,
         category: product.category,
+        productType: product.productType || 'shoes', // Include productType for update
         price: {
           regular: Number(product.price.regular) || 0,
           discountPercent: Number(product.price.discountPercent) || 0,
@@ -847,11 +970,25 @@ export default function ProductDetails() {
       title: 'Size',
       dataIndex: 'size',
       key: 'size',
-      render: size => (
-        <Tag color="blue" style={{ fontSize: '12px', fontWeight: 'bold' }}>
-          {size}
-        </Tag>
-      ),
+      render: (size, record) => {
+        // Display size based on product type
+        let displaySize = '';
+        if (product.productType === 'shoes') {
+          displaySize = record.size || size;
+        } else if (product.productType === 'clothing') {
+          displaySize = record.clothingSize || 'N/A';
+        } else if (product.productType === 'accessory') {
+          displaySize = 'OneSize';
+        } else {
+          displaySize = record.size || record.clothingSize || size || 'N/A';
+        }
+
+        return (
+          <Tag color="blue" style={{ fontSize: '12px', fontWeight: 'bold' }}>
+            {displaySize}
+          </Tag>
+        );
+      },
     },
     {
       title: 'Color',
@@ -1176,6 +1313,31 @@ export default function ProductDetails() {
                     </div>
                   )}
                 </Col>
+                <Col xs={24} sm={12} data-field="productType">
+                  <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
+                    <span style={{ color: 'red' }}>*</span> Product Type
+                  </label>
+                  <Select
+                    size="large"
+                    placeholder="Select product type"
+                    value={product.productType}
+                    onChange={value => handleChange('productType', value)}
+                    style={{ width: '100%' }}
+                    status={validationErrors.productType ? 'error' : ''}
+                  >
+                    <Option value="shoes">Shoes</Option>
+                    <Option value="clothing">Clothing</Option>
+                    <Option value="accessory">Accessory</Option>
+                    <Option value="other">Other</Option>
+                  </Select>
+                  {validationErrors.productType && (
+                    <div style={{ marginTop: 4 }}>
+                      <Text type="danger" style={{ fontSize: '12px', display: 'block' }}>
+                        {validationErrors.productType.join(', ')}
+                      </Text>
+                    </div>
+                  )}
+                </Col>
                 <Col xs={24} sm={12}>
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
                     Total Stock Quantity (Auto-calculated)
@@ -1228,18 +1390,16 @@ export default function ProductDetails() {
               <Row gutter={[16, 24]}>
                 <Col xs={24} sm={12} data-field="price">
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    Regular Price * (₫)
+                    <span style={{ color: 'red' }}>*</span> Price (VNĐ)
                   </label>
                   <InputNumber
                     size="large"
-                    placeholder="0.00"
-                    min={0.01}
-                    step={0.01}
-                    value={product.price.regular}
-                    onChange={value => handleNestedChange('price', 'regular', value || 0)}
                     style={{ width: '100%' }}
-                    formatter={value => `₫ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    parser={value => value.replace(/\$\s?|(,*)/g, '')}
+                    min={0}
+                    value={product.price.regular}
+                    onChange={value => handleNestedChange('price', 'regular', value)}
+                    formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' ₫'}
+                    parser={value => value.replace(/\₫\s?|(,*)/g, '')}
                     status={validationErrors.price ? 'error' : ''}
                   />
                   {validationErrors.price && (
@@ -1250,6 +1410,7 @@ export default function ProductDetails() {
                     </div>
                   )}
                 </Col>
+
                 <Col xs={24} sm={12} data-field="discount">
                   <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
                     Discount Percentage (%)
@@ -1346,7 +1507,7 @@ export default function ProductDetails() {
                           color="blue"
                           style={{ fontSize: '12px', fontWeight: 'bold' }}
                         >
-                          Size {size}
+                          {product.productType === 'shoes' ? `Size ${size}` : size}
                         </Tag>
                       ))
                     ) : (
@@ -1509,7 +1670,17 @@ export default function ProductDetails() {
               <Table
                 columns={inventoryColumns}
                 dataSource={product.inventory}
-                rowKey={record => `${record.size}-${record.color}`}
+                rowKey={record => {
+                  const sizeKey =
+                    product.productType === 'shoes'
+                      ? record.size
+                      : product.productType === 'clothing'
+                        ? record.clothingSize
+                        : product.productType === 'accessory'
+                          ? 'OneSize'
+                          : record.size || record.clothingSize;
+                  return `${sizeKey}-${record.color}`;
+                }}
                 pagination={false}
                 scroll={{ x: 800 }}
                 locale={{
@@ -1732,18 +1903,50 @@ export default function ProductDetails() {
                 Create Product
               </Button>
             ) : (
-              <Button
-                type="primary"
-                size="large"
-                onClick={handleUpdate}
-                loading={loading}
-                style={{
-                  minWidth: 120,
-                  height: 48,
-                }}
-              >
-                Update Product
-              </Button>
+              <>
+                <Button
+                  type="primary"
+                  size="large"
+                  onClick={handleUpdate}
+                  loading={loading}
+                  style={{
+                    minWidth: 120,
+                    height: 48,
+                  }}
+                >
+                  Update Product
+                </Button>
+                <Popconfirm
+                  title="Delete Product"
+                  description="Are you sure you want to delete this product? This action cannot be undone."
+                  onConfirm={handleDelete}
+                  okText="Yes, Delete"
+                  cancelText="Cancel"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button
+                    size="large"
+                    loading={loading}
+                    style={{
+                      minWidth: 120,
+                      height: 48,
+                      backgroundColor: '#ff4d4f',
+                      borderColor: '#ff4d4f',
+                      color: '#ffffff',
+                    }}
+                    onMouseEnter={e => {
+                      e.target.style.backgroundColor = '#ff7875';
+                      e.target.style.borderColor = '#ff7875';
+                    }}
+                    onMouseLeave={e => {
+                      e.target.style.backgroundColor = '#ff4d4f';
+                      e.target.style.borderColor = '#ff4d4f';
+                    }}
+                  >
+                    Delete Product
+                  </Button>
+                </Popconfirm>
+              </>
             )}
             <Button size="large" onClick={handleCancel} style={{ minWidth: 120, height: 48 }}>
               Cancel
@@ -1786,9 +1989,9 @@ export default function ProductDetails() {
                   rules={[{ required: true, message: 'Please select a size!' }]}
                 >
                   <Select placeholder="Select size" size="large">
-                    {sizeOptions.map(size => (
+                    {getSizeOptions(product.productType).map(size => (
                       <Option key={size} value={size}>
-                        Size {size}
+                        {product.productType === 'shoes' ? `Size ${size}` : size}
                       </Option>
                     ))}
                   </Select>
