@@ -240,7 +240,9 @@ export default function DiscountListPage() {
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
-        width={700}
+        width={800}
+        style={{ top: 20 }}
+        bodyStyle={{ padding: '12px 24px' }}
       >
         <Form
           form={form}
@@ -253,14 +255,102 @@ export default function DiscountListPage() {
             minPurchase: 0,
             perUserLimit: 1,
           }}
+          size="small"
         >
-          <Form.Item
-            name="code"
-            label="Discount Code"
-            rules={[{ required: true, message: 'Please enter discount code' }]}
-          >
-            <Input placeholder="e.g., SUMMER20" />
-          </Form.Item>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '16px' }}>
+            <Form.Item
+              name="code"
+              label="Discount Code"
+              rules={[{ required: true, message: 'Please enter discount code' }]}
+            >
+              <Input placeholder="e.g., SUMMER20" />
+            </Form.Item>
+
+            <Form.Item
+              name="type"
+              label="Discount Type"
+              rules={[{ required: true, message: 'Please select discount type' }]}
+            >
+              <Select>
+                <Option value="percentage">Percentage</Option>
+                <Option value="fixed">Fixed Amount</Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              name="value"
+              label="Discount Value"
+              rules={[{ required: true, message: 'Please enter discount value' }]}
+            >
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                max={100}
+                placeholder="20"
+                formatter={value => {
+                  const type = form.getFieldValue('type');
+                  return type === 'percentage' ? `${value}%` : formatVND(value);
+                }}
+                parser={value => value.replace(/[^\d]/g, '')}
+              />
+            </Form.Item>
+
+            <Form.Item name="maxDiscount" label="Maximum Discount (Optional)">
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                placeholder="Maximum discount amount"
+                formatter={value => formatVND(value)}
+                parser={value => value.replace(/[^\d]/g, '')}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="minPurchase"
+              label="Minimum Purchase Amount"
+              rules={[{ required: true, message: 'Please enter minimum purchase amount' }]}
+            >
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                placeholder="0"
+                formatter={value => formatVND(value)}
+                parser={value => value.replace(/[^\d]/g, '')}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="usageLimit"
+              label="Usage Limit"
+              rules={[{ required: true, message: 'Please enter usage limit' }]}
+            >
+              <InputNumber style={{ width: '100%' }} min={1} placeholder="100" />
+            </Form.Item>
+
+            <Form.Item
+              name="perUserLimit"
+              label="Per User Limit"
+              rules={[{ required: true, message: 'Please enter per user limit' }]}
+            >
+              <InputNumber style={{ width: '100%' }} min={1} placeholder="1" />
+            </Form.Item>
+
+            <Form.Item
+              name="startDate"
+              label="Start Date"
+              rules={[{ required: true, message: 'Please select start date' }]}
+            >
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+
+            <Form.Item
+              name="endDate"
+              label="End Date"
+              rules={[{ required: true, message: 'Please select end date' }]}
+            >
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </div>
 
           <Form.Item
             name="description"
@@ -270,101 +360,18 @@ export default function DiscountListPage() {
             <TextArea rows={2} placeholder="Discount description" />
           </Form.Item>
 
-          <Form.Item
-            name="type"
-            label="Discount Type"
-            rules={[{ required: true, message: 'Please select discount type' }]}
-          >
-            <Select>
-              <Option value="percentage">Percentage</Option>
-              <Option value="fixed">Fixed Amount</Option>
-            </Select>
-          </Form.Item>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '16px' }}>
+            <Form.Item name="applicableProducts" label="Applicable Products (IDs, comma separated)">
+              <Input placeholder="Leave blank for all products" />
+            </Form.Item>
 
-          <Form.Item
-            name="value"
-            label="Discount Value"
-            rules={[{ required: true, message: 'Please enter discount value' }]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              max={100}
-              placeholder="20"
-              formatter={value => {
-                const type = form.getFieldValue('type');
-                return type === 'percentage' ? `${value}%` : formatVND(value);
-              }}
-              parser={value => value.replace(/[^\d]/g, '')}
-            />
-          </Form.Item>
-
-          <Form.Item name="maxDiscount" label="Maximum Discount (Optional)">
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              placeholder="Maximum discount amount"
-              formatter={value => formatVND(value)}
-              parser={value => value.replace(/[^\d]/g, '')}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="minPurchase"
-            label="Minimum Purchase Amount"
-            rules={[{ required: true, message: 'Please enter minimum purchase amount' }]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              placeholder="0"
-              formatter={value => formatVND(value)}
-              parser={value => value.replace(/[^\d]/g, '')}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="usageLimit"
-            label="Usage Limit"
-            rules={[{ required: true, message: 'Please enter usage limit' }]}
-          >
-            <InputNumber style={{ width: '100%' }} min={1} placeholder="100" />
-          </Form.Item>
-
-          <Form.Item
-            name="perUserLimit"
-            label="Per User Limit"
-            rules={[{ required: true, message: 'Please enter per user limit' }]}
-          >
-            <InputNumber style={{ width: '100%' }} min={1} placeholder="1" />
-          </Form.Item>
-
-          <Form.Item
-            name="startDate"
-            label="Start Date"
-            rules={[{ required: true, message: 'Please select start date' }]}
-          >
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
-            name="endDate"
-            label="End Date"
-            rules={[{ required: true, message: 'Please select end date' }]}
-          >
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item name="applicableProducts" label="Applicable Products (IDs, comma separated)">
-            <Input placeholder="Leave blank for all products" />
-          </Form.Item>
-
-          <Form.Item
-            name="applicableCategories"
-            label="Applicable Categories (IDs, comma separated)"
-          >
-            <Input placeholder="Leave blank for all categories" />
-          </Form.Item>
+            <Form.Item
+              name="applicableCategories"
+              label="Applicable Categories (IDs, comma separated)"
+            >
+              <Input placeholder="Leave blank for all categories" />
+            </Form.Item>
+          </div>
 
           <Form.Item>
             <Space>

@@ -1048,7 +1048,6 @@ export default function AdminDashboard() {
                   showSizeChanger: true,
                   showQuickJumper: true,
                   showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} feedback`,
-                  pageSizeOptions: ['10', '20', '50'],
                 }}
                 loading={loading}
                 scroll={{ x: 'max-content' }}
@@ -1254,7 +1253,9 @@ export default function AdminDashboard() {
           discountForm.resetFields();
         }}
         footer={null}
-        width={700}
+        width={800}
+        style={{ top: 20 }}
+        bodyStyle={{ padding: '12px 24px' }}
       >
         <Form
           form={discountForm}
@@ -1267,6 +1268,7 @@ export default function AdminDashboard() {
             minPurchase: 0,
             perUserLimit: 1,
           }}
+          size="small"
         >
           <Form.Item
             name="code"
@@ -1275,13 +1277,7 @@ export default function AdminDashboard() {
           >
             <Input placeholder="e.g., SUMMER20" />
           </Form.Item>
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[{ required: true, message: 'Please enter description!' }]}
-          >
-            <TextArea rows={2} placeholder="Discount description" />
-          </Form.Item>
+
           <Form.Item
             name="type"
             label="Discount Type"
@@ -1299,158 +1295,186 @@ export default function AdminDashboard() {
           </Form.Item>
 
           <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}
+            name="description"
+            label="Description"
+            rules={[{ required: true, message: 'Please enter description!' }]}
           >
-            {({ getFieldValue }) => {
-              const type = getFieldValue('type');
-              return (
-                <Form.Item
-                  name="value"
-                  label={`Discount Value ${type === 'percentage' ? '(%)' : '(VND)'}`}
-                  rules={[
-                    { required: true, message: 'Please enter discount value!' },
-                    { type: 'number', min: 0, message: 'Value must be at least 0!' },
-                    {
-                      validator: (_, value) => {
-                        if (type === 'percentage' && value > 100) {
-                          return Promise.reject(
-                            new Error('Percentage discount cannot exceed 100%')
-                          );
-                        }
-                        return Promise.resolve();
-                      },
-                    },
-                  ]}
-                >
-                  <InputNumber
-                    style={{ width: '100%' }}
-                    min={0}
-                    max={type === 'percentage' ? 100 : undefined}
-                    placeholder={type === 'percentage' ? '20' : '50000'}
-                    formatter={value => {
-                      if (!value) return '';
-                      return type === 'percentage' ? `${value}%` : `₫${value.toLocaleString()}`;
-                    }}
-                    parser={value => value.replace(/[^\d]/g, '')}
-                  />
-                </Form.Item>
-              );
-            }}
+            <TextArea rows={2} placeholder="Discount description" />
           </Form.Item>
 
-          <Form.Item
-            noStyle
-            shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}
-          >
-            {({ getFieldValue }) => {
-              const type = getFieldValue('type');
-              return type === 'percentage' ? (
-                <Form.Item name="maxDiscount" label="Maximum Discount Amount (Optional)">
-                  <InputNumber
-                    style={{ width: '100%' }}
-                    min={0}
-                    placeholder="Maximum discount amount"
-                    formatter={value => `₫${value.toLocaleString()}`}
-                    parser={value => value.replace(/[^\d]/g, '')}
-                  />
-                </Form.Item>
-              ) : null;
-            }}
-          </Form.Item>
-          <Form.Item
-            name="minPurchase"
-            label="Minimum Purchase Amount"
-            rules={[
-              { required: true, message: 'Please enter minimum purchase amount!' },
-              { type: 'number', min: 0, message: 'Minimum purchase must be at least 0!' },
-            ]}
-          >
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              placeholder="0"
-              formatter={value => `₫${value.toLocaleString()}`}
-              parser={value => value.replace(/[^\d]/g, '')}
-            />
-          </Form.Item>
-          <Form.Item
-            name="usageLimit"
-            label="Usage Limit"
-            rules={[
-              { required: true, message: 'Please enter usage limit!' },
-              { type: 'number', min: 1, message: 'Usage limit must be at least 1!' },
-            ]}
-          >
-            <InputNumber style={{ width: '100%' }} min={1} placeholder="100" />
-          </Form.Item>
-          <Form.Item
-            name="perUserLimit"
-            label="Per User Limit"
-            rules={[
-              { required: true, message: 'Please enter per user limit!' },
-              { type: 'number', min: 1, message: 'Per user limit must be at least 1!' },
-            ]}
-          >
-            <InputNumber style={{ width: '100%' }} min={1} placeholder="1" />
-          </Form.Item>
-          <Form.Item
-            name="startDate"
-            label="Start Date"
-            rules={[
-              { required: true, message: 'Please select start date!' },
-              {
-                validator: (_, value) => {
-                  if (value && value.isBefore(new Date(), 'day')) {
-                    return Promise.reject(new Error('Start date cannot be in the past!'));
-                  }
-                  return Promise.resolve();
-                },
-              },
-            ]}
-          >
-            <DatePicker
-              style={{ width: '100%' }}
-              format="DD/MM/YYYY"
-              placeholder="DD/MM/YYYY"
-              disabledDate={current => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                return current && current.isBefore(today, 'day');
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '16px' }}>
+            <Form.Item
+              noStyle
+              shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}
+            >
+              {({ getFieldValue }) => {
+                const type = getFieldValue('type');
+                return (
+                  <Form.Item
+                    name="value"
+                    label={`Discount Value ${type === 'percentage' ? '(%)' : '(VND)'}`}
+                    rules={[
+                      { required: true, message: 'Please enter discount value!' },
+                      { type: 'number', min: 0, message: 'Value must be at least 0!' },
+                      {
+                        validator: (_, value) => {
+                          if (type === 'percentage' && value > 100) {
+                            return Promise.reject(
+                              new Error('Percentage discount cannot exceed 100%')
+                            );
+                          }
+                          return Promise.resolve();
+                        },
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      style={{ width: '100%' }}
+                      min={0}
+                      max={type === 'percentage' ? 100 : undefined}
+                      placeholder={type === 'percentage' ? '20' : '50000'}
+                      formatter={value => {
+                        if (!value) return '';
+                        return type === 'percentage' ? `${value}%` : `₫${value.toLocaleString()}`;
+                      }}
+                      parser={value => value.replace(/[^\d]/g, '')}
+                    />
+                  </Form.Item>
+                );
               }}
-            />
-          </Form.Item>
-          <Form.Item
-            name="endDate"
-            label="End Date"
-            rules={[
-              { required: true, message: 'Please select end date!' },
-              ({ getFieldValue }) => ({
-                validator: (_, value) => {
-                  const startDate = getFieldValue('startDate');
-                  if (value && startDate) {
-                    const start = startDate.toDate();
-                    const end = value.toDate();
-                    if (end <= start) {
-                      return Promise.reject(new Error('End date must be after start date!'));
+            </Form.Item>
+
+            <Form.Item
+              noStyle
+              shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}
+            >
+              {({ getFieldValue }) => {
+                const type = getFieldValue('type');
+                return type === 'percentage' ? (
+                  <Form.Item name="maxDiscount" label="Maximum Discount Amount (Optional)">
+                    <InputNumber
+                      style={{ width: '100%' }}
+                      min={0}
+                      placeholder="Maximum discount amount"
+                      formatter={value => `₫${value ? value.toLocaleString() : ''}`}
+                      parser={value => value.replace(/[^\d]/g, '')}
+                    />
+                  </Form.Item>
+                ) : null;
+              }}
+            </Form.Item>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '16px' }}>
+            <Form.Item
+              name="minPurchase"
+              label="Minimum Purchase Amount"
+              rules={[
+                { required: true, message: 'Please enter minimum purchase amount!' },
+                { type: 'number', min: 0, message: 'Minimum purchase must be at least 0!' },
+              ]}
+            >
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                placeholder="0"
+                formatter={value => `₫${value ? value.toLocaleString() : ''}`}
+                parser={value => value.replace(/[^\d]/g, '')}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="usageLimit"
+              label="Usage Limit"
+              rules={[
+                { required: true, message: 'Please enter usage limit!' },
+                { type: 'number', min: 1, message: 'Usage limit must be at least 1!' },
+              ]}
+            >
+              <InputNumber style={{ width: '100%' }} min={1} placeholder="100" />
+            </Form.Item>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '16px' }}>
+            <Form.Item
+              name="perUserLimit"
+              label="Per User Limit"
+              rules={[
+                { required: true, message: 'Please enter per user limit!' },
+                { type: 'number', min: 1, message: 'Per user limit must be at least 1!' },
+              ]}
+            >
+              <InputNumber style={{ width: '100%' }} min={1} placeholder="1" />
+            </Form.Item>
+
+            <Form.Item
+              name="startDate"
+              label="Start Date"
+              rules={[
+                { required: true, message: 'Please select start date!' },
+                {
+                  validator: (_, value) => {
+                    if (value && value.isBefore(new Date(), 'day')) {
+                      return Promise.reject(new Error('Start date cannot be in the past!'));
                     }
-                  }
-                  return Promise.resolve();
+                    return Promise.resolve();
+                  },
                 },
-              }),
-            ]}
-          >
-            <DatePicker
-              style={{ width: '100%' }}
-              format="DD/MM/YYYY"
-              placeholder="DD/MM/YYYY"
-              disabledDate={current => {
-                const startDate = discountForm.getFieldValue('startDate');
-                if (!startDate) return false;
-                return current && current.isBefore(startDate, 'day');
-              }}
-            />
-          </Form.Item>
+              ]}
+            >
+              <DatePicker
+                style={{ width: '100%' }}
+                format="DD/MM/YYYY"
+                placeholder="DD/MM/YYYY"
+                disabledDate={current => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return current && current.isBefore(today, 'day');
+                }}
+              />
+            </Form.Item>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '16px' }}>
+            <Form.Item
+              name="endDate"
+              label="End Date"
+              rules={[
+                { required: true, message: 'Please select end date!' },
+                ({ getFieldValue }) => ({
+                  validator: (_, value) => {
+                    const startDate = getFieldValue('startDate');
+                    if (value && startDate) {
+                      const start = startDate.toDate();
+                      const end = value.toDate();
+                      if (end <= start) {
+                        return Promise.reject(new Error('End date must be after start date!'));
+                      }
+                    }
+                    return Promise.resolve();
+                  },
+                }),
+              ]}
+            >
+              <DatePicker
+                style={{ width: '100%' }}
+                format="DD/MM/YYYY"
+                placeholder="DD/MM/YYYY"
+                disabledDate={current => {
+                  const startDate = discountForm.getFieldValue('startDate');
+                  if (!startDate) return false;
+                  return current && current.isBefore(startDate, 'day');
+                }}
+              />
+            </Form.Item>
+
+            <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+              <Select>
+                <Option value="active">Active</Option>
+                <Option value="inactive">Inactive</Option>
+              </Select>
+            </Form.Item>
+          </div>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
