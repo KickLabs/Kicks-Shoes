@@ -84,24 +84,26 @@ const LiveStreamPage = () => {
           {stream.thumbnail ? (
             <img src={stream.thumbnail} alt={stream.title} />
           ) : (
-            <div className="placeholder-thumbnail">
-              <VideoCameraOutlined style={{ fontSize: '48px', color: '#ccc' }} />
+            <div className="stream-thumbnail-placeholder">
+              <VideoCameraOutlined style={{ fontSize: '48px', color: '#fff' }} />
+            </div>
+          )}
+          {isLive && <div className="stream-status-badge live">LIVE</div>}
+          {!isLive && stream.scheduledAt && (
+            <div className="stream-status-badge scheduled">
+              <ClockCircleOutlined style={{ marginRight: 6 }} /> {formatTime(stream.scheduledAt)}
             </div>
           )}
           {isLive && (
-            <div className="live-badge">
-              <Tag color="red" className="live-tag">
-                LIVE
-              </Tag>
+            <div className="stream-viewer-count">
+              <EyeOutlined /> <span>{stream.currentViewers || 0}</span>
             </div>
           )}
-          {!isLive && stream.scheduledAt && (
-            <div className="scheduled-badge">
-              <Tag color="blue" className="scheduled-tag">
-                <ClockCircleOutlined /> {formatTime(stream.scheduledAt)}
-              </Tag>
-            </div>
-          )}
+          <div className="stream-overlay">
+            <button className="stream-play-button" onClick={() => handleJoinStream(stream.roomId)}>
+              <PlayCircleOutlined />
+            </button>
+          </div>
         </div>
       }
       actions={[
@@ -130,15 +132,9 @@ const LiveStreamPage = () => {
                 <Text type="secondary">{stream.hostId?.username || 'Host'}</Text>
               </Space>
               {stream.description && (
-                <Text type="secondary" ellipsis>
+                <Text className="stream-description" type="secondary" ellipsis>
                   {stream.description}
                 </Text>
-              )}
-              {isLive && (
-                <Space>
-                  <EyeOutlined />
-                  <Text type="secondary">{stream.currentViewers || 0} viewers</Text>
-                </Space>
               )}
             </Space>
           </div>
@@ -152,7 +148,7 @@ const LiveStreamPage = () => {
       <div className="livestream-page">
         <div className="loading-container">
           <Spin size="large" />
-          <Text>Loading livestreams...</Text>
+          <Text className="loading-text">Loading livestreams...</Text>
         </div>
       </div>
     );
@@ -160,78 +156,80 @@ const LiveStreamPage = () => {
 
   return (
     <div className="livestream-page">
-      <div className="page-header">
-        <Title level={2}>
-          <VideoCameraOutlined style={{ marginRight: '12px', color: '#ff4d4f' }} />
-          Livestreams
-        </Title>
-        <Text type="secondary">Watch live product demonstrations and interact with hosts</Text>
+      <div className="livestream-page-header">
+        <div className="header-content">
+          <Title level={2} className="page-title">
+            <VideoCameraOutlined style={{ marginRight: '12px', color: '#ff4d4f' }} />
+            Livestreams
+          </Title>
+          <Text className="page-subtitle">
+            Watch live product demonstrations and interact with hosts
+          </Text>
+        </div>
       </div>
 
-      <Tabs defaultActiveKey="live" className="stream-tabs">
-        <TabPane
-          tab={
-            <span>
-              <PlayCircleOutlined />
-              <span>Live Now ({activeStreams.length})</span>
-            </span>
-          }
-          key="live"
-        >
-          {activeStreams.length > 0 ? (
-            <Row gutter={[24, 24]}>
-              {activeStreams.map(stream => (
-                <Col xs={24} sm={12} lg={8} xl={6} key={stream._id}>
-                  {renderStreamCard(stream, true)}
-                </Col>
-              ))}
-            </Row>
-          ) : (
-            <Empty
-              description={
-                <div>
-                  <Title level={4}>No Live Streams</Title>
-                  <Text type="secondary">
-                    There are no live streams at the moment. Check back later or browse upcoming
-                    streams!
-                  </Text>
-                </div>
-              }
-            />
-          )}
-        </TabPane>
+      <div className="livestream-content">
+        <Tabs defaultActiveKey="live" className="stream-tabs">
+          <TabPane
+            tab={
+              <span>
+                <PlayCircleOutlined />
+                <span>Live Now ({activeStreams.length})</span>
+              </span>
+            }
+            key="live"
+          >
+            {activeStreams.length > 0 ? (
+              <div className="streams-grid">
+                {activeStreams.map(stream => renderStreamCard(stream, true))}
+              </div>
+            ) : (
+              <Empty
+                description={
+                  <div>
+                    <Title level={4} className="empty-state-title">
+                      No Live Streams
+                    </Title>
+                    <Text type="secondary" className="empty-state-description">
+                      There are no live streams at the moment. Check back later or browse upcoming
+                      streams!
+                    </Text>
+                  </div>
+                }
+              />
+            )}
+          </TabPane>
 
-        <TabPane
-          tab={
-            <span>
-              <ClockCircleOutlined />
-              <span>Upcoming ({upcomingStreams.length})</span>
-            </span>
-          }
-          key="upcoming"
-        >
-          {upcomingStreams.length > 0 ? (
-            <Row gutter={[24, 24]}>
-              {upcomingStreams.map(stream => (
-                <Col xs={24} sm={12} lg={8} xl={6} key={stream._id}>
-                  {renderStreamCard(stream, false)}
-                </Col>
-              ))}
-            </Row>
-          ) : (
-            <Empty
-              description={
-                <div>
-                  <Title level={4}>No Upcoming Streams</Title>
-                  <Text type="secondary">
-                    No streams are scheduled at the moment. Follow us for updates on new streams!
-                  </Text>
-                </div>
-              }
-            />
-          )}
-        </TabPane>
-      </Tabs>
+          <TabPane
+            tab={
+              <span>
+                <ClockCircleOutlined />
+                <span>Upcoming ({upcomingStreams.length})</span>
+              </span>
+            }
+            key="upcoming"
+          >
+            {upcomingStreams.length > 0 ? (
+              <div className="streams-grid">
+                {upcomingStreams.map(stream => renderStreamCard(stream, false))}
+              </div>
+            ) : (
+              <Empty
+                description={
+                  <div>
+                    <Title level={4} className="empty-state-title">
+                      No Upcoming Streams
+                    </Title>
+                    <Text type="secondary" className="empty-state-description">
+                      No streams are scheduled at the moment. Follow us for updates on new streams!
+                    </Text>
+                  </div>
+                }
+              />
+            )}
+          </TabPane>
+        </Tabs>
+      </div>
     </div>
   );
 };

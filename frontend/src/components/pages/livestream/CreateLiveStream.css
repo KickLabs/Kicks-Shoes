@@ -1,0 +1,384 @@
+/* Professional CreateLiveStream Styles */
+.create-livestream-container {
+  background: #fafafa;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Header */
+.create-livestream-header {
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  padding: 16px 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left .back-button {
+  color: #666;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #e8e8e8;
+  background: #fff;
+}
+
+.header-left .back-button:hover {
+  color: #1890ff;
+  border-color: #1890ff;
+  background: #f0f7ff;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #262626;
+  margin: 0;
+}
+
+/* Content */
+.create-livestream-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.form-section {
+  background: #fff;
+  border-radius: 8px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8e8e8;
+}
+
+/* Form Header */
+.form-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.form-icon {
+  font-size: 48px;
+  color: #1890ff;
+  margin-bottom: 16px;
+}
+
+.form-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 8px;
+}
+
+.form-subtitle {
+  color: #666;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Section Headers */
+.section-header {
+  font-size: 18px;
+  font-weight: 600;
+  color: #262626;
+  margin: 32px 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.section-header:first-of-type {
+  margin-top: 0;
+}
+
+/* Form Items */
+.ant-form-item {
+  margin-bottom: 24px;
+}
+
+.ant-form-item-label > label {
+  font-weight: 600;
+  color: #262626;
+  font-size: 14px;
+}
+
+.ant-form-item-label > label.ant-form-item-required::before {
+  color: #ff4d4f;
+}
+
+/* Input Styles */
+.ant-input,
+.ant-input-number,
+.ant-select-selector,
+.ant-picker,
+.ant-input-affix-wrapper {
+  border-radius: 6px !important;
+  border: 1px solid #d9d9d9 !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+
+.ant-input:focus,
+.ant-input-number:focus,
+.ant-select-focused .ant-select-selector,
+.ant-picker:focus,
+.ant-input-affix-wrapper:focus {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1) !important;
+}
+
+.ant-input:hover,
+.ant-input-number:hover,
+.ant-select:hover .ant-select-selector,
+.ant-picker:hover,
+.ant-input-affix-wrapper:hover {
+  border-color: #40a9ff !important;
+}
+
+/* Large Input Sizes */
+.ant-input-lg,
+.ant-select-lg .ant-select-selector,
+.ant-picker-large {
+  height: 44px !important;
+  font-size: 16px !important;
+}
+
+/* TextArea */
+.ant-input {
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Switch Styles */
+.ant-switch {
+  background-color: #d9d9d9 !important;
+}
+
+.ant-switch-checked {
+  background-color: #1890ff !important;
+}
+
+/* Camera Preview Section */
+.camera-preview-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 24px;
+  margin: 24px 0;
+  border: 1px solid #e8e8e8;
+}
+
+.camera-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.camera-preview-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #262626;
+  margin: 0;
+}
+
+.camera-preview-container {
+  position: relative;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 16/9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-preview-placeholder {
+  color: #666;
+  text-align: center;
+  padding: 40px;
+}
+
+.camera-preview-placeholder-icon {
+  font-size: 48px;
+  color: #ccc;
+  margin-bottom: 16px;
+}
+
+.camera-preview-placeholder-text {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.camera-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.camera-controls .ant-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.form-actions .ant-btn {
+  height: 44px;
+  padding: 0 32px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.form-actions .ant-btn-primary {
+  background: #1890ff;
+  border-color: #1890ff;
+  min-width: 160px;
+}
+
+.form-actions .ant-btn-default {
+  min-width: 120px;
+}
+
+/* Status Messages */
+.status-message {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.status-message.success {
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  color: #389e0d;
+}
+
+.status-message.error {
+  background: #fff1f0;
+  border: 1px solid #ffccc7;
+  color: #cf1322;
+}
+
+.status-message.warning {
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  color: #d48806;
+}
+
+/* Loading State */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  z-index: 10;
+}
+
+/* Clean Design - No Animations */
+* {
+  transition: none !important;
+}
+
+.ant-btn:hover,
+.ant-card:hover,
+.camera-preview-container:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .create-livestream-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-center {
+    order: 1;
+    flex-basis: 100%;
+    text-align: center;
+  }
+
+  .create-livestream-content {
+    padding: 16px;
+  }
+
+  .form-section {
+    padding: 24px 16px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .ant-btn {
+    width: 100%;
+  }
+
+  .camera-controls {
+    flex-direction: column;
+  }
+
+  .camera-controls .ant-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-icon {
+    font-size: 36px;
+  }
+
+  .form-title {
+    font-size: 20px;
+  }
+
+  .section-header {
+    font-size: 16px;
+  }
+}
+
+/* Override Ant Design defaults */
+.ant-card {
+  border-radius: 8px !important;
+  border: 1px solid #e8e8e8 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #e8e8e8 !important;
+  background: #fafafa !important;
+}
+
+.ant-card-head-title {
+  font-weight: 600 !important;
+  color: #262626 !important;
+}

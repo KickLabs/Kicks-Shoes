@@ -50,6 +50,7 @@ import {
 import { Line, Bar, Pie } from '@ant-design/charts';
 import AllProducts from './AllProducts';
 import LiveStreamManagement from './LiveStreamManagement';
+import PotentialOrdersManagement from './PotentialOrdersManagement';
 import {
   getShopStats,
   getShopOrders,
@@ -106,6 +107,7 @@ export default function ShopDashboard() {
     if (path === '/shop/feedback') return 'feedback';
     if (path === '/shop/discounts') return 'discounts';
     if (path === '/shop/livestream') return 'livestream';
+    if (path === '/shop/potential-orders') return 'potential-orders';
     return 'dashboard';
   };
 
@@ -937,6 +939,9 @@ export default function ShopDashboard() {
       case 'livestream':
         return <LiveStreamManagement />;
 
+      case 'potential-orders':
+        return <PotentialOrdersManagement />;
+
       default:
         return <div>Page not found</div>;
     }
@@ -947,7 +952,7 @@ export default function ShopDashboard() {
       style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh', position: 'relative' }}
     >
       {/* Nút mở chat nổi ở góc phải */}
-      <Button
+      {/* <Button
         type="primary"
         shape="circle"
         icon={<MessageOutlined />}
@@ -960,9 +965,9 @@ export default function ShopDashboard() {
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
         }}
         onClick={() => setChatOpen(true)}
-      />
+      /> */}
       {/* Popup chat */}
-      {chatOpen && (
+      {/* {chatOpen && (
         <div
           style={{
             position: 'fixed',
@@ -996,7 +1001,7 @@ export default function ShopDashboard() {
             <ChatPage role="shop" shopId={user?._id} />
           </div>
         </div>
-      )}
+      )} */}
       {renderView()}
 
       {/* Add Discount Modal */}
