@@ -32,7 +32,6 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useWebRTC } from '../../../hooks/useWebRTC';
-import ChatBox from '../../livestream/ChatBox';
 import livestreamService from '../../../services/livestreamService';
 import './LiveStreamViewer.css';
 
@@ -65,6 +64,7 @@ const LiveStreamViewer = () => {
         console.log('Loading stream data for roomId:', roomId);
         const response = await livestreamService.getLiveStream(roomId);
         console.log('Stream data response:', response.data);
+        console.log('Featured products:', response.data.liveStream?.featuredProducts);
         setStreamData(response.data.liveStream);
         setIsLive(response.data.isLive);
         setLoading(false);
@@ -86,7 +86,16 @@ const LiveStreamViewer = () => {
     if (roomId) {
       loadStreamData();
     }
-  }, [roomId]);
+
+    // Poll for updates every 30 seconds to get featured products
+    const interval = setInterval(() => {
+      if (roomId && isLive) {
+        loadStreamData();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [roomId, isLive]);
 
   // Listen for host disconnect
   useEffect(() => {
@@ -165,212 +174,249 @@ const LiveStreamViewer = () => {
   };
 
   return (
-    <div className="livestream-viewer">
-      <Row gutter={[24, 24]}>
-        {/* Main Video Area */}
-        <Col xs={24} lg={16}>
-          <Card className="video-card">
-            {/* Stream Header */}
-            <div className="stream-header">
-              <div className="stream-info">
-                <Title level={3} style={{ margin: 0 }}>
-                  {streamData.title}
-                </Title>
-                <Space style={{ marginTop: '8px' }}>
-                  <Avatar src={streamData.hostId?.avatar} icon={<UserOutlined />} size="small" />
-                  <Text strong>{streamData.hostId?.username || 'Host'}</Text>
-                  <Tag color={getConnectionStatusColor()}>{getConnectionStatusText()}</Tag>
-                  {isLive && !hostLeft && <Tag color="red">LIVE</Tag>}
-                </Space>
+    <div className="viewer-container">
+      {/* Professional Header */}
+      <div className="viewer-header">
+        <div className="viewer-header-content">
+          <div className="viewer-stream-info">
+            <h1 className="viewer-stream-title">{streamData.title}</h1>
+            <div className="viewer-stream-meta">
+              <div className="viewer-host-info">
+                <Avatar src={streamData.hostId?.avatar} icon={<UserOutlined />} size="small" />
+                <span className="viewer-host-name">{streamData.hostId?.username || 'Host'}</span>
               </div>
-              <div className="stream-actions">
-                <Space>
-                  <Button
-                    icon={<ShareAltOutlined />}
-                    onClick={handleShareStream}
-                    type="default"
-                    size="small"
-                  >
-                    Share
-                  </Button>
-                  <Button icon={<HeartOutlined />} type="default" size="small">
-                    Like
-                  </Button>
-                </Space>
+              <div className="viewer-status-tags">
+                <span className={`viewer-connection-status ${getConnectionStatusColor()}`}>
+                  {getConnectionStatusText()}
+                </span>
+                {isLive && !hostLeft && <span className="viewer-live-badge">LIVE</span>}
+              </div>
+              <div className="viewer-count">
+                <EyeOutlined />
+                <span>{viewerCount} viewers</span>
               </div>
             </div>
+          </div>
+          <div className="viewer-header-actions">
+            <Button
+              icon={<ShareAltOutlined />}
+              onClick={handleShareStream}
+              size="small"
+              className="viewer-action-btn"
+            >
+              Share
+            </Button>
+            <Button icon={<HeartOutlined />} size="small" className="viewer-action-btn">
+              Like
+            </Button>
+          </div>
+        </div>
+      </div>
 
-            {/* Video Container */}
-            <div className="video-container">
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                controls
-                className="remote-video"
-                style={{
-                  width: '100%',
-                  height: '500px',
-                  backgroundColor: '#000',
-                  borderRadius: '8px',
-                }}
-              />
-              {(!isLive || hostLeft) && (
-                <div className="video-overlay">
-                  <div className="overlay-content">
-                    {hostLeft ? (
-                      <>
-                        <Text style={{ color: '#fff', fontSize: '18px' }}>Stream has ended</Text>
-                        <Text style={{ color: '#fff', marginTop: '8px' }}>
-                          The host has disconnected
-                        </Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={{ color: '#fff', fontSize: '18px' }}>Stream is not live</Text>
-                        <Text style={{ color: '#fff', marginTop: '8px' }}>
-                          Waiting for host to start streaming...
-                        </Text>
-                      </>
-                    )}
-                  </div>
+      {/* Main Content */}
+      <div className="viewer-content">
+        {/* Video Section */}
+        <div className="viewer-video-section">
+          <div className="viewer-video-container">
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              controls
+              className="viewer-remote-video"
+            />
+            {(!isLive || hostLeft) && (
+              <div className="viewer-video-overlay">
+                <div className="viewer-overlay-content">
+                  {hostLeft ? (
+                    <>
+                      <span className="viewer-overlay-title">Stream has ended</span>
+                      <span className="viewer-overlay-subtitle">The host has disconnected</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="viewer-overlay-title">Stream is not live</span>
+                      <span className="viewer-overlay-subtitle">
+                        Waiting for host to start streaming...
+                      </span>
+                    </>
+                  )}
                 </div>
-              )}
-            </div>
-
-            {error && (
-              <Alert
-                message="Connection Error"
-                description={error}
-                type="error"
-                style={{ marginTop: '16px' }}
-                closable
-              />
-            )}
-
-            {/* Stream Description */}
-            {streamData.description && (
-              <div className="stream-description">
-                <Paragraph>{streamData.description}</Paragraph>
               </div>
             )}
-          </Card>
+          </div>
+
+          {error && (
+            <Alert
+              message="Connection Error"
+              description={error}
+              type="error"
+              className="viewer-error-alert"
+              closable
+            />
+          )}
+
+          {/* Stream Description */}
+          {streamData.description && (
+            <div className="viewer-stream-description">
+              <p>{streamData.description}</p>
+            </div>
+          )}
 
           {/* Stream Statistics */}
-          <Card title="Stream Information" className="stats-card">
-            <Row gutter={16}>
-              <Col span={6}>
-                <Statistic
-                  title="Viewers"
-                  value={viewerCount}
-                  prefix={<EyeOutlined />}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Col>
-              <Col span={6}>
-                <Statistic
-                  title="Messages"
-                  value={messages.length}
-                  prefix={<MessageOutlined />}
-                  valueStyle={{ color: '#52c41a' }}
-                />
-              </Col>
-              <Col span={6}>
-                <Statistic
-                  title="Duration"
-                  value={isLive && !hostLeft ? 'Live' : streamData.formattedDuration || '0m'}
-                  valueStyle={{ color: '#722ed1' }}
-                />
-              </Col>
-              <Col span={6}>
-                <Statistic
-                  title="Status"
-                  value={streamData.status}
-                  valueStyle={{
-                    color: streamData.status === 'live' ? '#52c41a' : '#8c8c8c',
-                  }}
-                />
-              </Col>
-            </Row>
-          </Card>
-        </Col>
+          <div className="viewer-stats-section">
+            <div className="viewer-stats-grid">
+              <div className="viewer-stat-item">
+                <div className="viewer-stat-value">{viewerCount}</div>
+                <div className="viewer-stat-label">Viewers</div>
+              </div>
+              <div className="viewer-stat-item">
+                <div className="viewer-stat-value">{messages.length}</div>
+                <div className="viewer-stat-label">Messages</div>
+              </div>
+              <div className="viewer-stat-item">
+                <div className="viewer-stat-value">
+                  {isLive && !hostLeft ? 'Live' : streamData.formattedDuration || '0m'}
+                </div>
+                <div className="viewer-stat-label">Duration</div>
+              </div>
+              <div className="viewer-stat-item">
+                <div className="viewer-stat-value">{streamData.status}</div>
+                <div className="viewer-stat-label">Status</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Sidebar */}
-        <Col xs={24} lg={8}>
+        <div className="viewer-sidebar">
           {/* Shop Information */}
-          <Card className="store-card" style={{ marginBottom: '16px', height: '67vh' }}>
-            <div className="store-info">
-              <Space>
-                <Avatar icon={<ShopOutlined />} size="large" />
-                <div>
-                  <Title level={5} style={{ margin: 0 }}>
-                    Kicks Shoes Store
-                  </Title>
-                  <Text type="secondary">Premium Footwear Collection</Text>
-                </div>
-              </Space>
-              <Button
-                type="default"
-                onClick={handleVisitStore}
-                style={{ marginTop: '12px', width: '100%' }}
-              >
-                Shop Now
-              </Button>
+          <div className="viewer-shop-card">
+            <div className="viewer-shop-header">
+              <Avatar src="images/logoavt.png" size="large" />
+              <div className="viewer-shop-info">
+                <h3 className="viewer-shop-name">Kicks Shoes Store</h3>
+                <span className="viewer-shop-description">Premium Footwear Collection</span>
+              </div>
             </div>
-          </Card>
+            <Button type="default" onClick={handleVisitStore} className="viewer-shop-btn">
+              Shop Now
+            </Button>
+          </div>
 
           {/* Featured Products */}
-          {streamData.featuredProducts && streamData.featuredProducts.length > 0 && (
-            <Card
-              title="Featured Products"
-              className="products-card"
-              style={{ marginBottom: '16px' }}
-            >
-              <div className="featured-products">
-                {streamData.featuredProducts.map(item => (
-                  <div key={item._id} className="product-item">
-                    <Space>
+          <div className="viewer-products-card">
+            <div className="viewer-products-header">
+              <span>Featured Products</span>
+              <Button
+                size="small"
+                onClick={() => {
+                  const loadStreamData = async () => {
+                    try {
+                      const response = await livestreamService.getLiveStream(roomId);
+                      setStreamData(response.data.liveStream);
+                      console.log(
+                        'Refreshed featured products:',
+                        response.data.liveStream?.featuredProducts
+                      );
+                    } catch (error) {
+                      console.error('Error refreshing:', error);
+                    }
+                  };
+                  loadStreamData();
+                }}
+              >
+                Refresh
+              </Button>
+            </div>
+            <div className="viewer-products-list">
+              {streamData?.featuredProducts && streamData.featuredProducts.length > 0 ? (
+                streamData.featuredProducts.map(item => (
+                  <div key={item._id} className="viewer-product-item">
+                    <div className="viewer-product-content">
                       {item.productId?.images?.[0] && (
                         <img
                           src={item.productId.images[0]}
                           alt={item.productId.name}
-                          className="product-image"
+                          className="viewer-product-image"
                         />
                       )}
-                      <div>
-                        <Text strong>{item.productId?.name || 'Product'}</Text>
-                        <br />
-                        <Text type="secondary">${item.productId?.price || 'N/A'}</Text>
+                      <div className="viewer-product-details">
+                        <div className="viewer-product-name">
+                          {item.productId?.name || 'Product'}
+                        </div>
+                        <div className="viewer-product-price">
+                          ${item.productId?.price || 'N/A'}
+                        </div>
                       </div>
-                    </Space>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </Card>
-          )}
+                ))
+              ) : (
+                <div className="viewer-empty-products">
+                  <span>No featured products yet</span>
+                  {/* <small style={{ display: 'block', marginTop: '4px', color: '#999' }}>
+                    Waiting for host to feature products during the livestream...
+                  </small> */}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Live Chat */}
-          <ChatBox
-            messages={messages}
-            onSendMessage={sendChatMessage}
-            disabled={!isConnected || !user}
-            className="viewer-chat"
-          />
+          <div className="viewer-chat-section">
+            <div className="viewer-chat-header">Live Chat</div>
+            <div className="viewer-chat-messages">
+              {messages.length === 0 ? (
+                <div className="viewer-empty-chat">No messages yet</div>
+              ) : (
+                messages.map((message, index) => (
+                  <div key={index} className="viewer-chat-message">
+                    <div className="viewer-chat-user">
+                      <div className="viewer-chat-user-left">
+                        <strong>{message.senderId?.username || 'Anonymous'}</strong>
+                        {message.senderRole === 'host' && (
+                          <span className="viewer-role-tag viewer-role-host">Host</span>
+                        )}
+                      </div>
+                      <span className="viewer-chat-time">
+                        {new Date(message.timestamp).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div className="viewer-chat-text">{message.content}</div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="viewer-chat-input-section">
+              <input
+                type="text"
+                placeholder={!isConnected || !user ? 'Sign in to chat' : 'Type your message...'}
+                disabled={!isConnected || !user}
+                className="viewer-chat-input"
+                onKeyPress={e => {
+                  if (e.key === 'Enter' && e.target.value.trim() && user) {
+                    sendChatMessage(e.target.value.trim());
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </div>
+          </div>
 
           {!user && (
-            <Alert
-              message="Sign in to participate in chat"
-              type="info"
-              style={{ marginTop: '12px' }}
-              action={
-                <Button type="primary" size="small" onClick={() => navigate('/login')}>
-                  Sign In
-                </Button>
-              }
-            />
+            <div className="viewer-signin-alert">
+              <span>Sign in to participate in chat</span>
+              <Button type="primary" size="small" onClick={() => navigate('/login')}>
+                Sign In
+              </Button>
+            </div>
           )}
-        </Col>
-      </Row>
+        </div>
+      </div>
     </div>
   );
 };

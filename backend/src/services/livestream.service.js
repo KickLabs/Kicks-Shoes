@@ -8,6 +8,8 @@
 import { nanoid } from 'nanoid';
 import LiveStream from '../models/LiveStream.js';
 import LiveStreamChat from '../models/LiveStreamChat.js';
+import User from '../models/User.js';
+import orderDetectionService from './orderDetection.service.js';
 import logger from '../utils/logger.js';
 
 class LiveStreamService {
@@ -254,11 +256,47 @@ class LiveStreamService {
         $inc: { 'stats.totalMessages': 1 },
       });
 
+      // Analyze message for potential orders (only for viewer messages)
+      let potentialOrder = null;
+      if (socketInfo.role === 'viewer' && messageData.type !== 'system') {
+        try {
+          const userData = await User.findById(socketInfo.userId);
+          if (userData) {
+            const detectionResult = await orderDetectionService.analyzeMessage(
+              chatMessage,
+              room.streamData,
+              userData
+            );
+
+            // Mark message as analyzed
+            await chatMessage.markAsAnalyzed(detectionResult);
+
+            // If potential order detected, save it
+            if (detectionResult && detectionResult.isOrder) {
+              potentialOrder = await orderDetectionService.savePotentialOrder(detectionResult);
+
+              // Link chat message to potential order
+              await chatMessage.linkToPotentialOrder(potentialOrder._id);
+
+              logger.info(`Potential order detected in room ${socketInfo.roomId}:`, {
+                orderId: potentialOrder._id,
+                customer: potentialOrder.customerInfo.customerName,
+                confidence: potentialOrder.detectionData.confidence,
+              });
+            }
+          }
+        } catch (orderDetectionError) {
+          // Don't fail the chat message if order detection fails
+          logger.error('Error in order detection:', orderDetectionError);
+        }
+      }
+
       logger.info(`Chat message saved for room ${socketInfo.roomId}`);
 
       return {
         roomId: socketInfo.roomId,
         message: chatMessage,
+        potentialOrder, // Include potential order in response
       };
     } catch (error) {
       logger.error('Error handling chat message:', error);

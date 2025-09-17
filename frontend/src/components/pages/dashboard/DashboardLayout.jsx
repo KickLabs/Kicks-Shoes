@@ -17,6 +17,7 @@ import {
   ExclamationCircleOutlined,
   CommentOutlined,
   VideoCameraOutlined,
+  ShoppingCartOutlined,
 } from '@ant-design/icons';
 
 const { Content } = Layout;
@@ -50,6 +51,12 @@ const shopTabs = [
   { key: '5', name: 'Discounts', icon: <WalletOutlined />, path: '/shop/discounts' },
   { key: '6', name: 'Chat', icon: <CommentOutlined />, path: '/shop/chat' },
   { key: '7', name: 'Livestream', icon: <VideoCameraOutlined />, path: '/shop/livestream' },
+  {
+    key: '8',
+    name: 'Potential Orders',
+    icon: <ShoppingCartOutlined />,
+    path: '/shop/potential-orders',
+  },
 ];
 
 export default function DashboardLayout() {

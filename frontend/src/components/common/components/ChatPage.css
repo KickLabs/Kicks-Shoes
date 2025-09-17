@@ -67,9 +67,12 @@
 }
 
 .chat-header {
-  background: none;
-  border-bottom: 1px solid #e9ecef;
-  padding: 16px 24px;
+  border-bottom: 1px solid #e8e8e8;
+  background: #fafafa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .chat-layout {

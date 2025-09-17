@@ -411,10 +411,10 @@ const router = createBrowserRouter([
             ),
           },
           {
-            path: 'livestream/host/:roomId',
+            path: 'potential-orders',
             element: (
               <ShopOwnerProtectedRoute>
-                <LiveStreamHost />
+                <ShopDashboard />
               </ShopOwnerProtectedRoute>
             ),
           },
@@ -497,6 +497,14 @@ const router = createBrowserRouter([
       {
         path: 'livestream/:roomId',
         element: <LiveStreamViewer />,
+      },
+      {
+        path: 'shop/livestream/host/:roomId',
+        element: (
+          <ShopOwnerProtectedRoute>
+            <LiveStreamHost />
+          </ShopOwnerProtectedRoute>
+        ),
       },
     ],
   },

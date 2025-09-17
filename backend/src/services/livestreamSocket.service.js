@@ -149,6 +149,29 @@ export function setupLiveStreamHandlers(io) {
             clientId: socket.id,
             timestamp: result.message.timestamp,
           });
+
+          // If potential order detected, notify host
+          if (result.potentialOrder) {
+            const room = liveStreamService.rooms.get(result.roomId);
+            if (room && room.host) {
+              livestreamNamespace.to(room.host.socketId).emit('potential_order_detected', {
+                type: 'potential_order',
+                order: {
+                  _id: result.potentialOrder._id,
+                  customerInfo: result.potentialOrder.customerInfo,
+                  productInfo: result.potentialOrder.productInfo,
+                  detectionData: result.potentialOrder.detectionData,
+                  priority: result.potentialOrder.priority,
+                  status: result.potentialOrder.status,
+                  createdAt: result.potentialOrder.createdAt,
+                },
+                message: result.message,
+                roomId: result.roomId,
+              });
+
+              logger.info(`Potential order notification sent to host in room ${result.roomId}`);
+            }
+          }
         }
       } catch (error) {
         logger.error('Error handling chat message:', error);
@@ -156,6 +179,53 @@ export function setupLiveStreamHandlers(io) {
           type: 'chat_error',
           message: error.message,
         });
+      }
+    });
+
+    // Pin a chat message (Host only)
+    socket.on('pin_message', async data => {
+      try {
+        const { messageId, roomId } = data;
+        const socketInfo = liveStreamService.socketToRoom.get(socket.id);
+        if (!socketInfo || socketInfo.role !== 'host') {
+          throw new Error('Only hosts can pin messages');
+        }
+
+        // Persist pin in room state
+        const room = liveStreamService.rooms.get(roomId || socketInfo.roomId);
+        if (!room) throw new Error('Room not found');
+        room.pinnedMessageId = messageId;
+
+        // Broadcast to all clients in room
+        livestreamNamespace.to(roomId || socketInfo.roomId).emit('message_pinned', {
+          type: 'message_pinned',
+          messageId,
+        });
+      } catch (error) {
+        logger.error('Error pinning message:', error);
+        socket.emit('error', { type: 'pin_error', message: error.message });
+      }
+    });
+
+    // Unpin message (Host only)
+    socket.on('unpin_message', async data => {
+      try {
+        const { roomId } = data;
+        const socketInfo = liveStreamService.socketToRoom.get(socket.id);
+        if (!socketInfo || socketInfo.role !== 'host') {
+          throw new Error('Only hosts can unpin messages');
+        }
+
+        const room = liveStreamService.rooms.get(roomId || socketInfo.roomId);
+        if (!room) throw new Error('Room not found');
+        room.pinnedMessageId = null;
+
+        livestreamNamespace.to(roomId || socketInfo.roomId).emit('message_unpinned', {
+          type: 'message_unpinned',
+        });
+      } catch (error) {
+        logger.error('Error unpinning message:', error);
+        socket.emit('error', { type: 'pin_error', message: error.message });
       }
     });
 

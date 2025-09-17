@@ -34,7 +34,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useWebRTC } from '../../../hooks/useWebRTC';
-import ChatBox from '../../livestream/ChatBox';
+import PotentialOrdersPanel from './PotentialOrdersPanel';
 import livestreamService from '../../../services/livestreamService';
 import './LiveStreamHost.css';
 
@@ -51,6 +51,7 @@ const LiveStreamHost = () => {
   const [isLive, setIsLive] = useState(false);
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [featureModalVisible, setFeatureModalVisible] = useState(false);
 
   const {
     isConnected,
@@ -63,6 +64,7 @@ const LiveStreamHost = () => {
     stopCamera,
     sendChatMessage,
     featureProduct,
+    socket,
   } = useWebRTC(roomId, 'host', user?.id);
 
   // Load stream data
@@ -74,8 +76,15 @@ const LiveStreamHost = () => {
         setIsLive(response.data.isLive);
         setLoading(false);
 
-        // Load featured products
-        setProducts(response.data.liveStream.featuredProducts || []);
+        // Load products from store
+        if (user?.storeId) {
+          try {
+            const productsResponse = await livestreamService.getStoreProducts(user.storeId);
+            setProducts(productsResponse.data.products || []);
+          } catch (error) {
+            console.error('Error loading products:', error);
+          }
+        }
       } catch (error) {
         console.error('Error loading stream data:', error);
         message.error('Failed to load livestream data');
@@ -83,10 +92,10 @@ const LiveStreamHost = () => {
       }
     };
 
-    if (roomId) {
+    if (roomId && user) {
       loadStreamData();
     }
-  }, [roomId, navigate]);
+  }, [roomId, navigate, user]);
 
   // Handle start streaming
   const handleStartStreaming = async () => {
@@ -201,181 +210,237 @@ const LiveStreamHost = () => {
 
   return (
     <div className="livestream-host">
-      <Row gutter={[24, 24]}>
-        {/* Main Video Area */}
-        <Col xs={24} lg={16}>
-          <Card className="video-card">
-            <div className="video-header">
-              <Space>
-                <Title level={4} style={{ margin: 0 }}>
-                  {streamData?.title}
-                </Title>
-                <Tag color={getConnectionStatusColor()}>{getConnectionStatusText()}</Tag>
-                {isLive && <Tag color="red">LIVE</Tag>}
-              </Space>
-              <Space>
-                <Button
-                  icon={<ShareAltOutlined />}
-                  onClick={handleShareStream}
-                  type="default"
-                  size="small"
-                >
-                  Share
-                </Button>
-                <Button icon={<SettingOutlined />} type="default" size="small" disabled={isLive}>
-                  Settings
-                </Button>
-              </Space>
-            </div>
+      {/* Professional Header */}
+      <div className="livestream-header">
+        <div className="header-left">
+          <Button onClick={() => navigate('/shop/livestream')} className="back-button">
+            ← Back to Livestream
+          </Button>
+        </div>
+        <div className="header-center">
+          <span className="stream-title">{streamData?.title || 'Livestream Host'}</span>
+          {isLive && <span className="live-indicator">LIVE</span>}
+        </div>
+        <div className="header-right">
+          <Space>
+            <Button icon={<ShareAltOutlined />} size="small" onClick={handleShareStream}>
+              Share
+            </Button>
+            <Button icon={<SettingOutlined />} size="small" disabled={isLive}>
+              Settings
+            </Button>
+          </Space>
+        </div>
+      </div>
 
-            <div className="video-container">
-              <video
-                ref={localVideoRef}
-                autoPlay
-                muted
-                playsInline
-                className="local-video"
-                style={{
-                  width: '100%',
-                  height: '500px',
-                  backgroundColor: '#000',
-                  borderRadius: '8px',
-                }}
-              />
-              {!isLive && (
-                <div className="video-overlay">
-                  <div className="overlay-content">
-                    <PlayCircleOutlined style={{ fontSize: '48px', color: '#fff' }} />
-                    <Text style={{ color: '#fff', marginTop: '16px' }}>
-                      Click "Start Streaming" to begin
-                    </Text>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {error && (
-              <Alert
-                message="Connection Error"
-                description={error}
-                type="error"
-                style={{ marginTop: '16px' }}
-                closable
-              />
+      {/* Main Content */}
+      <div className="livestream-content">
+        {/* Video Section */}
+        <div className="video-section">
+          <div className="video-container">
+            <video ref={localVideoRef} autoPlay muted playsInline className="local-video" />
+            {!isLive && (
+              <div className="video-overlay">
+                <PlayCircleOutlined className="video-overlay-icon" />
+                <span className="video-overlay-text">Click "Start Streaming" to begin</span>
+              </div>
             )}
+          </div>
 
-            <div className="video-controls">
-              <Space size="large">
-                {!isLive ? (
-                  <Button
-                    type="primary"
-                    size="large"
-                    icon={<PlayCircleOutlined />}
-                    onClick={handleStartStreaming}
-                    disabled={!isConnected}
-                    loading={connectionState === 'connecting'}
-                  >
-                    Start Streaming
-                  </Button>
-                ) : (
-                  <Button danger size="large" icon={<StopOutlined />} onClick={handleStopStreaming}>
-                    End Stream
-                  </Button>
-                )}
-              </Space>
-            </div>
-          </Card>
+          {error && <Alert message="Connection Error" description={error} type="error" closable />}
 
-          {/* Stream Statistics */}
-          <Card title="Stream Statistics" className="stats-card">
-            <Row gutter={16}>
-              <Col span={8}>
-                <Statistic
-                  title="Live Viewers"
-                  value={viewerCount}
-                  prefix={<EyeOutlined />}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Col>
-              <Col span={8}>
-                <Statistic
-                  title="Total Messages"
-                  value={messages.length}
-                  prefix={<MessageOutlined />}
-                  valueStyle={{ color: '#52c41a' }}
-                />
-              </Col>
-              <Col span={8}>
-                <Statistic
-                  title="Duration"
-                  value={isLive ? 'Live' : '0m'}
-                  valueStyle={{ color: '#722ed1' }}
-                />
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-
-        {/* Sidebar */}
-        <Col xs={24} lg={8}>
-          {/* Product Management */}
-          <Card
-            title="Feature Products"
-            className="product-card"
-            style={{ height: '55vh', marginBottom: '16px' }}
-          >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Select
-                placeholder="Select a product to feature"
-                style={{ width: '100%' }}
-                value={selectedProduct}
-                onChange={setSelectedProduct}
-                disabled={!isLive}
-              >
-                {products.map(product => (
-                  <Option key={product._id} value={product._id}>
-                    {product.name}
-                  </Option>
-                ))}
-              </Select>
+          <div className="video-controls">
+            {!isLive ? (
               <Button
                 type="primary"
-                icon={<ProductOutlined />}
-                onClick={handleFeatureProduct}
-                disabled={!selectedProduct || !isLive}
-                block
+                icon={<PlayCircleOutlined />}
+                onClick={handleStartStreaming}
+                disabled={!isConnected}
+                loading={connectionState === 'connecting'}
               >
-                Feature Product
+                Start Streaming
               </Button>
-            </Space>
+            ) : (
+              <Button danger icon={<StopOutlined />} onClick={handleStopStreaming}>
+                End Stream
+              </Button>
+            )}
+            <Button
+              icon={<ProductOutlined />}
+              onClick={() => setFeatureModalVisible(true)}
+              disabled={!isLive}
+            >
+              Feature Products
+            </Button>
+          </div>
 
-            <Divider />
-
-            <div className="featured-products">
-              <Text strong>Currently Featured:</Text>
-              {streamData?.featuredProducts?.length > 0 ? (
-                <div className="featured-list">
-                  {streamData.featuredProducts.map(item => (
-                    <div key={item._id} className="featured-item">
-                      <Text>{item.productId?.name || 'Product'}</Text>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <Text type="secondary">No products featured yet</Text>
-              )}
+          {/* Statistics */}
+          <div className="stats-section">
+            <div className="stats-grid">
+              <div className="stat-item">
+                <div className="stat-value">{viewerCount}</div>
+                <div className="stat-label">Live Viewers</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-value">{messages.length}</div>
+                <div className="stat-label">Messages</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-value">{isLive ? 'Live' : '0m'}</div>
+                <div className="stat-label">Duration</div>
+              </div>
             </div>
-          </Card>
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="sidebar-section">
+          {/* Potential Orders Panel */}
+          <PotentialOrdersPanel streamId={roomId} socket={socket} />
 
           {/* Live Chat */}
-          <ChatBox
-            messages={messages}
-            onSendMessage={sendChatMessage}
-            disabled={!isConnected}
-            className="host-chat"
-          />
-        </Col>
-      </Row>
+          <div className="chat-section">
+            <div className="chat-header">Live Chat</div>
+            <div className="chat-messages">
+              {messages.length === 0 ? (
+                <div className="empty-chat">No messages yet</div>
+              ) : (
+                messages.map((message, index) => (
+                  <div key={index} className="chat-message-item">
+                    <div className="chat-user">
+                      <div className="chat-user-left">
+                        <strong>{message.senderId?.username || 'Anonymous'}</strong>
+                        {message.senderRole === 'host' && (
+                          <span className="chat-role-tag chat-role-host">Host</span>
+                        )}
+                      </div>
+                      <span className="chat-time">
+                        {new Date(message.timestamp).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div className="chat-text">{message.content}</div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="chat-input-section">
+              <input
+                type="text"
+                placeholder={!isConnected ? 'Chat is disabled' : 'Type your message...'}
+                disabled={!isConnected}
+                className="chat-input"
+                onKeyPress={e => {
+                  if (e.key === 'Enter' && e.target.value.trim()) {
+                    sendChatMessage(e.target.value.trim());
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Feature Products Modal */}
+      <Modal
+        title="Feature Products"
+        open={featureModalVisible}
+        onCancel={() => setFeatureModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <div style={{ padding: '20px 0' }}>
+          <div style={{ marginBottom: '20px' }}>
+            <Select
+              placeholder="Select a product to feature"
+              style={{ width: '100%', marginBottom: '12px' }}
+              value={selectedProduct}
+              onChange={setSelectedProduct}
+              disabled={!isLive}
+              size="large"
+            >
+              {products.map(product => (
+                <Option key={product._id} value={product._id}>
+                  {product.name} - ${product.price}
+                </Option>
+              ))}
+            </Select>
+
+            <Button
+              type="primary"
+              icon={<ProductOutlined />}
+              onClick={() => {
+                handleFeatureProduct();
+                setFeatureModalVisible(false);
+              }}
+              disabled={!selectedProduct || !isLive}
+              size="large"
+              block
+            >
+              Feature Selected Product
+            </Button>
+          </div>
+
+          <div>
+            <h4 style={{ marginBottom: '16px', color: '#262626' }}>Currently Featured Products:</h4>
+            {streamData?.featuredProducts?.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {streamData.featuredProducts.map(item => (
+                  <div
+                    key={item._id}
+                    style={{
+                      padding: '12px 16px',
+                      background: '#f8f9fa',
+                      borderRadius: '6px',
+                      border: '1px solid #e8e8e8',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div>
+                      <strong style={{ color: '#262626' }}>
+                        {item.productId?.name || 'Product'}
+                      </strong>
+                      {item.productId?.price && (
+                        <div style={{ color: '#666', fontSize: '14px' }}>
+                          ${item.productId.price}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      size="small"
+                      danger
+                      onClick={() => {
+                        // Handle remove featured product
+                        console.log('Remove featured product:', item._id);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  textAlign: 'center',
+                  color: '#999',
+                  fontSize: '14px',
+                  padding: '40px',
+                  background: '#fafafa',
+                  borderRadius: '6px',
+                }}
+              >
+                No products featured yet
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
