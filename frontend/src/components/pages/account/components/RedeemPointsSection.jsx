@@ -106,9 +106,7 @@ export default function RedeemPointsSection({ availablePoints, onSuccess }) {
 
       // Debug authentication token
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-      console.log('Authentication token exists:', !!token);
-      console.log('Token first 20 chars:', token ? token.substring(0, 20) + '...' : 'No token');
-
+      // Removed logging of authentication token for security
       console.log('Submitting redemption request:', {
         points: values.points,
         discountAmount: values.discount,
