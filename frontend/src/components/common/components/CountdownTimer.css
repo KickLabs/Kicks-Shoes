@@ -1,0 +1,172 @@
+.countdown-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Arial', sans-serif;
+  font-weight: 600;
+}
+
+.countdown-with-endin {
+  gap: 6px;
+}
+
+.end-in-text {
+  font-size: 10px;
+  font-weight: 600;
+  color: #ff4757;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 4px;
+}
+
+.countdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+}
+
+.countdown-number {
+  background: linear-gradient(135deg, #ff4757, #ff6b7a);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 32px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+}
+
+.countdown-label {
+  font-size: 10px;
+  color: #666;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.countdown-expired {
+  color: #999;
+  font-style: italic;
+}
+
+.expired-text {
+  color: #ff4757;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* Size variations */
+.countdown-small .countdown-number {
+  font-size: 12px;
+  padding: 2px 6px;
+  min-width: 28px;
+}
+
+.countdown-small .countdown-label {
+  font-size: 9px;
+}
+
+.countdown-small .countdown-item {
+  min-width: 32px;
+}
+
+.countdown-large .countdown-number {
+  font-size: 18px;
+  padding: 8px 12px;
+  min-width: 40px;
+}
+
+.countdown-large .countdown-label {
+  font-size: 12px;
+}
+
+.countdown-large .countdown-item {
+  min-width: 50px;
+}
+
+/* Compact version without labels */
+.countdown-timer.countdown-compact .countdown-label {
+  display: none;
+}
+
+.countdown-timer.countdown-compact .countdown-item {
+  min-width: 30px;
+}
+
+.countdown-timer.countdown-compact .countdown-number {
+  font-size: 12px;
+  padding: 3px 6px;
+  min-width: 28px;
+}
+
+/* Animation for urgency */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.countdown-timer.countdown-urgent .countdown-number {
+  animation: pulse 1s infinite;
+}
+
+/* After price info */
+.after-price-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.after-price-text {
+  font-size: 10px;
+  color: #999;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.after-price-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-decoration: line-through;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .countdown-timer {
+    gap: 4px;
+  }
+  
+  .countdown-item {
+    min-width: 35px;
+  }
+  
+  .countdown-number {
+    font-size: 12px;
+    padding: 3px 6px;
+    min-width: 28px;
+  }
+  
+  .countdown-label {
+    font-size: 9px;
+  }
+  
+  .after-price-info {
+    margin-left: 4px;
+    padding-left: 4px;
+  }
+  
+  .after-price-text {
+    font-size: 9px;
+  }
+  
+  .after-price-value {
+    font-size: 10px;
+  }
+}

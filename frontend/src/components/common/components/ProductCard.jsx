@@ -3,13 +3,30 @@ import { formatPrice } from '../../../utils/StringFormat';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { favouriteService } from '../../../services/favouriteService';
+import { useFlashSales } from '../../../hooks/useFlashSales';
+import CountdownTimer from './CountdownTimer';
 
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const [isFavourite, setIsFavourite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { getProductFlashSale } = useFlashSales();
 
-  const displayPrice = product.finalPrice || product.price?.regular || 0;
+  const flashSaleInfo = getProductFlashSale(product._id);
+  const isFlashSaleActive = !!flashSaleInfo;
+  const displayPrice = flashSaleInfo?.flashPrice || product.finalPrice || product.price?.regular || 0;
+  
+  // Debug logging
+  if (product._id === '68592c166b62c151554c73d6') {
+    console.log('Product Card Debug:', {
+      productId: product._id,
+      productName: product.name,
+      flashSaleInfo,
+      isFlashSaleActive,
+      displayPrice,
+      finalPrice: product.finalPrice
+    });
+  }
 
   useEffect(() => {
     const checkFavouriteStatus = async () => {
@@ -58,7 +75,14 @@ const ProductCard = ({ product }) => {
   return (
     <div className="product-card">
       <div className="product-card__image-container">
-        {product.isNew ? (
+        {isFlashSaleActive ? (
+          <div
+            style={{ backgroundColor: '#ff4757', width: '80px' }}
+            className="product-card__badge"
+          >
+            Flash Sale
+          </div>
+        ) : product.isNew ? (
           <div className="product-card__badge">New</div>
         ) : (
           product.price.isOnSale && (
@@ -71,13 +95,13 @@ const ProductCard = ({ product }) => {
           )
         )}
 
-        <img
-          src={Array.isArray(product.mainImage) ? product.mainImage[0] : product.mainImage}
-          alt={product.name}
-          className="product-card__image"
-        />
+                <img
+                  src={Array.isArray(product.mainImage) ? product.mainImage[0] : product.mainImage}
+                  alt={product.name}
+                  className="product-card__image"
+                />
 
-        {/* Favourite button */}
+                {/* Favourite button */}
         <button
           className="product-card__favourite-button"
           onClick={handleFavouriteToggle}
@@ -104,21 +128,34 @@ const ProductCard = ({ product }) => {
         </button>
       </div>
 
-      <div className="product-card__info">
-        <h2 className="product-card__name">{product.name}</h2>
-      </div>
+              <div className="product-card__info">
+                <h2 className="product-card__name">{product.name}</h2>
+              </div>
 
-      <div className="product-card__footer">
-        <button className="product-card__button">
-          <div
-            className="product-card__button-inner"
-            onClick={() => navigate(`/product/${product._id}`)}
-          >
-            <span>VIEW PRODUCT -</span>
-            <span className="product-card__price">{formatPrice(displayPrice)}</span>
-          </div>
-        </button>
-      </div>
+              <div className="product-card__footer">
+                <button className="product-card__button">
+                  <div
+                    className="product-card__button-inner"
+                    onClick={() => navigate(`/product/${product._id}`)}
+                  >
+                    <span>VIEW PRODUCT -</span>
+                    <span className="product-card__price">{formatPrice(displayPrice)}</span>
+                  </div>
+                </button>
+              </div>
+
+                {/* Countdown Timer for Flash Sale - at the bottom */}
+                {isFlashSaleActive && (
+                  <div className="product-card__countdown-bottom">
+                    <CountdownTimer 
+                      endDate={flashSaleInfo.endDate} 
+                      size="small" 
+                      showLabels={false}
+                      showEndIn={true}
+                      originalPrice={product.finalPrice || product.price?.regular || 0}
+                    />
+                  </div>
+                )}
     </div>
   );
 };

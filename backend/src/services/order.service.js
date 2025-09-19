@@ -8,6 +8,7 @@
 
 import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
+import FlashSale from '../models/FlashSale.js';
 import mongoose from 'mongoose';
 import logger from '../utils/logger.js';
 import { validateDiscountCode } from './discount.service.js';
@@ -16,6 +17,78 @@ import { validateDiscountCode } from './discount.service.js';
  * Service class for handling order operations
  */
 export class OrderService {
+  /**
+   * Check if a product is in an active flash sale
+   * @param {string} productId - Product ID
+   * @returns {Promise<Object|null>} Flash sale info with best price or null
+   */
+  static async getProductFlashSale(productId) {
+    try {
+      const now = new Date();
+      const flashSales = await FlashSale.find({
+        status: 'active',
+        startDate: { $lte: now },
+        endDate: { $gte: now },
+        'products.productId': productId
+      });
+
+      if (flashSales.length === 0) {
+        return null;
+      }
+
+      // Tìm tất cả flash sale có chứa sản phẩm này
+      const productFlashSales = [];
+      for (const flashSale of flashSales) {
+        const flashSaleProduct = flashSale.products.find(
+          p => p.productId.toString() === productId.toString()
+        );
+        if (flashSaleProduct) {
+          productFlashSales.push({
+            flashPrice: flashSaleProduct.flashPrice,
+            discountPercent: flashSaleProduct.discountPercent,
+            flashSaleId: flashSale._id,
+            flashSaleTitle: flashSale.title
+          });
+        }
+      }
+
+      if (productFlashSales.length === 0) {
+        return null;
+      }
+
+      // Nếu có nhiều flash sale, lấy giá rẻ nhất
+      if (productFlashSales.length > 1) {
+        logger.info('Multiple flash sales found for product:', {
+          productId,
+          flashSales: productFlashSales.map(fs => ({
+            flashSaleId: fs.flashSaleId,
+            flashSaleTitle: fs.flashSaleTitle,
+            flashPrice: fs.flashPrice
+          }))
+        });
+        
+        const bestDeal = productFlashSales.reduce((best, current) => {
+          return current.flashPrice < best.flashPrice ? current : best;
+        });
+        
+        logger.info('Selected best deal for product:', {
+          productId,
+          bestDeal: {
+            flashSaleId: bestDeal.flashSaleId,
+            flashSaleTitle: bestDeal.flashSaleTitle,
+            flashPrice: bestDeal.flashPrice
+          }
+        });
+        
+        return bestDeal;
+      }
+
+      return productFlashSales[0];
+    } catch (error) {
+      logger.error('Error checking flash sale:', error);
+      return null;
+    }
+  }
   /**
    * Create a new order
    * @param {Object} orderData - Order data
@@ -121,12 +194,29 @@ export class OrderService {
 
       const orderItems = await Promise.all(
         products.map(async product => {
-          const subtotal = product.price * product.quantity;
+          // Check for flash sale first
+          const flashSaleInfo = await this.getProductFlashSale(product.id);
+          let finalPrice = product.price;
+          let isFlashSale = false;
+          
+          if (flashSaleInfo) {
+            finalPrice = flashSaleInfo.flashPrice;
+            isFlashSale = true;
+            logger.info('Flash sale applied to product in order:', {
+              productId: product.id,
+              originalPrice: product.price,
+              flashPrice: finalPrice
+            });
+          }
+          
+          const subtotal = finalPrice * product.quantity;
           const orderItem = new OrderItem({
             order: order._id,
             product: product.id,
             quantity: product.quantity,
-            price: product.price,
+            price: finalPrice,
+            originalPrice: isFlashSale ? product.price : null,
+            isFlashSale: isFlashSale,
             size: product.size,
             color: product.color,
             subtotal: subtotal,

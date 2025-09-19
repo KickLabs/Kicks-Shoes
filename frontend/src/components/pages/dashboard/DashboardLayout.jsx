@@ -18,6 +18,7 @@ import {
   CommentOutlined,
   VideoCameraOutlined,
   ShoppingCartOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 
 const { Content } = Layout;
@@ -40,6 +41,7 @@ const adminTabs = [
   { key: '5', name: 'Feedback', icon: <MessageOutlined />, path: '/admin/feedback' },
   { key: '6', name: 'Categories', icon: <AppstoreOutlined />, path: '/admin/categories' },
   { key: '7', name: 'Discounts', icon: <WalletOutlined />, path: '/admin/discounts' },
+  { key: '8', name: 'Flash Sale', icon: <ThunderboltOutlined />, path: '/admin/flash-sales' },
 ];
 
 // Shop-specific tabs

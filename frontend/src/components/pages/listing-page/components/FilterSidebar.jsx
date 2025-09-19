@@ -5,6 +5,7 @@ import SizePanel from './SizePanel';
 import ColorPanel from './ColorPanel';
 import CategoryPanel from './CategoryPanel';
 import PricePanel from './PricePanel';
+import SaleFilterPanel from './SaleFilterPanel';
 import { useState, useEffect } from 'react';
 
 const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
@@ -13,6 +14,7 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedPrice, setSelectedPrice] = useState([0, 1000]);
+  const [selectedSaleType, setSelectedSaleType] = useState(null);
 
   // Count active filters
   const activeFiltersCount = [
@@ -21,6 +23,7 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
     selectedBrand,
     selectedCategory,
     selectedPrice[0] > 0 || selectedPrice[1] < 1000,
+    selectedSaleType,
   ].filter(Boolean).length;
 
   // Get size options based on product type
@@ -79,8 +82,9 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
       category: selectedCategory,
       minPrice: selectedPrice[0],
       maxPrice: selectedPrice[1],
+      saleType: selectedSaleType,
     });
-  }, [selectedSize, selectedColor, selectedBrand, selectedCategory, selectedPrice]);
+  }, [selectedSize, selectedColor, selectedBrand, selectedCategory, selectedPrice, selectedSaleType]);
 
   // Clear all filters
   const clearAllFilters = () => {
@@ -89,6 +93,7 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
     setSelectedBrand(null);
     setSelectedCategory(null);
     setSelectedPrice([0, 1000]);
+    setSelectedSaleType(null);
   };
 
   // Define collapse items
@@ -149,6 +154,16 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
       label: 'PRICE',
       children: (
         <PricePanel priceRange={selectedPrice} onPriceChange={price => setSelectedPrice(price)} />
+      ),
+    },
+    {
+      key: '6',
+      label: 'SALE TYPE',
+      children: (
+        <SaleFilterPanel 
+          selectedSaleType={selectedSaleType} 
+          onSaleTypeChange={setSelectedSaleType} 
+        />
       ),
     },
   ];
