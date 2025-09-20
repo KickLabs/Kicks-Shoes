@@ -10,6 +10,7 @@ import Product from '../models/Product.js';
 import { validationResult } from 'express-validator';
 import { asyncHandler } from '../middlewares/async.middleware.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
+import { getFlashSaleProductsForDashboard } from '../services/flashSale.service.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -19,7 +20,7 @@ import logger from '../utils/logger.js';
  */
 export const getAllFlashSales = asyncHandler(async (req, res) => {
   const { status, page = 1, limit = 10, sort = '-createdAt' } = req.query;
-  
+
   // Tạo filter object
   const filter = {};
   if (status) {
@@ -36,10 +37,7 @@ export const getAllFlashSales = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(parseInt(limit));
 
-  const [flashSales, total] = await Promise.all([
-    query.exec(),
-    FlashSale.countDocuments(filter)
-  ]);
+  const [flashSales, total] = await Promise.all([query.exec(), FlashSale.countDocuments(filter)]);
 
   res.status(200).json({
     success: true,
@@ -48,8 +46,8 @@ export const getAllFlashSales = asyncHandler(async (req, res) => {
       current: parseInt(page),
       pages: Math.ceil(total / parseInt(limit)),
       total,
-      limit: parseInt(limit)
-    }
+      limit: parseInt(limit),
+    },
   });
 });
 
@@ -59,8 +57,10 @@ export const getAllFlashSales = asyncHandler(async (req, res) => {
  * @access Public
  */
 export const getFlashSaleById = asyncHandler(async (req, res) => {
-  const flashSale = await FlashSale.findById(req.params.id)
-    .populate('products.productId', 'name price images mainImage category description');
+  const flashSale = await FlashSale.findById(req.params.id).populate(
+    'products.productId',
+    'name price images mainImage category description'
+  );
 
   if (!flashSale) {
     throw new ErrorResponse('Flash sale not found', 404);
@@ -68,7 +68,7 @@ export const getFlashSaleById = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    data: flashSale
+    data: flashSale,
   });
 });
 
@@ -79,24 +79,92 @@ export const getFlashSaleById = asyncHandler(async (req, res) => {
  */
 export const getCurrentActiveFlashSale = asyncHandler(async (req, res) => {
   const now = new Date();
-  
+
+  console.log('Searching for active flash sales at:', now);
+
   const activeFlashSales = await FlashSale.find({
     status: 'active',
     startDate: { $lte: now },
-    endDate: { $gte: now }
-  }).populate('products.productId', 'name price images mainImage category description');
+    endDate: { $gte: now },
+  }).populate(
+    'products.productId',
+    'name price images mainImage category description brand stock variants isNew status'
+  );
+
+  console.log('Found active flash sales:', activeFlashSales.length);
 
   if (!activeFlashSales || activeFlashSales.length === 0) {
+    console.log('No active flash sales found');
     return res.status(200).json({
       success: true,
-      data: null,
-      message: 'No active flash sales'
+      data: [],
+      message: 'No active flash sales',
     });
   }
 
+  // Flatten the products from all active flash sales
+  const flashSaleProducts = [];
+
+  activeFlashSales.forEach(flashSale => {
+    console.log(
+      `Processing flash sale: ${flashSale.title} with ${flashSale.products.length} products`
+    );
+
+    flashSale.products.forEach(flashSaleProduct => {
+      const product = flashSaleProduct.productId;
+
+      // Skip if product is null or undefined
+      if (!product) {
+        console.log('Skipping null product in flash sale');
+        return;
+      }
+
+      const originalPrice = product.price || 0;
+      const flashPrice =
+        flashSaleProduct.flashPrice ||
+        originalPrice * (1 - (flashSaleProduct.discountPercent || 0) / 100);
+
+      console.log(`Product: ${product.name}, Original: ${originalPrice}, Flash: ${flashPrice}`);
+
+      // Create a product object that matches the expected structure for ProductCard
+      const productWithFlashSale = {
+        _id: product._id,
+        name: product.name,
+        price: {
+          regular: originalPrice,
+          sale: flashPrice,
+          isOnSale: true,
+          discountPercent: flashSaleProduct.discountPercent || 0,
+        },
+        finalPrice: flashPrice,
+        images: product.images || [],
+        mainImage: product.mainImage,
+        category: product.category,
+        brand: product.brand,
+        stock: product.stock || 0,
+        variants: product.variants || {},
+        isFlashSale: true,
+        flashSaleInfo: {
+          flashSaleId: flashSale._id,
+          flashSaleTitle: flashSale.title,
+          endDate: flashSale.endDate,
+          discountPercent: flashSaleProduct.discountPercent,
+          flashPrice: flashSaleProduct.flashPrice,
+        },
+        // Add other required fields for ProductCard
+        isNew: product.isNew || false,
+        status: product.status !== undefined ? product.status : true,
+      };
+
+      flashSaleProducts.push(productWithFlashSale);
+    });
+  });
+
+  console.log(`Total flash sale products: ${flashSaleProducts.length}`);
+
   res.status(200).json({
     success: true,
-    data: activeFlashSales
+    data: flashSaleProducts,
   });
 });
 
@@ -131,7 +199,7 @@ export const createFlashSale = asyncHandler(async (req, res) => {
   // Kiểm tra sản phẩm có tồn tại không
   const productIds = products.map(p => p.productId);
   const existingProducts = await Product.find({ _id: { $in: productIds } });
-  
+
   if (existingProducts.length !== productIds.length) {
     throw new ErrorResponse('Một số sản phẩm không tồn tại', 400);
   }
@@ -149,7 +217,7 @@ export const createFlashSale = asyncHandler(async (req, res) => {
     products,
     startDate: start,
     endDate: end,
-    status: 'upcoming'
+    status: 'upcoming',
   });
 
   await flashSale.populate('products.productId', 'name price images category');
@@ -159,7 +227,7 @@ export const createFlashSale = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     data: flashSale,
-    message: 'Tạo flash sale thành công'
+    message: 'Tạo flash sale thành công',
   });
 });
 
@@ -176,7 +244,7 @@ export const updateFlashSale = asyncHandler(async (req, res) => {
   }
 
   const flashSale = await FlashSale.findById(req.params.id);
-  
+
   if (!flashSale) {
     throw new ErrorResponse('Flash sale not found', 404);
   }
@@ -207,7 +275,7 @@ export const updateFlashSale = asyncHandler(async (req, res) => {
   if (products) {
     const productIds = products.map(p => p.productId);
     const existingProducts = await Product.find({ _id: { $in: productIds } });
-    
+
     if (existingProducts.length !== productIds.length) {
       throw new ErrorResponse('Một số sản phẩm không tồn tại', 400);
     }
@@ -228,7 +296,7 @@ export const updateFlashSale = asyncHandler(async (req, res) => {
       ...(products && { products }),
       ...(startDate && { startDate: new Date(startDate) }),
       ...(endDate && { endDate: new Date(endDate) }),
-      ...(status && { status })
+      ...(status && { status }),
     },
     { new: true, runValidators: true }
   ).populate('products.productId', 'name price images mainImage category');
@@ -238,7 +306,7 @@ export const updateFlashSale = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: updatedFlashSale,
-    message: 'Cập nhật flash sale thành công'
+    message: 'Cập nhật flash sale thành công',
   });
 });
 
@@ -249,7 +317,7 @@ export const updateFlashSale = asyncHandler(async (req, res) => {
  */
 export const deleteFlashSale = asyncHandler(async (req, res) => {
   const flashSale = await FlashSale.findById(req.params.id);
-  
+
   if (!flashSale) {
     throw new ErrorResponse('Flash sale not found', 404);
   }
@@ -265,7 +333,7 @@ export const deleteFlashSale = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Xóa flash sale thành công'
+    message: 'Xóa flash sale thành công',
   });
 });
 
@@ -276,20 +344,20 @@ export const deleteFlashSale = asyncHandler(async (req, res) => {
  */
 export const updateFlashSaleStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
-  
+
   if (!['upcoming', 'active', 'ended', 'cancelled'].includes(status)) {
     throw new ErrorResponse('Trạng thái không hợp lệ', 400);
   }
 
   const flashSale = await FlashSale.findById(req.params.id);
-  
+
   if (!flashSale) {
     throw new ErrorResponse('Flash sale not found', 404);
   }
 
   // Kiểm tra logic chuyển trạng thái
   const now = new Date();
-  
+
   if (status === 'active' && flashSale.startDate > now) {
     throw new ErrorResponse('Chưa đến thời gian bắt đầu flash sale', 400);
   }
@@ -309,7 +377,7 @@ export const updateFlashSaleStatus = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: updatedFlashSale,
-    message: 'Cập nhật trạng thái flash sale thành công'
+    message: 'Cập nhật trạng thái flash sale thành công',
   });
 });
 
@@ -326,21 +394,19 @@ export const getFlashSaleByProductId = asyncHandler(async (req, res) => {
     status: 'active',
     startDate: { $lte: now },
     endDate: { $gte: now },
-    'products.productId': productId
+    'products.productId': productId,
   }).populate('products.productId', 'name price images category description');
 
   if (!flashSale) {
     return res.status(200).json({
       success: true,
       data: null,
-      message: 'Sản phẩm không có trong flash sale hiện tại'
+      message: 'Sản phẩm không có trong flash sale hiện tại',
     });
   }
 
   // Tìm thông tin sản phẩm cụ thể trong flash sale
-  const productInfo = flashSale.products.find(
-    p => p.productId._id.toString() === productId
-  );
+  const productInfo = flashSale.products.find(p => p.productId._id.toString() === productId);
 
   res.status(200).json({
     success: true,
@@ -352,8 +418,8 @@ export const getFlashSaleByProductId = asyncHandler(async (req, res) => {
         startDate: flashSale.startDate,
         endDate: flashSale.endDate,
       },
-      product: productInfo
-    }
+      product: productInfo,
+    },
   });
 });
 
@@ -364,14 +430,14 @@ export const getFlashSaleByProductId = asyncHandler(async (req, res) => {
  */
 export const getFlashSaleStats = asyncHandler(async (req, res) => {
   const now = new Date();
-  
+
   const stats = await FlashSale.aggregate([
     {
       $group: {
         _id: '$status',
-        count: { $sum: 1 }
-      }
-    }
+        count: { $sum: 1 },
+      },
+    },
   ]);
 
   const upcomingCount = stats.find(s => s._id === 'upcoming')?.count || 0;
@@ -382,14 +448,16 @@ export const getFlashSaleStats = asyncHandler(async (req, res) => {
   // Lấy flash sale sắp diễn ra
   const upcomingFlashSales = await FlashSale.find({
     status: 'upcoming',
-    startDate: { $gte: now }
-  }).sort({ startDate: 1 }).limit(5);
+    startDate: { $gte: now },
+  })
+    .sort({ startDate: 1 })
+    .limit(5);
 
   // Lấy flash sale đang hoạt động
   const activeFlashSales = await FlashSale.find({
     status: 'active',
     startDate: { $lte: now },
-    endDate: { $gte: now }
+    endDate: { $gte: now },
   }).populate('products.productId', 'name price');
 
   res.status(200).json({
@@ -400,10 +468,42 @@ export const getFlashSaleStats = asyncHandler(async (req, res) => {
         upcoming: upcomingCount,
         active: activeCount,
         ended: endedCount,
-        cancelled: cancelledCount
+        cancelled: cancelledCount,
       },
       upcomingFlashSales,
-      activeFlashSales
-    }
+      activeFlashSales,
+    },
+  });
+});
+
+/**
+ * @desc Lấy danh sách sản phẩm flash sale cho dashboard
+ * @route GET /api/flash-sales/dashboard
+ * @access Private (Admin)
+ */
+export const getFlashSaleProductsForDashboardController = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    status = 'all',
+    search = '',
+    sortBy = 'createdAt',
+    order = 'desc',
+  } = req.query;
+
+  const result = await getFlashSaleProductsForDashboard({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    status,
+    search,
+    sortBy,
+    order,
+  });
+
+  res.status(200).json({
+    success: true,
+    data: result.data,
+    pagination: result.pagination,
+    message: 'Lấy danh sách flash sale cho dashboard thành công',
   });
 });

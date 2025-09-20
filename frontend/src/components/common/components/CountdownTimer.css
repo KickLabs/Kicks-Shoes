@@ -103,9 +103,15 @@
 
 /* Animation for urgency */
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .countdown-timer.countdown-urgent .countdown-number {
@@ -142,30 +148,30 @@
   .countdown-timer {
     gap: 4px;
   }
-  
+
   .countdown-item {
     min-width: 35px;
   }
-  
+
   .countdown-number {
     font-size: 12px;
     padding: 3px 6px;
     min-width: 28px;
   }
-  
+
   .countdown-label {
     font-size: 9px;
   }
-  
+
   .after-price-info {
     margin-left: 4px;
     padding-left: 4px;
   }
-  
+
   .after-price-text {
     font-size: 9px;
   }
-  
+
   .after-price-value {
     font-size: 10px;
   }

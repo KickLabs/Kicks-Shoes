@@ -463,12 +463,12 @@ const PotentialOrdersManagement = () => {
       {/* Statistics Section */}
       <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
         <Col xs={12} sm={8} lg={4}>
-          <Card bordered={false} style={{ borderRadius: 12 }}>
+          <Card variant="outlined" style={{ borderRadius: 12 }}>
             <Statistic title="Total Orders" value={stats.total} loading={loading} />
           </Card>
         </Col>
         <Col xs={12} sm={8} lg={4}>
-          <Card bordered={false} style={{ borderRadius: 12 }}>
+          <Card variant="outlined" style={{ borderRadius: 12 }}>
             <Statistic
               title="Pending"
               value={stats.pending}
@@ -478,7 +478,7 @@ const PotentialOrdersManagement = () => {
           </Card>
         </Col>
         <Col xs={12} sm={8} lg={4}>
-          <Card bordered={false} style={{ borderRadius: 12 }}>
+          <Card variant="outlined" style={{ borderRadius: 12 }}>
             <Statistic
               title="Confirmed"
               value={stats.confirmed}
@@ -488,7 +488,7 @@ const PotentialOrdersManagement = () => {
           </Card>
         </Col>
         <Col xs={12} sm={8} lg={4}>
-          <Card bordered={false} style={{ borderRadius: 12 }}>
+          <Card variant="outlined" style={{ borderRadius: 12 }}>
             <Statistic
               title="Contacted"
               value={stats.contacted}
@@ -498,7 +498,7 @@ const PotentialOrdersManagement = () => {
           </Card>
         </Col>
         <Col xs={12} sm={8} lg={4}>
-          <Card bordered={false} style={{ borderRadius: 12 }}>
+          <Card variant="outlined" style={{ borderRadius: 12 }}>
             <Statistic
               title="Converted"
               value={stats.converted}
@@ -508,7 +508,7 @@ const PotentialOrdersManagement = () => {
           </Card>
         </Col>
         <Col xs={12} sm={8} lg={4}>
-          <Card bordered={false} style={{ borderRadius: 12 }}>
+          <Card variant="outlined" style={{ borderRadius: 12 }}>
             <Statistic
               title="Spam"
               value={stats.spam}
@@ -520,7 +520,7 @@ const PotentialOrdersManagement = () => {
       </Row>
 
       {/* Main Content: Filters & Table */}
-      <Card bordered={false} style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
+      <Card variant="outlined" style={{ borderRadius: 12 }} styles={{ body: { padding: 0 } }}>
         {/* Filter Bar */}
         <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
           <Row gutter={[16, 16]} justify="space-between" align="middle">
@@ -664,7 +664,7 @@ const PotentialOrdersManagement = () => {
           </Button>,
         ]}
         width={760}
-        bodyStyle={{ maxHeight: '70vh', overflowY: 'auto', padding: 16 }}
+        styles={{ body: { maxHeight: '70vh', overflowY: 'auto', padding: 16 } }}
       >
         {selectedOrder && (
           <>

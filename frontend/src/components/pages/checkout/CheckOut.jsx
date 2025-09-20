@@ -124,14 +124,14 @@ export default function CheckoutPage() {
   const subtotal = itemsToProcess.reduce((sum, item) => {
     let price = 0;
     let productId = null;
-    
+
     // Get product ID
     if (isBuyNow && item.productDetails) {
       productId = item.product;
     } else if (item.product) {
       productId = item.product._id;
     }
-    
+
     // Check for flash sale first
     if (productId) {
       const flashSaleInfo = getProductFlashSale(productId);
@@ -158,7 +158,7 @@ export default function CheckoutPage() {
     } else if (item.price) {
       price = item.price;
     }
-    
+
     return sum + price * (item.quantity || 1);
   }, 0);
 

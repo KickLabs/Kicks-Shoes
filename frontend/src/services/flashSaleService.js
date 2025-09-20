@@ -4,7 +4,7 @@ import axiosInstance from './axiosInstance';
 export const getFlashSales = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();
-    
+
     if (params.status) queryParams.append('status', params.status);
     if (params.page) queryParams.append('page', params.page);
     if (params.limit) queryParams.append('limit', params.limit);
@@ -18,7 +18,7 @@ export const getFlashSales = async (params = {}) => {
   }
 };
 
-export const getFlashSaleById = async (id) => {
+export const getFlashSaleById = async id => {
   try {
     const response = await axiosInstance.get(`/flash-sales/${id}`);
     return response.data;
@@ -38,7 +38,7 @@ export const getCurrentActiveFlashSale = async () => {
   }
 };
 
-export const getFlashSaleByProductId = async (productId) => {
+export const getFlashSaleByProductId = async productId => {
   try {
     const response = await axiosInstance.get(`/flash-sales/product/${productId}`);
     return response.data;
@@ -48,7 +48,7 @@ export const getFlashSaleByProductId = async (productId) => {
   }
 };
 
-export const createFlashSale = async (flashSaleData) => {
+export const createFlashSale = async flashSaleData => {
   try {
     const response = await axiosInstance.post('/flash-sales', flashSaleData);
     return response.data;
@@ -68,7 +68,7 @@ export const updateFlashSale = async (id, flashSaleData) => {
   }
 };
 
-export const deleteFlashSale = async (id) => {
+export const deleteFlashSale = async id => {
   try {
     const response = await axiosInstance.delete(`/flash-sales/${id}`);
     return response.data;
@@ -102,7 +102,7 @@ export const getFlashSaleStats = async () => {
 export const getProductsForFlashSale = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();
-    
+
     if (params.search) queryParams.append('search', params.search);
     if (params.category) queryParams.append('category', params.category);
     if (params.page) queryParams.append('page', params.page);
@@ -111,7 +111,7 @@ export const getProductsForFlashSale = async (params = {}) => {
     const response = await axiosInstance.get(`/products?${queryParams.toString()}`);
     return {
       success: response.data.success,
-      data: response.data.data?.products || []
+      data: response.data.data?.products || [],
     };
   } catch (error) {
     console.error('Error fetching products for flash sale:', error);
@@ -124,7 +124,7 @@ export const getCategories = async () => {
     const response = await axiosInstance.get('/categories');
     return {
       success: response.data.success,
-      data: response.data.data || []
+      data: response.data.data || [],
     };
   } catch (error) {
     console.error('Error fetching categories:', error);

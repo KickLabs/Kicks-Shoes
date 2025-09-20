@@ -21,7 +21,7 @@ import {
   Spin,
   Divider,
   Tooltip,
-    Badge,
+  Badge,
 } from 'antd';
 import {
   PlusOutlined,
@@ -146,23 +146,21 @@ export default function FlashSaleManagement() {
       dataIndex: 'title',
       key: 'title',
       width: 200,
-        render: (text) => (
-          <div style={{ fontWeight: 600 }}>{text}</div>
-        ),
+      render: text => <div style={{ fontWeight: 600 }}>{text}</div>,
     },
     {
       title: 'Description',
       dataIndex: 'description',
       key: 'description',
       width: 200,
-      render: (text) => text ? (text.length > 50 ? `${text.substring(0, 50)}...` : text) : '-',
+      render: text => (text ? (text.length > 50 ? `${text.substring(0, 50)}...` : text) : '-'),
     },
     {
       title: 'Products',
       dataIndex: 'products',
       key: 'products',
       width: 100,
-      render: (products) => (
+      render: products => (
         <Badge count={products?.length || 0} showZero color="blue">
           <ShoppingOutlined />
         </Badge>
@@ -188,7 +186,7 @@ export default function FlashSaleManagement() {
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status) => {
+      render: status => {
         const config = statusConfig[status];
         return (
           <Tag color={config.color} icon={config.icon}>
@@ -204,19 +202,11 @@ export default function FlashSaleManagement() {
       render: (_, record) => (
         <Space>
           <Tooltip title="View Details">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => handleView(record)}
-            />
+            <Button type="text" icon={<EyeOutlined />} onClick={() => handleView(record)} />
           </Tooltip>
           {record.status !== 'ended' && (
             <Tooltip title="Edit">
-              <Button
-                type="text"
-                icon={<EditOutlined />}
-                onClick={() => handleEdit(record)}
-              />
+              <Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
             </Tooltip>
           )}
           {record.status !== 'active' && (
@@ -227,11 +217,7 @@ export default function FlashSaleManagement() {
               cancelText="Cancel"
             >
               <Tooltip title="Delete">
-                <Button
-                  type="text"
-                  danger
-                  icon={<DeleteOutlined />}
-                />
+                <Button type="text" danger icon={<DeleteOutlined />} />
               </Tooltip>
             </Popconfirm>
           )}
@@ -243,150 +229,176 @@ export default function FlashSaleManagement() {
   // Handlers
   const handleCreate = () => {
     setEditingFlashSale(null);
-      form.resetFields();
-      setSelectedProducts([]);
-      setModalVisible(true);
+    form.resetFields();
+    setSelectedProducts([]);
+    setModalVisible(true);
   };
 
-  const handleEdit = (flashSale) => {
+  const handleEdit = flashSale => {
     setEditingFlashSale(flashSale);
     form.setFieldsValue({
       title: flashSale.title,
       description: flashSale.description,
       dateRange: [moment(flashSale.startDate), moment(flashSale.endDate)],
     });
-    
-    
+
     // Tính lại giá flash cho các sản phẩm đã có
-    const productsWithCalculatedPrice = Array.isArray(flashSale.products) 
+    const productsWithCalculatedPrice = Array.isArray(flashSale.products)
       ? flashSale.products.map(product => {
-          const originalPrice = product.productId?.finalPrice || product.productId?.discountedPrice || 0;
+          const originalPrice =
+            product.productId?.finalPrice || product.productId?.discountedPrice || 0;
           const discountPercent = product.discountPercent || 0;
           const calculatedPrice = Math.round(originalPrice * (1 - discountPercent / 100));
           return {
             productId: product.productId?._id || product.productId,
             discountPercent: product.discountPercent,
             flashPrice: calculatedPrice,
-            productInfo: product.productId
+            productInfo: product.productId,
           };
         })
       : [];
-    
+
     setSelectedProducts(productsWithCalculatedPrice);
     setModalVisible(true);
   };
 
-  const handleView = (flashSale) => {
+  const handleView = flashSale => {
     Modal.info({
       title: flashSale.title,
       width: 800,
       content: (
         <div>
-          <p><strong>Description:</strong> {flashSale.description || 'No description'}</p>
-          <p><strong>Time:</strong> {moment(flashSale.startDate).format('DD/MM/YYYY HH:mm')} - {moment(flashSale.endDate).format('DD/MM/YYYY HH:mm')}</p>
-          <p><strong>Status:</strong> {statusConfig[flashSale.status].text}</p>
+          <p>
+            <strong>Description:</strong> {flashSale.description || 'No description'}
+          </p>
+          <p>
+            <strong>Time:</strong> {moment(flashSale.startDate).format('DD/MM/YYYY HH:mm')} -{' '}
+            {moment(flashSale.endDate).format('DD/MM/YYYY HH:mm')}
+          </p>
+          <p>
+            <strong>Status:</strong> {statusConfig[flashSale.status].text}
+          </p>
           {flashSale.products && flashSale.products.length > 0 && (
             <div>
               <strong>Products:</strong>
               <Table
                 dataSource={flashSale.products || []}
                 columns={[
-                  { 
-                    title: 'Image', 
-                    dataIndex: 'productId', 
+                  {
+                    title: 'Image',
+                    dataIndex: 'productId',
                     key: 'image',
                     width: 60,
-                    render: (productId) => {
-                      const image = productId?.mainImage || (productId?.images && productId.images.length > 0 ? productId.images[0] : null);
+                    render: productId => {
+                      const image =
+                        productId?.mainImage ||
+                        (productId?.images && productId.images.length > 0
+                          ? productId.images[0]
+                          : null);
                       return image ? (
                         <div style={{ position: 'relative' }}>
-                          <img 
-                            src={Array.isArray(image) ? image[0] : image} 
-                            alt="Product" 
-                            style={{ 
-                              width: 40, 
-                              height: 40, 
+                          <img
+                            src={Array.isArray(image) ? image[0] : image}
+                            alt="Product"
+                            style={{
+                              width: 40,
+                              height: 40,
                               objectFit: 'cover',
-                              borderRadius: 4
-                            }} 
-                            onError={(e) => {
+                              borderRadius: 4,
+                            }}
+                            onError={e => {
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
                             }}
                           />
-                          <div style={{
-                            width: 40,
-                            height: 40,
-                            backgroundColor: '#f0f0f0',
-                            borderRadius: 4,
-                            display: 'none',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 10,
-                            color: '#999',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0
-                          }}>
+                          <div
+                            style={{
+                              width: 40,
+                              height: 40,
+                              backgroundColor: '#f0f0f0',
+                              borderRadius: 4,
+                              display: 'none',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 10,
+                              color: '#999',
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                            }}
+                          >
                             No Image
                           </div>
                         </div>
                       ) : (
-                        <div style={{
-                          width: 40,
-                          height: 40,
-                          backgroundColor: '#f0f0f0',
-                          borderRadius: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 10,
-                          color: '#999'
-                        }}>
+                        <div
+                          style={{
+                            width: 40,
+                            height: 40,
+                            backgroundColor: '#f0f0f0',
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 10,
+                            color: '#999',
+                          }}
+                        >
                           No Image
                         </div>
                       );
-                    }
+                    },
                   },
-                  { 
-                    title: 'Product Name', 
-                    dataIndex: ['productId', 'name'], 
+                  {
+                    title: 'Product Name',
+                    dataIndex: ['productId', 'name'],
                     key: 'name',
-                    render: (text) => (
-                      <div style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    render: text => (
+                      <div
+                        style={{
+                          maxWidth: 150,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         {text}
                       </div>
-                    )
+                    ),
                   },
-                  { 
-                    title: 'Original Price', 
-                    dataIndex: ['productId', 'finalPrice'], 
-                    key: 'finalPrice', 
-                    render: (price) => (
+                  {
+                    title: 'Original Price',
+                    dataIndex: ['productId', 'finalPrice'],
+                    key: 'finalPrice',
+                    render: price => (
                       <span style={{ fontWeight: 500, color: '#666' }}>
                         {price?.toLocaleString()}đ
                       </span>
-                    )
+                    ),
                   },
-                  { 
-                    title: 'Discount (%)', 
-                    dataIndex: 'discountPercent', 
-                    key: 'discountPercent', 
-                    render: (percent) => percent ? (
-                      <span style={{ color: '#52c41a', fontWeight: 500 }}>
-                        {percent}%
-                      </span>
-                    ) : '-'
+                  {
+                    title: 'Discount (%)',
+                    dataIndex: 'discountPercent',
+                    key: 'discountPercent',
+                    render: percent =>
+                      percent ? (
+                        <span style={{ color: '#52c41a', fontWeight: 500 }}>{percent}%</span>
+                      ) : (
+                        '-'
+                      ),
                   },
-                  { 
-                    title: 'Flash Price', 
-                    dataIndex: 'flashPrice', 
-                    key: 'flashPrice', 
-                    render: (price) => price ? (
-                      <span style={{ color: '#ff4757', fontWeight: 600 }}>
-                        {price.toLocaleString()}đ
-                      </span>
-                    ) : '-'
+                  {
+                    title: 'Flash Price',
+                    dataIndex: 'flashPrice',
+                    key: 'flashPrice',
+                    render: price =>
+                      price ? (
+                        <span style={{ color: '#ff4757', fontWeight: 600 }}>
+                          {price.toLocaleString()}đ
+                        </span>
+                      ) : (
+                        '-'
+                      ),
                   },
                 ]}
                 pagination={false}
@@ -399,7 +411,7 @@ export default function FlashSaleManagement() {
     });
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async id => {
     try {
       await deleteFlashSale(id);
       message.success('Flash sale deleted successfully');
@@ -421,7 +433,7 @@ export default function FlashSaleManagement() {
     }
   };
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async values => {
     try {
       if (!selectedProducts || selectedProducts.length === 0) {
         message.error('Vui lòng chọn ít nhất một sản phẩm');
@@ -438,14 +450,16 @@ export default function FlashSaleManagement() {
 
       // Tính lại giá flash cho tất cả sản phẩm trước khi gửi
       const productsWithCalculatedPrice = selectedProducts.map(product => {
-        const originalPrice = product.productInfo?.finalPrice || product.productInfo?.discountedPrice || 0;
+        const originalPrice =
+          product.productInfo?.finalPrice || product.productInfo?.discountedPrice || 0;
         const discountPercent = product.discountPercent || 0;
         const calculatedPrice = Math.round(originalPrice * (1 - discountPercent / 100));
-              return {
-                productId: typeof product.productId === 'object' ? product.productId._id : product.productId,
-                discountPercent: product.discountPercent,
-                flashPrice: calculatedPrice
-              };
+        return {
+          productId:
+            typeof product.productId === 'object' ? product.productId._id : product.productId,
+          discountPercent: product.discountPercent,
+          flashPrice: calculatedPrice,
+        };
       });
 
       const flashSaleData = {
@@ -476,53 +490,57 @@ export default function FlashSaleManagement() {
     setProductModalVisible(true);
   };
 
-  const handleProductSelect = (product) => {
+  const handleProductSelect = product => {
     const currentProducts = selectedProducts || [];
     const existingProduct = currentProducts.find(p => p.productId === product._id);
-    
+
     if (existingProduct) {
       message.warning('Sản phẩm này đã được thêm vào flash sale');
       return;
     }
-    
+
     const discountPercent = 0;
     const calculatedPrice = Math.round(product.finalPrice * (1 - discountPercent / 100));
-    
-    setSelectedProducts([...currentProducts, {
-      productId: product._id,
-      discountPercent: discountPercent,
-      flashPrice: calculatedPrice,
-      productInfo: product,
-    }]);
-    
+
+    setSelectedProducts([
+      ...currentProducts,
+      {
+        productId: product._id,
+        discountPercent: discountPercent,
+        flashPrice: calculatedPrice,
+        productInfo: product,
+      },
+    ]);
+
     message.success('Đã thêm sản phẩm vào flash sale');
   };
 
-  const handleProductRemove = (productId) => {
+  const handleProductRemove = productId => {
     const currentProducts = selectedProducts || [];
     setSelectedProducts(currentProducts.filter(p => p.productId !== productId));
   };
 
   const handleProductUpdate = (productId, field, value) => {
     const currentProducts = selectedProducts || [];
-    setSelectedProducts(currentProducts.map(p => {
-      if (p.productId === productId) {
-        const updatedProduct = { ...p, [field]: value };
-        
-        // Tự động tính lại giá flash khi thay đổi phần trăm giảm giá
-        if (field === 'discountPercent') {
-          const originalPrice = p.productInfo?.finalPrice || p.productInfo?.discountedPrice || 0;
-          const discountPercent = value || 0;
-          const calculatedPrice = Math.round(originalPrice * (1 - discountPercent / 100));
-          updatedProduct.flashPrice = calculatedPrice;
-        }
-        
-        return updatedProduct;
-      }
-      return p;
-    }));
-  };
+    setSelectedProducts(
+      currentProducts.map(p => {
+        if (p.productId === productId) {
+          const updatedProduct = { ...p, [field]: value };
 
+          // Tự động tính lại giá flash khi thay đổi phần trăm giảm giá
+          if (field === 'discountPercent') {
+            const originalPrice = p.productInfo?.finalPrice || p.productInfo?.discountedPrice || 0;
+            const discountPercent = value || 0;
+            const calculatedPrice = Math.round(originalPrice * (1 - discountPercent / 100));
+            updatedProduct.flashPrice = calculatedPrice;
+          }
+
+          return updatedProduct;
+        }
+        return p;
+      })
+    );
+  };
 
   return (
     <div className="flash-sale-management">
@@ -577,7 +595,12 @@ export default function FlashSaleManagement() {
         title="Flash Sale Management"
         className="flash-sale-table"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} className="flash-sale-btn-primary">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+            className="flash-sale-btn-primary"
+          >
             Create Flash Sale
           </Button>
         }
@@ -604,11 +627,7 @@ export default function FlashSaleManagement() {
         footer={null}
         width={800}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-        >
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item
             name="title"
             label="Title"
@@ -617,114 +636,124 @@ export default function FlashSaleManagement() {
             <Input placeholder="Enter flash sale title" />
           </Form.Item>
 
-          <Form.Item
-            name="description"
-            label="Description"
-          >
+          <Form.Item name="description" label="Description">
             <TextArea rows={3} placeholder="Enter flash sale description" />
           </Form.Item>
-
 
           <Form.Item
             name="dateRange"
             label="Time"
             rules={[{ required: true, message: 'Please select time' }]}
           >
-            <RangePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
-              style={{ width: '100%' }}
-            />
+            <RangePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item label="Products">
             <Button onClick={handleAddProducts} style={{ marginBottom: 16 }}>
               Add Products
             </Button>
-            
+
             {selectedProducts && selectedProducts.length > 0 && (
               <Table
                 dataSource={selectedProducts || []}
                 columns={[
-                  { 
-                    title: 'Image', 
-                    dataIndex: 'productInfo', 
+                  {
+                    title: 'Image',
+                    dataIndex: 'productInfo',
                     key: 'image',
                     width: 60,
-                    render: (productInfo) => {
-                      const image = productInfo?.mainImage || (productInfo?.images && productInfo.images.length > 0 ? productInfo.images[0] : null);
+                    render: productInfo => {
+                      const image =
+                        productInfo?.mainImage ||
+                        (productInfo?.images && productInfo.images.length > 0
+                          ? productInfo.images[0]
+                          : null);
                       return image ? (
                         <div style={{ position: 'relative' }}>
-                          <img 
-                            src={Array.isArray(image) ? image[0] : image} 
-                            alt="Product" 
-                            style={{ 
-                              width: 40, 
-                              height: 40, 
+                          <img
+                            src={Array.isArray(image) ? image[0] : image}
+                            alt="Product"
+                            style={{
+                              width: 40,
+                              height: 40,
                               objectFit: 'cover',
-                              borderRadius: 4
-                            }} 
-                            onError={(e) => {
+                              borderRadius: 4,
+                            }}
+                            onError={e => {
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
                             }}
                           />
-                          <div style={{
-                            width: 40,
-                            height: 40,
-                            backgroundColor: '#f0f0f0',
-                            borderRadius: 4,
-                            display: 'none',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 10,
-                            color: '#999',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0
-                          }}>
+                          <div
+                            style={{
+                              width: 40,
+                              height: 40,
+                              backgroundColor: '#f0f0f0',
+                              borderRadius: 4,
+                              display: 'none',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 10,
+                              color: '#999',
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                            }}
+                          >
                             No Image
                           </div>
                         </div>
                       ) : (
-                        <div style={{
-                          width: 40,
-                          height: 40,
-                          backgroundColor: '#f0f0f0',
-                          borderRadius: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 12,
-                          color: '#999'
-                        }}>
+                        <div
+                          style={{
+                            width: 40,
+                            height: 40,
+                            backgroundColor: '#f0f0f0',
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12,
+                            color: '#999',
+                          }}
+                        >
                           No Image
                         </div>
                       );
-                    }
+                    },
                   },
-                  { 
-                    title: 'Product Name', 
-                    dataIndex: ['productInfo', 'name'], 
+                  {
+                    title: 'Product Name',
+                    dataIndex: ['productInfo', 'name'],
                     key: 'name',
-                    render: (text) => (
-                      <div style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    render: text => (
+                      <div
+                        style={{
+                          maxWidth: 150,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
                         {text}
                       </div>
-                    )
+                    ),
                   },
-                  { 
-                    title: 'Original Price', 
-                    dataIndex: ['productInfo', 'finalPrice'], 
-                    key: 'finalPrice', 
+                  {
+                    title: 'Original Price',
+                    dataIndex: ['productInfo', 'finalPrice'],
+                    key: 'finalPrice',
                     render: (price, record) => {
-                      const originalPrice = record.productInfo?.finalPrice || record.productInfo?.discountedPrice || 0;
+                      const originalPrice =
+                        record.productInfo?.finalPrice || record.productInfo?.discountedPrice || 0;
                       return originalPrice ? (
                         <span style={{ fontWeight: 500, color: '#666' }}>
                           {originalPrice.toLocaleString()}đ
                         </span>
-                      ) : '-';
-                    }
+                      ) : (
+                        '-'
+                      );
+                    },
                   },
                   {
                     title: 'Discount (%)',
@@ -735,26 +764,31 @@ export default function FlashSaleManagement() {
                         min={0}
                         max={100}
                         value={value}
-                        onChange={(val) => handleProductUpdate(record.productId, 'discountPercent', val)}
+                        onChange={val =>
+                          handleProductUpdate(record.productId, 'discountPercent', val)
+                        }
                         style={{ width: 80 }}
                       />
                     ),
                   },
-        {
-          title: 'Flash Price',
-          dataIndex: 'flashPrice',
-          key: 'flashPrice',
-          render: (value, record) => {
-            const originalPrice = record.productInfo?.finalPrice || record.productInfo?.discountedPrice || 0;
-            const discountPercent = record.discountPercent || 0;
-            const calculatedPrice = Math.round(originalPrice * (1 - discountPercent / 100));
-            return (
-              <span style={{ fontWeight: 600, color: '#52c41a' }}>
-                {calculatedPrice.toLocaleString()}đ
-              </span>
-            );
-          },
-        },
+                  {
+                    title: 'Flash Price',
+                    dataIndex: 'flashPrice',
+                    key: 'flashPrice',
+                    render: (value, record) => {
+                      const originalPrice =
+                        record.productInfo?.finalPrice || record.productInfo?.discountedPrice || 0;
+                      const discountPercent = record.discountPercent || 0;
+                      const calculatedPrice = Math.round(
+                        originalPrice * (1 - discountPercent / 100)
+                      );
+                      return (
+                        <span style={{ fontWeight: 600, color: '#52c41a' }}>
+                          {calculatedPrice.toLocaleString()}đ
+                        </span>
+                      );
+                    },
+                  },
                   {
                     title: 'Actions',
                     key: 'action',
@@ -779,9 +813,7 @@ export default function FlashSaleManagement() {
               <Button type="primary" htmlType="submit">
                 {editingFlashSale ? 'Update' : 'Create'}
               </Button>
-              <Button onClick={() => setModalVisible(false)}>
-                Cancel
-              </Button>
+              <Button onClick={() => setModalVisible(false)}>Cancel</Button>
             </Space>
           </Form.Item>
         </Form>
@@ -801,7 +833,7 @@ export default function FlashSaleManagement() {
               <Input
                 placeholder="Search products..."
                 value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
+                onChange={e => setProductSearch(e.target.value)}
                 allowClear
               />
             </Col>
@@ -826,97 +858,110 @@ export default function FlashSaleManagement() {
         <Table
           dataSource={products || []}
           columns={[
-            { 
-              title: 'Image', 
-              dataIndex: 'mainImage', 
+            {
+              title: 'Image',
+              dataIndex: 'mainImage',
               key: 'image',
               width: 80,
-              render: (image) => {
+              render: image => {
                 const imageUrl = Array.isArray(image) ? image[0] : image;
                 return imageUrl ? (
                   <div style={{ position: 'relative' }}>
-                    <img 
-                      src={imageUrl} 
-                      alt="Product" 
-                      style={{ 
-                        width: 50, 
-                        height: 50, 
+                    <img
+                      src={imageUrl}
+                      alt="Product"
+                      style={{
+                        width: 50,
+                        height: 50,
                         objectFit: 'cover',
-                        borderRadius: 4
-                      }} 
-                      onError={(e) => {
+                        borderRadius: 4,
+                      }}
+                      onError={e => {
                         e.target.style.display = 'none';
                         e.target.nextSibling.style.display = 'flex';
                       }}
                     />
-                    <div style={{
-                      width: 50,
-                      height: 50,
-                      backgroundColor: '#f0f0f0',
-                      borderRadius: 4,
-                      display: 'none',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 12,
-                      color: '#999',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0
-                    }}>
+                    <div
+                      style={{
+                        width: 50,
+                        height: 50,
+                        backgroundColor: '#f0f0f0',
+                        borderRadius: 4,
+                        display: 'none',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 12,
+                        color: '#999',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                      }}
+                    >
                       No Image
                     </div>
                   </div>
                 ) : (
-                  <div style={{
-                    width: 50,
-                    height: 50,
-                    backgroundColor: '#f0f0f0',
-                    borderRadius: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 12,
-                    color: '#999'
-                  }}>
+                  <div
+                    style={{
+                      width: 50,
+                      height: 50,
+                      backgroundColor: '#f0f0f0',
+                      borderRadius: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 12,
+                      color: '#999',
+                    }}
+                  >
                     No Image
                   </div>
                 );
-              }
+              },
             },
-            { 
-              title: 'Product Name', 
-              dataIndex: 'name', 
+            {
+              title: 'Product Name',
+              dataIndex: 'name',
               key: 'name',
-              render: (text) => (
-                <div style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              render: text => (
+                <div
+                  style={{
+                    maxWidth: 200,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {text}
                 </div>
-              )
+              ),
             },
-            { 
-              title: 'Price', 
-              dataIndex: 'finalPrice', 
-              key: 'finalPrice', 
-              render: (price) => (
+            {
+              title: 'Price',
+              dataIndex: 'finalPrice',
+              key: 'finalPrice',
+              render: price => (
                 <span style={{ fontWeight: 600, color: '#1890ff' }}>
                   {price?.toLocaleString()}đ
                 </span>
-              )
+              ),
             },
-            { 
-              title: 'Category', 
-              dataIndex: ['category', 'name'], 
+            {
+              title: 'Category',
+              dataIndex: ['category', 'name'],
               key: 'category',
-              render: (category) => (
-                <span style={{ 
-                  background: '#f0f0f0', 
-                  padding: '2px 8px', 
-                  borderRadius: 4,
-                  fontSize: 12
-                }}>
+              render: category => (
+                <span
+                  style={{
+                    background: '#f0f0f0',
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontSize: 12,
+                  }}
+                >
                   {category}
                 </span>
-              )
+              ),
             },
             {
               title: 'Actions',

@@ -84,7 +84,14 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
       maxPrice: selectedPrice[1],
       saleType: selectedSaleType,
     });
-  }, [selectedSize, selectedColor, selectedBrand, selectedCategory, selectedPrice, selectedSaleType]);
+  }, [
+    selectedSize,
+    selectedColor,
+    selectedBrand,
+    selectedCategory,
+    selectedPrice,
+    selectedSaleType,
+  ]);
 
   // Clear all filters
   const clearAllFilters = () => {
@@ -160,9 +167,9 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
       key: '6',
       label: 'SALE TYPE',
       children: (
-        <SaleFilterPanel 
-          selectedSaleType={selectedSaleType} 
-          onSaleTypeChange={setSelectedSaleType} 
+        <SaleFilterPanel
+          selectedSaleType={selectedSaleType}
+          onSaleTypeChange={setSelectedSaleType}
         />
       ),
     },

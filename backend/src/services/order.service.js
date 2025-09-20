@@ -29,7 +29,7 @@ export class OrderService {
         status: 'active',
         startDate: { $lte: now },
         endDate: { $gte: now },
-        'products.productId': productId
+        'products.productId': productId,
       });
 
       if (flashSales.length === 0) {
@@ -47,7 +47,7 @@ export class OrderService {
             flashPrice: flashSaleProduct.flashPrice,
             discountPercent: flashSaleProduct.discountPercent,
             flashSaleId: flashSale._id,
-            flashSaleTitle: flashSale.title
+            flashSaleTitle: flashSale.title,
           });
         }
       }
@@ -63,23 +63,23 @@ export class OrderService {
           flashSales: productFlashSales.map(fs => ({
             flashSaleId: fs.flashSaleId,
             flashSaleTitle: fs.flashSaleTitle,
-            flashPrice: fs.flashPrice
-          }))
+            flashPrice: fs.flashPrice,
+          })),
         });
-        
+
         const bestDeal = productFlashSales.reduce((best, current) => {
           return current.flashPrice < best.flashPrice ? current : best;
         });
-        
+
         logger.info('Selected best deal for product:', {
           productId,
           bestDeal: {
             flashSaleId: bestDeal.flashSaleId,
             flashSaleTitle: bestDeal.flashSaleTitle,
-            flashPrice: bestDeal.flashPrice
-          }
+            flashPrice: bestDeal.flashPrice,
+          },
         });
-        
+
         return bestDeal;
       }
 
@@ -198,17 +198,17 @@ export class OrderService {
           const flashSaleInfo = await this.getProductFlashSale(product.id);
           let finalPrice = product.price;
           let isFlashSale = false;
-          
+
           if (flashSaleInfo) {
             finalPrice = flashSaleInfo.flashPrice;
             isFlashSale = true;
             logger.info('Flash sale applied to product in order:', {
               productId: product.id,
               originalPrice: product.price,
-              flashPrice: finalPrice
+              flashPrice: finalPrice,
             });
           }
-          
+
           const subtotal = finalPrice * product.quantity;
           const orderItem = new OrderItem({
             order: order._id,

@@ -14,7 +14,7 @@ export default function OrderDetails({
   isBuyNow = false,
 }) {
   const { getProductFlashSale } = useFlashSales();
-  
+
   console.log('OrderDetails Debug:', {
     products: products?.length || 0,
     isBuyNow,
@@ -56,7 +56,7 @@ export default function OrderDetails({
           // Check for flash sale first
           const flashSaleInfo = getProductFlashSale(prod._id);
           isFlashSale = !!flashSaleInfo;
-          
+
           if (isFlashSale) {
             // Flash sale has highest priority
             priceRegular = prod.finalPrice || prod.price?.regular || prod.price;
@@ -112,10 +112,7 @@ export default function OrderDetails({
                         FLASH SALE
                       </Tag>
                       <br />
-                      <Text
-                        strong
-                        style={{ fontSize: 20, color: '#ff4757', marginRight: 8 }}
-                      >
+                      <Text strong style={{ fontSize: 20, color: '#ff4757', marginRight: 8 }}>
                         {formatPrice(flashSalePrice)}
                       </Text>
                       <Text delete style={{ fontSize: 16, marginLeft: 8 }}>

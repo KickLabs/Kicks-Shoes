@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import './CountdownTimer.css';
 
-const CountdownTimer = ({ endDate, onExpired, showLabels = true, size = 'medium', showEndIn = false, originalPrice = null }) => {
+const CountdownTimer = ({
+  endDate,
+  onExpired,
+  showLabels = true,
+  size = 'medium',
+  showEndIn = false,
+  originalPrice = null,
+}) => {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
     minutes: 0,
-    seconds: 0
+    seconds: 0,
   });
   const [isExpired, setIsExpired] = useState(false);
 
@@ -56,29 +63,29 @@ const CountdownTimer = ({ endDate, onExpired, showLabels = true, size = 'medium'
   return (
     <div className={`countdown-timer ${sizeClass} ${showEndIn ? 'countdown-with-endin' : ''}`}>
       {showEndIn && <span className="end-in-text">END IN</span>}
-      
+
       {showDays && (
         <div className="countdown-item">
           <span className="countdown-number">{timeLeft.days.toString().padStart(2, '0')}</span>
           {showLabels && <span className="countdown-label">Day</span>}
         </div>
       )}
-      
+
       <div className="countdown-item">
         <span className="countdown-number">{timeLeft.hours.toString().padStart(2, '0')}</span>
         {showLabels && <span className="countdown-label">Hour</span>}
       </div>
-      
+
       <div className="countdown-item">
         <span className="countdown-number">{timeLeft.minutes.toString().padStart(2, '0')}</span>
         {showLabels && <span className="countdown-label">Time</span>}
       </div>
-      
+
       <div className="countdown-item">
         <span className="countdown-number">{timeLeft.seconds.toString().padStart(2, '0')}</span>
         {showLabels && <span className="countdown-label">Second</span>}
       </div>
-      
+
       {originalPrice && (
         <div className="after-price-info">
           <span className="after-price-text">After price:</span>

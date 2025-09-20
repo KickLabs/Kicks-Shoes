@@ -149,20 +149,20 @@
   .flash-sale-management {
     padding: 16px;
   }
-  
+
   .flash-sale-stats .ant-col {
     margin-bottom: 16px;
   }
-  
+
   .flash-sale-product-search {
     flex-direction: column;
   }
-  
+
   .flash-sale-actions {
     flex-direction: column;
     gap: 4px;
   }
-  
+
   .flash-sale-description {
     max-width: 150px;
   }
@@ -172,11 +172,11 @@
   .flash-sale-management {
     padding: 12px;
   }
-  
+
   .flash-sale-stats-card .ant-statistic-content {
     font-size: 20px;
   }
-  
+
   .flash-sale-banner {
     width: 40px;
     height: 30px;

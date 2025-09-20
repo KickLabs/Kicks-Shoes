@@ -15,16 +15,17 @@ import {
   deleteFlashSale,
   updateFlashSaleStatus,
   getFlashSaleByProductId,
-  getFlashSaleStats
+  getFlashSaleStats,
+  getFlashSaleProductsForDashboardController,
 } from '../controllers/flashSaleController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
-import { 
-  validateFlashSale, 
-  validateFlashSaleStatus, 
+import {
+  validateFlashSale,
+  validateFlashSaleStatus,
   validateFlashSaleQuery,
   validateFlashSaleId,
-  validateProductId 
+  validateProductId,
 } from '../utils/validation.js';
 
 const router = express.Router();
@@ -44,5 +45,6 @@ router.put('/:id', validateFlashSaleId, validateFlashSale, updateFlashSale);
 router.delete('/:id', validateFlashSaleId, deleteFlashSale);
 router.patch('/:id/status', validateFlashSaleId, validateFlashSaleStatus, updateFlashSaleStatus);
 router.get('/stats/overview', getFlashSaleStats);
+router.get('/dashboard', getFlashSaleProductsForDashboardController);
 
 export default router;

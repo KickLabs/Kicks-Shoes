@@ -40,7 +40,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
   // Flash sale logic
   const flashSaleInfo = getProductFlashSale(product._id);
   const isFlashSaleActive = !!flashSaleInfo;
-  
+
   // Debug logging
   if (product._id === '68592c166b62c151554c73d6') {
     console.log('Product Detail Debug:', {
@@ -49,7 +49,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       flashSaleInfo,
       isFlashSaleActive,
       finalPrice: product.finalPrice,
-      regularPrice: product.price.regular
+      regularPrice: product.price.regular,
     });
   }
 
@@ -403,9 +403,9 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
           <div className="countdown-header">
             <span className="countdown-title">Flash Sale End In:</span>
           </div>
-          <CountdownTimer 
-            endDate={flashSaleInfo.endDate} 
-            size="medium" 
+          <CountdownTimer
+            endDate={flashSaleInfo.endDate}
+            size="medium"
             showLabels={true}
             originalPrice={product.finalPrice || product.price?.regular || 0}
           />

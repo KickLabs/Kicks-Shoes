@@ -14,8 +14,9 @@ const ProductCard = ({ product }) => {
 
   const flashSaleInfo = getProductFlashSale(product._id);
   const isFlashSaleActive = !!flashSaleInfo;
-  const displayPrice = flashSaleInfo?.flashPrice || product.finalPrice || product.price?.regular || 0;
-  
+  const displayPrice =
+    flashSaleInfo?.flashPrice || product.finalPrice || product.price?.regular || 0;
+
   // Debug logging
   if (product._id === '68592c166b62c151554c73d6') {
     console.log('Product Card Debug:', {
@@ -24,7 +25,7 @@ const ProductCard = ({ product }) => {
       flashSaleInfo,
       isFlashSaleActive,
       displayPrice,
-      finalPrice: product.finalPrice
+      finalPrice: product.finalPrice,
     });
   }
 
@@ -95,13 +96,13 @@ const ProductCard = ({ product }) => {
           )
         )}
 
-                <img
-                  src={Array.isArray(product.mainImage) ? product.mainImage[0] : product.mainImage}
-                  alt={product.name}
-                  className="product-card__image"
-                />
+        <img
+          src={Array.isArray(product.mainImage) ? product.mainImage[0] : product.mainImage}
+          alt={product.name}
+          className="product-card__image"
+        />
 
-                {/* Favourite button */}
+        {/* Favourite button */}
         <button
           className="product-card__favourite-button"
           onClick={handleFavouriteToggle}
@@ -128,34 +129,34 @@ const ProductCard = ({ product }) => {
         </button>
       </div>
 
-              <div className="product-card__info">
-                <h2 className="product-card__name">{product.name}</h2>
-              </div>
+      <div className="product-card__info">
+        <h2 className="product-card__name">{product.name}</h2>
+      </div>
 
-              <div className="product-card__footer">
-                <button className="product-card__button">
-                  <div
-                    className="product-card__button-inner"
-                    onClick={() => navigate(`/product/${product._id}`)}
-                  >
-                    <span>VIEW PRODUCT -</span>
-                    <span className="product-card__price">{formatPrice(displayPrice)}</span>
-                  </div>
-                </button>
-              </div>
+      <div className="product-card__footer">
+        <button className="product-card__button">
+          <div
+            className="product-card__button-inner"
+            onClick={() => navigate(`/product/${product._id}`)}
+          >
+            <span>VIEW PRODUCT -</span>
+            <span className="product-card__price">{formatPrice(displayPrice)}</span>
+          </div>
+        </button>
+      </div>
 
-                {/* Countdown Timer for Flash Sale - at the bottom */}
-                {isFlashSaleActive && (
-                  <div className="product-card__countdown-bottom">
-                    <CountdownTimer 
-                      endDate={flashSaleInfo.endDate} 
-                      size="small" 
-                      showLabels={false}
-                      showEndIn={true}
-                      originalPrice={product.finalPrice || product.price?.regular || 0}
-                    />
-                  </div>
-                )}
+      {/* Countdown Timer for Flash Sale - at the bottom */}
+      {isFlashSaleActive && (
+        <div className="product-card__countdown-bottom">
+          <CountdownTimer
+            endDate={flashSaleInfo.endDate}
+            size="small"
+            showLabels={false}
+            showEndIn={true}
+            originalPrice={product.finalPrice || product.price?.regular || 0}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -22,12 +22,14 @@ export const startFlashSaleStatusUpdateCron = () => {
     try {
       logger.info('Running flash sale status update cron job...');
       const result = await updateFlashSaleStatuses();
-      
+
       if (result.upcomingToActive > 0 || result.activeToEnded > 0) {
-        logger.info(`Flash sale status update completed: ${result.upcomingToActive} upcoming->active, ${result.activeToEnded} active->ended`);
+        logger.info(
+          `Flash sale status update completed: ${result.upcomingToActive} upcoming->active, ${result.activeToEnded} active->ended`
+        );
       }
     } catch (error) {
       logger.error('Error updating flash sale statuses:', error);
     }
   });
-}; 
+};

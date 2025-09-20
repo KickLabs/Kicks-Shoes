@@ -16,12 +16,11 @@ const SaleFilterPanel = ({ selectedSaleType, onSaleTypeChange }) => {
           <div key={option.value} className="sale-option">
             <Checkbox
               checked={selectedSaleType === option.value}
-              onChange={() => onSaleTypeChange(selectedSaleType === option.value ? null : option.value)}
+              onChange={() =>
+                onSaleTypeChange(selectedSaleType === option.value ? null : option.value)
+              }
             >
-              <span 
-                className="sale-option-label"
-                style={{ color: option.color }}
-              >
+              <span className="sale-option-label" style={{ color: option.color }}>
                 {option.label}
               </span>
             </Checkbox>
