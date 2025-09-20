@@ -42,9 +42,10 @@ import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
 import livestreamRoutes from './routes/livestreamRoutes.js'; // Added LiveStream routes
 import potentialOrderRoutes from './routes/potentialOrderRoutes.js'; // Added Potential Order routes
 import tryonRoutes from './routes/tryonRoutes.js';
+import flashSaleRoutes from './routes/flashSaleRoutes.js'; // Added Flash Sale routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
-import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
+import { startDiscountStatusUpdateCron, startFlashSaleStatusUpdateCron } from './utils/cronJobs.js';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import chatRoutes from './routes/chatRoutes.js';
@@ -142,9 +143,11 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/livestream', livestreamRoutes); // Added LiveStream routes
 app.use('/api/potential-orders', potentialOrderRoutes); // Added Potential Order routes
 app.use('/api/tryon', tryonRoutes);
+app.use('/api/flash-sales', flashSaleRoutes); // Added Flash Sale routes
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
+startFlashSaleStatusUpdateCron();
 
 // Error handler
 app.use(errorHandler);

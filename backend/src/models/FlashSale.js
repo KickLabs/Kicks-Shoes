@@ -10,7 +10,6 @@ const FlashSaleProductSchema = new Schema(
       max: [100, 'Discount cannot exceed 100%'],
     },
     flashPrice: { type: Number, min: [0, 'Flash price cannot be negative'] },
-    stock: { type: Number, default: 0, min: [0, 'Stock cannot be negative'] },
   },
   { _id: false }
 );
@@ -28,7 +27,6 @@ const FlashSaleSchema = new Schema(
       default: 'upcoming',
       index: true,
     },
-    banner: { type: String, trim: true },
   },
   { timestamps: true }
 );

@@ -54,6 +54,7 @@ const ListingPage = () => {
         params.minPrice = newFilters.minPrice;
       if (newFilters.maxPrice !== undefined && newFilters.maxPrice < 1000)
         params.maxPrice = newFilters.maxPrice;
+      if (newFilters.saleType) params.saleType = newFilters.saleType;
       if (isNewParam) params.isNew = true;
 
       console.log('Fetching products with params:', params);

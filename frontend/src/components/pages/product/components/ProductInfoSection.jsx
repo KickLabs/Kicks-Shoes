@@ -10,6 +10,8 @@ import { addOrUpdateCartItem } from '../../cart/cartService';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '@/services/axiosInstance';
+import { useFlashSales } from '../../../../hooks/useFlashSales';
+import CountdownTimer from '../../../common/components/CountdownTimer';
 // Using Next.js route /api/tryon directly; remove legacy tryonService usage
 
 const { Paragraph } = Typography;
@@ -18,6 +20,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { getProductFlashSale } = useFlashSales();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
   const [isFavourite, setIsFavourite] = useState(false);
@@ -33,6 +36,22 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
   const [garmentFile, setGarmentFile] = useState(null);
   const [tryOnLoading, setTryOnLoading] = useState(false);
   const [tryOnImageUrl, setTryOnImageUrl] = useState(null);
+
+  // Flash sale logic
+  const flashSaleInfo = getProductFlashSale(product._id);
+  const isFlashSaleActive = !!flashSaleInfo;
+
+  // Debug logging
+  if (product._id === '68592c166b62c151554c73d6') {
+    console.log('Product Detail Debug:', {
+      productId: product._id,
+      productName: product.name,
+      flashSaleInfo,
+      isFlashSaleActive,
+      finalPrice: product.finalPrice,
+      regularPrice: product.price.regular,
+    });
+  }
 
   // Helper function to find inventory item based on product type
   const findInventoryItem = (size, color) => {
@@ -357,16 +376,41 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
     <div className="product-info">
       {/* Badges */}
       <div className="product-tags">
-        {product.isNew && <div className="product-card__badge new-badge">New</div>}
-        {product.price.isOnSale && (
+        {isFlashSaleActive ? (
           <div
-            style={{ backgroundColor: '#FFA52F', width: '70px' }}
+            style={{ backgroundColor: '#ff4757', width: '80px' }}
             className="product-card__badge"
           >
-            {product.price.discountPercent}% off
+            Flash Sale
           </div>
+        ) : product.isNew ? (
+          <div className="product-card__badge new-badge">New</div>
+        ) : (
+          product.price.isOnSale && (
+            <div
+              style={{ backgroundColor: '#FFA52F', width: '70px' }}
+              className="product-card__badge"
+            >
+              {product.price.discountPercent}% off
+            </div>
+          )
         )}
       </div>
+
+      {/* Flash Sale Countdown */}
+      {isFlashSaleActive && (
+        <div className="flash-sale-countdown">
+          <div className="countdown-header">
+            <span className="countdown-title">Flash Sale End In:</span>
+          </div>
+          <CountdownTimer
+            endDate={flashSaleInfo.endDate}
+            size="medium"
+            showLabels={true}
+            originalPrice={product.finalPrice || product.price?.regular || 0}
+          />
+        </div>
+      )}
 
       {/* Name + Price */}
 
@@ -425,7 +469,23 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
         }}
         className="product-price"
       >
-        {product.price.isOnSale ? (
+        {isFlashSaleActive ? (
+          <>
+            <span style={{ color: '#ff4757', fontWeight: 700 }}>
+              {formatPrice(flashSaleInfo.flashPrice)}
+            </span>
+            <span
+              style={{
+                textDecoration: 'line-through',
+                color: '#888',
+                fontSize: '0.8em',
+                marginLeft: 8,
+              }}
+            >
+              {formatPrice(product.finalPrice || product.price.regular)}
+            </span>
+          </>
+        ) : product.price.isOnSale ? (
           <>
             <span style={{ color: '#4A69E2', fontWeight: 700 }}>
               {formatPrice(product.price.regular * (1 - product.price.discountPercent / 100))}
@@ -443,7 +503,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
           </>
         ) : (
           <span style={{ color: '#4A69E2', fontWeight: 700 }}>
-            {formatPrice(product.price.regular)}
+            {formatPrice(product.finalPrice || product.price.regular)}
           </span>
         )}
       </h2>

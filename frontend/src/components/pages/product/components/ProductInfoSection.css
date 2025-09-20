@@ -6,6 +6,27 @@
   margin: 0 auto;
 }
 
+.flash-sale-countdown {
+  background: linear-gradient(135deg, #ff4757, #ff6b7a);
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+}
+
+.countdown-header {
+  margin-bottom: 12px;
+}
+
+.countdown-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .product-name {
   font-weight: 700;
   line-height: 1.2;

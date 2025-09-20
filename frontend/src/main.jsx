@@ -292,6 +292,14 @@ const router = createBrowserRouter([
             ),
           },
           {
+            path: 'flash-sales',
+            element: (
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            ),
+          },
+          {
             path: 'orders',
             element: (
               <AdminProtectedRoute>

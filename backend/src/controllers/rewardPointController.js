@@ -38,6 +38,7 @@ const rewardPointValidationRules = {
 const validateRequest = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.log('Validation errors:', errors.array());
     return res.status(400).json({
       success: false,
       errors: errors.array(),
@@ -164,7 +165,31 @@ const redeemPoints = [
   async (req, res, next) => {
     try {
       const { points, discountAmount, description } = req.body;
-      const userId = req.user._id;
+      const userId = req.user?._id;
+
+      console.log('Redeem points request:', {
+        body: req.body,
+        user: req.user
+          ? {
+              _id: req.user._id,
+              email: req.user.email,
+              role: req.user.role,
+            }
+          : 'No user found in request',
+        headers: {
+          authorization: req.headers.authorization
+            ? 'Bearer token exists'
+            : 'No authorization header',
+          contentType: req.headers['content-type'],
+        },
+      });
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not authenticated or missing from request',
+        });
+      }
 
       logger.info('Redeeming points for discount', {
         userId,
@@ -198,7 +223,7 @@ const redeemPoints = [
         usageLimit: 1,
         perUserLimit: 1,
         status: 'active',
-        source: 'redeem',
+        source: 'reward_points',
       });
 
       // Create reward point record for redemption

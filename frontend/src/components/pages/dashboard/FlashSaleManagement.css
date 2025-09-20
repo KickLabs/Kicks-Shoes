@@ -1,0 +1,297 @@
+/* Flash Sale Management Styles */
+.flash-sale-management {
+  padding: 24px;
+}
+
+.flash-sale-stats {
+  margin-bottom: 24px;
+}
+
+.flash-sale-stats .ant-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.flash-sale-stats .ant-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.flash-sale-table {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.flash-sale-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  color: #262626;
+}
+
+.flash-sale-table .ant-table-tbody > tr:hover > td {
+  background: #f5f5f5;
+}
+
+.flash-sale-banner {
+  width: 60px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.flash-sale-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.flash-sale-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.flash-sale-actions .ant-btn {
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.flash-sale-actions .ant-btn:hover {
+  transform: scale(1.05);
+}
+
+.flash-sale-modal .ant-modal-header {
+  border-radius: 12px 12px 0 0;
+}
+
+.flash-sale-modal .ant-modal-content {
+  border-radius: 12px;
+}
+
+.flash-sale-form .ant-form-item-label > label {
+  font-weight: 600;
+  color: #262626;
+}
+
+.flash-sale-product-table {
+  margin-top: 16px;
+}
+
+.flash-sale-product-table .ant-table-thead > tr > th {
+  background: #f0f0f0;
+  font-weight: 600;
+}
+
+.flash-sale-product-selection {
+  margin-bottom: 16px;
+}
+
+.flash-sale-product-search {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.flash-sale-product-search .ant-input,
+.flash-sale-product-search .ant-select {
+  border-radius: 8px;
+}
+
+.flash-sale-time-display {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.flash-sale-time-display strong {
+  color: #1890ff;
+}
+
+.flash-sale-description {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flash-sale-product-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.flash-sale-stats-card {
+  text-align: center;
+  padding: 16px;
+}
+
+.flash-sale-stats-card .ant-statistic-title {
+  color: #8c8c8c;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.flash-sale-stats-card .ant-statistic-content {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.flash-sale-stats-card .ant-statistic-content-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .flash-sale-management {
+    padding: 16px;
+  }
+
+  .flash-sale-stats .ant-col {
+    margin-bottom: 16px;
+  }
+
+  .flash-sale-product-search {
+    flex-direction: column;
+  }
+
+  .flash-sale-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .flash-sale-description {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 576px) {
+  .flash-sale-management {
+    padding: 12px;
+  }
+
+  .flash-sale-stats-card .ant-statistic-content {
+    font-size: 20px;
+  }
+
+  .flash-sale-banner {
+    width: 40px;
+    height: 30px;
+  }
+}
+
+/* Animation for status changes */
+.flash-sale-status-transition {
+  transition: all 0.3s ease;
+}
+
+.flash-sale-status-transition:hover {
+  transform: scale(1.05);
+}
+
+/* Loading states */
+.flash-sale-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* Empty states */
+.flash-sale-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: #8c8c8c;
+}
+
+.flash-sale-empty .ant-empty-description {
+  color: #8c8c8c;
+  font-size: 16px;
+}
+
+/* Form enhancements */
+.flash-sale-form .ant-input,
+.flash-sale-form .ant-input-number,
+.flash-sale-form .ant-select-selector {
+  border-radius: 8px;
+  border: 1px solid #d9d9d9;
+  transition: all 0.3s ease;
+}
+
+.flash-sale-form .ant-input:focus,
+.flash-sale-form .ant-input-number:focus,
+.flash-sale-form .ant-select-focused .ant-select-selector {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Button enhancements */
+.flash-sale-btn-primary {
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.flash-sale-btn-primary:hover {
+  background: linear-gradient(135deg, #40a9ff 0%, #1890ff 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+/* Table enhancements */
+.flash-sale-table .ant-table-pagination {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.flash-sale-table .ant-pagination-item-active {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.flash-sale-table .ant-pagination-item-active a {
+  color: #fff;
+}
+
+/* Modal enhancements */
+.flash-sale-modal .ant-modal-body {
+  padding: 24px;
+}
+
+.flash-sale-modal .ant-modal-footer {
+  border-top: 1px solid #f0f0f0;
+  padding: 16px 24px;
+  text-align: right;
+}
+
+/* Product selection modal */
+.flash-sale-product-modal .ant-modal-body {
+  padding: 16px;
+}
+
+.flash-sale-product-modal .ant-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Status specific colors */
+.flash-sale-status-upcoming {
+  color: #1890ff;
+}
+
+.flash-sale-status-active {
+  color: #52c41a;
+}
+
+.flash-sale-status-ended {
+  color: #8c8c8c;
+}
+
+.flash-sale-status-cancelled {
+  color: #ff4d4f;
+}
