@@ -38,7 +38,6 @@ import {
 import { Line, Bar } from '@ant-design/charts';
 import TableUsers from './components/TableUsers';
 import TableCategories from './components/TableCategories';
-import FlashSaleManagement from './FlashSaleManagement';
 import {
   getAdminStats,
   getAdminUsers,
@@ -161,9 +160,6 @@ export default function AdminDashboard() {
           break;
         case 'discounts':
           await fetchDiscounts();
-          break;
-        case 'flash-sales':
-          // Flash sale data will be fetched by FlashSaleManagement component
           break;
         default:
           break;
@@ -1097,13 +1093,6 @@ export default function AdminDashboard() {
           </>
         );
 
-      case 'flash-sales':
-        return (
-          <>
-            <TabHeader breadcrumb="Flash Sale Management" />
-            <FlashSaleManagement />
-          </>
-        );
 
       default:
         return <div>Page not found</div>;

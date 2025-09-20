@@ -64,6 +64,7 @@ import {
 import axiosInstance from '../../../services/axiosInstance';
 import { formatCompactVND, formatVND } from '../../../utils/currency';
 import ChatPage from '../../common/components/ChatPage';
+import FlashSaleManagement from './FlashSaleManagement';
 import { MessageOutlined } from '@ant-design/icons';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -140,6 +141,9 @@ export default function ShopDashboard() {
           break;
         case 'discounts':
           await fetchDiscounts();
+          break;
+        case 'flash-sales':
+          // Flash sale data will be fetched by FlashSaleManagement component
           break;
         default:
           break;
@@ -941,6 +945,9 @@ export default function ShopDashboard() {
 
       case 'potential-orders':
         return <PotentialOrdersManagement />;
+
+      case 'flash-sales':
+        return <FlashSaleManagement />;
 
       default:
         return <div>Page not found</div>;
