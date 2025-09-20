@@ -1,82 +1,78 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { AuthProvider } from './contexts/AuthContext';
+import { PersistGate } from 'redux-persist/integration/react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { VideoCallProvider } from './contexts/VideoCallContext';
-import { store, persistor } from './store/store';
-import { Provider } from 'react-redux';
-import { PersistGate } from 'redux-persist/integration/react';
-import { useAuth } from './contexts/AuthContext';
+import { persistor, store } from './store/store';
 
 // Common Components
 import ChatPage from './components/common/components/ChatPage';
 import OrderDetails from './components/common/components/OrderDetails';
 import OrderList from './components/common/components/OrderList';
-import ProductDetails from './components/common/components/ProductDetails';
-import ErrorPage from './components/common/pages/Error';
 import CategoryDetails from './components/pages/categories/CategoryDetail';
 
 // Layout
 import App from './components/layout/App';
 
 // Authentication Pages
+import ChangePassword from './components/pages/authentication/pages/ChangePassword';
+import ForgotPassword from './components/pages/authentication/pages/ForgotPassword';
 import Login from './components/pages/authentication/pages/Login';
 import LoginAdmin from './components/pages/authentication/pages/LoginAdmin';
 import RegisterPage from './components/pages/authentication/pages/Register';
-import ForgotPassword from './components/pages/authentication/pages/ForgotPassword';
-import ChangePassword from './components/pages/authentication/pages/ChangePassword';
 
 // Main Pages
-import CartPage from './components/pages/cart/pages/CartPage';
-import CheckoutPage from './components/pages/checkout/CheckOut';
-import AllProducts from './components/pages/dashboard/AllProducts';
-import DiscountListPage from './components/pages/dashboard/DiscountListPage';
-import UserManagementPage from './components/pages/dashboard/UserManagementPage';
-import HomePage from './components/pages/home/pages/HomePage';
-import ListingPage from './components/pages/listing-page/pages/ListingPage';
-import ShoesPage from './components/pages/listing-page/pages/ShoesPage';
-import ClothingPage from './components/pages/listing-page/pages/ClothingPage';
-import AccessoryPage from './components/pages/listing-page/pages/AccessoryPage';
-import OtherPage from './components/pages/listing-page/pages/OtherPage';
-import ProductDetailPage from './components/pages/product/pages/ProductDetailPage';
 import Account from './components/pages/account/Account';
+import FavouritesTab from './components/pages/account/components/FavouritesTab';
 import ProfileTab from './components/pages/account/components/ProfileTab';
 import RewardPointsDetail from './components/pages/account/components/RewardPointsDetail';
-import FavouritesTab from './components/pages/account/components/FavouritesTab';
+import CartPage from './components/pages/cart/pages/CartPage';
 import AllCategories from './components/pages/categories/AllCategories';
+import CheckoutPage from './components/pages/checkout/CheckOut';
+import HomePage from './components/pages/home/pages/HomePage';
+import AccessoryPage from './components/pages/listing-page/pages/AccessoryPage';
+import ClothingPage from './components/pages/listing-page/pages/ClothingPage';
+import ListingPage from './components/pages/listing-page/pages/ListingPage';
+import OtherPage from './components/pages/listing-page/pages/OtherPage';
+import ShoesPage from './components/pages/listing-page/pages/ShoesPage';
+import PaymentCancel from './components/pages/payment/PaymentCancel';
 import PaymentStatus from './components/pages/payment/PaymentStatus';
+import PaymentSuccess from './components/pages/payment/PaymentSuccess';
+import ProductDetailPage from './components/pages/product/pages/ProductDetailPage';
 
 // New Role-Based Dashboard Components
-import DashboardLayout from './components/pages/dashboard/DashboardLayout';
 import AdminDashboard from './components/pages/dashboard/AdminDashboard';
-import ShopDashboard from './components/pages/dashboard/ShopDashboard';
+import DashboardLayout from './components/pages/dashboard/DashboardLayout';
 import RoleSwitcher from './components/pages/dashboard/RoleSwitcher';
+import ShopDashboard from './components/pages/dashboard/ShopDashboard';
 
 // Product Management Components
 import AddNewProduct from './components/pages/dashboard/AddNewProduct';
 import EditProduct from './components/pages/dashboard/EditProduct';
 
 // Styles
-import './styles/index.css';
-import EmailVerificationFailed from './components/pages/authentication/pages/EmailVerificationFailed';
-import EmailVerified from './components/pages/authentication/pages/EmailVerified';
-import EmailVerification from './components/pages/authentication/pages/EmailVerification';
-import ResetPasswordForm from './components/pages/authentication/pages/ResetPasswordForm';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import SetPassword from './components/pages/authentication/pages/SetPassword';
 import ReportTab from './components/pages/account/components/ReportTab';
 import Banned from './components/pages/authentication/pages/Banned';
-import PrivacyPolicy from './components/pages/privacy/PrivacyPolicy';
+import EmailVerification from './components/pages/authentication/pages/EmailVerification';
+import EmailVerificationFailed from './components/pages/authentication/pages/EmailVerificationFailed';
+import EmailVerified from './components/pages/authentication/pages/EmailVerified';
+import ResetPasswordForm from './components/pages/authentication/pages/ResetPasswordForm';
+import SetPassword from './components/pages/authentication/pages/SetPassword';
 import DeleteUserData from './components/pages/privacy/DeleteUserData';
+import PrivacyPolicy from './components/pages/privacy/PrivacyPolicy';
+import './styles/index.css';
 
 // LiveStream Components
 import CreateLiveStream from './components/pages/livestream/CreateLiveStream';
 import LiveStreamHost from './components/pages/livestream/LiveStreamHost';
-import LiveStreamViewer from './components/pages/livestream/LiveStreamViewer';
 import LiveStreamPage from './components/pages/livestream/LiveStreamPage';
+import LiveStreamViewer from './components/pages/livestream/LiveStreamViewer';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -489,6 +485,14 @@ const router = createBrowserRouter([
       {
         path: 'payment/return',
         element: <PaymentStatus />,
+      },
+      {
+        path: 'payment/success',
+        element: <PaymentSuccess />,
+      },
+      {
+        path: 'payment/cancel',
+        element: <PaymentCancel />,
       },
       {
         path: 'livestream',

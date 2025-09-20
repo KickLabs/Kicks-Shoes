@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Form, Typography, Button, message, Radio } from 'antd';
-import ContactDetails from './ContactDetails';
-import ShippingAddress from './ShippingAddress';
-import DeliveryOptions from './DeliveryOptions';
-import orderService from '../../../../services/orderService';
-import VNPayService from '../../../../services/vnpayService';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { Button, Form, message, Typography } from 'antd';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../../contexts/AuthContext';
+import orderService from '../../../../services/orderService';
+import PayOSService from '../../../../services/payosService';
+import VNPayService from '../../../../services/vnpayService';
+import ContactDetails from './ContactDetails';
+import DeliveryOptions from './DeliveryOptions';
+import ShippingAddress from './ShippingAddress';
 
 const { Text } = Typography;
 
@@ -206,8 +207,14 @@ export default function CheckoutForm({
     if (pendingOrder && paymentMethod === 'vnpay') {
       return 'RETRY VNPAY PAYMENT';
     }
+    if (pendingOrder && paymentMethod === 'payos') {
+      return 'RETRY PAYOS PAYMENT';
+    }
     if (paymentMethod === 'vnpay') {
       return 'PAY WITH VNPAY';
+    }
+    if (paymentMethod === 'payos') {
+      return 'PAY WITH PAYOS';
     }
     if (paymentMethod === 'cash_on_delivery') {
       return 'PLACE ORDER (CASH ON DELIVERY)';
@@ -297,6 +304,100 @@ export default function CheckoutForm({
     }
   };
 
+  const handlePayOSPayment = async () => {
+    try {
+      setLoading(true);
+
+      // Check if user is authenticated
+      if (!user) {
+        message.error('Please login to continue with payment');
+        return;
+      }
+
+      // Check for existing pending order
+      const existingPendingOrder = localStorage.getItem('pendingOrder');
+      let orderId;
+      let orderData;
+
+      if (existingPendingOrder) {
+        try {
+          const parsed = JSON.parse(existingPendingOrder);
+          orderId = parsed.orderId;
+          orderData = parsed.orderData;
+        } catch (error) {
+          console.error('Error parsing existing pending order:', error);
+          localStorage.removeItem('pendingOrder');
+        }
+      }
+
+      // If no existing order, create new one
+      if (!orderId) {
+        // Prepare order data with pending status
+        orderData = prepareOrderData();
+        orderData.status = 'pending';
+        orderData.paymentStatus = 'pending';
+
+        // Create order first with pending status
+        const orderResponse = await orderService.createOrder(orderData);
+        if (orderResponse.success === false) {
+          throw new Error(orderResponse.message || 'Failed to create order');
+        }
+        const createdOrder = orderResponse.data || orderResponse;
+        orderId = createdOrder._id; // Always use _id
+        if (!orderId) {
+          throw new Error('Order created but no ID returned');
+        }
+      }
+
+      // Prepare payment data for PayOS
+      const paymentData = PayOSService.preparePaymentData({
+        orderCode: PayOSService.generateOrderCode(), // Use unique orderCode generator
+        amount: total,
+        description: `Order ${String(orderId).slice(-6)} - ${products.length} items`.substring(
+          0,
+          25
+        ),
+        returnUrl: `${window.location.origin}/payment/success`,
+        cancelUrl: `${window.location.origin}/payment/cancel`,
+        items: products.map(p => ({
+          name: p.product?.name || p.productDetails?.name || 'Product',
+          quantity: p.quantity || 1,
+          price: p.price || 0,
+        })),
+        buyerName: user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        buyerEmail: user.email,
+        buyerPhone: user.phone,
+      });
+
+      // Call PayOS service to create payment link
+      const response = await PayOSService.createPaymentLink(paymentData);
+
+      if (response.success && response.data.checkoutUrl) {
+        // Store order info for payment return page
+        localStorage.setItem(
+          'pendingOrder',
+          JSON.stringify({
+            orderId,
+            orderData,
+            orderCode: response.data.orderCode,
+            checkoutUrl: response.data.checkoutUrl,
+            paymentMethod: 'payos',
+          })
+        );
+
+        // Redirect to PayOS payment page
+        PayOSService.redirectToPayment(response.data.checkoutUrl);
+      } else {
+        message.error('Failed to create payment link. Please try again.');
+      }
+    } catch (error) {
+      console.error('PayOS payment error:', error);
+      message.error('Payment initialization failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCashOnDelivery = async orderData => {
     try {
       setLoading(true);
@@ -355,6 +456,11 @@ export default function CheckoutForm({
         return;
       }
 
+      if (paymentMethod === 'payos') {
+        await handlePayOSPayment();
+        return;
+      }
+
       if (paymentMethod === 'cash_on_delivery') {
         // Handle Cash on Delivery
         const orderData = prepareOrderData();
@@ -399,16 +505,17 @@ export default function CheckoutForm({
         {getButtonText()}
       </Button>
 
-      {localStorage.getItem('pendingOrder') && paymentMethod === 'vnpay' && (
-        <Button
-          type="text"
-          size="small"
-          onClick={clearPendingOrder}
-          style={{ marginTop: 8, color: '#666' }}
-        >
-          Clear Previous Order
-        </Button>
-      )}
+      {localStorage.getItem('pendingOrder') &&
+        (paymentMethod === 'vnpay' || paymentMethod === 'payos') && (
+          <Button
+            type="text"
+            size="small"
+            onClick={clearPendingOrder}
+            style={{ marginTop: 8, color: '#666' }}
+          >
+            Clear Previous Order
+          </Button>
+        )}
     </>
   );
 }

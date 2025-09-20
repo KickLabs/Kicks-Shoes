@@ -11,6 +11,11 @@ const paymentOptions = [
     label: 'VNPAY',
     img: 'https://vnpay.vn/s1/statics.vnpay.vn/2023/9/06ncktiwd6dc1694418196384.png',
   },
+  {
+    value: 'payos',
+    label: 'PayOS',
+    img: 'https://payos.vn/wp-content/uploads/2023/08/logo-payos.png',
+  },
 ];
 
 export default function PaymentMethod({ value, onChange }) {
