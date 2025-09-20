@@ -305,6 +305,7 @@ export class ProductService {
     maxPrice,
     isNew,
     productType,
+    saleType,
     sortBy = 'createdAt',
     order = 'desc',
     page = 1,
@@ -345,6 +346,43 @@ export class ProductService {
       filter.finalPrice = {};
       if (minPrice) filter.finalPrice.$gte = Number(minPrice);
       if (maxPrice) filter.finalPrice.$lte = Number(maxPrice);
+    }
+
+    // Handle sale type filtering
+    if (saleType) {
+      if (saleType === 'flash-sale') {
+        // Filter products that are in active flash sales
+        const now = new Date();
+        const FlashSale = (await import('../models/FlashSale.js')).default;
+        const activeFlashSales = await FlashSale.find({
+          status: 'active',
+          startDate: { $lte: now },
+          endDate: { $gte: now }
+        });
+        
+        console.log('Active Flash Sales found:', activeFlashSales.length);
+        console.log('Active Flash Sales:', activeFlashSales.map(fs => ({
+          id: fs._id,
+          title: fs.title,
+          productCount: fs.products.length
+        })));
+        
+        const flashSaleProductIds = activeFlashSales.flatMap(fs => 
+          fs.products.map(p => p.productId)
+        );
+        
+        console.log('Flash Sale Product IDs:', flashSaleProductIds);
+        
+        if (flashSaleProductIds.length > 0) {
+          filter._id = { $in: flashSaleProductIds };
+        } else {
+          // No active flash sales, return empty result
+          filter._id = { $in: [] };
+        }
+      } else if (saleType === 'regular-sale') {
+        // Filter products that have regular sale (isOnSale = true)
+        filter['price.isOnSale'] = true;
+      }
     }
 
     // Handle sorting

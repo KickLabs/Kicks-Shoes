@@ -42,6 +42,14 @@ const orderItemSchema = new mongoose.Schema(
       required: [true, "Subtotal is required"],
       min: [0, "Subtotal cannot be negative"],
     },
+    originalPrice: {
+      type: Number,
+      min: [0, "Original price cannot be negative"],
+    },
+    isFlashSale: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
