@@ -445,6 +445,23 @@ export class ProductService {
     if (filters.size) filter['variants.sizes'] = { $in: [filters.size] };
     if (filters.color) filter['variants.colors'] = { $in: [filters.color] };
 
+    // Exclude products that are in active flash sales
+    const now = new Date();
+    const FlashSale = (await import('../models/FlashSale.js')).default;
+    const activeFlashSales = await FlashSale.find({
+      status: 'active',
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    });
+
+    if (activeFlashSales.length > 0) {
+      const flashSaleProductIds = activeFlashSales.flatMap(fs => fs.products.map(p => p.productId));
+
+      if (flashSaleProductIds.length > 0) {
+        filter._id = { $nin: flashSaleProductIds };
+      }
+    }
+
     const skip = (page - 1) * limit;
     const total = await Product.countDocuments(filter);
     const data = await Product.find(filter)

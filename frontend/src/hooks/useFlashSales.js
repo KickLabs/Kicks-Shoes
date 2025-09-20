@@ -10,10 +10,35 @@ export const useFlashSales = () => {
       try {
         const response = await getCurrentActiveFlashSale();
         console.log('Flash Sale API Response:', response);
-        if (response.success && response.data) {
+        if (response.success && response.data && response.data.length > 0) {
           console.log('Active Flash Sale Data:', response.data);
-          // Handle both single flash sale and array of flash sales
-          const flashSales = Array.isArray(response.data) ? response.data : [response.data];
+          // New API returns array of products with flashSaleInfo
+          // Convert to the format expected by getProductFlashSale
+          const flashSalesMap = new Map();
+
+          response.data.forEach(product => {
+            if (product.flashSaleInfo) {
+              const flashSaleId = product.flashSaleInfo.flashSaleId;
+
+              if (!flashSalesMap.has(flashSaleId)) {
+                flashSalesMap.set(flashSaleId, {
+                  _id: flashSaleId,
+                  title: product.flashSaleInfo.flashSaleTitle,
+                  status: 'active',
+                  endDate: product.flashSaleInfo.endDate,
+                  products: [],
+                });
+              }
+
+              flashSalesMap.get(flashSaleId).products.push({
+                productId: product._id,
+                discountPercent: product.flashSaleInfo.discountPercent,
+                flashPrice: product.flashSaleInfo.flashPrice,
+              });
+            }
+          });
+
+          const flashSales = Array.from(flashSalesMap.values());
           setActiveFlashSales(flashSales);
         } else {
           console.log('No active flash sale data, using test data');

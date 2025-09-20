@@ -293,3 +293,130 @@ export const getActiveFlashSales = async () => {
     throw error;
   }
 };
+
+/**
+ * @desc Lấy danh sách sản phẩm flash sale cho dashboard với phân trang và lọc
+ */
+export const getFlashSaleProductsForDashboard = async ({
+  page = 1,
+  limit = 10,
+  status = 'all', // 'all', 'upcoming', 'active', 'ended', 'cancelled'
+  search = '',
+  sortBy = 'createdAt',
+  order = 'desc',
+}) => {
+  try {
+    const now = new Date();
+    let filter = {};
+
+    // Lọc theo trạng thái
+    if (status !== 'all') {
+      filter.status = status;
+    }
+
+    // Lọc theo tìm kiếm
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Tính toán phân trang
+    const skip = (page - 1) * limit;
+
+    // Lấy danh sách flash sales
+    const flashSales = await FlashSale.find(filter)
+      .populate('products.productId', 'name price images category brand stock')
+      .sort({ [sortBy]: order === 'desc' ? -1 : 1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Đếm tổng số
+    const total = await FlashSale.countDocuments(filter);
+
+    // Xử lý dữ liệu để trả về thông tin chi tiết
+    const flashSalesWithDetails = flashSales.map(flashSale => {
+      const productsWithPricing = flashSale.products.map(product => {
+        const originalPrice = product.productId.price;
+        const flashPrice = calculateFlashSalePrice(
+          originalPrice,
+          product.discountPercent,
+          product.flashPrice
+        );
+
+        return {
+          _id: product.productId._id,
+          name: product.productId.name,
+          originalPrice,
+          flashPrice,
+          discountPercent: product.discountPercent,
+          savings: originalPrice - flashPrice,
+          savingsPercent: Math.round(((originalPrice - flashPrice) / originalPrice) * 100),
+          images: product.productId.images,
+          category: product.productId.category,
+          brand: product.productId.brand,
+          stock: product.productId.stock,
+        };
+      });
+
+      // Tính thống kê cho flash sale
+      const totalProducts = flashSale.products.length;
+      const totalOriginalValue = flashSale.products.reduce((sum, product) => {
+        return sum + product.productId.price;
+      }, 0);
+      const totalFlashValue = flashSale.products.reduce((sum, product) => {
+        const flashPrice = calculateFlashSalePrice(
+          product.productId.price,
+          product.discountPercent,
+          product.flashPrice
+        );
+        return sum + flashPrice;
+      }, 0);
+      const totalSavings = totalOriginalValue - totalFlashValue;
+      const averageDiscount =
+        totalOriginalValue > 0 ? Math.round((totalSavings / totalOriginalValue) * 100) : 0;
+
+      return {
+        _id: flashSale._id,
+        title: flashSale.title,
+        description: flashSale.description,
+        status: flashSale.status,
+        startDate: flashSale.startDate,
+        endDate: flashSale.endDate,
+        createdAt: flashSale.createdAt,
+        updatedAt: flashSale.updatedAt,
+        products: productsWithPricing,
+        stats: {
+          totalProducts,
+          totalOriginalValue,
+          totalFlashValue,
+          totalSavings,
+          averageDiscount,
+        },
+        // Thêm thông tin thời gian còn lại (nếu đang active)
+        timeRemaining:
+          flashSale.status === 'active'
+            ? Math.max(0, flashSale.endDate.getTime() - now.getTime())
+            : null,
+      };
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: flashSalesWithDetails,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
+  } catch (error) {
+    logger.error('Lỗi khi lấy danh sách sản phẩm flash sale cho dashboard:', error);
+    throw error;
+  }
+};

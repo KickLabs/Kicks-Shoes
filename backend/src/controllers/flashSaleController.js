@@ -10,6 +10,7 @@ import Product from '../models/Product.js';
 import { validationResult } from 'express-validator';
 import { asyncHandler } from '../middlewares/async.middleware.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
+import { getFlashSaleProductsForDashboard } from '../services/flashSale.service.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -79,23 +80,91 @@ export const getFlashSaleById = asyncHandler(async (req, res) => {
 export const getCurrentActiveFlashSale = asyncHandler(async (req, res) => {
   const now = new Date();
 
+  console.log('Searching for active flash sales at:', now);
+
   const activeFlashSales = await FlashSale.find({
     status: 'active',
     startDate: { $lte: now },
     endDate: { $gte: now },
-  }).populate('products.productId', 'name price images mainImage category description');
+  }).populate(
+    'products.productId',
+    'name price images mainImage category description brand stock variants isNew status'
+  );
+
+  console.log('Found active flash sales:', activeFlashSales.length);
 
   if (!activeFlashSales || activeFlashSales.length === 0) {
+    console.log('No active flash sales found');
     return res.status(200).json({
       success: true,
-      data: null,
+      data: [],
       message: 'No active flash sales',
     });
   }
 
+  // Flatten the products from all active flash sales
+  const flashSaleProducts = [];
+
+  activeFlashSales.forEach(flashSale => {
+    console.log(
+      `Processing flash sale: ${flashSale.title} with ${flashSale.products.length} products`
+    );
+
+    flashSale.products.forEach(flashSaleProduct => {
+      const product = flashSaleProduct.productId;
+
+      // Skip if product is null or undefined
+      if (!product) {
+        console.log('Skipping null product in flash sale');
+        return;
+      }
+
+      const originalPrice = product.price || 0;
+      const flashPrice =
+        flashSaleProduct.flashPrice ||
+        originalPrice * (1 - (flashSaleProduct.discountPercent || 0) / 100);
+
+      console.log(`Product: ${product.name}, Original: ${originalPrice}, Flash: ${flashPrice}`);
+
+      // Create a product object that matches the expected structure for ProductCard
+      const productWithFlashSale = {
+        _id: product._id,
+        name: product.name,
+        price: {
+          regular: originalPrice,
+          sale: flashPrice,
+          isOnSale: true,
+          discountPercent: flashSaleProduct.discountPercent || 0,
+        },
+        finalPrice: flashPrice,
+        images: product.images || [],
+        mainImage: product.mainImage,
+        category: product.category,
+        brand: product.brand,
+        stock: product.stock || 0,
+        variants: product.variants || {},
+        isFlashSale: true,
+        flashSaleInfo: {
+          flashSaleId: flashSale._id,
+          flashSaleTitle: flashSale.title,
+          endDate: flashSale.endDate,
+          discountPercent: flashSaleProduct.discountPercent,
+          flashPrice: flashSaleProduct.flashPrice,
+        },
+        // Add other required fields for ProductCard
+        isNew: product.isNew || false,
+        status: product.status !== undefined ? product.status : true,
+      };
+
+      flashSaleProducts.push(productWithFlashSale);
+    });
+  });
+
+  console.log(`Total flash sale products: ${flashSaleProducts.length}`);
+
   res.status(200).json({
     success: true,
-    data: activeFlashSales,
+    data: flashSaleProducts,
   });
 });
 
@@ -404,5 +473,37 @@ export const getFlashSaleStats = asyncHandler(async (req, res) => {
       upcomingFlashSales,
       activeFlashSales,
     },
+  });
+});
+
+/**
+ * @desc Lấy danh sách sản phẩm flash sale cho dashboard
+ * @route GET /api/flash-sales/dashboard
+ * @access Private (Admin)
+ */
+export const getFlashSaleProductsForDashboardController = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    status = 'all',
+    search = '',
+    sortBy = 'createdAt',
+    order = 'desc',
+  } = req.query;
+
+  const result = await getFlashSaleProductsForDashboard({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    status,
+    search,
+    sortBy,
+    order,
+  });
+
+  res.status(200).json({
+    success: true,
+    data: result.data,
+    pagination: result.pagination,
+    message: 'Lấy danh sách flash sale cho dashboard thành công',
   });
 });
