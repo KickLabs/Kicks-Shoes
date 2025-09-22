@@ -6,13 +6,15 @@ import { CategoriesSection } from '../components/CategoriesSection';
 import { FeaturedCollections } from '../components/FeaturedCollections';
 import { TrendingSection } from '../components/TrendingSection';
 import { ReviewSection } from '../components/ReviewSection';
+import { FlashSaleSection } from '../components/FlashSaleSection';
 
 const HomePage = () => {
   return (
     <div className="home-container">
       <HeroSection />
-      <NewDropsSection />
+      <FlashSaleSection />
       <CategoriesSection />
+      <NewDropsSection />
       {/* <TrendingSection /> */}
       {/* <FeaturedCollections /> */}
       <ReviewSection />

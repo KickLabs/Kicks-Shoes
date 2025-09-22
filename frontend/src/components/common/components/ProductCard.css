@@ -49,13 +49,39 @@
   padding: 7px 18px 7px 14px;
   border-radius: 18px 0 18px 0;
   z-index: 2;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  letter-spacing: 0.5px;
+}
+
+.product-card__countdown-bottom {
   display: flex;
-  align-items: center;
   justify-content: center;
-  top: 0;
-  left: 0;
+  align-items: center;
+  padding: 6px 0;
+  margin-top: 4px;
+}
+
+.product-card__countdown-bottom .countdown-timer {
+  gap: 8px;
+  background: transparent;
+  padding: 8px 16px;
+  border: 2px solid #ff4757;
+  border-radius: 8px;
+}
+
+.product-card__countdown-bottom .countdown-item {
+  min-width: 36px;
+}
+
+.product-card__countdown-bottom .countdown-number {
+  font-size: 16px;
+  padding: 4px 8px;
+  min-width: 32px;
+}
+
+.product-card__countdown-bottom .end-in-text {
+  font-size: 16px;
+  margin-right: 8px;
+  color: #ff4757;
+  font-weight: 700;
 }
 
 .product-card__info {

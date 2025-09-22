@@ -5,42 +5,50 @@
  * @description This file defines the OrderItem model schema for the Kicks Shoes application.
  */
 
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const orderItemSchema = new mongoose.Schema(
   {
     order: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
-      required: [true, "Order is required"],
+      ref: 'Order',
+      required: [true, 'Order is required'],
     },
     product: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-      required: [true, "Product is required"],
+      ref: 'Product',
+      required: [true, 'Product is required'],
     },
     quantity: {
       type: Number,
-      required: [true, "Quantity is required"],
-      min: [1, "Quantity must be at least 1"],
+      required: [true, 'Quantity is required'],
+      min: [1, 'Quantity must be at least 1'],
     },
     price: {
       type: Number,
-      required: [true, "Price is required"],
-      min: [0, "Price cannot be negative"],
+      required: [true, 'Price is required'],
+      min: [0, 'Price cannot be negative'],
     },
     size: {
       type: String,
-      required: [true, "Size is required"],
+      required: [true, 'Size is required'],
     },
     color: {
       type: String,
-      required: [true, "Color is required"],
+      required: [true, 'Color is required'],
     },
     subtotal: {
       type: Number,
-      required: [true, "Subtotal is required"],
-      min: [0, "Subtotal cannot be negative"],
+      required: [true, 'Subtotal is required'],
+      min: [0, 'Subtotal cannot be negative'],
+    },
+    originalPrice: {
+      type: Number,
+      min: [0, 'Original price cannot be negative'],
+    },
+    isFlashSale: {
+      type: Boolean,
+      default: false,
     },
   },
   {
@@ -53,11 +61,11 @@ orderItemSchema.index({ order: 1 });
 orderItemSchema.index({ product: 1 });
 
 // Calculate subtotal before saving
-orderItemSchema.pre("save", function (next) {
+orderItemSchema.pre('save', function (next) {
   this.subtotal = this.price * this.quantity;
   next();
 });
 
-const OrderItem = mongoose.model("OrderItem", orderItemSchema);
+const OrderItem = mongoose.model('OrderItem', orderItemSchema);
 
 export default OrderItem;

@@ -5,6 +5,7 @@ import ShippingAddress from './ShippingAddress';
 import DeliveryOptions from './DeliveryOptions';
 import orderService from '../../../../services/orderService';
 import VNPayService from '../../../../services/vnpayService';
+import { useFlashSales } from '../../../../hooks/useFlashSales';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -39,6 +40,7 @@ export default function CheckoutForm({
   const [shippingForm] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { getProductFlashSale } = useFlashSales();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -107,7 +109,27 @@ export default function CheckoutForm({
       // Handle different price structures for both cart items and buy now items
       let price = 0;
 
+      // Get product ID first - handle both cart items and buy now items
+      let productId;
       if (isBuyNow && p.productDetails) {
+        productId = p.product; // For buy now, product ID is stored directly
+      } else {
+        productId = p.product?._id || p.id;
+      }
+
+      // Validate that we have a valid product ID
+      if (!productId) {
+        throw new Error(
+          `Missing product ID for item: ${p.product?.name || p.productDetails?.name || 'Unknown product'}`
+        );
+      }
+
+      // Check for flash sale first
+      const flashSaleInfo = getProductFlashSale(productId);
+      if (flashSaleInfo) {
+        price = flashSaleInfo.flashPrice;
+        console.log('Flash sale price applied in order:', { productId, flashSalePrice: price });
+      } else if (isBuyNow && p.productDetails) {
         // Buy now item - use the stored price
         price = Number(p.price);
       } else if (p.product?.price) {
@@ -127,21 +149,6 @@ export default function CheckoutForm({
       } else if (p.price) {
         // Fallback to item price
         price = Number(p.price);
-      }
-
-      // Get product ID - handle both cart items and buy now items
-      let productId;
-      if (isBuyNow && p.productDetails) {
-        productId = p.product; // For buy now, product ID is stored directly
-      } else {
-        productId = p.product?._id || p.id;
-      }
-
-      // Validate that we have a valid product ID
-      if (!productId) {
-        throw new Error(
-          `Missing product ID for item: ${p.product?.name || p.productDetails?.name || 'Unknown product'}`
-        );
       }
 
       return {

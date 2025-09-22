@@ -305,6 +305,7 @@ export class ProductService {
     maxPrice,
     isNew,
     productType,
+    saleType,
     sortBy = 'createdAt',
     order = 'desc',
     page = 1,
@@ -345,6 +346,55 @@ export class ProductService {
       filter.finalPrice = {};
       if (minPrice) filter.finalPrice.$gte = Number(minPrice);
       if (maxPrice) filter.finalPrice.$lte = Number(maxPrice);
+    }
+
+    // Handle sale type filtering
+    if (saleType) {
+      console.log('Processing saleType filter:', saleType);
+      if (saleType === 'flash-sale') {
+        // Filter products that are in active flash sales
+        const now = new Date();
+        console.log('Current time for flash sale filtering:', now);
+
+        const FlashSale = (await import('../models/FlashSale.js')).default;
+        const activeFlashSales = await FlashSale.find({
+          status: 'active',
+          startDate: { $lte: now },
+          endDate: { $gte: now },
+        });
+
+        console.log('Active Flash Sales found:', activeFlashSales.length);
+        console.log(
+          'Active Flash Sales:',
+          activeFlashSales.map(fs => ({
+            id: fs._id,
+            title: fs.title,
+            productCount: fs.products.length,
+            startDate: fs.startDate,
+            endDate: fs.endDate,
+            status: fs.status,
+          }))
+        );
+
+        const flashSaleProductIds = activeFlashSales.flatMap(fs =>
+          fs.products.map(p => p.productId)
+        );
+
+        console.log('Flash Sale Product IDs:', flashSaleProductIds);
+
+        if (flashSaleProductIds.length > 0) {
+          filter._id = { $in: flashSaleProductIds };
+          console.log('Applied flash sale filter with product IDs:', flashSaleProductIds);
+        } else {
+          // No active flash sales, return empty result
+          filter._id = { $in: [] };
+          console.log('No active flash sales found, returning empty result');
+        }
+      } else if (saleType === 'regular-sale') {
+        // Filter products that have regular sale (isOnSale = true)
+        filter['price.isOnSale'] = true;
+        console.log('Applied regular sale filter');
+      }
     }
 
     // Handle sorting
@@ -403,6 +453,23 @@ export class ProductService {
 
     if (filters.size) filter['variants.sizes'] = { $in: [filters.size] };
     if (filters.color) filter['variants.colors'] = { $in: [filters.color] };
+
+    // Exclude products that are in active flash sales
+    const now = new Date();
+    const FlashSale = (await import('../models/FlashSale.js')).default;
+    const activeFlashSales = await FlashSale.find({
+      status: 'active',
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    });
+
+    if (activeFlashSales.length > 0) {
+      const flashSaleProductIds = activeFlashSales.flatMap(fs => fs.products.map(p => p.productId));
+
+      if (flashSaleProductIds.length > 0) {
+        filter._id = { $nin: flashSaleProductIds };
+      }
+    }
 
     const skip = (page - 1) * limit;
     const total = await Product.countDocuments(filter);
