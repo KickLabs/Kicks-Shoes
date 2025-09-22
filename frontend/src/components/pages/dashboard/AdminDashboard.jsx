@@ -1093,7 +1093,6 @@ export default function AdminDashboard() {
           </>
         );
 
-
       default:
         return <div>Page not found</div>;
     }

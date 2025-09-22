@@ -378,6 +378,8 @@ const createTokens = userId => {
 export const loginWithGoogle = async (req, res) => {
   try {
     const { email, name, picture } = req.body;
+    console.log('Google login data received:', { email, name, picture }); // Debug log
+
     if (!email) return res.status(400).json({ message: 'Missing email from Google' });
 
     let user = await User.findOne({ email });
@@ -398,7 +400,7 @@ export const loginWithGoogle = async (req, res) => {
         email,
         username,
         password: fakePassword,
-        avatar: picture, // thay vì picture.data.url
+        avatar: picture || '', // Ensure avatar is set
         isVerified: true,
         role: 'customer',
         address: '',
@@ -407,10 +409,15 @@ export const loginWithGoogle = async (req, res) => {
         gender: 'other',
       });
       await user.save();
+      console.log('New Google user created:', { avatar: user.avatar, picture });
     } else {
       if (picture && user.avatar !== picture) {
         user.avatar = picture;
         await user.save();
+        console.log('Existing Google user avatar updated:', {
+          oldAvatar: user.avatar,
+          newPicture: picture,
+        });
       }
     }
 
