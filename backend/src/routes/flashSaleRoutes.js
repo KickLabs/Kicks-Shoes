@@ -36,9 +36,9 @@ router.get('/active/current', getCurrentActiveFlashSale);
 router.get('/product/:productId', validateProductId, getFlashSaleByProductId);
 router.get('/:id', validateFlashSaleId, getFlashSaleById);
 
-// Admin routes (yêu cầu authentication và role admin)
+// Shop routes (yêu cầu authentication và role shop)
 router.use(protect);
-router.use(requireRoles('admin'));
+router.use(requireRoles('shop'));
 
 router.post('/', validateFlashSale, createFlashSale);
 router.put('/:id', validateFlashSaleId, validateFlashSale, updateFlashSale);

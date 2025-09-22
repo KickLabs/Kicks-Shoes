@@ -58,6 +58,7 @@ import RoleSwitcher from './components/pages/dashboard/RoleSwitcher';
 // Product Management Components
 import AddNewProduct from './components/pages/dashboard/AddNewProduct';
 import EditProduct from './components/pages/dashboard/EditProduct';
+import FlashSaleManagement from './components/pages/dashboard/FlashSaleManagement';
 
 // Styles
 import './styles/index.css';
@@ -292,14 +293,6 @@ const router = createBrowserRouter([
             ),
           },
           {
-            path: 'flash-sales',
-            element: (
-              <AdminProtectedRoute>
-                <AdminDashboard />
-              </AdminProtectedRoute>
-            ),
-          },
-          {
             path: 'orders',
             element: (
               <AdminProtectedRoute>
@@ -391,6 +384,14 @@ const router = createBrowserRouter([
             element: (
               <ShopOwnerProtectedRoute>
                 <ShopDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'flash-sales',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <FlashSaleManagement />
               </ShopOwnerProtectedRoute>
             ),
           },
