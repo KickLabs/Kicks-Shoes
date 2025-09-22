@@ -40,6 +40,8 @@ import userRoutes from './routes/userRoutes.js';
 import cartRoutes from './routes/cartRoutes.js'; // Added from feature/HueSuong/cart-be
 import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
 import livestreamRoutes from './routes/livestreamRoutes.js'; // Added LiveStream routes
+import blogRoutes from './routes/blogRoutes.js';
+import blogCommentRoutes from './routes/blogCommentRoutes.js';
 import potentialOrderRoutes from './routes/potentialOrderRoutes.js'; // Added Potential Order routes
 import tryonRoutes from './routes/tryonRoutes.js';
 import logger from './utils/logger.js';
@@ -140,6 +142,8 @@ app.use('/api', uploadRoutes);
 app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
 app.use('/api/chat', chatRoutes);
 app.use('/api/livestream', livestreamRoutes); // Added LiveStream routes
+app.use('/api/blogs', blogRoutes);
+app.use('/api/blog-comments', blogCommentRoutes);
 app.use('/api/potential-orders', potentialOrderRoutes); // Added Potential Order routes
 app.use('/api/tryon', tryonRoutes);
 

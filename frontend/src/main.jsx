@@ -77,6 +77,10 @@ import CreateLiveStream from './components/pages/livestream/CreateLiveStream';
 import LiveStreamHost from './components/pages/livestream/LiveStreamHost';
 import LiveStreamViewer from './components/pages/livestream/LiveStreamViewer';
 import LiveStreamPage from './components/pages/livestream/LiveStreamPage';
+// Blog
+import BlogFeedPage from './components/pages/blog/BlogFeedPage';
+import BlogComposerPage from './components/pages/blog/BlogComposerPage';
+import BlogDetailPage from './components/pages/blog/BlogDetailPage';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -493,6 +497,30 @@ const router = createBrowserRouter([
       {
         path: 'livestream',
         element: <LiveStreamPage />,
+      },
+      {
+        path: 'blog',
+        element: <BlogFeedPage />,
+      },
+      {
+        path: 'blog/:id',
+        element: <BlogDetailPage />,
+      },
+      {
+        path: 'blog/create',
+        element: (
+          <ShopOwnerProtectedRoute>
+            <BlogComposerPage />
+          </ShopOwnerProtectedRoute>
+        ),
+      },
+      {
+        path: 'blog/edit/:id',
+        element: (
+          <ShopOwnerProtectedRoute>
+            <BlogComposerPage />
+          </ShopOwnerProtectedRoute>
+        ),
       },
       {
         path: 'livestream/:roomId',
