@@ -171,7 +171,7 @@ export const getCurrentActiveFlashSale = asyncHandler(async (req, res) => {
 /**
  * @desc Tạo flash sale mới
  * @route POST /api/flash-sales
- * @access Private (Admin)
+ * @access Private (Shop)
  */
 export const createFlashSale = asyncHandler(async (req, res) => {
   // Kiểm tra validation errors
@@ -234,7 +234,7 @@ export const createFlashSale = asyncHandler(async (req, res) => {
 /**
  * @desc Cập nhật flash sale
  * @route PUT /api/flash-sales/:id
- * @access Private (Admin)
+ * @access Private (Shop)
  */
 export const updateFlashSale = asyncHandler(async (req, res) => {
   // Kiểm tra validation errors
@@ -313,7 +313,7 @@ export const updateFlashSale = asyncHandler(async (req, res) => {
 /**
  * @desc Xóa flash sale
  * @route DELETE /api/flash-sales/:id
- * @access Private (Admin)
+ * @access Private (Shop)
  */
 export const deleteFlashSale = asyncHandler(async (req, res) => {
   const flashSale = await FlashSale.findById(req.params.id);
@@ -340,7 +340,7 @@ export const deleteFlashSale = asyncHandler(async (req, res) => {
 /**
  * @desc Cập nhật trạng thái flash sale
  * @route PATCH /api/flash-sales/:id/status
- * @access Private (Admin)
+ * @access Private (Shop)
  */
 export const updateFlashSaleStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
@@ -426,7 +426,7 @@ export const getFlashSaleByProductId = asyncHandler(async (req, res) => {
 /**
  * @desc Lấy thống kê flash sale
  * @route GET /api/flash-sales/stats/overview
- * @access Private (Admin)
+ * @access Private (Shop)
  */
 export const getFlashSaleStats = asyncHandler(async (req, res) => {
   const now = new Date();
@@ -479,7 +479,7 @@ export const getFlashSaleStats = asyncHandler(async (req, res) => {
 /**
  * @desc Lấy danh sách sản phẩm flash sale cho dashboard
  * @route GET /api/flash-sales/dashboard
- * @access Private (Admin)
+ * @access Private (Shop)
  */
 export const getFlashSaleProductsForDashboardController = asyncHandler(async (req, res) => {
   const {

@@ -350,9 +350,12 @@ export class ProductService {
 
     // Handle sale type filtering
     if (saleType) {
+      console.log('Processing saleType filter:', saleType);
       if (saleType === 'flash-sale') {
         // Filter products that are in active flash sales
         const now = new Date();
+        console.log('Current time for flash sale filtering:', now);
+
         const FlashSale = (await import('../models/FlashSale.js')).default;
         const activeFlashSales = await FlashSale.find({
           status: 'active',
@@ -367,6 +370,9 @@ export class ProductService {
             id: fs._id,
             title: fs.title,
             productCount: fs.products.length,
+            startDate: fs.startDate,
+            endDate: fs.endDate,
+            status: fs.status,
           }))
         );
 
@@ -378,13 +384,16 @@ export class ProductService {
 
         if (flashSaleProductIds.length > 0) {
           filter._id = { $in: flashSaleProductIds };
+          console.log('Applied flash sale filter with product IDs:', flashSaleProductIds);
         } else {
           // No active flash sales, return empty result
           filter._id = { $in: [] };
+          console.log('No active flash sales found, returning empty result');
         }
       } else if (saleType === 'regular-sale') {
         // Filter products that have regular sale (isOnSale = true)
         filter['price.isOnSale'] = true;
+        console.log('Applied regular sale filter');
       }
     }
 
