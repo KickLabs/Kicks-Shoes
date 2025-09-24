@@ -1,0 +1,141 @@
+/* Blog Feed Page Styles */
+.blog-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: none !important;
+  overflow: hidden;
+}
+
+.blog-card:hover {
+  transform: translateY(-8px) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.blog-thumbnail {
+  position: relative;
+  overflow: hidden;
+}
+
+.blog-thumbnail img {
+  transition: transform 0.3s ease;
+}
+
+.blog-card:hover .blog-thumbnail img {
+  transform: scale(1.05);
+}
+
+.blog-thumbnail-placeholder {
+  position: relative;
+  overflow: hidden;
+}
+
+.blog-thumbnail-placeholder::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.1) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.1) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.1) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.1) 75%);
+  background-size: 20px 20px;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0px;
+  animation: move 2s linear infinite;
+}
+
+@keyframes move {
+  0% {
+    background-position:
+      0 0,
+      0 10px,
+      10px -10px,
+      -10px 0px;
+  }
+  100% {
+    background-position:
+      20px 20px,
+      20px 30px,
+      30px 10px,
+      10px 20px;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .blog-card:hover {
+    transform: translateY(-4px) !important;
+  }
+}
+
+/* Custom scrollbar for better UX */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #4361ee 0%, #0077cc 100%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #3a56d4 0%, #0066bb 100%);
+}
+
+/* Loading animation */
+.ant-spin-dot {
+  color: #4361ee !important;
+}
+
+/* Button hover effects */
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #3a56d4 0%, #0066bb 100%) !important;
+  border-color: transparent !important;
+}
+
+/* Card hover effects */
+.ant-card-hoverable:hover {
+  border-color: transparent !important;
+}
+
+/* Tag styling */
+.ant-tag {
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+}
+
+/* Input focus effects */
+.ant-input:focus,
+.ant-input-focused {
+  border-color: #4361ee !important;
+  box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2) !important;
+}
+
+.ant-select-focused .ant-select-selector {
+  border-color: #4361ee !important;
+  box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2) !important;
+}
+
+/* Empty state styling */
+.ant-empty-description {
+  color: #666 !important;
+}
+
+/* Typography improvements */
+.ant-typography {
+  color: #1a1a1a !important;
+}
+
+.ant-typography.ant-typography-secondary {
+  color: #666 !important;
+}

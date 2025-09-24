@@ -8,7 +8,20 @@ import apple from '../../../../assets/images/apple-logo.png';
 import appleWhite from '../../../../assets/images/apple-logo-white.png';
 import facebook from '../../../../assets/images/facebook-logo.png';
 import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
-const API_BASE = import.meta.env.VITE_API_URL;
+
+const getAPIBase = () => {
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://127.0.0.1:3000'; // Use IPv4 instead of localhost, without /api
+  }
+
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL.replace('/api', ''); // Remove /api if present
+  }
+
+  return '';
+};
+
+const API_BASE = getAPIBase();
 
 const SocialButtons = () => {
   const { setUser } = useAuth();
@@ -16,6 +29,7 @@ const SocialButtons = () => {
 
   // -------- GOOGLE LOGIN --------
   const loginGoogle = useGoogleLogin({
+    scope: 'openid email profile',
     onSuccess: async tokenResponse => {
       try {
         // Lấy thông tin user từ Google
@@ -24,6 +38,8 @@ const SocialButtons = () => {
             Authorization: `Bearer ${tokenResponse.access_token}`,
           },
         });
+
+        console.log('Google user data:', data); // Debug log
 
         if (!data?.email) {
           return notification.error({
@@ -40,6 +56,7 @@ const SocialButtons = () => {
         });
 
         const result = res.data;
+        console.log('Backend response:', result); // Debug log
         if (result.success) {
           const userInfo = {
             _id: result.user._id,
@@ -49,10 +66,17 @@ const SocialButtons = () => {
             role: result.user.role,
           };
 
+          console.log('User info to store:', userInfo); // Debug log
+
           setUser(userInfo);
           localStorage.setItem('userInfo', JSON.stringify(userInfo));
           localStorage.setItem('accessToken', result.token);
           localStorage.setItem('refreshToken', result.refreshToken);
+
+          // Force page reload to ensure avatar is displayed
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
 
           message.success('Login with Google successful!');
           navigate(result.isNewUser ? '/set-password' : '/');

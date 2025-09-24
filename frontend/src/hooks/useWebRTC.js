@@ -35,7 +35,7 @@ export const useWebRTC = (roomId, role, userId) => {
   useEffect(() => {
     if (!roomId || !role) return;
 
-    const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
     socketRef.current = io(`${socketUrl}/livestream`, {
       transports: ['websocket'],
       forceNew: true,

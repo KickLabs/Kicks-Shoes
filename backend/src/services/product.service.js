@@ -355,7 +355,6 @@ export class ProductService {
         // Filter products that are in active flash sales
         const now = new Date();
         console.log('Current time for flash sale filtering:', now);
-        
         const FlashSale = (await import('../models/FlashSale.js')).default;
         const activeFlashSales = await FlashSale.find({
           status: 'active',

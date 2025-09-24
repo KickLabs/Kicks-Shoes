@@ -11,6 +11,7 @@ import {
   DashboardOutlined,
   VideoCameraOutlined,
   ShopOutlined,
+  ReadOutlined,
 } from '@ant-design/icons';
 import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal } from 'antd';
 import logo from '@assets/Logo.svg';
@@ -159,6 +160,11 @@ const AppHeader = () => {
       icon: <VideoCameraOutlined style={{ color: 'red', marginRight: 4 }} />,
       label: 'Livestream',
     },
+    {
+      key: 'blog',
+      icon: <ReadOutlined style={{ color: '#2d5bff', marginRight: 4 }} />,
+      label: 'Blog',
+    },
   ];
 
   // Dropdown menu items (for mobile)
@@ -200,7 +206,24 @@ const AppHeader = () => {
       icon: <VideoCameraOutlined style={{ color: 'red', marginRight: 4 }} />,
       label: 'Livestream',
     },
+    {
+      key: 'blog',
+      icon: <ReadOutlined style={{ color: '#2d5bff', marginRight: 4 }} />,
+      label: 'Blog',
+    },
   ];
+
+  // Determine active menu item based on current location
+  const getActiveKey = () => {
+    const path = location.pathname;
+    if (path === '/blog' || path.startsWith('/blog/')) return 'blog';
+    if (path === '/livestream' || path.startsWith('/livestream/')) return 'livestream';
+    if (path === '/listing-page' || path.startsWith('/listing-page')) return 'shop';
+    if (path === '/shoes' || path === '/clothing' || path === '/accessories' || path === '/other')
+      return 'shop';
+    if (path === '/' || path === '/home') return null; // Home page
+    return null;
+  };
 
   const handleMenuClick = e => {
     if (e.key === 'new') {
@@ -217,6 +240,8 @@ const AppHeader = () => {
       navigate('/other');
     } else if (e.key === 'livestream') {
       navigate('/livestream');
+    } else if (e.key === 'blog') {
+      navigate('/blog');
     }
   };
 
@@ -267,10 +292,14 @@ const AppHeader = () => {
   const renderAvatar = () => {
     console.log('Rendering avatar for user:', user); // Debug log
     if (user && user.avatar) {
+      console.log('Using avatar URL:', user.avatar); // Debug log
       return <Avatar src={user.avatar} className="header-avatar" />;
-    } else if (user && user.name) {
-      return <Avatar className="header-avatar">{user.name.charAt(0).toUpperCase()}</Avatar>;
+    } else if (user && (user.name || user.fullName)) {
+      const displayName = user.name || user.fullName;
+      console.log('Using display name:', displayName); // Debug log
+      return <Avatar className="header-avatar">{displayName.charAt(0).toUpperCase()}</Avatar>;
     } else {
+      console.log('Using default avatar icon'); // Debug log
       return <Avatar icon={<UserOutlined />} className="header-avatar" />;
     }
   };
@@ -289,7 +318,19 @@ const AppHeader = () => {
 
       <div className="header-left">
         {isMobile ? (
-          <Dropdown menu={{ items: dropdownItems, onClick: handleMenuClick }} trigger={['click']}>
+          <Dropdown
+            menu={{
+              items: dropdownItems.map(item => ({
+                ...item,
+                children: item.children?.map(child => ({
+                  ...child,
+                  type: child.key === getActiveKey() ? 'primary' : 'default',
+                })),
+              })),
+              onClick: handleMenuClick,
+            }}
+            trigger={['click']}
+          >
             <MenuOutlined className="menu-icon" />
           </Dropdown>
         ) : (
@@ -298,6 +339,7 @@ const AppHeader = () => {
             className="header-menu"
             items={menuItems}
             onClick={handleMenuClick}
+            selectedKeys={[getActiveKey()].filter(Boolean)}
           />
         )}
       </div>
