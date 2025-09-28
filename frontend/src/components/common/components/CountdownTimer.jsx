@@ -49,6 +49,20 @@ const CountdownTimer = ({
     return () => clearInterval(timer);
   }, [endDate, onExpired]);
 
+  useEffect(() => {
+    if (isExpired) {
+      // Notify parent component
+      if (onExpired) {
+        onExpired();
+      }
+      
+      // Trigger a flash sale refresh through context/redux
+      if (window.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent('flashSaleExpired'));
+      }
+    }
+  }, [isExpired, onExpired]);
+
   if (isExpired) {
     return (
       <div className={`countdown-timer countdown-expired countdown-${size}`}>
