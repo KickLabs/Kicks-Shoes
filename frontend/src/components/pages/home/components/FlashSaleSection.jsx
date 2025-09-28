@@ -8,20 +8,40 @@ import { useNavigate } from 'react-router-dom';
 export const FlashSaleSection = () => {
   const navigate = useNavigate();
   const [flashSaleProducts, setFlashSaleProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
+    let isMounted = true;
+
     const fetchFlashSaleProducts = async () => {
       try {
+        setIsLoading(true);
         const response = await axiosInstance.get('/flash-sales/active/current');
-        const flashSaleProducts = response.data.data || [];
-        setFlashSaleProducts(flashSaleProducts.slice(0, 4));
-        console.log('Flash Sale Products:', flashSaleProducts);
+        const products = response.data.data || [];
+
+        if (isMounted) {
+          setFlashSaleProducts(products.slice(0, 4));
+          console.log('Flash Sale Products:', products);
+        }
       } catch (error) {
         console.error('Error fetching flash sale products:', error);
-        setFlashSaleProducts([]);
+        if (isMounted) {
+          setFlashSaleProducts([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
+
     fetchFlashSaleProducts();
-  }, []);
+
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Empty dependency array to run only once
   const handleShopFlashSale = () => {
     navigate('/listing-page?isFlashSale=true');
   };
@@ -35,11 +55,15 @@ export const FlashSaleSection = () => {
       </div>
 
       <div className="new-drops-list">
-        {flashSaleProducts.map(product => (
-          <div className="card-wrapper" key={product._id || product.id}>
-            <ProductCard product={product} />
-          </div>
-        ))}
+        {isLoading ? (
+          <div>Loading flash sale products...</div>
+        ) : (
+          flashSaleProducts.map(product => (
+            <div className="card-wrapper" key={product._id || product.id}>
+              <ProductCard product={product} />
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

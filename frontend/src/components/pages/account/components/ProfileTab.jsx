@@ -71,10 +71,11 @@ export default function ProfileTab() {
     );
   }
 
-  const handleAvatarChange = e => {
+  const handleAvatarChange = async e => {
     const file = e.target.files[0];
     if (file) {
       setAvatarFile(file);
+
       // Create a preview URL for the selected image
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -84,13 +85,45 @@ export default function ProfileTab() {
         }
       };
       reader.readAsDataURL(file);
+
+      // Auto-update avatar immediately
+      try {
+        setLoading(true);
+        const formData = new FormData();
+        formData.append('avatar', file);
+
+        const updatedUser = await updateProfile(formData);
+        console.log('Avatar updated:', updatedUser);
+
+        // Update preview with server response
+        if (updatedUser && updatedUser.avatar) {
+          const previewImg = document.querySelector('.profile-avatar img');
+          if (previewImg) {
+            previewImg.src = updatedUser.avatar;
+          }
+        }
+
+        message.success('Avatar updated successfully');
+      } catch (error) {
+        console.error('Avatar update error:', error);
+        message.error('Failed to update avatar. Please try again.');
+
+        // Revert preview on error
+        const previewImg = document.querySelector('.profile-avatar img');
+        if (previewImg && user.avatar) {
+          previewImg.src = user.avatar;
+        }
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleProfileImageChange = e => {
+  const handleProfileImageChange = async e => {
     const file = e.target.files[0];
     if (file) {
       setProfileImageFile(file);
+
       const reader = new FileReader();
       reader.onloadend = () => {
         const previewImg = document.querySelector('.profile-profileImage img');
@@ -99,6 +132,37 @@ export default function ProfileTab() {
         }
       };
       reader.readAsDataURL(file);
+
+      // Auto-update profile image immediately
+      try {
+        setLoading(true);
+        const formData = new FormData();
+        formData.append('profileImage', file);
+
+        const updatedUser = await updateProfile(formData);
+        console.log('Profile image updated:', updatedUser);
+
+        // Update preview with server response
+        if (updatedUser && updatedUser.profileImage) {
+          const previewImg = document.querySelector('.profile-profileImage img');
+          if (previewImg) {
+            previewImg.src = updatedUser.profileImage;
+          }
+        }
+
+        message.success('Profile image updated successfully');
+      } catch (error) {
+        console.error('Profile image update error:', error);
+        message.error('Failed to update profile image. Please try again.');
+
+        // Revert preview on error
+        const previewImg = document.querySelector('.profile-profileImage img');
+        if (previewImg && (user.profileImage || user.avatar)) {
+          previewImg.src = user.profileImage || user.avatar;
+        }
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -172,26 +236,49 @@ export default function ProfileTab() {
       <div className="profile-tab-container">
         <div className="profile-header">
           <div className="profile-avatar">
-            <img
-              src={
-                user.avatar ||
-                'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png'
-              }
-              alt="avatar"
-              onError={e => {
-                console.log('Avatar load error, falling back to default');
-                e.target.src =
-                  'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png';
-                return true; // Prevent infinite error loop
+            {loading && avatarFile ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  background: '#f5f5f5',
+                  borderRadius: '50%',
+                }}
+              >
+                <Spin size="large" />
+              </div>
+            ) : (
+              <img
+                src={
+                  user.avatar ||
+                  'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png'
+                }
+                alt="avatar"
+                onError={e => {
+                  console.log('Avatar load error, falling back to default');
+                  e.target.src =
+                    'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png';
+                  return true; // Prevent infinite error loop
+                }}
+              />
+            )}
+            <label
+              className="change-avatar-btn"
+              style={{
+                pointerEvents: loading && avatarFile ? 'none' : 'auto',
+                opacity: loading && avatarFile ? 0.5 : 1,
               }}
-            />
-            <label className="change-avatar-btn">
+            >
               <EditOutlined />
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarChange}
                 style={{ display: 'none' }}
+                disabled={loading && avatarFile}
               />
             </label>
           </div>
@@ -253,8 +340,41 @@ export default function ProfileTab() {
                     <CalendarOutlined /> Date of Birth
                   </label>
                 }
+                rules={[
+                  {
+                    validator: (_, value) => {
+                      if (!value) {
+                        return Promise.resolve();
+                      }
+                      const today = dayjs();
+                      const selectedDate = dayjs(value);
+
+                      if (selectedDate.isAfter(today)) {
+                        return Promise.reject(new Error('Date of birth cannot be in the future'));
+                      }
+
+                      // Check if age is reasonable (not too old, not too young)
+                      const age = today.diff(selectedDate, 'year');
+                      if (age > 120) {
+                        return Promise.reject(new Error('Please enter a valid date of birth'));
+                      }
+                      if (age < 0) {
+                        return Promise.reject(new Error('Date of birth cannot be in the future'));
+                      }
+
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
               >
-                <DatePicker style={{ width: '100%' }} />
+                <DatePicker
+                  style={{ width: '100%' }}
+                  disabledDate={current => {
+                    // Disable future dates
+                    return current && current.isAfter(dayjs(), 'day');
+                  }}
+                  placeholder="Select your date of birth"
+                />
               </Form.Item>
               <Form.Item
                 name="gender"
@@ -293,29 +413,52 @@ export default function ProfileTab() {
                   className="profile-profileImage"
                   style={{ display: 'flex', alignItems: 'center', gap: 12 }}
                 >
-                  <img
-                    src={
-                      user.profileImage ||
-                      user.avatar ||
-                      'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png'
-                    }
-                    alt="profile"
-                    style={{
-                      width: 225,
-                      height: 300,
-                      objectFit: 'cover',
-                      borderRadius: 8,
-                      border: '1px solid #eee',
-                    }}
-                    onError={e => {
-                      e.target.src =
-                        'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png';
-                      return true;
-                    }}
-                  />
+                  {loading && profileImageFile ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 225,
+                        height: 300,
+                        background: '#f5f5f5',
+                        borderRadius: 8,
+                        border: '1px solid #eee',
+                      }}
+                    >
+                      <Spin size="large" />
+                    </div>
+                  ) : (
+                    <img
+                      src={
+                        user.profileImage ||
+                        user.avatar ||
+                        'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png'
+                      }
+                      alt="profile"
+                      style={{
+                        width: 225,
+                        height: 300,
+                        objectFit: 'cover',
+                        borderRadius: 8,
+                        border: '1px solid #eee',
+                      }}
+                      onError={e => {
+                        e.target.src =
+                          'https://static.vecteezy.com/system/resources/previews/019/896/008/original/male-user-avatar-icon-in-flat-design-style-person-signs-illustration-png.png';
+                        return true;
+                      }}
+                    />
+                  )}
                   <label
                     className="change-avatar-btn"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      pointerEvents: loading && profileImageFile ? 'none' : 'auto',
+                      opacity: loading && profileImageFile ? 0.5 : 1,
+                    }}
                   >
                     <EditOutlined />
                     <input
@@ -323,6 +466,7 @@ export default function ProfileTab() {
                       accept="image/*"
                       onChange={handleProfileImageChange}
                       style={{ display: 'none' }}
+                      disabled={loading && profileImageFile}
                     />
                     <span>Change Profile Image</span>
                   </label>
