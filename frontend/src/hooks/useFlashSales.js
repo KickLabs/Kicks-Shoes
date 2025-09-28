@@ -1,138 +1,125 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getCurrentActiveFlashSale } from '../services/flashSaleService';
 
-export const useFlashSales = () => {
+export const useFlashSales = (refreshInterval = 60000) => { // Refresh every minute by default
   const [activeFlashSales, setActiveFlashSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
 
-  useEffect(() => {
-    const fetchActiveFlashSales = async () => {
-      try {
-        const response = await getCurrentActiveFlashSale();
-        console.log('Flash Sale API Response:', response);
-        if (response.success && response.data && response.data.length > 0) {
-          console.log('Active Flash Sale Data:', response.data);
-          // New API returns array of products with flashSaleInfo
-          // Convert to the format expected by getProductFlashSale
-          const flashSalesMap = new Map();
+  const fetchActiveFlashSales = useCallback(async (force = false) => {
+    // Don't refresh if it's been less than refreshInterval since last refresh
+    if (!force && Date.now() - lastRefresh < refreshInterval) {
+      return;
+    }
 
-          response.data.forEach(product => {
-            if (product.flashSaleInfo) {
-              const flashSaleId = product.flashSaleInfo.flashSaleId;
+    try {
+      setLoading(true);
+      const response = await getCurrentActiveFlashSale();
+      console.log('Flash Sale API Response:', response);
+      
+      if (response.success && response.data && response.data.length > 0) {
+        console.log('Active Flash Sale Data:', response.data);
+        
+        // Filter out expired flash sales
+        const now = new Date();
+        const validFlashSales = response.data.filter(product => 
+          product.flashSaleInfo && new Date(product.flashSaleInfo.endDate) > now
+        );
 
-              if (!flashSalesMap.has(flashSaleId)) {
-                flashSalesMap.set(flashSaleId, {
-                  _id: flashSaleId,
-                  title: product.flashSaleInfo.flashSaleTitle,
-                  status: 'active',
-                  endDate: product.flashSaleInfo.endDate,
-                  products: [],
-                });
-              }
+        // Convert to the format expected by getProductFlashSale
+        const flashSalesMap = new Map();
 
-              flashSalesMap.get(flashSaleId).products.push({
-                productId: product._id,
-                discountPercent: product.flashSaleInfo.discountPercent,
-                flashPrice: product.flashSaleInfo.flashPrice,
+        validFlashSales.forEach(product => {
+          if (product.flashSaleInfo) {
+            const flashSaleId = product.flashSaleInfo.flashSaleId;
+
+            if (!flashSalesMap.has(flashSaleId)) {
+              flashSalesMap.set(flashSaleId, {
+                _id: flashSaleId,
+                title: product.flashSaleInfo.flashSaleTitle,
+                status: 'active',
+                endDate: product.flashSaleInfo.endDate,
+                products: [],
               });
             }
-          });
 
-          const flashSales = Array.from(flashSalesMap.values());
-          setActiveFlashSales(flashSales);
-        } else {
-          console.log('No active flash sale data, using test data');
-          // Test data for development
-          const now = new Date();
-          const endDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
-          const testFlashSale = {
-            _id: 'test-flash-sale',
-            title: 'Test Flash Sale',
-            status: 'active',
-            endDate: endDate.toISOString(),
-            products: [
-              {
-                productId: '68592c166b62c151554c73d6',
-                discountPercent: 30,
-                flashPrice: 665000,
-              },
-            ],
-          };
-          setActiveFlashSales([testFlashSale]);
-        }
-      } catch (error) {
-        console.log('Error fetching flash sales, using test data:', error);
-        // Test data for development
-        const now = new Date();
-        const endDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
-        const testFlashSale = {
-          _id: 'test-flash-sale',
-          title: 'Test Flash Sale',
-          status: 'active',
-          endDate: endDate.toISOString(),
-          products: [
-            {
-              productId: '68592c166b62c151554c73d6',
-              discountPercent: 30,
-              flashPrice: 665000,
-            },
-          ],
-        };
-        setActiveFlashSales([testFlashSale]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchActiveFlashSales();
-  }, []);
-
-  const getProductFlashSale = productId => {
-    const productFlashSales = [];
-
-    // Tìm tất cả flash sale có chứa sản phẩm này
-    for (const flashSale of activeFlashSales) {
-      if (!flashSale.products) continue;
-
-      const flashSaleProduct = flashSale.products.find(p => {
-        // Handle both populated and non-populated productId
-        const pId = typeof p.productId === 'object' ? p.productId._id : p.productId;
-        return pId === productId;
-      });
-
-      if (flashSaleProduct) {
-        productFlashSales.push({
-          flashPrice: flashSaleProduct.flashPrice,
-          discountPercent: flashSaleProduct.discountPercent,
-          endDate: flashSale.endDate,
-          flashSaleId: flashSale._id,
-          flashSaleTitle: flashSale.title,
+            flashSalesMap.get(flashSaleId).products.push({
+              productId: product._id,
+              discountPercent: product.flashSaleInfo.discountPercent,
+              flashPrice: product.flashSaleInfo.flashPrice,
+            });
+          }
         });
+
+        const flashSales = Array.from(flashSalesMap.values());
+        setActiveFlashSales(flashSales);
+        setLastRefresh(Date.now());
+      } else {
+        console.log('No active flash sale data');
+          setActiveFlashSales([]);
+          setLastRefresh(Date.now());
+      }
+    } catch (error) {
+      console.error('Error fetching flash sales:', error);
+      setActiveFlashSales([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [refreshInterval, lastRefresh]);
+
+  // Initial fetch and setup periodic refresh
+  useEffect(() => {
+    fetchActiveFlashSales(true); // Force initial fetch
+
+    // Set up periodic refresh
+    const refreshTimer = setInterval(() => {
+      fetchActiveFlashSales();
+    }, refreshInterval);
+
+    // Cleanup
+    return () => {
+      clearInterval(refreshTimer);
+    };
+  }, [fetchActiveFlashSales, refreshInterval]);
+
+  // Function to manually trigger a refresh
+  const refreshFlashSales = useCallback(() => {
+    return fetchActiveFlashSales(true);
+  }, [fetchActiveFlashSales]);
+
+  // Function to get flash sale info for a specific product
+  const getProductFlashSale = useCallback((productId) => {
+    if (!productId) return null;
+
+    // Check if any active flash sale contains this product
+    for (const flashSale of activeFlashSales) {
+      const productInfo = flashSale.products.find(
+        p => p.productId === productId
+      );
+
+      if (productInfo) {
+        // Verify the flash sale hasn't expired
+        if (new Date(flashSale.endDate) > new Date()) {
+          return {
+            ...productInfo,
+            flashSaleId: flashSale._id,
+            flashSaleTitle: flashSale.title,
+            endDate: flashSale.endDate,
+          };
+        }
       }
     }
 
-    if (productFlashSales.length === 0) {
-      console.log('No flash sale found for product:', productId);
-      return null;
-    }
-
-    // Nếu có nhiều flash sale, lấy giá rẻ nhất
-    if (productFlashSales.length > 1) {
-      console.log('Multiple flash sales found for product:', productId, productFlashSales);
-      const bestDeal = productFlashSales.reduce((best, current) => {
-        return current.flashPrice < best.flashPrice ? current : best;
-      });
-      console.log('Selected best deal:', bestDeal);
-      return bestDeal;
-    }
-
-    console.log('Found flash sale for product:', productId, productFlashSales[0]);
-    return productFlashSales[0];
-  };
+    return null;
+  }, [activeFlashSales]);
 
   return {
     activeFlashSales,
     loading,
     getProductFlashSale,
+    refreshFlashSales,
   };
 };
+
+
+

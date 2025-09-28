@@ -1092,7 +1092,6 @@ export default function AdminDashboard() {
             </Card>
           </>
         );
-
       default:
         return <div>Page not found</div>;
     }
