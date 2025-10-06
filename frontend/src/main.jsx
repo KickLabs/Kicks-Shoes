@@ -54,6 +54,7 @@ import ShopDashboard from './components/pages/dashboard/ShopDashboard';
 // Product Management Components
 import AddNewProduct from './components/pages/dashboard/AddNewProduct';
 import EditProduct from './components/pages/dashboard/EditProduct';
+import FlashSaleManagement from './components/pages/dashboard/FlashSaleManagement';
 
 // Styles
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -73,6 +74,10 @@ import CreateLiveStream from './components/pages/livestream/CreateLiveStream';
 import LiveStreamHost from './components/pages/livestream/LiveStreamHost';
 import LiveStreamPage from './components/pages/livestream/LiveStreamPage';
 import LiveStreamViewer from './components/pages/livestream/LiveStreamViewer';
+// Blog
+import BlogFeedPage from './components/pages/blog/BlogFeedPage';
+import BlogComposerPage from './components/pages/blog/BlogComposerPage';
+import BlogDetailPage from './components/pages/blog/BlogDetailPage';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -383,6 +388,14 @@ const router = createBrowserRouter([
             ),
           },
           {
+            path: 'flash-sales',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <FlashSaleManagement />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
             path: 'chat',
             element: (
               <ShopOwnerProtectedRoute>
@@ -407,10 +420,10 @@ const router = createBrowserRouter([
             ),
           },
           {
-            path: 'livestream/host/:roomId',
+            path: 'potential-orders',
             element: (
               <ShopOwnerProtectedRoute>
-                <LiveStreamHost />
+                <ShopDashboard />
               </ShopOwnerProtectedRoute>
             ),
           },
@@ -499,8 +512,40 @@ const router = createBrowserRouter([
         element: <LiveStreamPage />,
       },
       {
+        path: 'blog',
+        element: <BlogFeedPage />,
+      },
+      {
+        path: 'blog/:id',
+        element: <BlogDetailPage />,
+      },
+      {
+        path: 'blog/create',
+        element: (
+          <ShopOwnerProtectedRoute>
+            <BlogComposerPage />
+          </ShopOwnerProtectedRoute>
+        ),
+      },
+      {
+        path: 'blog/edit/:id',
+        element: (
+          <ShopOwnerProtectedRoute>
+            <BlogComposerPage />
+          </ShopOwnerProtectedRoute>
+        ),
+      },
+      {
         path: 'livestream/:roomId',
         element: <LiveStreamViewer />,
+      },
+      {
+        path: 'shop/livestream/host/:roomId',
+        element: (
+          <ShopOwnerProtectedRoute>
+            <LiveStreamHost />
+          </ShopOwnerProtectedRoute>
+        ),
       },
     ],
   },

@@ -17,6 +17,8 @@ import {
   ExclamationCircleOutlined,
   CommentOutlined,
   VideoCameraOutlined,
+  ShoppingCartOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 
 const { Content } = Layout;
@@ -48,8 +50,15 @@ const shopTabs = [
   { key: '3', name: 'Orders', icon: <UnorderedListOutlined />, path: '/shop/orders' },
   { key: '4', name: 'Feedback', icon: <MessageOutlined />, path: '/shop/feedback' },
   { key: '5', name: 'Discounts', icon: <WalletOutlined />, path: '/shop/discounts' },
-  { key: '6', name: 'Chat', icon: <CommentOutlined />, path: '/shop/chat' },
-  { key: '7', name: 'Livestream', icon: <VideoCameraOutlined />, path: '/shop/livestream' },
+  { key: '6', name: 'Flash Sale', icon: <ThunderboltOutlined />, path: '/shop/flash-sales' },
+  { key: '7', name: 'Chat', icon: <CommentOutlined />, path: '/shop/chat' },
+  { key: '8', name: 'Livestream', icon: <VideoCameraOutlined />, path: '/shop/livestream' },
+  {
+    key: '9',
+    name: 'Potential Orders',
+    icon: <ShoppingCartOutlined />,
+    path: '/shop/potential-orders',
+  },
 ];
 
 export default function DashboardLayout() {

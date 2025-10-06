@@ -112,6 +112,7 @@ export default function AdminDashboard() {
     if (path === '/admin/financial') return 'financial';
     if (path === '/admin/feedback') return 'feedback';
     if (path === '/admin/discounts') return 'discounts';
+    if (path === '/admin/flash-sales') return 'flash-sales';
     return 'dashboard';
   };
 
@@ -1091,7 +1092,6 @@ export default function AdminDashboard() {
             </Card>
           </>
         );
-
       default:
         return <div>Page not found</div>;
     }

@@ -3,13 +3,31 @@ import { formatPrice } from '../../../utils/StringFormat';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { favouriteService } from '../../../services/favouriteService';
+import { useFlashSales } from '../../../hooks/useFlashSales';
+import CountdownTimer from './CountdownTimer';
 
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const [isFavourite, setIsFavourite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { getProductFlashSale } = useFlashSales();
 
-  const displayPrice = product.finalPrice || product.price?.regular || 0;
+  const flashSaleInfo = getProductFlashSale(product._id);
+  const isFlashSaleActive = !!flashSaleInfo;
+  const displayPrice =
+    flashSaleInfo?.flashPrice || product.finalPrice || product.price?.regular || 0;
+
+  // Debug logging
+  if (product._id === '68592c166b62c151554c73d6') {
+    console.log('Product Card Debug:', {
+      productId: product._id,
+      productName: product.name,
+      flashSaleInfo,
+      isFlashSaleActive,
+      displayPrice,
+      finalPrice: product.finalPrice,
+    });
+  }
 
   useEffect(() => {
     const checkFavouriteStatus = async () => {
@@ -58,7 +76,14 @@ const ProductCard = ({ product }) => {
   return (
     <div className="product-card">
       <div className="product-card__image-container">
-        {product.isNew ? (
+        {isFlashSaleActive ? (
+          <div
+            style={{ backgroundColor: '#ff4757', width: '80px' }}
+            className="product-card__badge"
+          >
+            Flash Sale
+          </div>
+        ) : product.isNew ? (
           <div className="product-card__badge">New</div>
         ) : (
           product.price.isOnSale && (
@@ -119,6 +144,19 @@ const ProductCard = ({ product }) => {
           </div>
         </button>
       </div>
+
+      {/* Countdown Timer for Flash Sale - at the bottom */}
+      {isFlashSaleActive && (
+        <div className="product-card__countdown-bottom">
+          <CountdownTimer
+            endDate={flashSaleInfo.endDate}
+            size="small"
+            showLabels={false}
+            showEndIn={true}
+            originalPrice={product.finalPrice || product.price?.regular || 0}
+          />
+        </div>
+      )}
     </div>
   );
 };

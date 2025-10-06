@@ -1,0 +1,47 @@
+.sale-filter-panel {
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.sale-filter-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.sale-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sale-option {
+  display: flex;
+  align-items: center;
+}
+
+.sale-option-label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+.sale-option .ant-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.sale-option .ant-checkbox {
+  margin-right: 8px;
+}
+
+.sale-option .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #4a69e2;
+  border-color: #4a69e2;
+}
+
+.sale-option .ant-checkbox:hover .ant-checkbox-inner {
+  border-color: #4a69e2;
+}

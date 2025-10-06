@@ -23,11 +23,23 @@ export const protect = async (req, res, next) => {
     // Get token from header
     const authHeader = req.headers.authorization;
 
+    console.log('Auth middleware - Headers:', {
+      authHeader: authHeader ? 'exists' : 'missing',
+      contentType: req.headers['content-type'],
+      path: req.path,
+      method: req.method,
+    });
+
     if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
+      console.log(
+        'Token extracted from header:',
+        token ? `${token.substring(0, 15)}...` : 'invalid token'
+      );
     }
 
     if (!token || token === 'undefined' || token === 'null' || token.trim() === '') {
+      console.log('No valid token provided');
       return next(new ErrorResponse('No valid token provided', 401));
     }
 
@@ -35,26 +47,34 @@ export const protect = async (req, res, next) => {
       // Check if token is blacklisted
       const blacklistedToken = await TokenBlacklist.findOne({ token });
       if (blacklistedToken) {
+        console.log('Token is blacklisted');
         return next(new ErrorResponse('Token has been invalidated', 401));
       }
 
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Token decoded successfully:', { id: decoded.id, userId: decoded.userId });
+
       const userId = decoded.id || decoded.userId;
       // Get user from token
       const user = await User.findById(decoded.id);
 
+      console.log('User found from token:', user ? `${user._id} (${user.email})` : 'No user found');
+
       if (!user) {
+        console.log('User not found with ID:', decoded.id);
         return next(new ErrorResponse('User not found', 404));
       }
 
       // Check if user is verified
       if (!user.isVerified) {
+        console.log('User not verified:', user._id);
         return next(new ErrorResponse('Please verify your email before accessing this route', 401));
       }
 
       // Check if user is banned
       if (!user.status) {
+        console.log('User is banned:', user._id);
         return next(
           new ErrorResponse(
             'Your account has been deactivated. Please contact support for assistance.',
@@ -70,8 +90,9 @@ export const protect = async (req, res, next) => {
       logger.error('Token verification failed', {
         error: error.message,
         stack: error.stack,
-        token,
+        token: token ? `${token.substring(0, 15)}...` : 'invalid token',
       });
+      console.error('Token verification failed:', error.message);
       return next(new ErrorResponse('Not authorized to access this route', 401));
     }
   } catch (error) {
@@ -79,6 +100,7 @@ export const protect = async (req, res, next) => {
       error: error.message,
       stack: error.stack,
     });
+    console.error('Auth middleware general error:', error.message);
     next(error);
   }
 };

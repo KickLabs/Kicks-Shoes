@@ -9,6 +9,7 @@ const ListingPage = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const isNewParam = queryParams.get('isNew') === 'true';
+  const isFlashSaleParam = queryParams.get('isFlashSale') === 'true';
 
   const [products, setProducts] = useState([]);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -54,7 +55,9 @@ const ListingPage = () => {
         params.minPrice = newFilters.minPrice;
       if (newFilters.maxPrice !== undefined && newFilters.maxPrice < 1000)
         params.maxPrice = newFilters.maxPrice;
+      if (newFilters.saleType) params.saleType = newFilters.saleType;
       if (isNewParam) params.isNew = true;
+      if (isFlashSaleParam) params.saleType = 'flash-sale';
 
       console.log('Fetching products with params:', params);
       console.log('Current sortBy:', sortBy);
@@ -73,7 +76,7 @@ const ListingPage = () => {
   useEffect(() => {
     fetchProducts(filters, currentPage);
     // eslint-disable-next-line
-  }, [filters, currentPage, isNewParam, sortBy, sortOrder]);
+  }, [filters, currentPage, isNewParam, isFlashSaleParam, sortBy, sortOrder]);
 
   const handleFilterChange = newFilters => {
     console.log('Filter changed:', newFilters);

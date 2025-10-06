@@ -9,16 +9,22 @@ import ChatWidget from './../common/components/ChatWidget';
 function App() {
   const location = useLocation();
 
-  // Kiểm tra tất cả các route dashboard
+  // Kiểm tra tất cả các route dashboard và livestream host
   const isDashboard = location.pathname.startsWith('/dashboard');
   const isShopDashboard = location.pathname.startsWith('/shop');
   const isAdminDashboard = location.pathname.startsWith('/admin');
   const isDashboardNew = location.pathname.startsWith('/dashboard-new');
   const isLoginAdmin = location.pathname.startsWith('/login-admin');
+  const isLivestreamHost = location.pathname.includes('/livestream/host/');
 
-  // Ẩn header và footer cho tất cả các route dashboard
+  // Ẩn header và footer cho dashboard và livestream host
   const shouldHideHeaderFooter =
-    isDashboard || isShopDashboard || isAdminDashboard || isDashboardNew || isLoginAdmin;
+    isDashboard ||
+    isShopDashboard ||
+    isAdminDashboard ||
+    isDashboardNew ||
+    isLoginAdmin ||
+    isLivestreamHost;
 
   return (
     <AuthProvider>
@@ -91,7 +97,7 @@ function App() {
           {!shouldHideHeaderFooter && <AppHeader />}
           <Outlet />
           {!shouldHideHeaderFooter && <Footer />}
-          <ChatWidget />
+          {!isLivestreamHost && <ChatWidget />}
         </div>
       </ConfigProvider>
     </AuthProvider>

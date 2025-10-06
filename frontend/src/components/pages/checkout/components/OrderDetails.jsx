@@ -1,5 +1,6 @@
 import { Card, Typography, Row, Col, Image, Space, Divider, Input, Tag } from 'antd';
 import { formatPrice } from '../../../../utils/StringFormat';
+import { useFlashSales } from '../../../../hooks/useFlashSales';
 import './OrderDetails.css';
 
 const { Title, Text } = Typography;
@@ -12,6 +13,8 @@ export default function OrderDetails({
   paymentStatus,
   isBuyNow = false,
 }) {
+  const { getProductFlashSale } = useFlashSales();
+
   console.log('OrderDetails Debug:', {
     products: products?.length || 0,
     isBuyNow,
@@ -28,7 +31,7 @@ export default function OrderDetails({
           console.log(`Processing product ${idx}:`, product);
 
           // Handle both cart items and buy now items
-          let prod, priceRegular, priceDiscount, isDiscount;
+          let prod, priceRegular, priceDiscount, isDiscount, isFlashSale, flashSalePrice;
 
           if (isBuyNow && product.productDetails) {
             // Buy now item with productDetails
@@ -44,15 +47,25 @@ export default function OrderDetails({
                 discountPercent: 0,
               },
             };
-            isDiscount = prod.price?.isOnSale && prod.price?.discountPercent;
-            priceRegular = prod.price?.regular || product.price;
-            priceDiscount = isDiscount
-              ? priceRegular * (1 - prod.price.discountPercent / 100)
-              : priceRegular;
           } else {
             // Regular cart item
             console.log('Processing as cart item');
             prod = product.product || product;
+          }
+
+          // Check for flash sale first
+          const flashSaleInfo = getProductFlashSale(prod._id);
+          isFlashSale = !!flashSaleInfo;
+
+          if (isFlashSale) {
+            // Flash sale has highest priority
+            priceRegular = prod.finalPrice || prod.price?.regular || prod.price;
+            flashSalePrice = flashSaleInfo.flashPrice;
+            priceDiscount = flashSalePrice;
+            isDiscount = true;
+            console.log('Flash sale applied:', { priceRegular, flashSalePrice });
+          } else {
+            // Regular sale logic
             isDiscount = prod.price?.isOnSale && prod.price?.discountPercent;
             priceRegular = prod.price?.regular || prod.price;
             priceDiscount = isDiscount
@@ -93,7 +106,20 @@ export default function OrderDetails({
                   <Text strong>Quantity {product.quantity}</Text>
                 </Space>
                 <div>
-                  {isDiscount ? (
+                  {isFlashSale ? (
+                    <>
+                      <Tag color="red" style={{ marginBottom: 4, fontSize: 12 }}>
+                        FLASH SALE
+                      </Tag>
+                      <br />
+                      <Text strong style={{ fontSize: 20, color: '#ff4757', marginRight: 8 }}>
+                        {formatPrice(flashSalePrice)}
+                      </Text>
+                      <Text delete style={{ fontSize: 16, marginLeft: 8 }}>
+                        {formatPrice(priceRegular)}
+                      </Text>
+                    </>
+                  ) : isDiscount ? (
                     <>
                       <Text
                         strong
@@ -101,7 +127,6 @@ export default function OrderDetails({
                       >
                         {formatPrice(priceDiscount)}
                       </Text>
-
                       <Text delete style={{ fontSize: 16, marginLeft: 8 }}>
                         {formatPrice(priceRegular)}
                       </Text>

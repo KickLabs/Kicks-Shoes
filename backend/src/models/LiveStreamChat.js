@@ -154,6 +154,37 @@ const liveStreamChatSchema = new mongoose.Schema(
       },
       data: mongoose.Schema.Types.Mixed,
     },
+
+    // Order detection metadata
+    orderDetection: {
+      isAnalyzed: {
+        type: Boolean,
+        default: false,
+        index: true,
+      },
+      isPotentialOrder: {
+        type: Boolean,
+        default: false,
+        index: true,
+      },
+      confidence: {
+        type: Number,
+        min: 0,
+        max: 1,
+        default: 0,
+      },
+      detectedKeywords: [String],
+      phoneNumbers: [String],
+      potentialOrderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'PotentialOrder',
+        default: null,
+      },
+      analyzedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,
@@ -285,6 +316,25 @@ liveStreamChatSchema.methods.editMessage = function (newContent) {
     this.edited.originalContent = this.content;
   }
   this.content = newContent;
+  return this.save();
+};
+
+liveStreamChatSchema.methods.markAsAnalyzed = function (detectionResult) {
+  this.orderDetection.isAnalyzed = true;
+  this.orderDetection.analyzedAt = new Date();
+
+  if (detectionResult && detectionResult.isOrder) {
+    this.orderDetection.isPotentialOrder = true;
+    this.orderDetection.confidence = detectionResult.confidence;
+    this.orderDetection.detectedKeywords = detectionResult.data.detectionData.detectedKeywords;
+    this.orderDetection.phoneNumbers = detectionResult.data.detectionData.phoneMatches;
+  }
+
+  return this.save();
+};
+
+liveStreamChatSchema.methods.linkToPotentialOrder = function (potentialOrderId) {
+  this.orderDetection.potentialOrderId = potentialOrderId;
   return this.save();
 };
 

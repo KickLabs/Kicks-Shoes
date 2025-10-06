@@ -18,6 +18,8 @@
 .header-left {
   flex: 1;
   justify-content: flex-start;
+  position: relative;
+  z-index: 2;
 }
 
 .header-center {
@@ -29,6 +31,7 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
+  pointer-events: none; /* show logo above but do not block menu clicks */
 }
 
 .logo-img {
@@ -43,6 +46,8 @@
 .header-right {
   flex: 1;
   justify-content: flex-end;
+  position: relative;
+  z-index: 2;
 }
 
 .header-icon {
@@ -94,8 +99,19 @@
   object-fit: cover;
 }
 
-.header-search-result-item span {
-  font-weight: 500;
-  font-size: 18px;
-  color: #232321;
+.header-menu .ant-menu-item-selected {
+  border-bottom-color: #4361ee !important;
+  color: #4361ee !important;
+}
+
+.header-menu .ant-menu-item-selected .anticon {
+  color: #4361ee !important;
+}
+
+.header-menu .ant-menu-item:hover {
+  color: #4361ee !important;
+}
+
+.header-menu .ant-menu-item:hover .anticon {
+  color: #4361ee !important;
 }

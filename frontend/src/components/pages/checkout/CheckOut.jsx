@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import CheckoutForm from './components/CheckOutForm';
 import OrderSummary from './components/OrderSummary';
 import OrderDetails from './components/OrderDetails';
+import { useFlashSales } from '../../../hooks/useFlashSales';
 import './CheckOut.css';
 import { useSelector } from 'react-redux';
 
@@ -11,6 +12,7 @@ export default function CheckoutPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const cartItems = useSelector(state => state.cart.items);
+  const { getProductFlashSale } = useFlashSales();
   const [deliveryMethod, setDeliveryMethod] = useState('standard');
   const [discount, setDiscount] = useState(0);
   const [discountCode, setDiscountCode] = useState('');
@@ -121,7 +123,33 @@ export default function CheckoutPage() {
 
   const subtotal = itemsToProcess.reduce((sum, item) => {
     let price = 0;
-    if (item.product && item.product.price) {
+    let productId = null;
+
+    // Get product ID
+    if (isBuyNow && item.productDetails) {
+      productId = item.product;
+    } else if (item.product) {
+      productId = item.product._id;
+    }
+
+    // Check for flash sale first
+    if (productId) {
+      const flashSaleInfo = getProductFlashSale(productId);
+      if (flashSaleInfo) {
+        price = flashSaleInfo.flashPrice;
+        console.log('Flash sale price applied:', { productId, flashSalePrice: price });
+      } else if (item.product && item.product.price) {
+        // Regular sale logic
+        if (item.product.price.isOnSale && item.product.price.discountPercent) {
+          price = item.product.price.regular * (1 - item.product.price.discountPercent / 100);
+        } else {
+          price = item.product.price.regular;
+        }
+      } else if (item.price) {
+        price = item.price;
+      }
+    } else if (item.product && item.product.price) {
+      // Regular sale logic
       if (item.product.price.isOnSale && item.product.price.discountPercent) {
         price = item.product.price.regular * (1 - item.product.price.discountPercent / 100);
       } else {
@@ -130,6 +158,7 @@ export default function CheckoutPage() {
     } else if (item.price) {
       price = item.price;
     }
+
     return sum + price * (item.quantity || 1);
   }, 0);
 

@@ -48,6 +48,17 @@ import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
 import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
+import blogRoutes from './routes/blogRoutes.js';
+import blogCommentRoutes from './routes/blogCommentRoutes.js';
+import potentialOrderRoutes from './routes/potentialOrderRoutes.js'; // Added Potential Order routes
+import tryonRoutes from './routes/tryonRoutes.js';
+import flashSaleRoutes from './routes/flashSaleRoutes.js'; // Added Flash Sale routes
+import logger from './utils/logger.js';
+import { setupUploadDirectories } from './utils/setupUploads.js';
+import { startDiscountStatusUpdateCron, startFlashSaleStatusUpdateCron } from './utils/cronJobs.js';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import chatRoutes from './routes/chatRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -63,9 +74,54 @@ const app = express();
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Apply CORS middleware first - this should handle everything
 app.use(corsMiddleware);
+
+// Simple request logging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} from ${req.headers.origin || 'unknown'}`);
+  next();
+});
+
+// Fallback CORS headers (backup if cors middleware fails)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  // List of allowed origins
+  const allowedOrigins = [
+    'https://kicks-shoes-2025.web.app',
+    'https://kicks-shoes-2025.firebaseapp.com',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+  ];
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type,Authorization,X-Requested-With,Accept,Origin'
+    );
+  }
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Max-Age', '86400');
+    return res.status(200).end();
+  }
+
+  next();
+});
+
 app.use(morgan('dev'));
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 app.use(compression());
 
 // Serve static files from uploads directory
@@ -96,10 +152,15 @@ app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
 app.use('/api/payos', payosRoutes); // Added PayOS payment routes
 app.use('/api/chat', chatRoutes);
 app.use('/api/livestream', livestreamRoutes); // Added LiveStream routes
+app.use('/api/blogs', blogRoutes);
+app.use('/api/blog-comments', blogCommentRoutes);
+app.use('/api/potential-orders', potentialOrderRoutes); // Added Potential Order routes
 app.use('/api/tryon', tryonRoutes);
+app.use('/api/flash-sales', flashSaleRoutes); // Added Flash Sale routes
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
+startFlashSaleStatusUpdateCron();
 
 // Error handler
 app.use(errorHandler);
