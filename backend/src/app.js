@@ -45,20 +45,13 @@ import tryonRoutes from './routes/tryonRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
-import { startDiscountStatusUpdateCron } from './utils/cronJobs.js';
-import logger from './utils/logger.js';
-import { setupUploadDirectories } from './utils/setupUploads.js';
 import blogRoutes from './routes/blogRoutes.js';
 import blogCommentRoutes from './routes/blogCommentRoutes.js';
 import potentialOrderRoutes from './routes/potentialOrderRoutes.js'; // Added Potential Order routes
-import tryonRoutes from './routes/tryonRoutes.js';
 import flashSaleRoutes from './routes/flashSaleRoutes.js'; // Added Flash Sale routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron, startFlashSaleStatusUpdateCron } from './utils/cronJobs.js';
-import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
-import chatRoutes from './routes/chatRoutes.js';
 
 // Load environment variables
 dotenv.config();
