@@ -25,6 +25,7 @@ jobs:
 
       - name: npm install, build, and test
         run: |
+          cd backend
           npm install
           npm run build --if-present
           npm run test --if-present
@@ -33,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: backend
 
   deploy:
     runs-on: ubuntu-latest
@@ -47,7 +48,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-      
+
+      - name: Set up Node.js version for deployment
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+
+      - name: Install production dependencies
+        run: |
+          npm ci --only=production
+          npm run postinstall --if-present
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -62,4 +73,4 @@ jobs:
           app-name: 'kicks-shoes-backend'
           slot-name: 'Production'
           package: .
-          
+          startup-command: 'npm start'
