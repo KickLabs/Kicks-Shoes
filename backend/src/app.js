@@ -87,7 +87,10 @@ app.use((req, res, next) => {
     'http://localhost:5173',
     'http://localhost:3000',
     'http://127.0.0.1:5173',
-  ];
+    // Azure App Service domains
+    process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null,
+    process.env.WEBSITE_HOSTNAME ? `http://${process.env.WEBSITE_HOSTNAME}` : null,
+  ].filter(Boolean);
 
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -157,7 +160,7 @@ startFlashSaleStatusUpdateCron();
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0'; // Cho phép lắng nghe mọi địa chỉ mạng
+const HOST = process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : 'localhost'; // Azure App Service compatibility
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
@@ -172,7 +175,10 @@ const io = new SocketIOServer(server, {
         'http://127.0.0.1:5173',
         'https://kicks-shoes-2025.web.app',
         'https://kicks-shoes-2025.firebaseapp.com',
-      ];
+        // Azure App Service domains
+        process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null,
+        process.env.WEBSITE_HOSTNAME ? `http://${process.env.WEBSITE_HOSTNAME}` : null,
+      ].filter(Boolean);
 
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);

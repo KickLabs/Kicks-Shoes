@@ -19,6 +19,12 @@ import '../account.css';
 import TabHeader from '../../../common/components/TabHeader';
 import { useAuth } from '../../../../contexts/AuthContext';
 import dayjs from 'dayjs';
+import {
+  fetchProvinces,
+  fetchWards,
+  formatProvinceName,
+  formatWardName,
+} from '../../../../utils/vietnamProvinceApi';
 
 export default function ProfileTab() {
   const { user, updateProfile } = useAuth();
@@ -28,6 +34,10 @@ export default function ProfileTab() {
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [totalPoints, setTotalPoints] = useState(0);
   const navigate = useNavigate();
+  const [provinces, setProvinces] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingWards, setLoadingWards] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -44,6 +54,49 @@ export default function ProfileTab() {
       fetchTotalPoints();
     }
   }, [user, form]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingProvinces(true);
+        const data = await fetchProvinces();
+        if (mounted) setProvinces(data);
+      } catch (e) {
+      } finally {
+        if (mounted) setLoadingProvinces(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleProvinceChange = async value => {
+    form.setFieldsValue({
+      provinceCode: value,
+      wardCode: undefined,
+      provinceName: undefined,
+      wardName: undefined,
+    });
+    const province = provinces.find(p => String(p.code) === String(value));
+    form.setFieldsValue({ provinceName: formatProvinceName(province) });
+    try {
+      setLoadingWards(true);
+      const wardList = await fetchWards(value);
+      setWards(wardList);
+    } catch (e) {
+      setWards([]);
+    } finally {
+      setLoadingWards(false);
+    }
+  };
+
+  const handleWardChange = value => {
+    form.setFieldsValue({ wardCode: value });
+    const ward = wards.find(w => String(w.code) === String(value));
+    form.setFieldsValue({ wardName: formatWardName(ward) });
+  };
 
   const fetchTotalPoints = async () => {
     try {
@@ -172,12 +225,16 @@ export default function ProfileTab() {
       const formData = new FormData();
 
       // Thêm các giá trị form vào FormData
-      Object.keys(values).forEach(key => {
-        if (values[key] !== undefined && values[key] !== null) {
+      const composedAddress = [values.address, values.wardName, values.provinceName]
+        .filter(Boolean)
+        .join(', ');
+      const finalValues = { ...values, address: composedAddress };
+      Object.keys(finalValues).forEach(key => {
+        if (finalValues[key] !== undefined && finalValues[key] !== null) {
           if (key === 'dateOfBirth') {
-            formData.append(key, values[key].toISOString());
+            formData.append(key, finalValues[key].toISOString());
           } else {
-            formData.append(key, values[key]);
+            formData.append(key, finalValues[key]);
           }
         }
       });
@@ -513,6 +570,35 @@ export default function ProfileTab() {
                   </label>
                 }
               >
+                <Input placeholder="Detailed Address (street, building, etc.)" />
+              </Form.Item>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <Form.Item name="provinceCode" style={{ flex: 1 }}>
+                  <Select
+                    showSearch
+                    placeholder="Select Province/City"
+                    loading={loadingProvinces}
+                    optionFilterProp="label"
+                    onChange={handleProvinceChange}
+                    options={provinces.map(p => ({ label: formatProvinceName(p), value: p.code }))}
+                  />
+                </Form.Item>
+                <Form.Item name="wardCode" style={{ flex: 1 }}>
+                  <Select
+                    showSearch
+                    placeholder="Select Ward/Commune"
+                    disabled={!form.getFieldValue('provinceCode')}
+                    loading={loadingWards}
+                    optionFilterProp="label"
+                    onChange={handleWardChange}
+                    options={wards.map(w => ({ label: formatWardName(w), value: w.code }))}
+                  />
+                </Form.Item>
+              </div>
+              <Form.Item name="provinceName" hidden>
+                <Input />
+              </Form.Item>
+              <Form.Item name="wardName" hidden>
                 <Input />
               </Form.Item>
               <Form.Item

@@ -8,7 +8,8 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "lint": "eslint .",
-    "test": "jest"
+    "test": "jest",
+    "postinstall": "npm install --production"
   },
   "dependencies": {
     "@google/genai": "^1.19.0",

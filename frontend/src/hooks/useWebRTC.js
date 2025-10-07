@@ -35,10 +35,22 @@ export const useWebRTC = (roomId, role, userId) => {
   useEffect(() => {
     if (!roomId || !role) return;
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
-    socketRef.current = io(`${socketUrl}/livestream`, {
-      transports: ['websocket'],
+    // Prefer env, else derive from current origin (dev vite: 5173 -> 3000)
+    const derivedDefault = window.location.origin.replace(':5173', ':3000');
+    const rawBaseUrl = import.meta.env.VITE_SOCKET_URL || derivedDefault || 'http://localhost:3000';
+    // Normalize base URL and namespace to avoid Invalid namespace errors
+    const baseUrl = rawBaseUrl.replace(/\/$/, '');
+    const namespaceUrl = baseUrl.endsWith('/livestream') ? baseUrl : `${baseUrl}/livestream`;
+    console.log('Connecting to livestream namespace:', namespaceUrl);
+    socketRef.current = io(namespaceUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      timeout: 10000,
       forceNew: true,
+      path: '/socket.io',
     });
 
     const socket = socketRef.current;
@@ -60,6 +72,17 @@ export const useWebRTC = (roomId, role, userId) => {
     socket.on('disconnect', () => {
       setIsConnected(false);
       setConnectionState('disconnected');
+    });
+
+    socket.on('connect_error', err => {
+      console.error('Livestream socket connect_error:', err?.message || err);
+      console.error('Socket connection options:', {
+        url: socket.io.uri,
+        path: socket.io.opts?.path,
+        transports: socket.io.opts?.transports,
+      });
+      setConnectionState('error');
+      setError(err?.message || 'Socket connection error');
     });
 
     socket.on('error', errorData => {
