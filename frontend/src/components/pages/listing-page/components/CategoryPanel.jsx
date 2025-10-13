@@ -23,22 +23,18 @@ const CategoryPanel = ({ selectedCategory, onCategorySelect, productType = 'all'
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axiosInstance.get('/categories');
-        const allCategories = response.data.data || [];
+        // Build API endpoint with productType parameter
+        const endpoint =
+          productType !== 'all' ? `/categories?productType=${productType}` : '/categories';
 
-        // Filter categories based on product type
-        let filteredCategories = allCategories;
+        const response = await axiosInstance.get(endpoint);
+        const categories = response.data.data || [];
 
-        if (productType !== 'all') {
-          // Filter categories that match the product type
-          filteredCategories = allCategories.filter(cat => {
-            // Assuming categories have a productType field or we can infer from the name
-            // You may need to adjust this logic based on your category schema
-            return cat.productType === productType || !cat.productType;
-          });
-        }
+        console.log('CategoryPanel - productType:', productType);
+        console.log('CategoryPanel - endpoint:', endpoint);
+        console.log('CategoryPanel - categories:', categories);
 
-        setCategories(filteredCategories);
+        setCategories(categories);
       } catch (error) {
         console.error('Failed to fetch categories', error);
         message.error('Could not load categories');

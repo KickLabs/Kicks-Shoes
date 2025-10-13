@@ -8,15 +8,19 @@
  * and error management.
  */
 
-import { CategoryService } from "../services/category.service.js";
-import { asyncHandler } from "../middlewares/async.middleware.js";
-import { ErrorResponse } from "../utils/errorResponse.js";
-import logger from "../utils/logger.js";
+import { CategoryService } from '../services/category.service.js';
+import { asyncHandler } from '../middlewares/async.middleware.js';
+import { ErrorResponse } from '../utils/errorResponse.js';
+import logger from '../utils/logger.js';
 
 // Get all categories
 export const getCategories = asyncHandler(async (req, res) => {
-  logger.info("Getting all categories");
-  const categories = await CategoryService.getCategories();
+  logger.info('Getting all categories', { query: req.query });
+
+  // Get query parameters
+  const { productType } = req.query;
+
+  const categories = await CategoryService.getCategories(productType);
 
   res.status(200).json({
     success: true,
@@ -41,7 +45,7 @@ export const getCategory = asyncHandler(async (req, res, next) => {
 
 // Create new category
 export const createCategory = asyncHandler(async (req, res) => {
-  logger.info("Creating new category", { categoryData: req.body });
+  logger.info('Creating new category', { categoryData: req.body });
   const category = await CategoryService.createCategory(req.body);
 
   res.status(201).json({
@@ -53,14 +57,11 @@ export const createCategory = asyncHandler(async (req, res) => {
 // Update category
 export const updateCategory = asyncHandler(async (req, res, next) => {
   try {
-    logger.info("Updating category", {
+    logger.info('Updating category', {
       categoryId: req.params.id,
       updateData: req.body,
     });
-    const category = await CategoryService.updateCategory(
-      req.params.id,
-      req.body
-    );
+    const category = await CategoryService.updateCategory(req.params.id, req.body);
 
     res.status(200).json({
       success: true,
@@ -74,7 +75,7 @@ export const updateCategory = asyncHandler(async (req, res, next) => {
 // Delete category
 export const deleteCategory = asyncHandler(async (req, res, next) => {
   try {
-    logger.info("Deleting category", { categoryId: req.params.id });
+    logger.info('Deleting category', { categoryId: req.params.id });
     await CategoryService.deleteCategory(req.params.id);
 
     res.status(200).json({
