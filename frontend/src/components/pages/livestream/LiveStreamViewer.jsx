@@ -46,6 +46,7 @@ const LiveStreamViewer = () => {
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
   const [hostLeft, setHostLeft] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   const {
     isConnected,
@@ -55,6 +56,7 @@ const LiveStreamViewer = () => {
     viewerCount,
     messages,
     sendChatMessage,
+    remoteStream,
   } = useWebRTC(roomId, 'viewer', user?.id);
 
   // Load stream data
@@ -104,6 +106,65 @@ const LiveStreamViewer = () => {
       setIsLive(false);
     }
   }, [connectionState]);
+
+  // Force play video when remote stream is available
+  useEffect(() => {
+    if (remoteStream && remoteVideoRef.current) {
+      console.log('🎬 Remote stream detected, forcing video play');
+      const video = remoteVideoRef.current;
+
+      // Check if video is already playing
+      if (!video.paused && video.readyState >= 2) {
+        console.log('✅ Video is already playing');
+        return;
+      }
+
+      // Multiple attempts to ensure video plays
+      const attemptPlay = (attempt = 1) => {
+        console.log(`🎬 Attempt ${attempt}: Playing video`);
+
+        // Ensure video is muted for autoplay
+        video.muted = true;
+
+        // Check video state
+        console.log('📹 Video state:', {
+          paused: video.paused,
+          readyState: video.readyState,
+          networkState: video.networkState,
+          currentTime: video.currentTime,
+          duration: video.duration,
+          srcObject: !!video.srcObject,
+        });
+
+        video
+          .play()
+          .then(() => {
+            console.log(`✅ Video play successful on attempt ${attempt}`);
+            // Check if video is actually playing
+            setTimeout(() => {
+              console.log('📹 Post-play state:', {
+                paused: video.paused,
+                currentTime: video.currentTime,
+                readyState: video.readyState,
+              });
+            }, 100);
+          })
+          .catch(err => {
+            console.warn(`⚠️ Play attempt ${attempt} failed:`, err?.message || err);
+            if (attempt < 5) {
+              setTimeout(() => attemptPlay(attempt + 1), 1000 * attempt);
+            } else {
+              console.error('❌ All play attempts failed, video may need user interaction');
+            }
+          });
+      };
+
+      // Wait a bit for stream to be ready
+      setTimeout(() => {
+        attemptPlay();
+      }, 500);
+    }
+  }, [remoteStream]);
 
   const handleShareStream = () => {
     const streamUrl = `${window.location.origin}/livestream/${roomId}`;
@@ -221,10 +282,69 @@ const LiveStreamViewer = () => {
             <video
               ref={remoteVideoRef}
               autoPlay
+              muted
               playsInline
               controls
               className="viewer-remote-video"
+              onLoadStart={() => console.log('📹 Video load started')}
+              onLoadedMetadata={() => console.log('📹 Video metadata loaded')}
+              onCanPlay={() => {
+                console.log('📹 Video can play');
+                setVideoPlaying(true);
+              }}
+              onPlay={() => {
+                console.log('📹 Video started playing');
+                setVideoPlaying(true);
+              }}
+              onPause={() => {
+                console.log('📹 Video paused');
+                setVideoPlaying(false);
+              }}
+              onError={e => {
+                console.error('📹 Video error:', e);
+                setVideoPlaying(false);
+              }}
+              onWaiting={() => {
+                console.log('📹 Video waiting for data');
+                setVideoPlaying(false);
+              }}
+              onPlaying={() => {
+                console.log('📹 Video is playing');
+                setVideoPlaying(true);
+              }}
             />
+            <div
+              style={{ position: 'absolute', right: 16, bottom: 16, display: 'flex', gap: '8px' }}
+            >
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => {
+                  if (remoteVideoRef.current) {
+                    console.log('🔊 User clicked unmute');
+                    remoteVideoRef.current.muted = false;
+                    remoteVideoRef.current.play().catch(e => {
+                      console.warn('⚠️ Unmute play failed:', e);
+                    });
+                  }
+                }}
+              >
+                🔊 Unmute
+              </Button>
+              <Button
+                size="small"
+                onClick={() => {
+                  if (remoteVideoRef.current) {
+                    console.log('▶️ User clicked play');
+                    remoteVideoRef.current.play().catch(e => {
+                      console.warn('⚠️ Manual play failed:', e);
+                    });
+                  }
+                }}
+              >
+                ▶️ Play
+              </Button>
+            </div>
             {(!isLive || hostLeft) && (
               <div className="viewer-video-overlay">
                 <div className="viewer-overlay-content">
@@ -241,6 +361,14 @@ const LiveStreamViewer = () => {
                       </span>
                     </>
                   )}
+                </div>
+              </div>
+            )}
+            {isLive && !hostLeft && !videoPlaying && (
+              <div className="viewer-video-overlay">
+                <div className="viewer-overlay-content">
+                  <span className="viewer-overlay-title">Connecting to stream...</span>
+                  <span className="viewer-overlay-subtitle">Video is loading, please wait</span>
                 </div>
               </div>
             )}

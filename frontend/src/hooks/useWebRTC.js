@@ -7,13 +7,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
-
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  // Add TURN servers here if needed
-  // { urls: 'turn:your.turn.server:3478', username: 'user', credential: 'pass' }
-];
+import { ICE_SERVERS, PEER_CONNECTION_CONFIG, SOCKET_CONFIG } from '../config/webrtc.config';
 
 export const useWebRTC = (roomId, role, userId) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -43,11 +37,9 @@ export const useWebRTC = (roomId, role, userId) => {
     const namespaceUrl = baseUrl.endsWith('/livestream') ? baseUrl : `${baseUrl}/livestream`;
     console.log('Connecting to livestream namespace:', namespaceUrl);
     socketRef.current = io(namespaceUrl, {
-      transports: ['websocket', 'polling'],
+      ...SOCKET_CONFIG,
       withCredentials: true,
-      reconnection: true,
       reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
       timeout: 10000,
       forceNew: true,
       path: '/socket.io',
@@ -215,7 +207,7 @@ export const useWebRTC = (roomId, role, userId) => {
 
   // Create peer connection
   const createPeerConnection = useCallback(viewerId => {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const pc = new RTCPeerConnection(PEER_CONNECTION_CONFIG);
 
     pc.onicecandidate = event => {
       if (event.candidate && socketRef.current) {
@@ -268,13 +260,52 @@ export const useWebRTC = (roomId, role, userId) => {
     async offerData => {
       if (role !== 'viewer') return;
 
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      const pc = new RTCPeerConnection(PEER_CONNECTION_CONFIG);
       peerConnectionRef.current = pc;
 
       pc.ontrack = event => {
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = event.streams[0];
+        if (remoteVideoRef.current && event.streams && event.streams[0]) {
+          console.log('📹 Received remote track, setting video stream');
+          const video = remoteVideoRef.current;
+
+          // Stop any current playback first
+          video.pause();
+          video.load();
+
+          // Set the stream
+          video.srcObject = event.streams[0];
           remoteStreamRef.current = event.streams[0];
+
+          // Ensure muted for autoplay policy compliance
+          video.muted = true;
+
+          // Wait for metadata to load, then play
+          const handleLoadedMetadata = () => {
+            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            console.log('📹 Video metadata loaded, attempting play');
+
+            video
+              .play()
+              .then(() => {
+                console.log('✅ Remote video started playing successfully');
+              })
+              .catch(err => {
+                console.warn('⚠️ Remote video autoplay blocked:', err?.message || err);
+                // Try again after a short delay
+                setTimeout(() => {
+                  video.play().catch(e => {
+                    console.warn('⚠️ Second play attempt failed:', e?.message || e);
+                  });
+                }, 1000);
+              });
+          };
+
+          video.addEventListener('loadedmetadata', handleLoadedMetadata);
+
+          // Fallback: try to play immediately if metadata is already loaded
+          if (video.readyState >= 1) {
+            handleLoadedMetadata();
+          }
         }
       };
 

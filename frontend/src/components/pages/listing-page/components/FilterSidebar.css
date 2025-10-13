@@ -3,7 +3,7 @@
   background-color: #e7e7e3;
   padding: 24px;
   border-radius: 12px;
-  font-family: "Poppins", sans-serif;
+  font-family: 'Poppins', sans-serif;
 }
 
 .filter-sidebar__title {
@@ -29,13 +29,21 @@
 }
 
 .size-button {
-  width: 40px;
+  min-width: 40px;
   height: 40px;
+  padding: 0 8px;
   border: 1px solid #ccc;
   background-color: white;
   border-radius: 6px;
   font-weight: 500;
   cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.size-button:hover {
+  border-color: #4a69e2;
+  transform: translateY(-1px);
 }
 
 .size-button.active {
