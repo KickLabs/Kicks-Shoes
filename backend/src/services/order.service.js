@@ -6,10 +6,10 @@
  * It provides methods for creating, updating, and deleting orders.
  */
 
+import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
 import FlashSale from '../models/FlashSale.js';
-import mongoose from 'mongoose';
 import logger from '../utils/logger.js';
 import { validateDiscountCode } from './discount.service.js';
 

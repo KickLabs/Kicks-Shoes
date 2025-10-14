@@ -30,13 +30,11 @@ export const createBlog = async (req, res) => {
     // Ensure slug
     if (!data.slug) {
       if (!data.title) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: 'Validation failed',
-            errors: [{ field: 'title', message: 'Title is required' }],
-          });
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: [{ field: 'title', message: 'Title is required' }],
+        });
       }
       let base = slugify(data.title);
       if (!base) base = Math.random().toString(36).slice(2, 8);
@@ -62,13 +60,11 @@ export const createBlog = async (req, res) => {
   } catch (error) {
     logger.error('Error creating blog', { error: error.message });
     if (error.name === 'ValidationError') {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: 'Validation failed',
-          errors: Object.values(error.errors).map(e => ({ field: e.path, message: e.message })),
-        });
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: Object.values(error.errors).map(e => ({ field: e.path, message: e.message })),
+      });
     }
     if (error.code === 11000) {
       const duplicateField = Object.keys(error.keyPattern || {})[0];
