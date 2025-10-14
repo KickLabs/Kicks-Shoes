@@ -53,6 +53,7 @@ const SocialButtons = () => {
           email: data.email,
           name: data.name,
           picture: data.picture,
+          rememberMe: true, // Social logins are always "remember me"
         });
 
         const result = res.data;
@@ -109,6 +110,7 @@ const SocialButtons = () => {
         email: response.email,
         name: response.name,
         picture: response.picture?.data?.url,
+        rememberMe: true, // Social logins are always "remember me"
       });
 
       const result = res.data;

@@ -5,6 +5,7 @@ import { VideoCameraOutlined, PhoneOutlined } from '@ant-design/icons';
 import io from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import api from '../config/api.config';
+import { SOCKET_CONFIG } from '../config/webrtc.config';
 
 const VideoCallContext = createContext();
 
@@ -12,7 +13,7 @@ const SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL ||
   (window.location.hostname === 'localhost'
     ? 'http://localhost:3000'
-    : 'https://kicks-shoes-backend-2025-509fffbae16a.herokuapp.com');
+    : 'https://kicks-shoes-backend.azurewebsites.net');
 
 export const VideoCallProvider = ({ children }) => {
   const { user } = useAuth();
@@ -44,7 +45,7 @@ export const VideoCallProvider = ({ children }) => {
   useEffect(() => {
     if (user?._id) {
       console.log('🌐 Initializing global video call socket for user:', user._id);
-      socketRef.current = io(SOCKET_URL, { transports: ['websocket'] });
+      socketRef.current = io(SOCKET_URL, SOCKET_CONFIG);
 
       socketRef.current.on('connect', () => {
         console.log('🌐 Global video call socket connected:', socketRef.current.id);

@@ -30,6 +30,12 @@ import io from 'socket.io-client';
 import { useAuth } from '../../../contexts/AuthContext';
 import aiChatService from '../../../services/aiChatService';
 import api from '../../../config/api.config';
+import {
+  ICE_SERVERS,
+  PEER_CONNECTION_CONFIG,
+  OFFER_OPTIONS,
+  SOCKET_CONFIG,
+} from '../../../config/webrtc.config';
 import './ChatPage.css';
 
 const { Text } = Typography;
@@ -38,7 +44,7 @@ const SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL ||
   (window.location.hostname === 'localhost'
     ? 'http://localhost:3000'
-    : 'https://kicks-shoes-backend-2025-509fffbae16a.herokuapp.com');
+    : 'https://kicks-shoes-backend.azurewebsites.net');
 
 const ChatPage = props => {
   const { user } = useAuth();
@@ -78,6 +84,8 @@ const ChatPage = props => {
   const [incomingCallData, setIncomingCallData] = useState(null);
   const [localVideoStream, setLocalVideoStream] = useState(null);
   const [remoteVideoStream, setRemoteVideoStream] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [iceConnectionState, setIceConnectionState] = useState('new');
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const peerConnectionRef = useRef(null);
@@ -107,7 +115,7 @@ const ChatPage = props => {
   // Kết nối socket khi mount
   useEffect(() => {
     console.log('🚀 Initializing socket connection to:', SOCKET_URL);
-    socketRef.current = io(SOCKET_URL, { transports: ['websocket'] });
+    socketRef.current = io(SOCKET_URL, SOCKET_CONFIG);
 
     // Debug socket connection
     socketRef.current.on('connect', () => {
@@ -713,11 +721,7 @@ const ChatPage = props => {
     aiChatService.resetConversation();
   };
 
-  // Video call functions
-  const ICE_SERVERS = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-  ];
+  // Video call functions - using configuration from webrtc.config.js
 
   // Create ringtone audio
   const createRingtone = () => {
@@ -781,7 +785,7 @@ const ChatPage = props => {
   };
 
   const initializePeerConnection = () => {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const pc = new RTCPeerConnection(PEER_CONNECTION_CONFIG);
 
     pc.onicecandidate = event => {
       if (event.candidate && socketRef.current) {
@@ -791,7 +795,11 @@ const ChatPage = props => {
             ? shopUserId
             : selectedChat?.userId || selectedChat?.participants?.find(p => p._id !== shopId)?._id;
 
-        console.log('🧊 Sending ICE candidate:', { from: fromId, to: toId });
+        console.log('🧊 Sending ICE candidate:', {
+          from: fromId,
+          to: toId,
+          candidate: event.candidate,
+        });
 
         socketRef.current.emit('video_call_ice_candidate', {
           from: fromId,
@@ -803,10 +811,35 @@ const ChatPage = props => {
     };
 
     pc.ontrack = event => {
-      if (remoteVideoRef.current) {
+      console.log('📹 Received remote track:', event);
+      if (remoteVideoRef.current && event.streams && event.streams[0]) {
         remoteVideoRef.current.srcObject = event.streams[0];
         setRemoteVideoStream(event.streams[0]);
+        console.log('✅ Remote video stream set');
       }
+    };
+
+    // Enhanced connection state monitoring
+    pc.onconnectionstatechange = () => {
+      console.log('🔗 Peer connection state changed:', pc.connectionState);
+      setConnectionStatus(pc.connectionState);
+      if (pc.connectionState === 'failed') {
+        console.error('❌ Peer connection failed, attempting to restart ICE');
+        pc.restartIce();
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log('🧊 ICE connection state:', pc.iceConnectionState);
+      setIceConnectionState(pc.iceConnectionState);
+      if (pc.iceConnectionState === 'failed') {
+        console.error('❌ ICE connection failed, attempting to restart ICE');
+        pc.restartIce();
+      }
+    };
+
+    pc.onicegatheringstatechange = () => {
+      console.log('🧊 ICE gathering state:', pc.iceGatheringState);
     };
 
     return pc;
@@ -882,8 +915,8 @@ const ChatPage = props => {
         pc.addTrack(track, stream);
       });
 
-      // Create offer
-      const offer = await pc.createOffer();
+      // Create offer with better configuration
+      const offer = await pc.createOffer(OFFER_OPTIONS);
       await pc.setLocalDescription(offer);
 
       // Send call request
@@ -1122,6 +1155,8 @@ const ChatPage = props => {
     setIsVideoCallActive(false);
     setIsIncomingCall(false);
     setIncomingCallData(null);
+    setConnectionStatus('disconnected');
+    setIceConnectionState('new');
 
     // Show end call notification
     if (isVideoCallActive) {
@@ -1584,6 +1619,9 @@ const ChatPage = props => {
               >
                 <VideoCameraOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
                 <div>Đang chờ kết nối...</div>
+                <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
+                  Connection: {connectionStatus} | ICE: {iceConnectionState}
+                </div>
               </div>
             )}
           </div>

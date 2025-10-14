@@ -275,7 +275,7 @@ export const resendOtp = async (req, res, next) => {
  */
 export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     if (!email || !password) {
       return next(new ErrorResponse('Please provide email and password', 400));
@@ -320,11 +320,12 @@ export const login = async (req, res, next) => {
       );
     }
 
-    const accessToken = generateToken({ id: user._id }, process.env.JWT_EXPIRES_IN || '1d');
-    const refreshToken = generateToken(
-      { id: user._id },
-      process.env.JWT_REFRESH_EXPIRES_IN || '7d'
-    );
+    // Generate tokens with different expiration based on rememberMe
+    const accessTokenExpiry = rememberMe ? '30d' : process.env.JWT_EXPIRES_IN || '1d';
+    const refreshTokenExpiry = rememberMe ? '90d' : process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+
+    const accessToken = generateToken({ id: user._id }, accessTokenExpiry);
+    const refreshToken = generateToken({ id: user._id }, refreshTokenExpiry);
 
     user.password = undefined;
 
@@ -357,12 +358,15 @@ export const login = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @returns {Object} Response with success message
  */
-const createTokens = userId => {
+const createTokens = (userId, rememberMe = false) => {
+  const accessTokenExpiry = rememberMe ? '30d' : '1h';
+  const refreshTokenExpiry = rememberMe ? '90d' : '7d';
+
   const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: '1h',
+    expiresIn: accessTokenExpiry,
   });
   const refreshToken = jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: '7d',
+    expiresIn: refreshTokenExpiry,
   });
   return { token, refreshToken };
 };
@@ -377,8 +381,8 @@ const createTokens = userId => {
  */
 export const loginWithGoogle = async (req, res) => {
   try {
-    const { email, name, picture } = req.body;
-    console.log('Google login data received:', { email, name, picture }); // Debug log
+    const { email, name, picture, rememberMe } = req.body;
+    console.log('Google login data received:', { email, name, picture, rememberMe }); // Debug log
 
     if (!email) return res.status(400).json({ message: 'Missing email from Google' });
 
@@ -421,7 +425,7 @@ export const loginWithGoogle = async (req, res) => {
       }
     }
 
-    const { token, refreshToken } = createTokens(user._id);
+    const { token, refreshToken } = createTokens(user._id, rememberMe);
     const userObj = user.toObject();
     delete userObj.password;
     delete userObj.__v;
@@ -452,7 +456,7 @@ export const loginWithGoogle = async (req, res) => {
  */
 export const loginWithFacebook = async (req, res) => {
   try {
-    const { email, name, picture } = req.body;
+    const { email, name, picture, rememberMe } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: 'Missing email from Facebook' });
@@ -495,7 +499,7 @@ export const loginWithFacebook = async (req, res) => {
       }
     }
 
-    const { token, refreshToken } = createTokens(user._id);
+    const { token, refreshToken } = createTokens(user._id, rememberMe);
     const userObj = user.toObject();
     delete userObj.password;
     delete userObj.__v;

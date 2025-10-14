@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TURN Server Test - Kicks Shoes</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .server {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+      }
+      .success {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+      }
+      .error {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+      }
+      .loading {
+        background-color: #fff3cd;
+        border-color: #ffeaa7;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        cursor: pointer;
+      }
+      #results {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧊 TURN Server Connectivity Test</h1>
+    <p>This tool tests TURN server connectivity for WebRTC cross-network streaming.</p>
+
+    <button onclick="testAllServers()">Test All TURN Servers</button>
+    <button onclick="clearResults()">Clear Results</button>
+
+    <div id="results"></div>
+
+    <script>
+       const turnServers = [
+         // ExpressTURN servers (Primary)
+         {
+           name: 'ExpressTURN (UDP)',
+           config: {
+             urls: 'turn:relay1.expressturn.com:3480?transport=udp',
+             username: '000000002075698469',
+             credential: '4roONaZKXyvI3a0oVzVLAOQ3m4U=',
+           },
+         },
+         {
+           name: 'ExpressTURN (TCP)',
+           config: {
+             urls: 'turn:relay1.expressturn.com:3480?transport=tcp',
+             username: '000000002075698469',
+             credential: '4roONaZKXyvI3a0oVzVLAOQ3m4U=',
+           },
+         },
+         {
+           name: 'ExpressTURN (TURNS)',
+           config: {
+             urls: 'turns:relay1.expressturn.com:3480?transport=tcp',
+             username: '000000002075698469',
+             credential: '4roONaZKXyvI3a0oVzVLAOQ3m4U=',
+           },
+         },
+         // Xirsys TURN servers (Backup)
+         {
+           name: 'Xirsys STUN',
+           config: { urls: 'stun:ss-turn1.xirsys.com' },
+         },
+         {
+           name: 'Xirsys TURN (UDP 80)',
+           config: {
+             urls: 'turn:ss-turn1.xirsys.com:80?transport=udp',
+             username: 'C-9cBETPhN6kxM5BJirf7V5K5np3wmggRDUg2UuEb8XuLf283fUyMLnT_LZ9mD4yAAAAAGjso2BDdW9uZ0RR',
+             credential: '32d8ae86-a802-11f0-972d-0242ac140004',
+           },
+         },
+         {
+           name: 'Xirsys TURN (TCP 443)',
+           config: {
+             urls: 'turns:ss-turn1.xirsys.com:443?transport=tcp',
+             username: 'C-9cBETPhN6kxM5BJirf7V5K5np3wmggRDUg2UuEb8XuLf283fUyMLnT_LZ9mD4yAAAAAGjso2BDdW9uZ0RR',
+             credential: '32d8ae86-a802-11f0-972d-0242ac140004',
+           },
+         },
+         // Google STUN (for comparison)
+         {
+           name: 'Google STUN',
+           config: { urls: 'stun:stun.l.google.com:19302' },
+         },
+       ];
+
+      function clearResults() {
+        document.getElementById('results').innerHTML = '';
+      }
+
+      function addResult(serverName, status, message) {
+        const results = document.getElementById('results');
+        const div = document.createElement('div');
+        div.className = `server ${status}`;
+        div.innerHTML = `
+                <h3>${serverName}</h3>
+                <p><strong>Status:</strong> ${status.toUpperCase()}</p>
+                <p><strong>Message:</strong> ${message}</p>
+                <p><strong>Time:</strong> ${new Date().toLocaleTimeString()}</p>
+            `;
+        results.appendChild(div);
+      }
+
+      async function testTurnServer(server) {
+        return new Promise(resolve => {
+          const pc = new RTCPeerConnection({
+            iceServers: [server.config],
+          });
+
+          const timeout = setTimeout(() => {
+            pc.close();
+            resolve({ success: false, message: 'Connection timeout (10s)' });
+          }, 10000);
+
+          pc.onicecandidate = event => {
+            if (event.candidate) {
+              clearTimeout(timeout);
+              pc.close();
+              resolve({
+                success: true,
+                message: `ICE candidate received: ${event.candidate.type} ${event.candidate.protocol}`,
+              });
+            }
+          };
+
+          pc.onicegatheringstatechange = () => {
+            if (pc.iceGatheringState === 'complete') {
+              clearTimeout(timeout);
+              pc.close();
+              resolve({
+                success: false,
+                message: 'ICE gathering completed but no candidates found',
+              });
+            }
+          };
+
+          pc.oniceconnectionstatechange = () => {
+            if (pc.iceConnectionState === 'failed') {
+              clearTimeout(timeout);
+              pc.close();
+              resolve({ success: false, message: 'ICE connection failed' });
+            }
+          };
+
+          // Start ICE gathering
+          pc.createDataChannel('test');
+          pc.createOffer()
+            .then(offer => {
+              return pc.setLocalDescription(offer);
+            })
+            .catch(error => {
+              clearTimeout(timeout);
+              pc.close();
+              resolve({ success: false, message: `Error creating offer: ${error.message}` });
+            });
+        });
+      }
+
+      async function testAllServers() {
+        clearResults();
+
+        for (const server of turnServers) {
+          addResult(server.name, 'loading', 'Testing connection...');
+
+          try {
+            const result = await testTurnServer(server);
+            addResult(server.name, result.success ? 'success' : 'error', result.message);
+          } catch (error) {
+            addResult(server.name, 'error', `Test failed: ${error.message}`);
+          }
+
+          // Small delay between tests
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      // Auto-test on page load
+      window.onload = () => {
+        console.log('🧊 TURN Server Test Tool Loaded');
+        console.log('Click "Test All TURN Servers" to start testing');
+      };
+    </script>
+  </body>
+</html>

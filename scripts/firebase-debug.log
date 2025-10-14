@@ -1,0 +1,36 @@
+[debug] [2025-10-07T12:21:56.531Z] ----------------------------------------------------------------------
+[debug] [2025-10-07T12:21:56.534Z] Command:       C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2025-10-07T12:21:56.534Z] CLI Version:   14.11.0
+[debug] [2025-10-07T12:21:56.534Z] Platform:      win32
+[debug] [2025-10-07T12:21:56.534Z] Node Version:  v20.14.0
+[debug] [2025-10-07T12:21:56.534Z] Time:          Tue Oct 07 2025 19:21:56 GMT+0700 (Indochina Time)
+[debug] [2025-10-07T12:21:56.534Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-10-07T12:21:56.712Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-10-07T12:21:56.716Z] > authorizing via signed-in user (ptientr.dev@gmail.com)
+[debug] [2025-10-07T12:21:56.716Z] [iam] checking project kicks-shoes-2025 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2025-10-07T12:21:56.717Z] Checked if tokens are valid: false, expires at: 1759836249540
+[debug] [2025-10-07T12:21:56.718Z] Checked if tokens are valid: false, expires at: 1759836249540
+[debug] [2025-10-07T12:21:56.718Z] > refreshing access token with scopes: []
+[debug] [2025-10-07T12:21:56.720Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-10-07T12:21:56.720Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-10-07T12:21:57.073Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-10-07T12:21:57.073Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-10-07T12:21:57.103Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/kicks-shoes-2025:testIamPermissions [none]
+[debug] [2025-10-07T12:21:57.103Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/kicks-shoes-2025:testIamPermissions x-goog-quota-user=projects/kicks-shoes-2025
+[debug] [2025-10-07T12:21:57.103Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kicks-shoes-2025:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-10-07T12:21:58.240Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/kicks-shoes-2025:testIamPermissions 200
+[debug] [2025-10-07T12:21:58.240Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kicks-shoes-2025:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-10-07T12:21:58.241Z] Checked if tokens are valid: true, expires at: 1759843316073
+[debug] [2025-10-07T12:21:58.241Z] Checked if tokens are valid: true, expires at: 1759843316073
+[debug] [2025-10-07T12:21:58.241Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/kicks-shoes-2025 [none]
+[debug] [2025-10-07T12:21:58.736Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/kicks-shoes-2025 200
+[debug] [2025-10-07T12:21:58.736Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/kicks-shoes-2025 {"projectId":"kicks-shoes-2025","projectNumber":"731953778338","displayName":"Kicks-Shoes","name":"projects/kicks-shoes-2025","resources":{"hostingSite":"kicks-shoes-2025"},"state":"ACTIVE","etag":"1_0a54cf10-46c0-4892-a1a4-518912f3d788"}
+[info] 
+[info] === Deploying to 'kicks-shoes-2025'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2025-10-07T12:21:58.744Z] Checked if tokens are valid: true, expires at: 1759843316073
+[debug] [2025-10-07T12:21:58.745Z] Checked if tokens are valid: true, expires at: 1759843316073
+[debug] [2025-10-07T12:21:58.745Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/kicks-shoes-2025/versions [none]
+[debug] [2025-10-07T12:21:58.745Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/kicks-shoes-2025/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}

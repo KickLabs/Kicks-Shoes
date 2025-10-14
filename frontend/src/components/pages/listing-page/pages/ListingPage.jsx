@@ -59,15 +59,16 @@ const ListingPage = () => {
       if (isNewParam) params.isNew = true;
       if (isFlashSaleParam) params.saleType = 'flash-sale';
 
-      console.log('Fetching products with params:', params);
-      console.log('Current sortBy:', sortBy);
-      console.log('Current sortOrder:', sortOrder);
-
       const response = await axiosInstance.get('/products', { params });
-      setProducts(response.data.data.products);
-      setTotalProducts(response.data.data.total);
+
+      if (response.data.success) {
+        setProducts(response.data.data.products || []);
+        setTotalProducts(response.data.data.total || 0);
+      }
     } catch (err) {
       console.error('Error fetching products', err);
+      setProducts([]);
+      setTotalProducts(0);
     } finally {
       setLoading(false);
     }
@@ -103,7 +104,7 @@ const ListingPage = () => {
 
   return (
     <div style={{ display: 'flex', padding: 32, gap: 32 }}>
-      <FilterSidebar onFiltersChange={handleFilterChange} />
+      <FilterSidebar onFiltersChange={handleFilterChange} productType="all" />
 
       <div style={{ flex: 1 }}>
         {loading ? (
