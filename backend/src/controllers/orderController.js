@@ -6,19 +6,19 @@
  */
 
 import { body, validationResult } from 'express-validator';
-import { OrderService } from '../services/order.service.js';
-import logger from '../utils/logger.js';
 import Order from '../models/Order.js';
-import EmailService from '../services/email.service.js';
+import Product from '../models/Product.js';
 import User from '../models/User.js';
+import EmailService from '../services/email.service.js';
+import { OrderService } from '../services/order.service.js';
+import * as RewardPointService from '../services/rewardPoint.service.js';
 import {
-  deductRewardPointsForOrder,
   createRewardPointsForOrder,
+  deductRewardPointsForOrder,
   hasOrderEarnedRewardPoints,
 } from '../services/rewardPoint.service.js';
 import VNPayService from '../services/vnpay.service.js';
-import * as RewardPointService from '../services/rewardPoint.service.js';
-import Product from '../models/Product.js';
+import logger from '../utils/logger.js';
 
 // Validation rules for order operations
 const orderValidationRules = {
@@ -28,7 +28,9 @@ const orderValidationRules = {
     body('products.*.quantity').isInt({ min: 1 }).withMessage('Invalid quantity'),
     body('totalAmount').optional().isFloat({ min: 0 }).withMessage('Invalid total amount'),
     body('totalPrice').optional().isFloat({ min: 0 }).withMessage('Invalid total price'),
-    body('paymentMethod').isIn(['vnpay', 'cash_on_delivery']).withMessage('Invalid payment method'),
+    body('paymentMethod')
+      .isIn(['vnpay', 'cash_on_delivery', 'payos'])
+      .withMessage('Invalid payment method'),
     body('shippingAddress').isString().notEmpty().withMessage('Shipping address is required'),
     body('shippingMethod')
       .optional()
