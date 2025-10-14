@@ -45,6 +45,7 @@ import blogCommentRoutes from './routes/blogCommentRoutes.js';
 import potentialOrderRoutes from './routes/potentialOrderRoutes.js'; // Added Potential Order routes
 import tryonRoutes from './routes/tryonRoutes.js';
 import flashSaleRoutes from './routes/flashSaleRoutes.js'; // Added Flash Sale routes
+import aiRoutes from './routes/aiRoutes.js';
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron, startFlashSaleStatusUpdateCron } from './utils/cronJobs.js';
@@ -162,6 +163,7 @@ app.use('/api/blog-comments', blogCommentRoutes);
 app.use('/api/potential-orders', potentialOrderRoutes); // Added Potential Order routes
 app.use('/api/tryon', tryonRoutes);
 app.use('/api/flash-sales', flashSaleRoutes); // Added Flash Sale routes
+app.use('/api/ai', aiRoutes); // AI proxy routes
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
