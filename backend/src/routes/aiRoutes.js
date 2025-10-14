@@ -45,20 +45,16 @@ router.post('/stream', async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    // Node.js Readable stream piping
-    upstream.body.on('data', chunk => {
-      res.write(chunk);
-    });
-    upstream.body.on('end', () => {
-      res.end();
-    });
-    upstream.body.on('error', err => {
-      console.error('AI proxy stream error:', err);
-      if (!res.headersSent) {
-        res.status(500);
+    // Use Web Streams API reader for compatibility on Node 18+
+    const reader = upstream.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        res.write(Buffer.from(value));
       }
-      res.end();
-    });
+    }
+    res.end();
   } catch (error) {
     console.error('AI proxy error:', error);
     res.status(500).json({ message: 'AI proxy error' });

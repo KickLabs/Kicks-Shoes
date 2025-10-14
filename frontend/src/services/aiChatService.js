@@ -3,9 +3,9 @@
  * Handles streaming responses and conversation management
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // backend base url
-const DIRECT_AI_API_URL = import.meta.env.VITE_AI_API_URL; // external FTES URL
-const USE_PROXY = (import.meta.env.VITE_AI_USE_PROXY || 'true').toLowerCase() === 'true';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const DIRECT_AI_API_URL = import.meta.env.VITE_AI_API_URL;
+const USE_PROXY = (import.meta.env.VITE_AI_USE_PROXY || 'false').toLowerCase() === 'true';
 const AI_TOKEN = import.meta.env.VITE_AI_TOKEN;
 const BOT_ID = import.meta.env.VITE_BOT_ID;
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -120,7 +120,7 @@ class AIChatService {
         model_name: 'gemini-2.5-flash-preview-05-20',
       });
 
-      // Decide mode: proxy or direct, with auto-fallback to proxy on failure
+      // Decide mode: proxy or direct; default is direct only unless USE_PROXY=true
       let response;
       const callProxy = async () => {
         if (!API_BASE_URL) {
@@ -143,7 +143,7 @@ class AIChatService {
         });
       };
 
-      if (USE_PROXY || !DIRECT_AI_API_URL) {
+      if (USE_PROXY) {
         response = await callProxy();
       } else {
         const formData = new FormData();
@@ -153,19 +153,13 @@ class AIChatService {
         formData.append('model_name', 'gemini-2.5-flash-preview-05-20');
         formData.append('api_key', API_KEY);
 
-        try {
-          response = await fetch(DIRECT_AI_API_URL, {
-            method: 'POST',
-            headers: {
-              ...(AI_TOKEN ? { Authorization: `Bearer ${AI_TOKEN}` } : {}),
-            },
-            body: formData,
-          });
-        } catch (directError) {
-          // Network/CORS failure: fallback to proxy if available
-          console.warn('Direct AI call failed, falling back to proxy:', directError);
-          response = await callProxy();
-        }
+        response = await fetch(DIRECT_AI_API_URL, {
+          method: 'POST',
+          headers: {
+            ...(AI_TOKEN ? { Authorization: `Bearer ${AI_TOKEN}` } : {}),
+          },
+          body: formData,
+        });
       }
 
       if (!response.ok) {
