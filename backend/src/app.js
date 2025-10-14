@@ -189,6 +189,9 @@ const io = new SocketIOServer(server, {
         // Azure App Service domains
         process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null,
         process.env.WEBSITE_HOSTNAME ? `http://${process.env.WEBSITE_HOSTNAME}` : null,
+        // Additional domains for better cross-network support
+        'https://kicks-shoes-frontend.azurewebsites.net',
+        'https://kicks-shoes-app.azurewebsites.net',
       ].filter(Boolean);
 
       if (allowedOrigins.indexOf(origin) !== -1) {

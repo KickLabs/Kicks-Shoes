@@ -313,38 +313,6 @@ const LiveStreamViewer = () => {
                 setVideoPlaying(true);
               }}
             />
-            <div
-              style={{ position: 'absolute', right: 16, bottom: 16, display: 'flex', gap: '8px' }}
-            >
-              <Button
-                size="small"
-                type="primary"
-                onClick={() => {
-                  if (remoteVideoRef.current) {
-                    console.log('🔊 User clicked unmute');
-                    remoteVideoRef.current.muted = false;
-                    remoteVideoRef.current.play().catch(e => {
-                      console.warn('⚠️ Unmute play failed:', e);
-                    });
-                  }
-                }}
-              >
-                🔊 Unmute
-              </Button>
-              <Button
-                size="small"
-                onClick={() => {
-                  if (remoteVideoRef.current) {
-                    console.log('▶️ User clicked play');
-                    remoteVideoRef.current.play().catch(e => {
-                      console.warn('⚠️ Manual play failed:', e);
-                    });
-                  }
-                }}
-              >
-                ▶️ Play
-              </Button>
-            </div>
             {(!isLive || hostLeft) && (
               <div className="viewer-video-overlay">
                 <div className="viewer-overlay-content">
