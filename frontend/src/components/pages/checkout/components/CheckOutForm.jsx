@@ -1,7 +1,5 @@
 import { Button, Form, message, Typography } from 'antd';
 import { useEffect, useState } from 'react';
-import { useState, useEffect } from 'react';
-import { Form, Typography, Button, message, Radio } from 'antd';
 import ContactDetails from './ContactDetails';
 import ShippingAddress from './ShippingAddress';
 import DeliveryOptions from './DeliveryOptions';
@@ -10,13 +8,7 @@ import VNPayService from '../../../../services/vnpayService';
 import { useFlashSales } from '../../../../hooks/useFlashSales';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../contexts/AuthContext';
-import orderService from '../../../../services/orderService';
 import PayOSService from '../../../../services/payosService';
-import VNPayService from '../../../../services/vnpayService';
-import ContactDetails from './ContactDetails';
-import DeliveryOptions from './DeliveryOptions';
-import ShippingAddress from './ShippingAddress';
 
 const { Text } = Typography;
 
