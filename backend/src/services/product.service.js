@@ -490,4 +490,47 @@ export class ProductService {
     const products = await Product.find(filter).limit(4);
     return products;
   }
+
+  /**
+   * UPDATED: Search for products using richer keywords from Gemini analysis.
+   */
+  static async searchProductsByKeywords({
+    category,
+    product_name,
+    brand,
+    colors,
+    features,
+    style_tags,
+  }) {
+    try {
+      const searchString = [
+        category,
+        product_name,
+        brand,
+        ...(colors || []),
+        ...(features || []),
+        ...(style_tags || []),
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      if (!searchString) {
+        return [];
+      }
+
+      console.log('Searching products with enhanced keywords:', { searchString });
+
+      const products = await Product.find(
+        { $text: { $search: searchString } },
+        { score: { $meta: 'textScore' } }
+      )
+        .sort({ score: { $meta: 'textScore' } })
+        .limit(12);
+
+      return products;
+    } catch (error) {
+      console.error('Error searching products by keywords', { error: error.message });
+      throw error;
+    }
+  }
 }
