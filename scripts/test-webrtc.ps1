@@ -125,10 +125,3 @@ Write-Host "Look for servers with 'RELAY' status for cross-network connectivity"
 
 # Return to original directory
 Set-Location $ProjectRoot
-
-
-
-
-
-
-

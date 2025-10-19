@@ -9,6 +9,8 @@ import { Button, Card, Typography, Descriptions, Spin, message } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import VNPayService from '../../../services/vnpayService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useDispatch, useSelector } from 'react-redux';
+import { removeOrderedItems } from '../cart/cartSlice';
 
 const { Title, Text } = Typography;
 
@@ -63,6 +65,8 @@ export default function PaymentStatus() {
   const [loading, setLoading] = useState(true);
   const [processingComplete, setProcessingComplete] = useState(false);
   const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const cartItems = useSelector(state => state.cart?.items || []);
 
   const statusInfo = getStatusInfo(query.vnp_ResponseCode);
 
@@ -109,6 +113,21 @@ export default function PaymentStatus() {
             if (result.data.paymentSuccess) {
               console.log('Payment successful, showing success message');
               message.success('Payment successful! Order updated.');
+              // Remove ordered items from cart after successful payment
+              if (
+                pendingOrderData &&
+                pendingOrderData.orderData &&
+                pendingOrderData.orderData.products
+              ) {
+                // Map order products back to cart items for removal
+                const cartItemsToRemove = cartItems.filter(p => {
+                  const productId = p.product?._id || p.id;
+                  return pendingOrderData.orderData.products.some(
+                    op => op.id === productId && op.size === p.size && op.color === p.color
+                  );
+                });
+                dispatch(removeOrderedItems(cartItemsToRemove));
+              }
             } else {
               console.log('Payment failed, showing warning message');
               message.warning('Payment failed. Order status updated to cancelled.');

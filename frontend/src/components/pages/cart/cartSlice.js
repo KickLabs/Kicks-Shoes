@@ -1,5 +1,11 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { getCart, addOrUpdateCartItem, updateCartItem, removeCartItem } from './cartService';
+import {
+  getCart,
+  addOrUpdateCartItem,
+  updateCartItem,
+  removeCartItem,
+  removeOrderedItems,
+} from './cartService';
 
 const cartSlice = createSlice({
   name: 'cart',
@@ -9,7 +15,14 @@ const cartSlice = createSlice({
     status: 'idle', // idle | loading | succeeded | failed
     error: null,
   },
-  reducers: {},
+  reducers: {
+    clearCart: state => {
+      state.items = [];
+      state.totalPrice = 0;
+      state.status = 'idle';
+      state.error = null;
+    },
+  },
   extraReducers: builder => {
     // getCart
     builder
@@ -74,7 +87,25 @@ const cartSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload || 'Failed to remove item';
       });
+
+    // removeOrderedItems
+    builder
+      .addCase(removeOrderedItems.pending, state => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(removeOrderedItems.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.items = action.payload.items;
+        state.totalPrice = action.payload.totalPrice;
+      })
+      .addCase(removeOrderedItems.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload || 'Failed to remove ordered items';
+      });
   },
 });
 
+export const { clearCart } = cartSlice.actions;
+export { removeOrderedItems };
 export default cartSlice.reducer;

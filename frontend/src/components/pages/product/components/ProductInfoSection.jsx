@@ -686,7 +686,12 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       {/* Buttons */}
       <div className="product-actions">
         <div className="top-actions">
-          <Button onClick={() => handleAddCart()} size="large" className="cart-btn">
+          <Button
+            onClick={() => handleAddCart()}
+            size="large"
+            className="cart-btn"
+            disabled={!selectedSize || !selectedColor}
+          >
             ADD TO CART
           </Button>
           <Button
@@ -812,7 +817,13 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
             {isFavourite ? <HeartFilled /> : <HeartOutlined />}
           </button>
         </div>
-        <Button onClick={handleBuyNow} size="large" className="buy-now-btn" type="primary">
+        <Button
+          onClick={handleBuyNow}
+          size="large"
+          className="buy-now-btn"
+          type="primary"
+          disabled={!selectedSize || !selectedColor}
+        >
           BUY IT NOW
         </Button>
       </div>

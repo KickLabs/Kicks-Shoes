@@ -7,36 +7,24 @@
 function buildIceServers() {
   const iceServers = [];
 
-  // Add STUN servers from environment variables
-  const stunUrl1 = import.meta?.env?.VITE_STUN_URL || '';
-  const stunUrl2 = import.meta?.env?.VITE_STUN_URL_2 || '';
-
-  if (stunUrl1) {
-    iceServers.push({ urls: stunUrl1 });
-  }
-  if (stunUrl2) {
-    iceServers.push({ urls: stunUrl2 });
-  }
-
-  // Fallback STUN servers if no environment STUN servers provided
-  if (!stunUrl1 && !stunUrl2) {
-    iceServers.push(
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun.ekiga.net' },
-      { urls: 'stun:stun.ideasip.com' },
-      { urls: 'stun:stun.rixtelecom.se' },
-      { urls: 'stun:stun.schlund.de' }
-    );
-  }
-
-  // ExpressTURN Configuration
+  // ExpressTURN Configuration - Only use environment variables (SECURE)
   const turnUrl = import.meta?.env?.VITE_TURN_URL || '';
   const turnUsername = import.meta?.env?.VITE_TURN_USERNAME || '';
   const turnCredential = import.meta?.env?.VITE_TURN_CREDENTIAL || '';
 
-  if (turnUrl && turnUsername && turnCredential) {
-    // Support multiple comma-separated URLs
+  // Xirsys TURN Configuration - Only use environment variables (SECURE)
+  const xirsysTurnUrl = import.meta?.env?.VITE_XIRYS_TURN_URL || '';
+  const xirsysTurnUsername = import.meta?.env?.VITE_XIRYS_TURN_USERNAME || '';
+  const xirsysTurnCredential = import.meta?.env?.VITE_XIRYS_TURN_CREDENTIAL || '';
+
+  // Check which TURN servers are available
+  const hasExpressTurn = turnUrl && turnUsername && turnCredential;
+  const hasXirsysTurn = xirsysTurnUrl && xirsysTurnUsername && xirsysTurnCredential;
+
+  if (hasExpressTurn && hasXirsysTurn) {
+    // Both TURN servers available - use ExpressTURN as primary, Xirsys as fallback
+
+    // Add ExpressTURN servers first (primary)
     turnUrl
       .split(',')
       .map(u => u.trim())
@@ -48,15 +36,8 @@ function buildIceServers() {
           credential: turnCredential,
         });
       });
-  }
 
-  // Xirsys TURN Configuration
-  const xirsysTurnUrl = import.meta?.env?.VITE_XIRYS_TURN_URL || '';
-  const xirsysTurnUsername = import.meta?.env?.VITE_XIRYS_TURN_USERNAME || '';
-  const xirsysTurnCredential = import.meta?.env?.VITE_XIRYS_TURN_CREDENTIAL || '';
-
-  if (xirsysTurnUrl && xirsysTurnUsername && xirsysTurnCredential) {
-    // Support multiple comma-separated URLs for Xirsys
+    // Add Xirsys servers as fallback
     xirsysTurnUrl
       .split(',')
       .map(u => u.trim())
@@ -68,33 +49,70 @@ function buildIceServers() {
           credential: xirsysTurnCredential,
         });
       });
+  } else if (hasExpressTurn) {
+    // Only ExpressTURN available
+    turnUrl
+      .split(',')
+      .map(u => u.trim())
+      .filter(Boolean)
+      .forEach(url => {
+        iceServers.push({
+          urls: url,
+          username: turnUsername,
+          credential: turnCredential,
+        });
+      });
+  } else if (hasXirsysTurn) {
+    // Only Xirsys available
+    xirsysTurnUrl
+      .split(',')
+      .map(u => u.trim())
+      .filter(Boolean)
+      .forEach(url => {
+        iceServers.push({
+          urls: url,
+          username: xirsysTurnUsername,
+          credential: xirsysTurnCredential,
+        });
+      });
+  } else {
+    // No TURN servers configured - add working free TURN servers as fallback
+
+    // Add Google's public STUN servers for basic connectivity
+    iceServers.push(
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' }
+    );
   }
 
-  // Log configuration status
-  if (!turnUrl && !xirsysTurnUrl) {
-    console.warn(
-      '⚠️ No TURN credentials provided. Using STUN servers only. Cross-network connectivity may be limited.'
-    );
-    console.info('💡 For production, configure TURN servers via environment variables:');
-    console.info('   - VITE_TURN_URL, VITE_TURN_USERNAME, VITE_TURN_CREDENTIAL');
-    console.info('   - VITE_XIRYS_TURN_URL, VITE_XIRYS_TURN_USERNAME, VITE_XIRYS_TURN_CREDENTIAL');
+  // Add STUN servers from environment variables (optional)
+  const stunUrl1 = import.meta?.env?.VITE_STUN_URL || '';
+  const stunUrl2 = import.meta?.env?.VITE_STUN_URL_2 || '';
+
+  if (stunUrl1) {
+    iceServers.push({ urls: stunUrl1 });
   } else {
-    console.info('✅ TURN servers configured from environment variables');
+    // Default Google STUN servers for better connectivity
+    iceServers.push({ urls: 'stun:stun.l.google.com:19302' });
+  }
+
+  if (stunUrl2) {
+    iceServers.push({ urls: stunUrl2 });
+  } else {
+    // Additional STUN servers
+    iceServers.push(
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' }
+    );
   }
 
   return iceServers;
 }
 
 export const ICE_SERVERS = buildIceServers();
-
-// Log ICE servers for debugging
-console.log(
-  '🧊 ICE Servers configured:',
-  ICE_SERVERS.map(s => ({
-    urls: s.urls,
-    hasCredentials: !!(s.username && s.credential),
-  }))
-);
 
 // Enhanced debugging for cross-network issues
 export const WEBRTC_DEBUG_CONFIG = {
@@ -107,24 +125,19 @@ export const WEBRTC_DEBUG_CONFIG = {
 // Allow forcing TURN-only via env to diagnose cross-network issues
 const forceRelay = (import.meta?.env?.VITE_WEBRTC_FORCE_TURN || '0').toString() === '1';
 
-if (forceRelay) {
-  console.log('🔧 TURN-only mode enabled for debugging cross-network connectivity');
-  console.warn(
-    '⚠️ TURN-only mode may limit connectivity if TURN servers are not properly configured'
-  );
-}
-
 export const PEER_CONNECTION_CONFIG = {
   iceServers: ICE_SERVERS,
   iceCandidatePoolSize: 10,
   bundlePolicy: 'max-bundle',
   rtcpMuxPolicy: 'require',
-  iceTransportPolicy: forceRelay ? 'relay' : 'all',
+  iceTransportPolicy: 'all', // Allow both direct and relay connections for better compatibility
   // Enhanced configuration for better cross-network connectivity
   iceConnectionReceivingTimeout: 30000, // 30 seconds
   iceBackupCandidatePairPingInterval: 25000, // 25 seconds
-  // Force TURN for better connectivity
-  iceTransportPolicy: 'relay', // Force TURN-only for maximum compatibility
+  // Additional configuration for better connectivity
+  sdpSemantics: 'unified-plan',
+  enableDtlsSrtp: true,
+  enableRtpDataChannels: true,
 };
 
 export const OFFER_OPTIONS = {
