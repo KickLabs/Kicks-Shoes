@@ -132,9 +132,6 @@
 }
 
 /* Typography improvements */
-.ant-typography {
-  color: #1a1a1a !important;
-}
 
 .ant-typography.ant-typography-secondary {
   color: #666 !important;

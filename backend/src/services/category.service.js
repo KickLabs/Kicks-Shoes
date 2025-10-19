@@ -5,22 +5,74 @@
  * @description This service handles all category-related business logic for the Kicks Shoes application.
  */
 
-import Category from "../models/Category.js";
-import mongoose from "mongoose";
-import logger from "../utils/logger.js";
+import Category from '../models/Category.js';
+import mongoose from 'mongoose';
+import logger from '../utils/logger.js';
 
 export class CategoryService {
   /**
    * Get all categories
+   * @param {string} productType - Optional product type filter
    * @returns {Promise<Array>} List of categories
    */
-  static async getCategories() {
+  static async getCategories(productType = null) {
     try {
-      logger.info("Getting all categories");
-      const categories = await Category.find();
+      logger.info('Getting all categories', { productType });
+
+      // Build query object
+      const query = {};
+
+      // If productType is specified, filter categories by productType
+      if (productType && productType !== 'all') {
+        // Define category mappings for each product type
+        const categoryMappings = {
+          shoes: [
+            'Sneaker',
+            'Basketball',
+            'Running',
+            'Casual shoes',
+            'Outdoor',
+            'Hiking',
+            'Golf',
+            'Runners',
+            'Athletic',
+            'Sports',
+          ],
+          clothing: [
+            'Tops',
+            'Bottoms',
+            'T-Shirts',
+            'Hoodies',
+            'Jackets',
+            'Shorts',
+            'Pants & Tights',
+            'Clothing',
+          ],
+          accessory: [
+            'Accessories',
+            'Backpacks',
+            'Beanies',
+            'Socks',
+            'Bags & Backpacks',
+            'Headwear',
+            'Caps',
+            'Duffel Bags',
+            'Other Accessories',
+          ],
+          other: ['Other', 'Miscellaneous', 'General'],
+        };
+
+        const allowedCategories = categoryMappings[productType] || [];
+
+        if (allowedCategories.length > 0) {
+          query.name = { $in: allowedCategories };
+        }
+      }
+
+      const categories = await Category.find(query).sort({ name: 1 });
       return categories;
     } catch (error) {
-      logger.error("Error getting categories", { error: error.message });
+      logger.error('Error getting categories', { error: error.message });
       throw error;
     }
   }
@@ -33,10 +85,10 @@ export class CategoryService {
   static async getCategoryById(id) {
     try {
       if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new Error("Invalid category ID");
+        throw new Error('Invalid category ID');
       }
 
-      logger.info("Getting category by ID", { categoryId: id });
+      logger.info('Getting category by ID', { categoryId: id });
       const category = await Category.findById(id);
 
       if (!category) {
@@ -45,7 +97,7 @@ export class CategoryService {
 
       return category;
     } catch (error) {
-      logger.error("Error getting category by ID", { error: error.message });
+      logger.error('Error getting category by ID', { error: error.message });
       throw error;
     }
   }
@@ -57,16 +109,16 @@ export class CategoryService {
    */
   static async createCategory(categoryData) {
     try {
-      logger.info("Creating new category", { categoryData });
+      logger.info('Creating new category', { categoryData });
       const category = await Category.create(categoryData);
 
-      logger.info("Category created successfully", {
+      logger.info('Category created successfully', {
         categoryId: category._id,
       });
 
       return category;
     } catch (error) {
-      logger.error("Error creating category", { error: error.message });
+      logger.error('Error creating category', { error: error.message });
       throw error;
     }
   }
@@ -80,10 +132,10 @@ export class CategoryService {
   static async updateCategory(id, updateData) {
     try {
       if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new Error("Invalid category ID");
+        throw new Error('Invalid category ID');
       }
 
-      logger.info("Updating category", { categoryId: id, updateData });
+      logger.info('Updating category', { categoryId: id, updateData });
 
       const category = await Category.findByIdAndUpdate(id, updateData, {
         new: true,
@@ -94,11 +146,11 @@ export class CategoryService {
         throw new Error(`Category not found with id of ${id}`);
       }
 
-      logger.info("Category updated successfully", { categoryId: id });
+      logger.info('Category updated successfully', { categoryId: id });
 
       return category;
     } catch (error) {
-      logger.error("Error updating category", { error: error.message });
+      logger.error('Error updating category', { error: error.message });
       throw error;
     }
   }
@@ -111,10 +163,10 @@ export class CategoryService {
   static async deleteCategory(id) {
     try {
       if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new Error("Invalid category ID");
+        throw new Error('Invalid category ID');
       }
 
-      logger.info("Deleting category", { categoryId: id });
+      logger.info('Deleting category', { categoryId: id });
 
       const category = await Category.findById(id);
       if (!category) {
@@ -122,9 +174,9 @@ export class CategoryService {
       }
 
       await category.deleteOne();
-      logger.info("Category deleted successfully", { categoryId: id });
+      logger.info('Category deleted successfully', { categoryId: id });
     } catch (error) {
-      logger.error("Error deleting category", { error: error.message });
+      logger.error('Error deleting category', { error: error.message });
       throw error;
     }
   }

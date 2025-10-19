@@ -87,6 +87,7 @@ const ClothingPage = () => {
     if (option) {
       setSortBy(option.sortBy);
       setSortOrder(option.sortOrder);
+      setCurrentPage(1);
     }
   };
 

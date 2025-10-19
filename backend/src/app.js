@@ -49,6 +49,7 @@ import blogRoutes from './routes/blogRoutes.js';
 import blogCommentRoutes from './routes/blogCommentRoutes.js';
 import potentialOrderRoutes from './routes/potentialOrderRoutes.js'; // Added Potential Order routes
 import flashSaleRoutes from './routes/flashSaleRoutes.js'; // Added Flash Sale routes
+import aiRoutes from './routes/aiRoutes.js';
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron, startFlashSaleStatusUpdateCron } from './utils/cronJobs.js';
@@ -88,7 +89,10 @@ app.use((req, res, next) => {
     'http://localhost:5173',
     'http://localhost:3000',
     'http://127.0.0.1:5173',
-  ];
+    // Azure App Service domains
+    process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null,
+    process.env.WEBSITE_HOSTNAME ? `http://${process.env.WEBSITE_HOSTNAME}` : null,
+  ].filter(Boolean);
 
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -125,6 +129,17 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Kicks Shoes API' });
 });
 
+// Health check endpoint for deployment monitoring
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: process.env.npm_package_version || '1.0.0',
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -150,6 +165,7 @@ app.use('/api/blog-comments', blogCommentRoutes);
 app.use('/api/potential-orders', potentialOrderRoutes); // Added Potential Order routes
 app.use('/api/tryon', tryonRoutes);
 app.use('/api/flash-sales', flashSaleRoutes); // Added Flash Sale routes
+app.use('/api/ai', aiRoutes); // AI proxy routes
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
@@ -159,7 +175,7 @@ startFlashSaleStatusUpdateCron();
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0'; // Cho phép lắng nghe mọi địa chỉ mạng
+const HOST = process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : 'localhost'; // Azure App Service compatibility
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
@@ -174,7 +190,13 @@ const io = new SocketIOServer(server, {
         'http://127.0.0.1:5173',
         'https://kicks-shoes-2025.web.app',
         'https://kicks-shoes-2025.firebaseapp.com',
-      ];
+        // Azure App Service domains
+        process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null,
+        process.env.WEBSITE_HOSTNAME ? `http://${process.env.WEBSITE_HOSTNAME}` : null,
+        // Additional domains for better cross-network support
+        'https://kicks-shoes-frontend.azurewebsites.net',
+        'https://kicks-shoes-app.azurewebsites.net',
+      ].filter(Boolean);
 
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);

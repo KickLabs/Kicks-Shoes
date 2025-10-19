@@ -31,7 +31,6 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  pointer-events: none; /* show logo above but do not block menu clicks */
 }
 
 .logo-img {
@@ -41,6 +40,7 @@
   fill: #000;
   object-fit: contain;
   filter: brightness(0) invert(0);
+  cursor: pointer;
 }
 
 .header-right {

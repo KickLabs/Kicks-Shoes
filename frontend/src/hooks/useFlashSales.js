@@ -1,16 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCurrentActiveFlashSale } from '../services/flashSaleService';
 
 export const useFlashSales = (refreshInterval = 60000) => {
-  // Refresh every minute by default
+  // Refresh every minute by default (60000ms = 1 minute)
   const [activeFlashSales, setActiveFlashSales] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const lastRefreshRef = useRef(Date.now());
 
   const fetchActiveFlashSales = useCallback(
     async (force = false) => {
       // Don't refresh if it's been less than refreshInterval since last refresh
-      if (!force && Date.now() - lastRefresh < refreshInterval) {
+      if (!force && Date.now() - lastRefreshRef.current < refreshInterval) {
         return;
       }
 
@@ -55,11 +55,11 @@ export const useFlashSales = (refreshInterval = 60000) => {
 
           const flashSales = Array.from(flashSalesMap.values());
           setActiveFlashSales(flashSales);
-          setLastRefresh(Date.now());
+          lastRefreshRef.current = Date.now();
         } else {
           console.log('No active flash sale data');
           setActiveFlashSales([]);
-          setLastRefresh(Date.now());
+          lastRefreshRef.current = Date.now();
         }
       } catch (error) {
         console.error('Error fetching flash sales:', error);
@@ -68,7 +68,7 @@ export const useFlashSales = (refreshInterval = 60000) => {
         setLoading(false);
       }
     },
-    [refreshInterval, lastRefresh]
+    [refreshInterval]
   );
 
   // Initial fetch and setup periodic refresh

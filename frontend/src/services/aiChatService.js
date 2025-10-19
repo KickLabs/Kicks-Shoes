@@ -3,16 +3,16 @@
  * Handles streaming responses and conversation management
  */
 
-const AI_API_URL = import.meta.env.VITE_AI_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const DIRECT_AI_API_URL = import.meta.env.VITE_AI_API_URL;
+const USE_PROXY = (import.meta.env.VITE_AI_USE_PROXY || 'false').toLowerCase() === 'true';
 const AI_TOKEN = import.meta.env.VITE_AI_TOKEN;
 const BOT_ID = import.meta.env.VITE_BOT_ID;
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-// Validate required environment variables
-if (!AI_API_URL || !AI_TOKEN || !BOT_ID || !API_KEY) {
+// Validate required environment variables (non-fatal; detailed errors thrown at call time)
+if (!BOT_ID || !API_KEY) {
   console.error('Missing required environment variables for AI Chat Service:');
-  console.error('VITE_AI_API_URL:', !!AI_API_URL);
-  console.error('VITE_AI_TOKEN:', !!AI_TOKEN);
   console.error('VITE_BOT_ID:', !!BOT_ID);
   console.error('VITE_GEMINI_API_KEY:', !!API_KEY);
   console.error('Please check your .env file configuration.');
@@ -92,7 +92,7 @@ class AIChatService {
   async sendMessage(message, onStream, onComplete, onError) {
     try {
       // Kiểm tra environment variables
-      if (!AI_API_URL || !AI_TOKEN || !BOT_ID || !API_KEY) {
+      if (!BOT_ID || !API_KEY) {
         throw new Error(
           'Missing required environment variables for AI Chat Service. Please check your .env file.'
         );
@@ -111,12 +111,6 @@ class AIChatService {
       
       Câu hỏi của khách hàng: ${message}`;
 
-      const formData = new FormData();
-      formData.append('query', productContext);
-      formData.append('bot_id', BOT_ID);
-      formData.append('conversation_id', this.conversationId || '');
-      formData.append('model_name', 'gemini-2.5-flash-preview-05-20');
-      formData.append('api_key', API_KEY);
       // Không gửi attachs nếu không có file
 
       console.log('Sending AI message:', {
@@ -126,13 +120,47 @@ class AIChatService {
         model_name: 'gemini-2.5-flash-preview-05-20',
       });
 
-      const response = await fetch(AI_API_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${AI_TOKEN}`,
-        },
-        body: formData,
-      });
+      // Decide mode: proxy or direct; default is direct only unless USE_PROXY=true
+      let response;
+      const callProxy = async () => {
+        if (!API_BASE_URL) {
+          throw new Error('VITE_API_BASE_URL is required when VITE_AI_USE_PROXY=true');
+        }
+        const proxyUrl = `${API_BASE_URL}/ai/stream`;
+        const payload = {
+          query: productContext,
+          bot_id: BOT_ID,
+          conversation_id: this.conversationId || '',
+          model_name: 'gemini-2.5-flash-preview-05-20',
+          api_key: API_KEY,
+        };
+        return fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+      };
+
+      if (USE_PROXY) {
+        response = await callProxy();
+      } else {
+        const formData = new FormData();
+        formData.append('query', productContext);
+        formData.append('bot_id', BOT_ID);
+        formData.append('conversation_id', this.conversationId || '');
+        formData.append('model_name', 'gemini-2.5-flash-preview-05-20');
+        formData.append('api_key', API_KEY);
+
+        response = await fetch(DIRECT_AI_API_URL, {
+          method: 'POST',
+          headers: {
+            ...(AI_TOKEN ? { Authorization: `Bearer ${AI_TOKEN}` } : {}),
+          },
+          body: formData,
+        });
+      }
 
       if (!response.ok) {
         const errorText = await response.text();

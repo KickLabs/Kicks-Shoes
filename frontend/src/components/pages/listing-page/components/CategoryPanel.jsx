@@ -16,15 +16,25 @@ import axiosInstance from '@/services/axiosInstance';
 
 import { Checkbox, Spin, message } from 'antd';
 
-const CategoryPanel = ({ selectedCategory, onCategorySelect }) => {
+const CategoryPanel = ({ selectedCategory, onCategorySelect, productType = 'all' }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axiosInstance.get('/categories'); // tương ứng với router.get("/", ...) bên backend
-        setCategories(response.data.data || []); // backend của bạn trả về { data: [...] }
+        // Build API endpoint with productType parameter
+        const endpoint =
+          productType !== 'all' ? `/categories?productType=${productType}` : '/categories';
+
+        const response = await axiosInstance.get(endpoint);
+        const categories = response.data.data || [];
+
+        console.log('CategoryPanel - productType:', productType);
+        console.log('CategoryPanel - endpoint:', endpoint);
+        console.log('CategoryPanel - categories:', categories);
+
+        setCategories(categories);
       } catch (error) {
         console.error('Failed to fetch categories', error);
         message.error('Could not load categories');
@@ -34,7 +44,7 @@ const CategoryPanel = ({ selectedCategory, onCategorySelect }) => {
     };
 
     fetchCategories();
-  }, []);
+  }, [productType]);
 
   if (loading) return <Spin />;
 

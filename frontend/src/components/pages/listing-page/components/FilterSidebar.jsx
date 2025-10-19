@@ -8,6 +8,45 @@ import PricePanel from './PricePanel';
 import SaleFilterPanel from './SaleFilterPanel';
 import { useState, useEffect } from 'react';
 
+// Filter configurations for each product type
+const FILTER_CONFIGS = {
+  shoes: {
+    sizes: [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48],
+    showSizeFilter: true,
+    showColorFilter: true,
+    showCategoryFilter: true,
+    sizeLabel: 'SHOE SIZE (EU)',
+  },
+  clothing: {
+    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'],
+    showSizeFilter: true,
+    showColorFilter: true,
+    showCategoryFilter: true,
+    sizeLabel: 'CLOTHING SIZE',
+  },
+  accessory: {
+    sizes: ['One Size'],
+    showSizeFilter: false, // Most accessories don't have sizes
+    showColorFilter: true,
+    showCategoryFilter: true,
+    sizeLabel: 'SIZE',
+  },
+  other: {
+    sizes: ['One Size', 'S', 'M', 'L', 'XL'],
+    showSizeFilter: true,
+    showColorFilter: true,
+    showCategoryFilter: true,
+    sizeLabel: 'SIZE',
+  },
+  all: {
+    sizes: [],
+    showSizeFilter: false, // Hide size filter for all products
+    showColorFilter: false, // Hide color filter for all products
+    showCategoryFilter: false, // Hide type filter for all products
+    sizeLabel: 'SIZE',
+  },
+};
+
 const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
@@ -15,6 +54,13 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedPrice, setSelectedPrice] = useState([0, 1000]);
   const [selectedSaleType, setSelectedSaleType] = useState(null);
+
+  // Get filter config for current product type
+  const filterConfig = FILTER_CONFIGS[productType] || FILTER_CONFIGS.all;
+
+  // Debug log
+  console.log('FilterSidebar - productType:', productType);
+  console.log('FilterSidebar - filterConfig:', filterConfig);
 
   // Count active filters
   const activeFiltersCount = [
@@ -25,53 +71,6 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
     selectedPrice[0] > 0 || selectedPrice[1] < 1000,
     selectedSaleType,
   ].filter(Boolean).length;
-
-  // Get size options based on product type
-  const getSizeOptions = () => {
-    switch (productType) {
-      case 'shoes':
-        return [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
-      case 'clothing':
-        return ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
-      case 'accessory':
-        return ['OneSize'];
-      case 'other':
-        return ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', 'OneSize'];
-      default:
-        return [
-          30,
-          31,
-          32,
-          33,
-          34,
-          35,
-          36,
-          37,
-          38,
-          39,
-          40,
-          41,
-          42,
-          43,
-          44,
-          45,
-          46,
-          47,
-          48,
-          49,
-          50,
-          'XS',
-          'S',
-          'M',
-          'L',
-          'XL',
-          'XXL',
-          '3XL',
-          '4XL',
-          'OneSize',
-        ];
-    }
-  };
 
   // Pass selected filter values to parent
   useEffect(() => {
@@ -93,6 +92,11 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
     selectedSaleType,
   ]);
 
+  // Reset size when product type changes
+  useEffect(() => {
+    setSelectedSize(null);
+  }, [productType]);
+
   // Clear all filters
   const clearAllFilters = () => {
     setSelectedSize(null);
@@ -103,59 +107,89 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
     setSelectedSaleType(null);
   };
 
-  // Define collapse items
+  // Define collapse items dynamically based on filter config
   const collapseItems = [
     {
       key: '1',
       label: 'FILTER BY BRAND',
       children: (
         <RefinePanel
-          refineOptions={['Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance']}
+          refineOptions={[
+            'Nike',
+            'Adidas',
+            'Puma',
+            'Reebok',
+            'New Balance',
+            'Converse',
+            'Vans',
+            'Jordan',
+          ]}
           selectedRefineOption={selectedBrand}
           onRefineSelect={b => setSelectedBrand(b === selectedBrand ? null : b)}
         />
       ),
     },
-    {
-      key: '2',
-      label: 'SIZE',
-      children: (
-        <SizePanel
-          sizes={getSizeOptions()}
-          selectedSize={selectedSize}
-          onSizeSelect={s => setSelectedSize(s === selectedSize ? null : s)}
-        />
-      ),
-    },
-    {
-      key: '3',
-      label: 'COLOR',
-      children: (
-        <ColorPanel
-          colors={[
-            { value: 'Black', hex: '#000000' },
-            { value: 'White', hex: '#FFFFFF' },
-            { value: 'Red', hex: '#FF0000' },
-            { value: 'Blue', hex: '#0000FF' },
-            { value: 'Green', hex: '#008000' },
-            { value: 'Yellow', hex: '#FFFF00' },
-            { value: 'Gray', hex: '#808080' },
-          ]}
-          selectedColor={selectedColor}
-          onColorSelect={c => setSelectedColor(c === selectedColor ? null : c)}
-        />
-      ),
-    },
-    {
-      key: '4',
-      label: 'TYPE',
-      children: (
-        <CategoryPanel
-          selectedCategory={selectedCategory}
-          onCategorySelect={catId => setSelectedCategory(catId === selectedCategory ? null : catId)}
-        />
-      ),
-    },
+    // Conditionally show size filter
+    ...(filterConfig.showSizeFilter
+      ? [
+          {
+            key: '2',
+            label: filterConfig.sizeLabel,
+            children: (
+              <SizePanel
+                sizes={filterConfig.sizes}
+                selectedSize={selectedSize}
+                onSizeSelect={s => setSelectedSize(s === selectedSize ? null : s)}
+              />
+            ),
+          },
+        ]
+      : []),
+    // Conditionally show color filter
+    ...(filterConfig.showColorFilter
+      ? [
+          {
+            key: '3',
+            label: 'COLOR',
+            children: (
+              <ColorPanel
+                colors={[
+                  { value: 'Black', hex: '#000000' },
+                  { value: 'White', hex: '#FFFFFF' },
+                  { value: 'Red', hex: '#FF0000' },
+                  { value: 'Blue', hex: '#0000FF' },
+                  { value: 'Green', hex: '#008000' },
+                  { value: 'Yellow', hex: '#FFFF00' },
+                  { value: 'Gray', hex: '#808080' },
+                  { value: 'Brown', hex: '#8B4513' },
+                  { value: 'Orange', hex: '#FFA500' },
+                  { value: 'Pink', hex: '#FFC0CB' },
+                ]}
+                selectedColor={selectedColor}
+                onColorSelect={c => setSelectedColor(c === selectedColor ? null : c)}
+              />
+            ),
+          },
+        ]
+      : []),
+    // Conditionally show category filter
+    ...(filterConfig.showCategoryFilter
+      ? [
+          {
+            key: '4',
+            label: 'TYPE',
+            children: (
+              <CategoryPanel
+                selectedCategory={selectedCategory}
+                onCategorySelect={catId =>
+                  setSelectedCategory(catId === selectedCategory ? null : catId)
+                }
+                productType={productType}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       key: '5',
       label: 'PRICE',
@@ -222,7 +256,15 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
           )}
         </div>
       </div>
-      <Collapse defaultActiveKey={['1', '2', '3', '4', '5']} ghost items={collapseItems} />
+      <Collapse
+        defaultActiveKey={
+          productType === 'all'
+            ? ['1', '5', '6'] // Only show Brand, Price, Sale Type for all products
+            : ['1', '2', '3', '4', '5'] // Show all filters for specific product types
+        }
+        ghost
+        items={collapseItems}
+      />
     </div>
   );
 };

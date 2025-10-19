@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Form, Input, Checkbox, message } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Form, Input, Checkbox, message, Select } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import SocialButton from '../components/SocialButton';
 import RegisterButton from '../components/RegisterButton';
@@ -8,6 +8,12 @@ import TermCheckbox from '../components/TermCheckbox';
 import JoinClub from '../components/JoinClub';
 import GenderRadio from '../components/GenderRadio';
 import { useAuth } from '../../../../contexts/AuthContext';
+import {
+  fetchProvinces,
+  fetchWards,
+  formatProvinceName,
+  formatWardName,
+} from '../../../../utils/vietnamProvinceApi';
 import './Authenticate.css';
 
 const RegisterPage = () => {
@@ -15,6 +21,54 @@ const RegisterPage = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const { register } = useAuth();
+  const [provinces, setProvinces] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingWards, setLoadingWards] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingProvinces(true);
+        const data = await fetchProvinces();
+        if (mounted) setProvinces(data);
+      } catch (e) {
+        // noop; UI can stay empty
+      } finally {
+        if (mounted) setLoadingProvinces(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleProvinceChange = async value => {
+    form.setFieldsValue({
+      provinceCode: value,
+      wardCode: undefined,
+      provinceName: undefined,
+      wardName: undefined,
+    });
+    const province = provinces.find(p => String(p.code) === String(value));
+    form.setFieldsValue({ provinceName: formatProvinceName(province) });
+    try {
+      setLoadingWards(true);
+      const wardList = await fetchWards(value);
+      setWards(wardList);
+    } catch (e) {
+      setWards([]);
+    } finally {
+      setLoadingWards(false);
+    }
+  };
+
+  const handleWardChange = value => {
+    form.setFieldsValue({ wardCode: value });
+    const ward = wards.find(w => String(w.code) === String(value));
+    form.setFieldsValue({ wardName: formatWardName(ward) });
+  };
 
   const validatePassword = (_, value) => {
     if (!value) {
@@ -40,13 +94,21 @@ const RegisterPage = () => {
 
   const onFinish = async values => {
     try {
-      // Combine firstName and lastName into fullName
+      // Combine address components and firstName/lastName into fullName
+      const composedAddress = [values.address, values.wardName, values.provinceName]
+        .filter(Boolean)
+        .join(', ');
       const formData = {
         ...values,
         fullName: `${values.firstName} ${values.lastName}`,
+        address: composedAddress,
       };
       delete formData.firstName;
       delete formData.lastName;
+      delete formData.provinceCode;
+      delete formData.wardCode;
+      delete formData.provinceName;
+      delete formData.wardName;
 
       setLoading(true);
       await register(formData);
@@ -121,9 +183,49 @@ const RegisterPage = () => {
             <div className="form-label">Address</div>
             <Form.Item
               name="address"
-              rules={[{ required: true, message: 'Please input your address!' }]}
+              rules={[{ required: true, message: 'Please input your detailed address!' }]}
             >
-              <Input className="input" placeholder="Address" />
+              <Input className="input" placeholder="Detailed Address (street, building, etc.)" />
+            </Form.Item>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <Form.Item
+                name="provinceCode"
+                style={{ flex: 1 }}
+                rules={[{ required: true, message: 'Please select province/city' }]}
+              >
+                <Select
+                  showSearch
+                  placeholder="Select Province/City"
+                  className="input"
+                  loading={loadingProvinces}
+                  optionFilterProp="label"
+                  onChange={handleProvinceChange}
+                  options={provinces.map(p => ({ label: formatProvinceName(p), value: p.code }))}
+                />
+              </Form.Item>
+              <Form.Item
+                name="wardCode"
+                style={{ flex: 1 }}
+                rules={[{ required: true, message: 'Please select ward/commune' }]}
+              >
+                <Select
+                  showSearch
+                  placeholder="Select Ward/Commune"
+                  className="input"
+                  disabled={!form.getFieldValue('provinceCode')}
+                  loading={loadingWards}
+                  optionFilterProp="label"
+                  onChange={handleWardChange}
+                  options={wards.map(w => ({ label: formatWardName(w), value: w.code }))}
+                />
+              </Form.Item>
+            </div>
+            <Form.Item name="provinceName" hidden>
+              <Input />
+            </Form.Item>
+            <Form.Item name="wardName" hidden>
+              <Input />
             </Form.Item>
 
             <div className="form-label">Gender</div>

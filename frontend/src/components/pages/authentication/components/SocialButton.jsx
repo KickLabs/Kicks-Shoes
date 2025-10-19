@@ -11,7 +11,7 @@ import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props
 
 const getAPIBase = () => {
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://127.0.0.1:3000'; // Use IPv4 instead of localhost, without /api
+    return 'http://localhost:3000'; // Use IPv4 instead of localhost, without /api
   }
 
   if (import.meta.env.VITE_API_BASE_URL) {
@@ -53,6 +53,7 @@ const SocialButtons = () => {
           email: data.email,
           name: data.name,
           picture: data.picture,
+          rememberMe: true, // Social logins are always "remember me"
         });
 
         const result = res.data;
@@ -109,6 +110,7 @@ const SocialButtons = () => {
         email: response.email,
         name: response.name,
         picture: response.picture?.data?.url,
+        rememberMe: true, // Social logins are always "remember me"
       });
 
       const result = res.data;

@@ -94,6 +94,14 @@ export default function CheckoutForm({
       message.error('Please enter your shipping address.');
       return false;
     }
+    if (!shippingValues.provinceCode) {
+      message.error('Please select your province/city.');
+      return false;
+    }
+    if (!shippingValues.wardCode) {
+      message.error('Please select your ward/commune.');
+      return false;
+    }
     if (!shippingValues.phone || !/^\d{9,15}$/.test(shippingValues.phone)) {
       message.error('Please enter a valid phone number.');
       return false;
@@ -172,8 +180,14 @@ export default function CheckoutForm({
     }
 
     const shippingValues = shippingForm.getFieldsValue();
-    const shippingAddress =
-      `${shippingValues.firstName || ''} ${shippingValues.lastName || ''}, ${shippingValues.address || ''}, ${shippingValues.phone || ''}`.trim();
+    const provincePart = shippingValues.provinceName || '';
+    const wardPart = shippingValues.wardName || '';
+    const detailPart = shippingValues.address || '';
+    const recipientPart =
+      `${shippingValues.firstName || ''} ${shippingValues.lastName || ''}`.trim();
+    const phonePart = shippingValues.phone || '';
+    const composedAddress = [detailPart, wardPart, provincePart].filter(Boolean).join(', ');
+    const shippingAddress = [recipientPart, composedAddress, phonePart].filter(Boolean).join(', ');
 
     const orderData = {
       products: orderProducts,
