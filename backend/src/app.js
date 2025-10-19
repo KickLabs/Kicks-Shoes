@@ -20,37 +20,38 @@ import compression from 'compression';
 import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
+import http from 'http';
 import morgan from 'morgan';
-import connectDB from './config/database.js';
+import { Server as SocketIOServer } from 'socket.io';
 import { corsMiddleware } from './config/cors.config.js';
+import connectDB from './config/database.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import authRoutes from './routes/authRoutes.js';
+import cartRoutes from './routes/cartRoutes.js'; // Added from feature/HueSuong/cart-be
 import categoryRoutes from './routes/categoryRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
-import emailRoutes from './routes/emailRoutes.js';
-import orderRoutes from './routes/orderRoutes.js';
-import productRoutes from './routes/productRoutes.js';
-import rewardPointRoutes from './routes/rewardPointRoutes.js';
 import discountRoutes from './routes/discountRoutes.js';
+import emailRoutes from './routes/emailRoutes.js';
 import favouriteRoutes from './routes/favouriteRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
-import uploadRoutes from './routes/uploadRoutes.js';
-import { default as shopRoutes, default as storeRoutes } from './routes/storeRoutes.js';
-import userRoutes from './routes/userRoutes.js';
-import cartRoutes from './routes/cartRoutes.js'; // Added from feature/HueSuong/cart-be
-import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
 import livestreamRoutes from './routes/livestreamRoutes.js'; // Added LiveStream routes
+import orderRoutes from './routes/orderRoutes.js';
+import payosRoutes from './routes/payos.routes.js';
+import productRoutes from './routes/productRoutes.js';
+import rewardPointRoutes from './routes/rewardPointRoutes.js';
+import { default as shopRoutes, default as storeRoutes } from './routes/storeRoutes.js';
+import tryonRoutes from './routes/tryonRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import vnpayRoutes from './routes/vnpayRoutes.js'; // Added VNPay routes
 import blogRoutes from './routes/blogRoutes.js';
 import blogCommentRoutes from './routes/blogCommentRoutes.js';
 import potentialOrderRoutes from './routes/potentialOrderRoutes.js'; // Added Potential Order routes
-import tryonRoutes from './routes/tryonRoutes.js';
 import flashSaleRoutes from './routes/flashSaleRoutes.js'; // Added Flash Sale routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import { startDiscountStatusUpdateCron, startFlashSaleStatusUpdateCron } from './utils/cronJobs.js';
-import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
-import chatRoutes from './routes/chatRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -141,6 +142,7 @@ app.use('/api/favourites', favouriteRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
+app.use('/api/payos', payosRoutes); // Added PayOS payment routes
 app.use('/api/chat', chatRoutes);
 app.use('/api/livestream', livestreamRoutes); // Added LiveStream routes
 app.use('/api/blogs', blogRoutes);
@@ -195,4 +197,4 @@ server.listen(PORT, HOST, () => {
 });
 
 export default app;
-export { server, io };
+export { io, server };

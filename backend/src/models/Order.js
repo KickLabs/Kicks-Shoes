@@ -48,7 +48,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['vnpay', 'cash_on_delivery'],
+      enum: ['vnpay', 'cash_on_delivery', 'payos'],
       required: [true, 'Payment method is required'],
     },
     paymentStatus: {
@@ -144,6 +144,83 @@ const orderSchema = new mongoose.Schema(
     },
     // VNPay transaction number for refunds
     vnpTransactionNo: {
+      type: String,
+      trim: true,
+    },
+    // PayOS transaction fields
+    payosOrderCode: {
+      type: String,
+      trim: true,
+    },
+    payosPaymentLinkId: {
+      type: String,
+      trim: true,
+    },
+    payosCheckoutUrl: {
+      type: String,
+      trim: true,
+    },
+    payosQrCode: {
+      type: String,
+      trim: true,
+    },
+    payosAccountNumber: {
+      type: String,
+      trim: true,
+    },
+    payosAccountName: {
+      type: String,
+      trim: true,
+    },
+    payosBin: {
+      type: String,
+      trim: true,
+    },
+    payosReference: {
+      type: String,
+      trim: true,
+    },
+    payosTransactionDateTime: {
+      type: String,
+      trim: true,
+    },
+    payosCurrency: {
+      type: String,
+      trim: true,
+    },
+    payosCode: {
+      type: String,
+      trim: true,
+    },
+    payosDesc: {
+      type: String,
+      trim: true,
+    },
+    payosCounterAccountBankId: {
+      type: String,
+      trim: true,
+    },
+    payosCounterAccountBankName: {
+      type: String,
+      trim: true,
+    },
+    payosCounterAccountName: {
+      type: String,
+      trim: true,
+    },
+    payosCounterAccountNumber: {
+      type: String,
+      trim: true,
+    },
+    payosVirtualAccountName: {
+      type: String,
+      trim: true,
+    },
+    payosVirtualAccountNumber: {
+      type: String,
+      trim: true,
+    },
+    payosChecksum: {
       type: String,
       trim: true,
     },
