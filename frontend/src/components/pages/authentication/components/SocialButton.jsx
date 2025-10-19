@@ -11,7 +11,7 @@ import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props
 
 const getAPIBase = () => {
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://127.0.0.1:3000'; // Use IPv4 instead of localhost, without /api
+    return 'http://localhost:3000'; // Use IPv4 instead of localhost, without /api
   }
 
   if (import.meta.env.VITE_API_BASE_URL) {

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const getBaseURL = () => {
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://127.0.0.1:3000/api'; // Use IPv4 instead of localhost
+    return 'http://localhost:3000/api'; // Use IPv4 instead of localhost
   }
 
   if (import.meta.env.VITE_API_BASE_URL) {
