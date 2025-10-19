@@ -772,17 +772,63 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
                 formData.append('userImage', personAutoFile);
                 formData.append('clothingImage', garmentAutoFile);
 
+                // Debug: Log the environment and URL being used
+                console.log('=== TRYON FRONTEND DEBUG ===');
+                console.log('Environment variables:', {
+                  VITE_TRYON_API_URL: import.meta.env?.VITE_TRYON_API_URL,
+                  VITE_API_BASE_URL: import.meta.env?.VITE_API_BASE_URL,
+                  NODE_ENV: import.meta.env?.NODE_ENV,
+                  MODE: import.meta.env?.MODE,
+                });
+                console.log('Current window location:', window.location.href);
+                console.log('Current window hostname:', window.location.hostname);
+
+                // Use the backend URL instead of relative path
                 const tryOnUrl =
-                  (import.meta.env && import.meta.env.VITE_TRYON_API_URL) || '/api/tryon';
+                  (import.meta.env && import.meta.env.VITE_TRYON_API_URL) ||
+                  (window.location.hostname === 'localhost'
+                    ? 'http://localhost:3000/api/tryon'
+                    : 'https://kicks-shoes-backend.azurewebsites.net/api/tryon');
+
+                console.log('Using tryOnUrl:', tryOnUrl);
+                console.log('Making fetch request to:', tryOnUrl);
                 const res = await fetch(tryOnUrl, {
                   method: 'POST',
                   body: formData,
                 });
+
+                console.log('Response status:', res.status);
+                console.log('Response headers:', Object.fromEntries(res.headers.entries()));
+                console.log('Response ok:', res.ok);
+
                 if (!res.ok) {
-                  const errJson = await res.json().catch(() => ({}));
+                  const responseText = await res.text();
+                  console.log('Error response text:', responseText);
+
+                  let errJson;
+                  try {
+                    errJson = JSON.parse(responseText);
+                  } catch (e) {
+                    console.log('Failed to parse error response as JSON');
+                    errJson = { error: responseText || `Try-on failed (${res.status})` };
+                  }
+
                   throw new Error(errJson?.error || `Try-on failed (${res.status})`);
                 }
-                const data = await res.json();
+
+                const responseText = await res.text();
+                console.log('Response text length:', responseText.length);
+                console.log('Response text preview:', responseText.substring(0, 200));
+
+                let data;
+                try {
+                  data = JSON.parse(responseText);
+                  console.log('Parsed JSON response:', data);
+                } catch (e) {
+                  console.error('Failed to parse response as JSON:', e);
+                  console.log('Raw response:', responseText);
+                  throw new Error('Invalid JSON response from server');
+                }
                 const url =
                   data?.image ||
                   (data?.imageBase64 ? `data:image/png;base64,${data.imageBase64}` : null);
@@ -1111,8 +1157,12 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
                       formData.append('userImage', personAutoFile);
                       formData.append('clothingImage', garmentAutoFile);
 
+                      // Use the backend URL instead of relative path
                       const tryOnUrl =
-                        (import.meta.env && import.meta.env.VITE_TRYON_API_URL) || '/api/tryon';
+                        (import.meta.env && import.meta.env.VITE_TRYON_API_URL) ||
+                        (window.location.hostname === 'localhost'
+                          ? 'http://localhost:3000/api/tryon'
+                          : 'https://kicks-shoes-backend.azurewebsites.net/api/tryon');
                       const res = await fetch(tryOnUrl, {
                         method: 'POST',
                         body: formData,
