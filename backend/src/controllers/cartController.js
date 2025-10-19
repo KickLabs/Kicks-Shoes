@@ -173,3 +173,44 @@ export const removeCartItem = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+/**
+ * Remove only the items that were ordered from cart
+ */
+export const removeOrderedItems = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { orderedItems } = req.body;
+
+    if (!orderedItems || !Array.isArray(orderedItems)) {
+      return res.status(400).json({ message: 'Ordered items array is required' });
+    }
+
+    const cart = await Cart.findOne({ user: userId });
+    if (!cart) {
+      // Create empty cart if none exists
+      const newCart = new Cart({ user: userId, items: [] });
+      await newCart.save();
+      return res.json(newCart);
+    }
+
+    // Remove only the items that were ordered
+    // orderedItems should contain the cart item IDs that were ordered
+    const orderedItemIds = orderedItems.map(item => item._id || item.id);
+    cart.items = cart.items.filter(item => !orderedItemIds.includes(item._id.toString()));
+
+    recalculateTotalPrice(cart);
+    await cart.save();
+
+    // Return populated cart data
+    const populatedCart = await Cart.findById(cart._id).populate({
+      path: 'items.product',
+      select: 'name brand price variants images mainImage stock',
+    });
+
+    res.json(populatedCart);
+  } catch (err) {
+    console.error('Error removing ordered items:', err);
+    res.status(500).json({ message: err.message });
+  }
+};

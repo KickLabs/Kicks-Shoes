@@ -196,6 +196,7 @@ const io = new SocketIOServer(server, {
         // Additional domains for better cross-network support
         'https://kicks-shoes-frontend.azurewebsites.net',
         'https://kicks-shoes-app.azurewebsites.net',
+        'https://kicks-shoes-backend.azurewebsites.net',
       ].filter(Boolean);
 
       if (allowedOrigins.indexOf(origin) !== -1) {
@@ -209,6 +210,8 @@ const io = new SocketIOServer(server, {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
 });
 
 import setupSocketHandlers from './socket.js';

@@ -9,12 +9,16 @@ import { Button, Card, Result, Spin } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import orderService from '../../../services/orderService';
+import { useDispatch, useSelector } from 'react-redux';
+import { removeOrderedItems } from '../cart/cartSlice';
 
 export default function PaymentSuccess() {
   const [loading, setLoading] = useState(true);
   const [orderInfo, setOrderInfo] = useState(null);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const cartItems = useSelector(state => state.cart?.items || []);
 
   useEffect(() => {
     const handlePaymentSuccess = async () => {
@@ -52,8 +56,18 @@ export default function PaymentSuccess() {
               paymentMethod: 'PayOS',
             });
 
-            // Clear pending order
+            // Clear pending order and remove ordered items from cart
             localStorage.removeItem('pendingOrder');
+            if (orderData && orderData.products) {
+              // Map order products back to cart items for removal
+              const cartItemsToRemove = cartItems.filter(p => {
+                const productId = p.product?._id || p.id;
+                return orderData.products.some(
+                  op => op.id === productId && op.size === p.size && op.color === p.color
+                );
+              });
+              dispatch(removeOrderedItems(cartItemsToRemove));
+            }
           } else {
             setError('Failed to update order status');
           }
@@ -64,6 +78,16 @@ export default function PaymentSuccess() {
             paymentMethod: paymentMethod || 'Unknown',
           });
           localStorage.removeItem('pendingOrder');
+          if (orderData && orderData.products) {
+            // Map order products back to cart items for removal
+            const cartItemsToRemove = cartItems.filter(p => {
+              const productId = p.product?._id || p.id;
+              return orderData.products.some(
+                op => op.id === productId && op.size === p.size && op.color === p.color
+              );
+            });
+            dispatch(removeOrderedItems(cartItemsToRemove));
+          }
         }
       } catch (err) {
         console.error('Payment success handling error:', err);

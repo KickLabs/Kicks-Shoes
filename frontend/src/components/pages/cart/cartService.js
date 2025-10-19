@@ -50,3 +50,18 @@ export const removeCartItem = createAsyncThunk('cart/removeItem', async (itemId,
     return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
   }
 });
+
+export const removeOrderedItems = createAsyncThunk(
+  'cart/removeOrderedItems',
+  async (orderedItems, thunkAPI) => {
+    try {
+      console.log('Removing ordered items from cart:', orderedItems);
+      const res = await axiosInstance.post('/cart/remove-ordered', { orderedItems });
+      console.log('Remove ordered items response:', res.data);
+      return res.data;
+    } catch (error) {
+      console.error('Error removing ordered items:', error.response?.data || error.message);
+      return thunkAPI.rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);

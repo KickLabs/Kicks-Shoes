@@ -123,8 +123,6 @@ export const PEER_CONNECTION_CONFIG = {
   // Enhanced configuration for better cross-network connectivity
   iceConnectionReceivingTimeout: 30000, // 30 seconds
   iceBackupCandidatePairPingInterval: 25000, // 25 seconds
-  // Force TURN for better connectivity
-  iceTransportPolicy: 'relay', // Force TURN-only for maximum compatibility
 };
 
 export const OFFER_OPTIONS = {

@@ -4,6 +4,7 @@
   "description": "Kicks Shoes E-commerce Project",
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd backend && npm run dev",
     "client": "cd frontend && npm run dev",
     "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install",
@@ -14,8 +15,10 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@babel/eslint-parser": "^7.28.4",
     "concurrently": "^8.2.2",
     "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.37.5",
     "globals": "^14.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",

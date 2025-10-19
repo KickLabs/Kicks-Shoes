@@ -13,14 +13,14 @@ export const emailConfig = {
   googleMailerRefreshToken: process.env.GOOGLE_MAILER_REFRESH_TOKEN,
 
   // Email Addresses
-  adminEmailAddress: process.env.ADMIN_EMAIL_ADDRESS || "admin@kicksshoes.com",
-  fromName: process.env.FROM_NAME || "Kicks Shoes",
+  adminEmailAddress: process.env.ADMIN_EMAIL_ADDRESS || 'admin@kicksshoes.com',
+  fromName: process.env.FROM_NAME || 'Kicks Shoes',
 
   // SMTP Configuration (Fallback)
   smtp: {
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: process.env.SMTP_PORT || 587,
-    secure: process.env.SMTP_SECURE === "true",
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASSWORD,
@@ -28,13 +28,13 @@ export const emailConfig = {
   },
 
   // Email Settings
-  maxRetries: parseInt(process.env.EMAIL_MAX_RETRIES || "3"),
-  retryDelay: parseInt(process.env.EMAIL_RETRY_DELAY || "1000"),
-  timeout: parseInt(process.env.EMAIL_TIMEOUT || "5000"),
+  maxRetries: parseInt(process.env.EMAIL_MAX_RETRIES || '3'),
+  retryDelay: parseInt(process.env.EMAIL_RETRY_DELAY || '1000'),
+  timeout: parseInt(process.env.EMAIL_TIMEOUT || '5000'),
 
   // Email Templates
-  defaultLanguage: process.env.EMAIL_DEFAULT_LANGUAGE || "en",
-  defaultTimezone: process.env.EMAIL_DEFAULT_TIMEZONE || "UTC",
+  defaultLanguage: process.env.EMAIL_DEFAULT_LANGUAGE || 'en',
+  defaultTimezone: process.env.EMAIL_DEFAULT_TIMEZONE || 'UTC',
 };
 
 // Validate required configuration
@@ -44,5 +44,5 @@ if (
   !emailConfig.googleMailerRefreshToken ||
   !emailConfig.adminEmailAddress
 ) {
-  throw new Error("Missing required email configuration");
+  throw new Error('Missing required email configuration');
 }

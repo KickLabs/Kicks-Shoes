@@ -1,22 +1,9 @@
 /**
- * AI Chat Service for integrating with the FTES AI API
+ * AI Chat Service for integrating with Gemini AI
  * Handles streaming responses and conversation management
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const DIRECT_AI_API_URL = import.meta.env.VITE_AI_API_URL;
-const USE_PROXY = (import.meta.env.VITE_AI_USE_PROXY || 'false').toLowerCase() === 'true';
-const AI_TOKEN = import.meta.env.VITE_AI_TOKEN;
-const BOT_ID = import.meta.env.VITE_BOT_ID;
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-
-// Validate required environment variables (non-fatal; detailed errors thrown at call time)
-if (!BOT_ID || !API_KEY) {
-  console.error('Missing required environment variables for AI Chat Service:');
-  console.error('VITE_BOT_ID:', !!BOT_ID);
-  console.error('VITE_GEMINI_API_KEY:', !!API_KEY);
-  console.error('Please check your .env file configuration.');
-}
 
 class AIChatService {
   constructor() {
@@ -91,76 +78,27 @@ class AIChatService {
    */
   async sendMessage(message, onStream, onComplete, onError) {
     try {
-      // Kiểm tra environment variables
-      if (!BOT_ID || !API_KEY) {
-        throw new Error(
-          'Missing required environment variables for AI Chat Service. Please check your .env file.'
-        );
+      // Check if API base URL is configured
+      if (!API_BASE_URL) {
+        throw new Error('API_BASE_URL is not configured');
       }
-
-      // Tạo context cho AI tư vấn sản phẩm giày
-      const productContext = `Bạn là AI tư vấn sản phẩm giày chuyên nghiệp. Bạn có kiến thức sâu rộng về:
-      - Các loại giày: sneaker, boot, sandal, loafer, oxford, etc.
-      - Các thương hiệu nổi tiếng: Nike, Adidas, Puma, Converse, Vans, etc.
-      - Chất liệu giày: da, vải, cao su, mesh, etc.
-      - Kích thước và cách chọn giày phù hợp
-      - Phong cách thời trang và cách phối đồ với giày
-      - Giá cả và chất lượng sản phẩm
-      
-      Hãy tư vấn một cách thân thiện, chuyên nghiệp và hữu ích. Nếu không biết thông tin cụ thể, hãy đề xuất cách tìm hiểu thêm.
-      
-      Câu hỏi của khách hàng: ${message}`;
-
-      // Không gửi attachs nếu không có file
 
       console.log('Sending AI message:', {
-        query: message,
-        bot_id: BOT_ID,
-        conversation_id: this.conversationId || '',
-        model_name: 'gemini-2.5-flash-preview-05-20',
+        message: message,
+        conversation_id: this.conversationId || null,
       });
 
-      // Decide mode: proxy or direct; default is direct only unless USE_PROXY=true
-      let response;
-      const callProxy = async () => {
-        if (!API_BASE_URL) {
-          throw new Error('VITE_API_BASE_URL is required when VITE_AI_USE_PROXY=true');
-        }
-        const proxyUrl = `${API_BASE_URL}/ai/stream`;
-        const payload = {
-          query: productContext,
-          bot_id: BOT_ID,
-          conversation_id: this.conversationId || '',
-          model_name: 'gemini-2.5-flash-preview-05-20',
-          api_key: API_KEY,
-        };
-        return fetch(proxyUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-      };
-
-      if (USE_PROXY) {
-        response = await callProxy();
-      } else {
-        const formData = new FormData();
-        formData.append('query', productContext);
-        formData.append('bot_id', BOT_ID);
-        formData.append('conversation_id', this.conversationId || '');
-        formData.append('model_name', 'gemini-2.5-flash-preview-05-20');
-        formData.append('api_key', API_KEY);
-
-        response = await fetch(DIRECT_AI_API_URL, {
-          method: 'POST',
-          headers: {
-            ...(AI_TOKEN ? { Authorization: `Bearer ${AI_TOKEN}` } : {}),
-          },
-          body: formData,
-        });
-      }
+      // Call the simplified Gemini AI backend
+      const response = await fetch(`${API_BASE_URL}/ai/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: message,
+          conversationId: this.conversationId || null,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -197,6 +135,9 @@ class AIChatService {
               console.log('AI response completed:', finalResponse);
               onComplete(finalResponse, data.content);
               return;
+            } else if (data.type === 'error') {
+              // Handle error response
+              throw new Error(data.content || 'AI encountered an error');
             }
           } catch (parseError) {
             console.warn('Failed to parse JSON line:', line, parseError);

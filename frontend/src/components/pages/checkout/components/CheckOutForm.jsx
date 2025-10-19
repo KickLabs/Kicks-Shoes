@@ -9,6 +9,8 @@ import { useFlashSales } from '../../../../hooks/useFlashSales';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PayOSService from '../../../../services/payosService';
+import { useDispatch } from 'react-redux';
+import { removeOrderedItems } from '../../cart/cartSlice';
 
 const { Text } = Typography;
 
@@ -43,6 +45,7 @@ export default function CheckoutForm({
   const { user } = useAuth();
   const { getProductFlashSale } = useFlashSales();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (user) {
@@ -436,6 +439,16 @@ export default function CheckoutForm({
 
       if (result.success) {
         message.success('Order created successfully! Payment will be collected on delivery.');
+        // Remove ordered items from cart
+        // Map order products back to cart items for removal
+        const cartItemsToRemove = (products || []).filter(p => {
+          // Check if this cart item matches any order product
+          const productId = p.product?._id || p.id;
+          return orderData.products.some(
+            op => op.id === productId && op.size === p.size && op.color === p.color
+          );
+        });
+        dispatch(removeOrderedItems(cartItemsToRemove));
         navigate('/account/orders');
       } else {
         throw new Error(result.message || 'Failed to create order');

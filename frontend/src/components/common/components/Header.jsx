@@ -13,12 +13,13 @@ import {
   ShopOutlined,
   ReadOutlined,
 } from '@ant-design/icons';
-import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal } from 'antd';
+import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal, Badge } from 'antd';
 import logo from '@assets/Logo.svg';
 import './Header.css';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import axiosInstance from '../../../services/axiosInstance';
+import { useSelector } from 'react-redux';
 
 const { Header } = Layout;
 
@@ -38,6 +39,10 @@ const AppHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isLoggedIn = localStorage.getItem('userInfo') ? true : false;
+
+  // Get cart items from Redux store
+  const cartItems = useSelector(state => state.cart?.items || []);
+  const cartItemsCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   // Fetch all products for search
   useEffect(() => {
@@ -366,6 +371,17 @@ const AppHeader = () => {
                 allowClear
               />
             )}
+            <Badge
+              count={cartItemsCount}
+              size="small"
+              style={{
+                marginRight: 12,
+                cursor: 'pointer',
+              }}
+              onClick={() => navigate('/cart')}
+            >
+              <ShoppingCartOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
+            </Badge>
             <Dropdown
               menu={{
                 items: avatarMenuItems,
@@ -460,22 +476,30 @@ const AppHeader = () => {
                 <UserOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
               </div>
             )}
-            <div
+            <Badge
+              count={cartItemsCount}
+              size="small"
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
                 marginLeft: 12,
-                fontSize: 20,
                 cursor: 'pointer',
               }}
               onClick={() => navigate('/cart')}
             >
-              <ShoppingCartOutlined />
-            </div>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  fontSize: 20,
+                  cursor: 'pointer',
+                }}
+              >
+                <ShoppingCartOutlined />
+              </div>
+            </Badge>
           </>
         )}
       </div>
