@@ -65,42 +65,9 @@ function buildIceServers() {
   }
 
   if (!turnUrl && !xirsysTurnUrl) {
-    // Fallback to multiple TURN servers for maximum reliability
-    console.warn('No TURN credentials provided. Using multiple TURN servers for production.');
-    iceServers.push(
-      // ExpressTURN servers - production ready
-      {
-        urls: 'turn:relay1.expressturn.com:3480?transport=udp',
-        username: '000000002075698469',
-        credential: '4roONaZKXyvI3a0oVzVLAOQ3m4U=',
-      },
-      {
-        urls: 'turn:relay1.expressturn.com:3480?transport=tcp',
-        username: '000000002075698469',
-        credential: '4roONaZKXyvI3a0oVzVLAOQ3m4U=',
-      },
-      {
-        urls: 'turns:relay1.expressturn.com:3480?transport=tcp',
-        username: '000000002075698469',
-        credential: '4roONaZKXyvI3a0oVzVLAOQ3m4U=',
-      },
-      // Xirsys TURN servers - additional backup
-      {
-        urls: 'stun:ss-turn1.xirsys.com',
-      },
-      {
-        urls: [
-          'turn:ss-turn1.xirsys.com:80?transport=udp',
-          'turn:ss-turn1.xirsys.com:3478?transport=udp',
-          'turn:ss-turn1.xirsys.com:80?transport=tcp',
-          'turn:ss-turn1.xirsys.com:3478?transport=tcp',
-          'turns:ss-turn1.xirsys.com:443?transport=tcp',
-          'turns:ss-turn1.xirsys.com:5349?transport=tcp',
-        ],
-        username:
-          'C-9cBETPhN6kxM5BJirf7V5K5np3wmggRDUg2UuEb8XuLf283fUyMLnT_LZ9mD4yAAAAAGjso2BDdW9uZ0RR',
-        credential: '32d8ae86-a802-11f0-972d-0242ac140004',
-      }
+    // No TURN credentials provided - only use STUN servers
+    console.warn(
+      'No TURN credentials provided. Using STUN servers only. For production, please configure TURN servers via environment variables.'
     );
   }
 
