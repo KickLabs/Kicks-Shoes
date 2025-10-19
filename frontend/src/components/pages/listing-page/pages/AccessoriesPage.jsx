@@ -7,11 +7,10 @@ import FilterSidebar from '../components/FilterSidebar';
 
 const { Text } = Typography;
 
-const ListingPage = () => {
+const AccessoriesPage = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const isNewParam = queryParams.get('isNew') === 'true';
-  const isFlashSaleParam = queryParams.get('isFlashSale') === 'true';
 
   // Visual search results from navigation state
   const visualSearchResults = location.state?.visualSearchResults;
@@ -20,7 +19,7 @@ const ListingPage = () => {
   const [products, setProducts] = useState([]);
   const [totalProducts, setTotalProducts] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState({ productType: 'accessories' }); // Default filter for accessories
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -44,26 +43,29 @@ const ListingPage = () => {
     try {
       setLoading(true);
 
-      // Build query parameters
+      // Build query parameters - always include accessories filter
       const params = {
         page: newPage,
         limit: pageSize,
         sortBy,
         order: sortOrder,
+        productType: 'accessories', // Force accessories filter
       };
 
-      // Add filters only if they have values
-      if (newFilters.size) params.size = newFilters.size;
-      if (newFilters.color) params.color = newFilters.color;
-      if (newFilters.brand) params.brand = newFilters.brand;
-      if (newFilters.category) params.category = newFilters.category;
-      if (newFilters.minPrice !== undefined && newFilters.minPrice > 0)
-        params.minPrice = newFilters.minPrice;
-      if (newFilters.maxPrice !== undefined && newFilters.maxPrice < 1000)
-        params.maxPrice = newFilters.maxPrice;
-      if (newFilters.saleType) params.saleType = newFilters.saleType;
-      if (isNewParam) params.isNew = true;
-      if (isFlashSaleParam) params.saleType = 'flash-sale';
+      // Add other filters only if they have values
+      Object.keys(newFilters).forEach(key => {
+        if (newFilters[key] && newFilters[key] !== '' && key !== 'productType') {
+          // Only add price filters if they're not default values
+          if (key === 'minPrice' && newFilters[key] === 0) return;
+          if (key === 'maxPrice' && newFilters[key] === 1000) return;
+          params[key] = newFilters[key];
+        }
+      });
+
+      // Add isNew filter if present in URL
+      if (isNewParam) {
+        params.isNew = true;
+      }
 
       const response = await axiosInstance.get('/products', { params });
 
@@ -71,12 +73,27 @@ const ListingPage = () => {
         setProducts(response.data.data.products || []);
         setTotalProducts(response.data.data.total || 0);
       }
-    } catch (err) {
-      console.error('Error fetching products', err);
+    } catch (error) {
+      console.error('Error fetching accessories:', error);
       setProducts([]);
       setTotalProducts(0);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFilterChange = newFilters => {
+    const updatedFilters = { ...newFilters, productType: 'accessories' };
+    setFilters(updatedFilters);
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = value => {
+    const option = sortOptions.find(opt => opt.value === value);
+    if (option) {
+      setSortBy(option.sortBy);
+      setSortOrder(option.sortOrder);
+      setCurrentPage(1);
     }
   };
 
@@ -89,44 +106,25 @@ const ListingPage = () => {
     } else {
       fetchProducts(filters, currentPage);
     }
-    // eslint-disable-next-line
-  }, [
-    filters,
-    currentPage,
-    isNewParam,
-    isFlashSaleParam,
-    sortBy,
-    sortOrder,
-    isVisualSearch,
-    visualSearchResults,
-  ]);
+  }, [currentPage, sortBy, sortOrder, filters, isVisualSearch, visualSearchResults]);
 
-  const handleFilterChange = newFilters => {
-    console.log('Filter changed:', newFilters);
-    setFilters(newFilters);
-    setCurrentPage(1); // Reset to page 1 when filters change
-  };
-
-  const handleSortChange = value => {
-    const selectedOption = sortOptions.find(option => option.value === value);
-    if (selectedOption) {
-      console.log('Sort change:', selectedOption);
-      setSortBy(selectedOption.sortBy);
-      setSortOrder(selectedOption.sortOrder);
-      setCurrentPage(1); // Reset to page 1 when sort changes
+  useEffect(() => {
+    if (!isVisualSearch) {
+      fetchProducts(filters, 1);
+      setCurrentPage(1);
     }
-  };
+  }, [location.search, isVisualSearch]);
 
   const getCurrentSortValue = () => {
     return (
-      sortOptions.find(option => option.sortBy === sortBy && option.sortOrder === sortOrder)
-        ?.value || 'createdAt-desc'
+      sortOptions.find(opt => opt.sortBy === sortBy && opt.sortOrder === sortOrder)?.value ||
+      'createdAt-desc'
     );
   };
 
   return (
     <div style={{ display: 'flex', padding: 32, gap: 32 }}>
-      <FilterSidebar onFiltersChange={handleFilterChange} productType="all" />
+      <FilterSidebar onFiltersChange={handleFilterChange} productType="accessories" />
 
       <div style={{ flex: 1 }}>
         {/* Visual Search Results Alert - Hidden */}
@@ -134,13 +132,11 @@ const ListingPage = () => {
           <Alert
             type="info"
             showIcon
-            message="Kết quả tìm kiếm bằng hình ảnh"
+            message="Kết quả tìm kiếm phụ kiện bằng hình ảnh"
             description={
               <div>
-                <Text strong>AI đã phân tích hình ảnh của bạn:</Text>
+                <Text strong>AI đã phân tích hình ảnh phụ kiện của bạn:</Text>
                 <div style={{ marginTop: 8 }}>
-                  <Text strong>Danh mục: </Text>
-                  <Tag color="geekblue">{visualSearchResults.analyzedKeywords?.category || 'N/A'}</Tag>
                   <Text strong>Thương hiệu: </Text>
                   <Tag color="purple">{visualSearchResults.analyzedKeywords?.brand || 'N/A'}</Tag>
                   <Text strong>Màu sắc: </Text>
@@ -179,7 +175,7 @@ const ListingPage = () => {
               minHeight: 400,
             }}
           >
-            <Empty description="No products found" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            <Empty description="No accessories found" image={Empty.PRESENTED_IMAGE_SIMPLE} />
           </div>
         ) : (
           <>
@@ -196,7 +192,7 @@ const ListingPage = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ fontSize: 16, fontWeight: 600, color: '#333' }}>
-                  {totalProducts} Products
+                  {totalProducts} Accessories
                 </span>
                 {isNewParam && (
                   <span
@@ -215,7 +211,6 @@ const ListingPage = () => {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 14, color: '#666' }}>Sort by:</span>
                 <Select
                   value={getCurrentSortValue()}
                   onChange={handleSortChange}
@@ -257,4 +252,4 @@ const ListingPage = () => {
   );
 };
 
-export default ListingPage;
+export default AccessoriesPage;
