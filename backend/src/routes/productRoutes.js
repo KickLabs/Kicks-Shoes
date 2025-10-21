@@ -6,6 +6,7 @@
  */
 
 import { Router } from 'express';
+import multer from 'multer';
 import {
   createManyProducts,
   createProduct,
@@ -18,11 +19,22 @@ import {
   recalculateFinalPrice,
   reportProduct,
   updateProduct,
+  visualSearch,
 } from '../controllers/productController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
 
 const router = Router();
+
+// Multer configuration for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB file size limit
+});
+
+// Visual search route
+router.post('/visual-search', upload.single('image'), visualSearch);
 
 // Public routes
 router.get('/', getAllProducts);
