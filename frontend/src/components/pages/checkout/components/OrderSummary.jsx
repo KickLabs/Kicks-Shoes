@@ -33,6 +33,27 @@ export default function OrderSummary({
 }) {
   const [coupon, setCoupon] = useState('');
   const [applying, setApplying] = useState(false);
+  const [appliedDiscounts, setAppliedDiscounts] = useState([]);
+  const [availableDiscounts, setAvailableDiscounts] = useState([]);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [loadingDiscounts, setLoadingDiscounts] = useState(false);
+
+  // Load available discounts on component mount
+  useEffect(() => {
+    loadAvailableDiscounts();
+  }, []);
+
+  const loadAvailableDiscounts = async () => {
+    setLoadingDiscounts(true);
+    try {
+      const response = await getActiveDiscounts();
+      setAvailableDiscounts(response.data || []);
+    } catch (error) {
+      console.error('Error loading discounts:', error);
+    } finally {
+      setLoadingDiscounts(false);
+    }
+  };
   const [appliedDiscount, setAppliedDiscount] = useState(null);
   const [voucherOpen, setVoucherOpen] = useState(false);
 
@@ -61,10 +82,13 @@ export default function OrderSummary({
           description: response.data.discount.description,
         };
 
-        setAppliedDiscounts(prev => [...prev, newDiscount]);
+        // ✅ Thay vì cộng thêm, chỉ giữ 1 voucher
+        setAppliedDiscounts([newDiscount]);
+
         if (onApplyCoupon) {
           await onApplyCoupon(coupon.trim(), response.data.discountAmount);
         }
+
         message.success('Coupon applied successfully!');
         setCoupon('');
       } else {
@@ -84,11 +108,6 @@ export default function OrderSummary({
   };
 
   const handleSelectDiscount = async discount => {
-    if (appliedDiscounts.some(d => d.code === discount.code)) {
-      message.warning('This coupon is already applied');
-      return;
-    }
-
     setApplying(true);
     try {
       const response = await validateDiscountCode(discount.code, subtotal, cartItems);
@@ -102,10 +121,13 @@ export default function OrderSummary({
           description: discount.description,
         };
 
-        setAppliedDiscounts(prev => [...prev, newDiscount]);
+        // ✅ Chỉ giữ 1 voucher duy nhất
+        setAppliedDiscounts([newDiscount]);
+
         if (onApplyCoupon) {
           await onApplyCoupon(discount.code, response.data.discountAmount);
         }
+
         message.success('Coupon applied successfully!');
         setShowDiscountModal(false);
       } else {
@@ -119,15 +141,8 @@ export default function OrderSummary({
     }
   };
 
-  const handleVoucherApplied = async payload => {
-    // payload: { code, discountAmount, meta }
-    setAppliedDiscount({
-      discountAmount: payload.discountAmount,
-      discount: { code: payload.code },
-    });
-    if (onApplyCoupon) {
-      await onApplyCoupon(payload.code, payload.discountAmount);
-    }
+  const getTotalDiscountAmount = () => {
+    return appliedDiscounts.reduce((sum, discount) => sum + discount.discountAmount, 0);
   };
 
   return (
@@ -207,30 +222,35 @@ export default function OrderSummary({
           <Text style={{ fontSize: 16 }}>{tax > 0 ? formatPrice(tax) : '-'}</Text>
         </Col>
       </Row>
-      {/* Coupon input */}
-      <div className="coupon-row">
-        <Input
-          placeholder="Enter coupon code"
-          value={coupon}
-          onChange={e => setCoupon(e.target.value)}
-          size="large"
-        />
+      {/* Enhanced Coupon Section */}
+      <div style={{ marginBottom: 16 }}>
+        <Space.Compact style={{ width: '100%', marginBottom: 8 }}>
+          <Input
+            placeholder="Enter coupon code"
+            value={coupon}
+            onChange={e => setCoupon(e.target.value)}
+            size="large"
+            onPressEnter={handleApplyCoupon}
+          />
+          <Button
+            style={{ marginLeft: 7 }}
+            type="default"
+            size="large"
+            loading={applying}
+            onClick={handleApplyCoupon}
+          >
+            Apply
+          </Button>
+        </Space.Compact>
+
         <Button
-          style={{ marginLeft: 5 }}
-          type="default"
+          type="dashed"
           size="large"
-          loading={applying}
-          onClick={handleApplyCoupon}
+          icon={<PlusOutlined />}
+          onClick={() => setShowDiscountModal(true)}
+          style={{ width: '100%' }}
         >
-          Apply
-        </Button>
-        <Button
-          style={{ marginLeft: 5 }}
-          type="primary"
-          size="large"
-          onClick={() => setVoucherOpen(true)}
-        >
-          Voucher
+          Browse Available Coupons
         </Button>
       </div>
 
@@ -269,12 +289,61 @@ export default function OrderSummary({
           </Text>
         </Col>
       </Row>
-      <VoucherPicker
-        open={voucherOpen}
-        onClose={() => setVoucherOpen(false)}
-        orderAmount={subtotal}
-        onApplied={handleVoucherApplied}
-      />
+
+      {/* Available Coupons Modal */}
+      <Modal
+        title="Available Coupons"
+        open={showDiscountModal}
+        onCancel={() => setShowDiscountModal(false)}
+        footer={null}
+        width={600}
+      >
+        <List
+          loading={loadingDiscounts}
+          dataSource={availableDiscounts}
+          renderItem={discount => (
+            <List.Item
+              actions={[
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => handleSelectDiscount(discount)}
+                  loading={applying}
+                  disabled={appliedDiscounts.some(d => d.code === discount.code)}
+                >
+                  {appliedDiscounts.some(d => d.code === discount.code) ? 'Applied' : 'Apply'}
+                </Button>,
+              ]}
+            >
+              <List.Item.Meta
+                title={
+                  <Space>
+                    <Text strong>{discount.code}</Text>
+                    {appliedDiscounts.some(d => d.code === discount.code) && (
+                      <Badge status="success" text="Applied" />
+                    )}
+                  </Space>
+                }
+                description={
+                  <div>
+                    <div>{discount.description}</div>
+                    <div style={{ marginTop: 4 }}>
+                      <Tag color="blue">
+                        {discount.type === 'percentage'
+                          ? `${discount.value}% off`
+                          : `${formatPrice(discount.value)} off`}
+                      </Tag>
+                      {discount.minPurchase > 0 && (
+                        <Tag color="orange">Min: {formatPrice(discount.minPurchase)}</Tag>
+                      )}
+                    </div>
+                  </div>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      </Modal>
     </Card>
   );
 }
