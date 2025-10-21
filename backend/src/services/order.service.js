@@ -9,9 +9,7 @@
 import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
-// START: Thêm import cho Product model
-import Product from '../models/Product.js'; // Giả định đường dẫn này là chính xác
-// END: Thêm import cho Product model
+import Product from '../models/Product.js';
 import FlashSale from '../models/FlashSale.js';
 import logger from '../utils/logger.js';
 import { validateDiscountCode } from './discount.service.js';
@@ -39,7 +37,6 @@ export class OrderService {
         return null;
       }
 
-      // Tìm tất cả flash sale có chứa sản phẩm này
       const productFlashSales = [];
       for (const flashSale of flashSales) {
         const flashSaleProduct = flashSale.products.find(
@@ -59,7 +56,6 @@ export class OrderService {
         return null;
       }
 
-      // Nếu có nhiều flash sale, lấy giá rẻ nhất
       if (productFlashSales.length > 1) {
         logger.info('Multiple flash sales found for product:', {
           productId,
@@ -98,10 +94,8 @@ export class OrderService {
    * @returns {Promise<Order>} The created order
    */
   static async createOrder(orderData) {
-    // START: Sử dụng Transaction để đảm bảo tính toàn vẹn dữ liệu
     const session = await mongoose.startSession();
     session.startTransaction();
-    // END: Sử dụng Transaction
 
     try {
       logger.info('Creating order:', { orderData });
@@ -128,25 +122,25 @@ export class OrderService {
         throw new Error('Products must be a non-empty array');
       }
 
-      // START: Cập nhật số lượng sản phẩm chi tiết theo variant
-      // 1. Kiểm tra tồn kho cho từng variant trước khi tạo đơn hàng
+      // Check stock for each variant before creating order
       for (const item of products) {
         const product = await Product.findById(item.id).session(session);
         if (!product) {
           throw new Error(`Product with ID ${item.id} not found.`);
         }
 
-        // Tìm đúng variant trong mảng inventory
         const variantInStock = product.inventory.find(inv => {
-          const colorMatch = inv.color === item.color;
+          const colorMatch =
+            inv.color &&
+            item.color &&
+            inv.color.toLowerCase().trim() === item.color.toLowerCase().trim();
           if (!colorMatch) return false;
 
           switch (product.productType) {
             case 'shoes':
-              return inv.size === item.size;
+              return inv.size && item.size && inv.size === parseInt(item.size);
             case 'clothing':
-              // Giả định client gửi size quần áo (e.g., "M", "L") trong trường 'item.size'
-              return inv.clothingSize === item.size;
+              return inv.clothingSize && item.size && inv.clothingSize === item.size;
             case 'accessory':
               return inv.isOneSize === true;
             default:
@@ -155,6 +149,22 @@ export class OrderService {
         });
 
         if (!variantInStock) {
+          // Log available variants for debugging
+          logger.error('Variant not found for product:', {
+            productId: item.id,
+            productName: product.name,
+            requestedColor: item.color,
+            requestedSize: item.size,
+            productType: product.productType,
+            availableVariants: product.inventory.map(inv => ({
+              color: inv.color,
+              size: inv.size,
+              clothingSize: inv.clothingSize,
+              isOneSize: inv.isOneSize,
+              quantity: inv.quantity,
+            })),
+          });
+
           throw new Error(
             `Variant for product ${product.name} (Color: ${item.color}, Size: ${item.size}) not found.`
           );
@@ -167,15 +177,16 @@ export class OrderService {
         }
       }
 
-      // 2. Trừ số lượng tồn kho và tổng stock
+      // Deduct inventory and total stock
       for (const item of products) {
         const product = await Product.findById(item.id).session(session);
 
-        // **FIXED**: Gộp các điều kiện filter vào một object duy nhất
-        const filterCondition = { 'elem.color': item.color };
+        const filterCondition = {
+          'elem.color': { $regex: new RegExp(`^${item.color}$`, 'i') },
+        };
         switch (product.productType) {
           case 'shoes':
-            filterCondition['elem.size'] = item.size;
+            filterCondition['elem.size'] = parseInt(item.size);
             break;
           case 'clothing':
             filterCondition['elem.clothingSize'] = item.size;
@@ -189,30 +200,28 @@ export class OrderService {
           item.id,
           {
             $inc: {
-              'inventory.$[elem].quantity': -item.quantity, // Trừ số lượng của variant
-              stock: -item.quantity, // Trừ tổng stock
+              'inventory.$[elem].quantity': -item.quantity,
+              stock: -item.quantity,
             },
           },
           {
-            arrayFilters: [filterCondition], // Đưa object filter vào mảng
+            arrayFilters: [filterCondition],
             session,
           }
         );
       }
-      // END: Cập nhật số lượng sản phẩm
 
-      // Use totalAmount or totalPrice, whichever is provided
-      const finalTotalAmount = totalAmount || totalPrice;
-
-      if (typeof finalTotalAmount !== 'number' || finalTotalAmount <= 0) {
-        throw new Error('Invalid total amount');
-      }
+      const providedTotal =
+        typeof totalAmount === 'number' && totalAmount > 0
+          ? totalAmount
+          : typeof totalPrice === 'number' && totalPrice > 0
+            ? totalPrice
+            : null;
 
       const calculatedSubtotal = products.reduce((sum, product) => {
         return sum + product.price * product.quantity;
       }, 0);
 
-      // Validate and apply discount code if provided
       let finalDiscount = discount;
       let finalDiscountCode = null;
 
@@ -228,7 +237,6 @@ export class OrderService {
           finalDiscount = validation.discountAmount;
           finalDiscountCode = discountCode.toUpperCase();
 
-          // Update discount usage count
           const Discount = (await import('../models/Discount.js')).default;
           const discountDoc = await Discount.findOne({ code: discountCode.toUpperCase() });
           if (discountDoc) {
@@ -240,11 +248,10 @@ export class OrderService {
         }
       }
 
-      // Calculate final total including shipping, tax and discount
       const calculatedTotal = calculatedSubtotal + shippingCost + tax - finalDiscount;
 
-      if (Math.abs(calculatedTotal - finalTotalAmount) > 0.01) {
-        throw new Error('Total amount does not match sum of items');
+      if (providedTotal != null && Math.abs(calculatedTotal - providedTotal) > 0.01) {
+        throw new Error('Total price does not match sum of items');
       }
 
       const order = new Order({
@@ -273,9 +280,9 @@ export class OrderService {
 
       await order.save({ session });
 
+      let itemsSubtotalAccurate = 0;
       const orderItems = await Promise.all(
         products.map(async product => {
-          // Check for flash sale first
           const flashSaleInfo = await this.getProductFlashSale(product.id);
           let finalPrice = product.price;
           let isFlashSale = false;
@@ -291,6 +298,7 @@ export class OrderService {
           }
 
           const subtotal = finalPrice * product.quantity;
+          itemsSubtotalAccurate += subtotal;
           const orderItem = new OrderItem({
             order: order._id,
             product: product.id,
@@ -308,12 +316,12 @@ export class OrderService {
       );
 
       order.items = orderItems;
+      order.subtotal = itemsSubtotalAccurate;
+      order.totalPrice = itemsSubtotalAccurate + order.shippingCost + order.tax - order.discount;
       await order.save({ session });
 
-      // Commit the transaction
       await session.commitTransaction();
 
-      // Populate the order with items and products before returning
       const populatedOrder = await order.populate({
         path: 'items',
         populate: {
@@ -325,7 +333,6 @@ export class OrderService {
       logger.info('Order created successfully', { orderId: order._id });
       return populatedOrder;
     } catch (error) {
-      // If an error occurred, abort the whole transaction
       await session.abortTransaction();
 
       logger.error('Error creating order:', {
@@ -335,7 +342,6 @@ export class OrderService {
       // Re-throw the error to be handled by the controller
       throw new Error(`Failed to create order: ${error.message}`);
     } finally {
-      // End the session
       session.endSession();
     }
   }
@@ -561,11 +567,12 @@ export class OrderService {
       for (const item of order.items) {
         const product = await Product.findById(item.product).session(session);
         if (product) {
-          // **FIXED**: Gộp các điều kiện filter vào một object duy nhất
-          const filterCondition = { 'elem.color': item.color };
+          const filterCondition = {
+            'elem.color': { $regex: new RegExp(`^${item.color}$`, 'i') },
+          };
           switch (product.productType) {
             case 'shoes':
-              filterCondition['elem.size'] = item.size;
+              filterCondition['elem.size'] = parseInt(item.size);
               break;
             case 'clothing':
               filterCondition['elem.clothingSize'] = item.size;
@@ -584,7 +591,7 @@ export class OrderService {
               },
             },
             {
-              arrayFilters: [filterCondition], // Đưa object filter vào mảng
+              arrayFilters: [filterCondition],
               session,
             }
           );
