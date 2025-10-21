@@ -206,10 +206,28 @@ const productSchema = new Schema(
 /* -------------------------------------------------------------------------- */
 /*                                   INDEXES                                  */
 /* -------------------------------------------------------------------------- */
-productSchema.index({ name: 'text', brand: 'text', description: 'text' });
+// Text search index for full-text search
+productSchema.index({
+  name: 'text',
+  brand: 'text',
+  description: 'text',
+  productType: 'text',
+  category: 'text',
+});
+
+// Size and color indexes for different product types
 productSchema.index({ 'inventory.size': 1, 'inventory.color': 1 }); // for shoes
 productSchema.index({ 'inventory.clothingSize': 1, 'inventory.color': 1 }); // for clothing
 productSchema.index({ productType: 1, 'attributes.gender': 1, 'attributes.material': 1 });
+
+// Enhanced indexes for virtual search optimization
+productSchema.index({ brand: 1, productType: 1, status: 1 }); // brand + productType + status
+productSchema.index({ 'variants.colors': 1, productType: 1, status: 1 }); // color + productType + status
+productSchema.index({ brand: 1, 'variants.colors': 1, productType: 1 }); // brand + color + productType
+productSchema.index({ productType: 1, status: 1, brand: 1, 'variants.colors': 1 }); // compound for visual search
+productSchema.index({ brand: 1, status: 1 }); // brand filtering
+productSchema.index({ 'variants.colors': 1, status: 1 }); // color filtering
+productSchema.index({ productType: 1, status: 1 }); // productType filtering
 
 /* -------------------------------------------------------------------------- */
 /*                                  VIRTUALS                                  */
@@ -321,7 +339,12 @@ productSchema.methods.updateInventory = async function (variant, quantity) {
 
   // Match based on productType
   const match = it =>
-    String(it.color) === String(color) &&
+    String(it.color || '')
+      .trim()
+      .toLowerCase() ===
+      String(color || '')
+        .trim()
+        .toLowerCase() &&
     (this.productType === 'shoes'
       ? String(it.size) === String(size)
       : this.productType === 'clothing'
@@ -352,7 +375,12 @@ productSchema.methods.checkInventory = function (variant) {
   const { size, clothingSize, isOneSize, color } = variant || {};
 
   const match = it =>
-    String(it.color) === String(color) &&
+    String(it.color || '')
+      .trim()
+      .toLowerCase() ===
+      String(color || '')
+        .trim()
+        .toLowerCase() &&
     (this.productType === 'shoes'
       ? String(it.size) === String(size)
       : this.productType === 'clothing'

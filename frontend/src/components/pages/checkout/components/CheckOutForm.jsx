@@ -50,19 +50,7 @@ export default function CheckoutForm({
   useEffect(() => {
     if (user) {
       form.setFieldsValue({ email: user.email });
-      let firstName = user.firstName || '';
-      let lastName = user.lastName || '';
-      if ((!firstName || !lastName) && user.fullName) {
-        const split = splitFullName(user.fullName);
-        firstName = split.firstName;
-        lastName = split.lastName;
-      }
-      shippingForm.setFieldsValue({
-        firstName,
-        lastName,
-        address: user.address || '',
-        phone: user.phone || '',
-      });
+      // Don't auto-fill shipping form - let user choose default or custom
     }
     // Check for existing pending order
     const pendingOrder = localStorage.getItem('pendingOrder');
@@ -182,15 +170,34 @@ export default function CheckoutForm({
       throw new Error('Invalid number value');
     }
 
+    // Get shipping address - either from form or user's default
+    let shippingAddress = '';
+
+    // Check if we have form values (custom address)
     const shippingValues = shippingForm.getFieldsValue();
-    const provincePart = shippingValues.provinceName || '';
-    const wardPart = shippingValues.wardName || '';
-    const detailPart = shippingValues.address || '';
-    const recipientPart =
-      `${shippingValues.firstName || ''} ${shippingValues.lastName || ''}`.trim();
-    const phonePart = shippingValues.phone || '';
-    const composedAddress = [detailPart, wardPart, provincePart].filter(Boolean).join(', ');
-    const shippingAddress = [recipientPart, composedAddress, phonePart].filter(Boolean).join(', ');
+    const hasFormValues =
+      shippingValues.firstName || shippingValues.lastName || shippingValues.address;
+
+    if (hasFormValues) {
+      // Use custom address from form
+      const provincePart = shippingValues.provinceName || '';
+      const wardPart = shippingValues.wardName || '';
+      const detailPart = shippingValues.address || '';
+      const recipientPart =
+        `${shippingValues.firstName || ''} ${shippingValues.lastName || ''}`.trim();
+      const phonePart = shippingValues.phone || '';
+      const composedAddress = [detailPart, wardPart, provincePart].filter(Boolean).join(', ');
+      shippingAddress = [recipientPart, composedAddress, phonePart].filter(Boolean).join(', ');
+    } else {
+      // Use user's default address
+      if (user) {
+        const parts = [];
+        if (user.fullName) parts.push(user.fullName);
+        if (user.address) parts.push(user.address);
+        if (user.phone) parts.push(user.phone);
+        shippingAddress = parts.join(', ');
+      }
+    }
 
     const orderData = {
       products: orderProducts,

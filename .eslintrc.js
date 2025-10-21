@@ -10,6 +10,8 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2021,
     sourceType: 'module',
+    // Fix: avoid requiring a project-level Babel config
+    requireConfigFile: false,
   },
   settings: {
     react: {

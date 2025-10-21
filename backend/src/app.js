@@ -73,9 +73,19 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Apply CORS middleware first - this should handle everything
 app.use(corsMiddleware);
 
-// Simple request logging
+// Enhanced request logging with detailed debug info
 app.use((req, res, next) => {
+  console.log(`=== REQUEST DEBUG ===`);
   console.log(`${req.method} ${req.path} from ${req.headers.origin || 'unknown'}`);
+  console.log('Host:', req.headers.host);
+  console.log('User-Agent:', req.headers['user-agent']);
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Content-Length:', req.headers['content-length']);
+  console.log('Request URL:', req.url);
+  console.log('Request path:', req.path);
+  console.log('Request base URL:', req.baseUrl);
+  console.log('Request original URL:', req.originalUrl);
+  console.log('========================');
   next();
 });
 
@@ -138,6 +148,22 @@ app.get('/api/health', (req, res) => {
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
     version: process.env.npm_package_version || '1.0.0',
+  });
+});
+
+// Debug endpoint to test tryon route accessibility
+app.get('/api/tryon/debug', (req, res) => {
+  console.log('=== TRYON DEBUG ENDPOINT ===');
+  console.log('Request received at:', new Date().toISOString());
+  console.log('Request headers:', req.headers);
+
+  res.status(200).json({
+    message: 'Tryon endpoint is accessible',
+    timestamp: new Date().toISOString(),
+    headers: req.headers,
+    method: req.method,
+    url: req.url,
+    path: req.path,
   });
 });
 
