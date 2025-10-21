@@ -44,6 +44,7 @@ import PaymentCancel from './components/pages/payment/PaymentCancel';
 import PaymentStatus from './components/pages/payment/PaymentStatus';
 import PaymentSuccess from './components/pages/payment/PaymentSuccess';
 import ProductDetailPage from './components/pages/product/pages/ProductDetailPage';
+import VisualSearch from './components/pages/shop/VisualSearch';
 
 // New Role-Based Dashboard Components
 import AdminDashboard from './components/pages/dashboard/AdminDashboard';
@@ -75,9 +76,9 @@ import LiveStreamHost from './components/pages/livestream/LiveStreamHost';
 import LiveStreamPage from './components/pages/livestream/LiveStreamPage';
 import LiveStreamViewer from './components/pages/livestream/LiveStreamViewer';
 // Blog
-import BlogFeedPage from './components/pages/blog/BlogFeedPage';
 import BlogComposerPage from './components/pages/blog/BlogComposerPage';
 import BlogDetailPage from './components/pages/blog/BlogDetailPage';
+import BlogFeedPage from './components/pages/blog/BlogFeedPage';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -214,6 +215,10 @@ const router = createBrowserRouter([
       {
         path: 'product/:id',
         element: <ProductDetailPage />,
+      },
+      {
+        path: 'shop/visual-search',
+        element: <VisualSearch />,
       },
       {
         path: 'privacy-policy',
@@ -570,7 +575,9 @@ const Root = () => (
                 pauseOnHover
                 theme="light"
               />
-              <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+              <GoogleOAuthProvider
+                clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
+              >
                 <RouterProvider router={router} />
               </GoogleOAuthProvider>
             </VideoCallProvider>

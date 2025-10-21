@@ -1,8 +1,9 @@
+import Product from '../models/Product.js';
+import Report from '../models/Report.js';
+import { analyzeProductImage } from '../services/gemini.service.js';
 import { ProductService } from '../services/product.service.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
-import Report from '../models/Report.js';
-import Product from '../models/Product.js';
 
 /**
  * Create a new product
@@ -437,5 +438,54 @@ export const getMyReports = async (req, res) => {
     res.status(200).json({ success: true, data: reports });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/**
+ * Visual search endpoint
+ * @route POST /api/products/visual-search
+ * @access Public
+ */
+export const visualSearch = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file uploaded.',
+      });
+    }
+
+    // Get image buffer and MIME type from the uploaded file
+    const imageBuffer = req.file.buffer;
+    const mimeType = req.file.mimetype;
+
+    logger.info('Starting visual search with Gemini AI');
+
+    // Analyze image with Gemini
+    const analyzedData = await analyzeProductImage(imageBuffer, mimeType);
+    logger.info('Gemini analysis completed', { analyzedData });
+
+    // Search for products using the analyzed keywords
+    const products = await ProductService.searchProductsByKeywords(analyzedData);
+    logger.info(`Found ${products.length} products from visual search`);
+
+    // Return the found products
+    res.status(200).json({
+      success: true,
+      message: 'Visual search completed successfully.',
+      data: {
+        analyzedKeywords: analyzedData,
+        products,
+      },
+    });
+  } catch (error) {
+    logger.error('Error during visual search', {
+      error: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Internal server error during visual search.',
+    });
   }
 };

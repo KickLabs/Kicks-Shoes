@@ -490,4 +490,137 @@ export class ProductService {
     const products = await Product.find(filter).limit(4);
     return products;
   }
+
+  /**
+   * UPDATED: Search for products using richer keywords from Gemini analysis.
+   * Now includes flexible filtering with brand and color optimization.
+   * Supports fallback search when brand/color filters don't return results.
+   */
+  static async searchProductsByKeywords({
+    category,
+    product_name,
+    brand,
+    colors,
+    features,
+    style_tags,
+  }) {
+    try {
+      const searchString = [
+        category,
+        product_name,
+        brand,
+        ...(colors || []),
+        ...(features || []),
+        ...(style_tags || []),
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      if (!searchString) {
+        return [];
+      }
+
+      console.log('Searching products with enhanced keywords:', { searchString });
+
+      // Map category to productType for filtering
+      const categoryToProductType = {
+        shoes: 'shoes',
+        sneakers: 'shoes',
+        footwear: 'shoes',
+        clothing: 'clothing',
+        shirt: 'clothing',
+        't-shirt': 'clothing',
+        dress: 'clothing',
+        pants: 'clothing',
+        jeans: 'clothing',
+        accessory: 'accessories',
+        accessories: 'accessories',
+        bag: 'accessories',
+        watch: 'accessories',
+        jewelry: 'accessories',
+        other: 'other',
+      };
+
+      const productType = categoryToProductType[category?.toLowerCase()] || 'other';
+      console.log('Mapped category to productType:', { category, productType });
+
+      // Try multiple search strategies for better results
+      const searchStrategies = [
+        // Strategy 1: Full match with brand and color
+        {
+          name: 'Full match with brand and color',
+          filter: {
+            $text: { $search: searchString },
+            productType: productType,
+            status: true,
+            ...(brand && { brand: { $regex: new RegExp(brand, 'i') } }),
+            ...(colors && colors.length > 0 && { 'variants.colors': { $in: colors } }),
+          },
+        },
+        // Strategy 2: Match with brand only
+        {
+          name: 'Match with brand only',
+          filter: {
+            $text: { $search: searchString },
+            productType: productType,
+            status: true,
+            ...(brand && { brand: { $regex: new RegExp(brand, 'i') } }),
+          },
+        },
+        // Strategy 3: Match with color only
+        {
+          name: 'Match with color only',
+          filter: {
+            $text: { $search: searchString },
+            productType: productType,
+            status: true,
+            ...(colors && colors.length > 0 && { 'variants.colors': { $in: colors } }),
+          },
+        },
+        // Strategy 4: Basic text search with productType only
+        {
+          name: 'Basic text search',
+          filter: {
+            $text: { $search: searchString },
+            productType: productType,
+            status: true,
+          },
+        },
+        // Strategy 5: Fallback - just productType and text search
+        {
+          name: 'Fallback search',
+          filter: {
+            $text: { $search: searchString },
+            productType: productType,
+            status: true,
+          },
+        },
+      ];
+
+      // Try each strategy until we get results
+      for (const strategy of searchStrategies) {
+        try {
+          console.log(`Trying strategy: ${strategy.name}`);
+          const products = await Product.find(strategy.filter, { score: { $meta: 'textScore' } })
+            .sort({ score: { $meta: 'textScore' } })
+            .limit(12);
+
+          if (products.length > 0) {
+            console.log(`Found ${products.length} products using strategy: ${strategy.name}`);
+            return products;
+          }
+        } catch (strategyError) {
+          console.log(`Strategy ${strategy.name} failed:`, strategyError.message);
+          continue;
+        }
+      }
+
+      // If all strategies fail, return empty array
+      console.log('All search strategies failed, returning empty results');
+      return [];
+    } catch (error) {
+      console.error('Error searching products by keywords', { error: error.message });
+      throw error;
+    }
+  }
 }
