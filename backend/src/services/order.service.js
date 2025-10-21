@@ -166,30 +166,41 @@ export class OrderService {
         throw new Error('Total amount does not match sum of items');
       }
 
-      const order = new Order({
-        user,
-        items: [],
-        totalPrice: calculatedTotal,
-        subtotal: calculatedSubtotal,
+    // Ensure COD orders always have pending payment status
+    let finalPaymentStatus = orderData.paymentStatus || 'pending';
+    if (paymentMethod === 'cash_on_delivery') {
+      finalPaymentStatus = 'pending';
+      logger.info('COD order created with pending payment status', {
+        orderId: 'creating',
         paymentMethod,
-        shippingAddress,
-        shippingMethod,
-        shippingCost,
-        tax,
-        discount: finalDiscount,
-        discountCode: finalDiscountCode,
-        notes,
-        status: orderData.status || 'pending',
-        paymentStatus: orderData.paymentStatus || 'pending',
-        paymentDate: orderData.paymentDate,
-        transactionId: orderData.transactionId,
-        vnpResponseCode: orderData.vnpResponseCode,
-        vnpTxnRef: orderData.vnpTxnRef,
-        vnpAmount: orderData.vnpAmount,
-        vnpBankCode: orderData.vnpBankCode,
-        vnpPayDate: orderData.vnpPayDate,
+        originalPaymentStatus: orderData.paymentStatus,
+        finalPaymentStatus,
       });
+    }
 
+    const order = new Order({
+      user,
+      items: [],
+      totalPrice: calculatedTotal,
+      subtotal: calculatedSubtotal,
+      paymentMethod,
+      shippingAddress,
+      shippingMethod,
+      shippingCost,
+      tax,
+      discount: finalDiscount,
+      discountCode: finalDiscountCode,
+      notes,
+      status: orderData.status || 'pending',
+      paymentStatus: finalPaymentStatus,
+      paymentDate: orderData.paymentDate,
+      transactionId: orderData.transactionId,
+      vnpResponseCode: orderData.vnpResponseCode,
+      vnpTxnRef: orderData.vnpTxnRef,
+      vnpAmount: orderData.vnpAmount,
+      vnpBankCode: orderData.vnpBankCode,
+      vnpPayDate: orderData.vnpPayDate,
+    });
       await order.save();
 
       const orderItems = await Promise.all(
@@ -357,6 +368,10 @@ export class OrderService {
               path: 'product',
               select: 'name mainImage price inventory',
             },
+          })
+          .populate({
+            path: 'shipper',
+            select: 'fullName email phone avatar vehicleType currentDeliveryCount',
           });
 
         if (!order) {

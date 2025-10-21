@@ -52,7 +52,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: {
-        values: ['customer', 'shop', 'admin'],
+        values: ['customer', 'shop', 'admin', 'shipper'],
         message: '{VALUE} is not a valid role',
       },
       required: [true, 'Role is required'],
@@ -104,6 +104,28 @@ const userSchema = new mongoose.Schema(
     verificationTokenExpires: {
       type: Date,
       select: false,
+    },
+    // Shipper-specific fields
+    isActive: {
+      type: Boolean,
+      default: true,
+      description: 'Indicates if shipper is active and available for deliveries',
+    },
+    vehicleType: {
+      type: String,
+      enum: {
+        values: ['bike', 'motorcycle', 'car', 'truck'],
+        message: '{VALUE} is not a valid vehicle type',
+      },
+    },
+    licenseNumber: {
+      type: String,
+      trim: true,
+    },
+    currentDeliveryCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Delivery count cannot be negative'],
     },
   },
   {
