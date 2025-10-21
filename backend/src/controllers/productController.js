@@ -489,3 +489,65 @@ export const visualSearch = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * THÊM MỚI: Add (upsert) stock to a specific product variant
+ * @route POST /api/products/:id/inventory/add-stock
+ * @access Private/Admin
+ */
+export const addStockToVariant = async (req, res, next) => {
+  try {
+    const productId = req.params.id;
+    // Lấy size, clothingSize, color và số lượng muốn thêm
+    const { color, size, clothingSize, quantityToAdd } = req.body;
+
+    // Validate input
+    if (!quantityToAdd || Number(quantityToAdd) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'quantityToAdd là bắt buộc và phải lớn hơn 0',
+      });
+    }
+
+    // Tìm sản phẩm
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy sản phẩm',
+      });
+    }
+
+    // Dữ liệu variant (chỉ truyền các trường liên quan)
+    const variantData = {
+      color,
+      size, // (e.g., 42) - sẽ là undefined nếu là quần áo/phụ kiện
+      clothingSize, // (e.g., "M") - sẽ là undefined nếu là giày/phụ kiện
+      isOneSize: product.productType === 'accessory',
+    };
+
+    // Gọi phương thức thông minh 'addStockToVariant' đã thêm vào Model
+    const updatedProduct = await product.addStockToVariant(variantData, Number(quantityToAdd));
+
+    logger.info('Stock added to variant successfully', {
+      productId,
+      variantData,
+      quantityAdded: quantityToAdd,
+    });
+    res.status(200).json({
+      success: true,
+      message: 'Cập nhật tồn kho thành công',
+      data: updatedProduct,
+    });
+  } catch (error) {
+    console.error('Controller error adding stock to variant:', error);
+    logger.error('Error adding stock to variant', {
+      error: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi máy chủ nội bộ',
+    });
+  }
+};
