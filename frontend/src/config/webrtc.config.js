@@ -138,6 +138,12 @@ export const PEER_CONNECTION_CONFIG = {
   sdpSemantics: 'unified-plan',
   enableDtlsSrtp: true,
   enableRtpDataChannels: true,
+  // Enhanced ICE gathering for cross-network
+  iceGatheringTimeout: 10000, // 10 seconds
+  // Better connection handling
+  iceConnectionTimeout: 30000, // 30 seconds
+  iceGatheringState: 'gathering',
+  iceConnectionState: 'new',
 };
 
 export const OFFER_OPTIONS = {
