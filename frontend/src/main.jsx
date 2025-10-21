@@ -570,7 +570,9 @@ const Root = () => (
                 pauseOnHover
                 theme="light"
               />
-              <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+              <GoogleOAuthProvider
+                clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
+              >
                 <RouterProvider router={router} />
               </GoogleOAuthProvider>
             </VideoCallProvider>

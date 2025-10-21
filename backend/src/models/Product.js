@@ -321,7 +321,12 @@ productSchema.methods.updateInventory = async function (variant, quantity) {
 
   // Match based on productType
   const match = it =>
-    String(it.color) === String(color) &&
+    String(it.color || '')
+      .trim()
+      .toLowerCase() ===
+      String(color || '')
+        .trim()
+        .toLowerCase() &&
     (this.productType === 'shoes'
       ? String(it.size) === String(size)
       : this.productType === 'clothing'
@@ -352,7 +357,12 @@ productSchema.methods.checkInventory = function (variant) {
   const { size, clothingSize, isOneSize, color } = variant || {};
 
   const match = it =>
-    String(it.color) === String(color) &&
+    String(it.color || '')
+      .trim()
+      .toLowerCase() ===
+      String(color || '')
+        .trim()
+        .toLowerCase() &&
     (this.productType === 'shoes'
       ? String(it.size) === String(size)
       : this.productType === 'clothing'

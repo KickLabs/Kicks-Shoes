@@ -120,12 +120,13 @@ export class OrderService {
         throw new Error('Products must be a non-empty array');
       }
 
-      // Use totalAmount or totalPrice, whichever is provided
-      const finalTotalAmount = totalAmount || totalPrice;
-
-      if (typeof finalTotalAmount !== 'number' || finalTotalAmount <= 0) {
-        throw new Error('Invalid total amount');
-      }
+      // Use provided totals if any; otherwise we'll compute from items
+      const providedTotal =
+        typeof totalAmount === 'number' && totalAmount > 0
+          ? totalAmount
+          : typeof totalPrice === 'number' && totalPrice > 0
+            ? totalPrice
+            : null;
 
       const calculatedSubtotal = products.reduce((sum, product) => {
         return sum + product.price * product.quantity;
@@ -162,8 +163,8 @@ export class OrderService {
       // Calculate final total including shipping, tax and discount
       const calculatedTotal = calculatedSubtotal + shippingCost + tax - finalDiscount;
 
-      if (Math.abs(calculatedTotal - finalTotalAmount) > 0.01) {
-        throw new Error('Total amount does not match sum of items');
+      if (providedTotal != null && Math.abs(calculatedTotal - providedTotal) > 0.01) {
+        throw new Error('Total price does not match sum of items');
       }
 
       const order = new Order({
@@ -192,6 +193,7 @@ export class OrderService {
 
       await order.save();
 
+      let itemsSubtotalAccurate = 0;
       const orderItems = await Promise.all(
         products.map(async product => {
           // Check for flash sale first
@@ -210,6 +212,7 @@ export class OrderService {
           }
 
           const subtotal = finalPrice * product.quantity;
+          itemsSubtotalAccurate += subtotal;
           const orderItem = new OrderItem({
             order: order._id,
             product: product.id,
@@ -227,6 +230,8 @@ export class OrderService {
       );
 
       order.items = orderItems;
+      order.subtotal = itemsSubtotalAccurate;
+      order.totalPrice = itemsSubtotalAccurate + order.shippingCost + order.tax - order.discount;
       await order.save();
 
       // Populate the order with items and products before returning
