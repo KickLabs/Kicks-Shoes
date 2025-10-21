@@ -1,28 +1,30 @@
-import React, { useEffect, useRef, useState } from 'react';
 import {
-  DownOutlined,
-  FireFilled,
-  MenuOutlined,
-  SearchOutlined,
-  UserOutlined,
-  LogoutOutlined,
-  LockOutlined,
-  ShoppingCartOutlined,
+  CameraOutlined,
   DashboardOutlined,
-  VideoCameraOutlined,
-  ShopOutlined,
+  FireFilled,
+  LockOutlined,
+  LogoutOutlined,
+  MenuOutlined,
   ReadOutlined,
+  SearchOutlined,
+  ShopOutlined,
+  ShoppingCartOutlined,
+  UserOutlined,
+  VideoCameraOutlined,
   CarOutlined,
 } from '@ant-design/icons';
 import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal, Badge, message } from 'antd';
 import logo from '@assets/Logo.svg';
-import './Header.css';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Avatar, Badge, Button, Dropdown, Input, Layout, Menu, Modal, Upload, message } from 'antd';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import axiosInstance from '../../../services/axiosInstance';
 import { useSelector } from 'react-redux';
 import ShipperApplicationModal from './ShipperApplicationModal';
 import shipperApplicationService from '../../../services/shipperApplicationService';
+import './Header.css';
 
 const { Header } = Layout;
 
@@ -40,6 +42,10 @@ const AppHeader = () => {
   const [showShipperApplicationModal, setShowShipperApplicationModal] = useState(false);
   const [pendingApplication, setPendingApplication] = useState(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
+  const [isVisualSearchModalVisible, setIsVisualSearchModalVisible] = useState(false);
+  const [visualSearchFile, setVisualSearchFile] = useState(null);
+  const [visualSearchPreview, setVisualSearchPreview] = useState(null);
+  const [visualSearchLoading, setVisualSearchLoading] = useState(false);
   const inputRef = useRef(null);
   const wrapperRef = useRef(null);
   const navigate = useNavigate();
@@ -152,6 +158,93 @@ const AppHeader = () => {
     setShowDropdown(false);
     setShowInput(false);
     setSearch('');
+  };
+
+  // Visual Search Functions
+  const handleVisualSearchClick = () => {
+    setIsVisualSearchModalVisible(true);
+  };
+
+  const handleVisualSearchCancel = () => {
+    setIsVisualSearchModalVisible(false);
+    setVisualSearchFile(null);
+    setVisualSearchPreview(null);
+  };
+
+  const handleVisualSearchFileChange = info => {
+    const file = info.file;
+    if (file) {
+      setVisualSearchFile(file);
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => setVisualSearchPreview(reader.result);
+    }
+  };
+
+  const handleVisualSearch = async () => {
+    if (!visualSearchFile) {
+      message.error('Vui lòng chọn một hình ảnh để tìm kiếm.');
+      return;
+    }
+
+    setVisualSearchLoading(true);
+    const formData = new FormData();
+    formData.append('image', visualSearchFile);
+
+    try {
+      const response = await axiosInstance.post('/products/visual-search', formData);
+
+      if (response.data.success) {
+        message.success('Phân tích ảnh thành công, đang hiển thị kết quả...');
+        setIsVisualSearchModalVisible(false);
+        setVisualSearchFile(null);
+        setVisualSearchPreview(null);
+
+        // Navigate to appropriate category page based on AI analysis
+        const category = response.data.data.analyzedKeywords?.category?.toLowerCase();
+        const targetRoute = getCategoryRoute(category);
+
+        navigate(targetRoute, {
+          state: {
+            visualSearchResults: response.data.data,
+            isVisualSearch: true,
+          },
+        });
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message || err.message || 'Không thể thực hiện tìm kiếm.';
+      message.error(errorMessage);
+    } finally {
+      setVisualSearchLoading(false);
+    }
+  };
+
+  // Function to determine category route based on AI analysis
+  const getCategoryRoute = category => {
+    switch (category) {
+      case 'shoes':
+      case 'sneakers':
+      case 'footwear':
+        return '/shoes';
+      case 'clothing':
+      case 'shirt':
+      case 't-shirt':
+      case 'dress':
+      case 'pants':
+      case 'jeans':
+        return '/clothing';
+      case 'accessory':
+      case 'accessories':
+      case 'bag':
+      case 'watch':
+      case 'jewelry':
+        return '/accessories';
+      default:
+        return '/other';
+    }
   };
 
   // Menu items using the new API
@@ -398,7 +491,15 @@ const AppHeader = () => {
         {isMobile ? (
           <>
             {!showInput && (
-              <SearchOutlined className="header-icon" onClick={() => setShowInput(true)} />
+              <>
+                <SearchOutlined className="header-icon" onClick={() => setShowInput(true)} />
+                <CameraOutlined
+                  className="header-icon"
+                  onClick={handleVisualSearchClick}
+                  style={{ marginLeft: 8, color: '#4A69E2' }}
+                  title="Tìm kiếm bằng hình ảnh"
+                />
+              </>
             )}
             {showInput && (
               <Input
@@ -461,7 +562,15 @@ const AppHeader = () => {
         ) : (
           <>
             {!showInput && (
-              <SearchOutlined className="header-icon" onClick={() => setShowInput(true)} />
+              <>
+                <SearchOutlined className="header-icon" onClick={() => setShowInput(true)} />
+                <CameraOutlined
+                  className="header-icon"
+                  onClick={handleVisualSearchClick}
+                  style={{ marginLeft: 8, color: '#4A69E2' }}
+                  title="Tìm kiếm bằng hình ảnh"
+                />
+              </>
             )}
             {showInput && (
               <Input
@@ -613,6 +722,76 @@ const AppHeader = () => {
           }
         }}
       />
+      {/* Visual Search Modal */}
+      <Modal
+        title="Tìm Kiếm Bằng Hình Ảnh"
+        open={isVisualSearchModalVisible}
+        onCancel={handleVisualSearchCancel}
+        footer={[
+          <Button key="cancel" onClick={handleVisualSearchCancel}>
+            Hủy
+          </Button>,
+          <Button
+            key="search"
+            type="primary"
+            loading={visualSearchLoading}
+            onClick={handleVisualSearch}
+            disabled={!visualSearchFile}
+          >
+            {visualSearchLoading ? 'Đang phân tích...' : 'Tìm Kiếm'}
+          </Button>,
+        ]}
+      >
+        <Upload.Dragger
+          name="file"
+          multiple={false}
+          showUploadList={false}
+          beforeUpload={file => {
+            const isJpgOrPng =
+              file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
+            if (!isJpgOrPng) {
+              message.error('Bạn chỉ có thể tải lên file JPG/PNG/WEBP!');
+              return false;
+            }
+            const isLt5M = file.size / 1024 / 1024 < 5;
+            if (!isLt5M) {
+              message.error('Hình ảnh phải nhỏ hơn 5MB!');
+              return false;
+            }
+            handleVisualSearchFileChange({ file });
+            return false;
+          }}
+          style={{ height: 200 }}
+        >
+          {visualSearchPreview ? (
+            <img
+              src={visualSearchPreview}
+              alt="Preview"
+              style={{
+                width: '100%',
+                maxHeight: '180px',
+                objectFit: 'contain',
+                borderRadius: 8,
+              }}
+            />
+          ) : (
+            <>
+              <p className="ant-upload-drag-icon">
+                <CameraOutlined style={{ fontSize: 48, color: '#4A69E2' }} />
+              </p>
+              <p className="ant-upload-text">Nhấn hoặc kéo thả file vào đây</p>
+              <p className="ant-upload-hint">
+                Tìm kiếm sản phẩm từ hình ảnh. Hỗ trợ PNG, JPG, WEBP (Tối đa 5MB).
+              </p>
+            </>
+          )}
+        </Upload.Dragger>
+        {visualSearchFile && (
+          <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>
+            Tệp đã chọn: {visualSearchFile.name}
+          </div>
+        )}
+      </Modal>
     </Header>
   );
 };

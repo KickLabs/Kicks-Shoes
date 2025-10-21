@@ -1,14 +1,20 @@
-import { useEffect, useState } from 'react';
-import { Pagination, Spin, Empty, Select } from 'antd';
-import FilterSidebar from '../components/FilterSidebar';
-import ProductCard from '../../../common/components/ProductCard';
 import axiosInstance from '@/services/axiosInstance';
+import { Empty, Pagination, Select, Spin, Typography } from 'antd';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import ProductCard from '../../../common/components/ProductCard';
+import FilterSidebar from '../components/FilterSidebar';
+
+const { Text } = Typography;
 
 const OtherPage = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const isNewParam = queryParams.get('isNew') === 'true';
+
+  // Visual search results from navigation state
+  const visualSearchResults = location.state?.visualSearchResults;
+  const isVisualSearch = location.state?.isVisualSearch;
 
   const [products, setProducts] = useState([]);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -92,13 +98,22 @@ const OtherPage = () => {
   };
 
   useEffect(() => {
-    fetchProducts(filters, currentPage);
-  }, [currentPage, sortBy, sortOrder, filters]);
+    if (isVisualSearch && visualSearchResults) {
+      // Handle visual search results
+      setProducts(visualSearchResults.products || []);
+      setTotalProducts(visualSearchResults.products?.length || 0);
+      setLoading(false);
+    } else {
+      fetchProducts(filters, currentPage);
+    }
+  }, [currentPage, sortBy, sortOrder, filters, isVisualSearch, visualSearchResults]);
 
   useEffect(() => {
-    fetchProducts(filters, 1);
-    setCurrentPage(1);
-  }, [location.search]);
+    if (!isVisualSearch) {
+      fetchProducts(filters, 1);
+      setCurrentPage(1);
+    }
+  }, [location.search, isVisualSearch]);
 
   const getCurrentSortValue = () => {
     return (
@@ -112,6 +127,34 @@ const OtherPage = () => {
       <FilterSidebar onFiltersChange={handleFilterChange} productType="other" />
 
       <div style={{ flex: 1 }}>
+        {/* Visual Search Results Alert - Hidden */}
+        {/* {isVisualSearch && visualSearchResults && (
+          <Alert
+            type="info"
+            showIcon
+            message="Kết quả tìm kiếm sản phẩm khác bằng hình ảnh"
+            description={
+              <div>
+                <Text strong>AI đã phân tích hình ảnh sản phẩm của bạn:</Text>
+                <div style={{ marginTop: 8 }}>
+                  <Text strong>Thương hiệu: </Text>
+                  <Tag color="purple">{visualSearchResults.analyzedKeywords?.brand || 'N/A'}</Tag>
+                  <Text strong>Màu sắc: </Text>
+                  {visualSearchResults.analyzedKeywords?.colors?.map((color, index) => (
+                    <Tag key={index} color="blue">{color}</Tag>
+                  ))}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <Text strong>Đặc điểm: </Text>
+                  {visualSearchResults.analyzedKeywords?.features?.map((feature, index) => (
+                    <Tag key={index}>{feature}</Tag>
+                  ))}
+                </div>
+              </div>
+            }
+            style={{ marginBottom: 24 }}
+          />
+        )} */}
         {loading ? (
           <div
             style={{

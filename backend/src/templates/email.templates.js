@@ -98,6 +98,49 @@ export const emailTemplates = {
     `,
   },
 
+  // Email when a livestream potential order is successfully converted to an order
+  LIVESTREAM_ORDER_SUCCESS: {
+    subject: 'Your Livestream Order Has Been Placed - Kicks Shoes',
+    getContent: ({ name, orderNumber, paymentMethod = 'Cash on Delivery (COD)' }) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #2c3e50; margin: 0;">Livestream Order Received</h1>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="color: #34495e; margin: 0;">Hi ${name},</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">Thanks for shopping with us on our livestream! Your order number is <b>${orderNumber}</b>.</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">Current status: <b>Pending</b>. We set the payment method to <b>${paymentMethod}</b> so you can review the order details and cancel if anything is incorrect.</p>
+        </div>
+        <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+          <p style="margin: 0;">We will notify you as soon as your order is processed and shipped.</p>
+          <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
+        </div>
+      </div>
+    `,
+  },
+
+  // Email when item is out of stock at confirmation time
+  LIVESTREAM_OUT_OF_STOCK: {
+    subject: "We're sorry — Item is out of stock - Kicks Shoes",
+    getContent: ({ name, productName, size, color }) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #e74c3c; margin: 0;">Out of Stock</h1>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="color: #34495e; margin: 0;">Hi ${name},</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">We tried to confirm your livestream order, but the item
+            <b>${productName || 'Selected product'}</b>${size ? `, size <b>${size}</b>` : ''}${color ? `, color <b>${color}</b>` : ''} is currently out of stock.</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">We sincerely apologize for the inconvenience. Our team is restocking soon. You can try a different size/color or check back later.</p>
+        </div>
+        <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+          <p style="margin: 0;">Thank you for your understanding.</p>
+          <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
+        </div>
+      </div>
+    `,
+  },
+
   ORDER_SHIPPED: {
     subject: 'Your Order Has Shipped - Kicks Shoes',
     getContent: ({ name, orderNumber, trackingNumber }) => `

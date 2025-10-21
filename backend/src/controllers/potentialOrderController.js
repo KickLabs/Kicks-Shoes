@@ -309,12 +309,13 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
       const User = (await import('../models/User.js')).default;
       const Product = (await import('../models/Product.js')).default;
       const { OrderService } = await import('../services/order.service.js');
+      const EmailService = (await import('../services/email.service.js')).default;
 
       const user = await User.findById(updatedOrder.customerInfo.userId).select(
         'fullName email phone address'
       );
       const product = await Product.findById(updatedOrder.productInfo.productId).select(
-        'finalPrice price.regular'
+        'name finalPrice price.regular productType inventory'
       );
 
       logger.info('[PO] auto-create check', {
@@ -339,6 +340,45 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
             regular: product.price?.regular,
           });
         } else {
+          // Check inventory for requested variant; if not available, notify user and skip creation
+          try {
+            const availability = product.checkInventory({
+              size,
+              clothingSize: undefined,
+              isOneSize: product.productType === 'accessory',
+              color,
+            });
+
+            if (!availability.available || (availability.quantity || 0) < quantity) {
+              logger.warn('[PO] product out of stock for requested variant', {
+                productId: String(product._id),
+                size,
+                color,
+                requestedQty: quantity,
+                availableQty: availability.quantity,
+              });
+
+              // Send out-of-stock email
+              try {
+                await EmailService.sendTemplatedEmail(user.email, 'LIVESTREAM_OUT_OF_STOCK', {
+                  name: user.fullName || user.email,
+                  productName: product.name,
+                  size,
+                  color,
+                });
+              } catch (mailErr) {
+                logger.error('[PO] failed to send out-of-stock email', { error: mailErr.message });
+              }
+
+              // Keep status as confirmed; do not create order
+              return;
+            }
+          } catch (invErr) {
+            logger.error('[PO] inventory check failed, proceeding without stock guard', {
+              error: invErr.message,
+            });
+          }
+
           logger.info('[PO] creating real order', {
             userId: String(user._id),
             productId: String(product._id),
@@ -366,6 +406,19 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
             potentialOrderId: String(updatedOrder._id),
             orderId: String(created._id),
           });
+
+          // Send success email
+          try {
+            await EmailService.sendTemplatedEmail(user.email, 'LIVESTREAM_ORDER_SUCCESS', {
+              name: user.fullName || user.email,
+              orderNumber: created._id.toString(),
+              paymentMethod: 'Cash on Delivery (COD)',
+            });
+          } catch (mailErr2) {
+            logger.error('[PO] failed to send livestream order success email', {
+              error: mailErr2.message,
+            });
+          }
         }
       }
     } catch (e) {

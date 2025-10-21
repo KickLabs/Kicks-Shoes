@@ -27,6 +27,10 @@ const SocialButtons = () => {
   const { setUser } = useAuth();
   const navigate = useNavigate();
 
+  // Check if Google OAuth is properly configured
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const facebookAppId = import.meta.env.VITE_FACEBOOK_APP_ID;
+
   // -------- GOOGLE LOGIN --------
   const loginGoogle = useGoogleLogin({
     scope: 'openid email profile',
@@ -146,11 +150,21 @@ const SocialButtons = () => {
 
   return (
     <div className="social-buttons">
-      <div style={{ width: '100%' }} onClick={() => loginGoogle()}>
-        <Button className="social google" block>
-          <img className="social-logo" src={google} alt="google" />
-        </Button>
-      </div>
+      {/* Google Login - only show if client ID is configured */}
+      {googleClientId ? (
+        <div style={{ width: '100%' }} onClick={() => loginGoogle()}>
+          <Button className="social google" block>
+            <img className="social-logo" src={google} alt="google" />
+          </Button>
+        </div>
+      ) : (
+        <div style={{ width: '100%' }}>
+          <Button className="social google" block disabled>
+            <img className="social-logo" src={google} alt="google" />
+            <span style={{ marginLeft: 8, fontSize: 12, color: '#999' }}>(Not configured)</span>
+          </Button>
+        </div>
+      )}
 
       <div style={{ width: '100%' }}>
         <Button className="social apple" block>
@@ -159,20 +173,29 @@ const SocialButtons = () => {
         </Button>
       </div>
 
-      {/* Facebook Login (dùng thư viện) */}
-      <div style={{ width: '100%' }}>
-        <FacebookLogin
-          appId={import.meta.env.VITE_FACEBOOK_APP_ID}
-          autoLoad={false}
-          fields="name,email,picture"
-          callback={handleFacebookResponse}
-          render={renderProps => (
-            <Button className="social facebook" block onClick={renderProps.onClick}>
-              <img className="social-logo" src={facebook} alt="facebook" />
-            </Button>
-          )}
-        />
-      </div>
+      {/* Facebook Login - only show if app ID is configured */}
+      {facebookAppId ? (
+        <div style={{ width: '100%' }}>
+          <FacebookLogin
+            appId={facebookAppId}
+            autoLoad={false}
+            fields="name,email,picture"
+            callback={handleFacebookResponse}
+            render={renderProps => (
+              <Button className="social facebook" block onClick={renderProps.onClick}>
+                <img className="social-logo" src={facebook} alt="facebook" />
+              </Button>
+            )}
+          />
+        </div>
+      ) : (
+        <div style={{ width: '100%' }}>
+          <Button className="social facebook" block disabled>
+            <img className="social-logo" src={facebook} alt="facebook" />
+            <span style={{ marginLeft: 8, fontSize: 12, color: '#999' }}>(Not configured)</span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
