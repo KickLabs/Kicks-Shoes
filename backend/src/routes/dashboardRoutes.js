@@ -14,6 +14,7 @@ import {
   getShopFeedback,
   getShopDiscounts,
   getShopSalesData,
+  saveVoucher,
   updateOrderStatus,
   createDiscount,
   deleteDiscount,
@@ -58,6 +59,7 @@ router.get('/shop/orders', protect, requireShop, getShopOrders);
 router.get('/shop/feedback', protect, requireShop, getShopFeedback);
 router.get('/shop/discounts', protect, requireShop, getShopDiscounts);
 router.get('/shop/sales', protect, requireShop, getShopSalesData);
+router.post('/save-voucher', protect, saveVoucher);
 router.put('/shop/orders/:orderId/status', protect, requireShop, updateOrderStatus);
 router.post('/shop/discounts', protect, requireShop, createDiscount);
 router.delete('/shop/discounts/:discountId', protect, requireShop, deleteDiscount);

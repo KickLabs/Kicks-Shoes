@@ -29,6 +29,7 @@ import {
   StarOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import blogService from '../../../services/blogService';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -45,9 +46,15 @@ const BlogDetailPage = () => {
   const [liking, setLiking] = useState(false);
   const [commenting, setCommenting] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [backHoverTop, setBackHoverTop] = useState(false);
+  const [backHoverBottom, setBackHoverBottom] = useState(false);
 
   const canInteract = !!user;
   const isOwner = !!user && (user._id === post?.author?._id || user.id === post?.author?._id);
+  const hasLiked =
+    !!user &&
+    Array.isArray(post?.likedBy) &&
+    post.likedBy.some(u => String(u) === String(user._id || user.id));
 
   const load = async () => {
     try {
@@ -78,11 +85,26 @@ const BlogDetailPage = () => {
     try {
       await blogService.setLike(post._id, like);
 
-      // Update local state instead of reloading
-      setPost(prevPost => ({
-        ...prevPost,
-        likes: like ? (prevPost.likes || 0) + 1 : Math.max((prevPost.likes || 0) - 1, 0),
-      }));
+      // Update local state instead of reloading (and maintain likedBy)
+      setPost(prevPost => {
+        const userId = user._id || user.id;
+        const likedBy = Array.isArray(prevPost.likedBy) ? [...prevPost.likedBy] : [];
+        const already = likedBy.some(u => String(u) === String(userId));
+        if (like) {
+          if (!already) likedBy.push(userId);
+          return { ...prevPost, likes: (prevPost.likes || 0) + (already ? 0 : 1), likedBy };
+        }
+        // unlike
+        if (already) {
+          const nextLikedBy = likedBy.filter(u => String(u) !== String(userId));
+          return {
+            ...prevPost,
+            likes: Math.max((prevPost.likes || 0) - 1, 0),
+            likedBy: nextLikedBy,
+          };
+        }
+        return prevPost;
+      });
     } catch (e) {
       message.error('Failed to react');
     } finally {
@@ -161,10 +183,17 @@ const BlogDetailPage = () => {
         <Button
           icon={<ArrowLeftOutlined />}
           onClick={() => navigate('/blog')}
+          onMouseEnter={() => setBackHoverTop(true)}
+          onMouseLeave={() => setBackHoverTop(false)}
           style={{
             borderRadius: '8px',
-            border: '1px solid #d9d9d9',
-            background: 'white',
+            border: backHoverTop ? '1px solid #b3b3b3' : '1px solid #d9d9d9',
+            background: backHoverTop ? '#eef2f6' : 'white',
+            boxShadow: backHoverTop ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
+            transition: 'all .2s ease',
+            color: backHoverTop ? '#0f172a' : '#1f2937',
+            fontWeight: 500,
+            height: 40,
           }}
         >
           Back to Blog
@@ -333,26 +362,41 @@ const BlogDetailPage = () => {
             {/* Actions */}
             <Divider />
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-              <Button
-                type="primary"
-                icon={<LikeOutlined />}
-                onClick={() => handleLike(true)}
-                disabled={!canInteract || liking}
-                loading={liking}
-                style={{
-                  borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #4361ee 0%, #0077cc 100%)',
-                  border: 'none',
-                  fontWeight: '600',
-                }}
-              >
-                Like ({post.likes || 0})
-              </Button>
+              <Tooltip title={hasLiked ? 'Click to unlike' : 'Click to like'}>
+                <Button
+                  type={hasLiked ? 'default' : 'primary'}
+                  icon={<LikeOutlined />}
+                  onClick={() => handleLike(!hasLiked)}
+                  disabled={!canInteract || liking}
+                  loading={liking}
+                  style={{
+                    borderRadius: '8px',
+                    background: hasLiked
+                      ? '#f3f4f6'
+                      : 'linear-gradient(135deg, #4361ee 0%, #0077cc 100%)',
+                    border: hasLiked ? '1px solid #d1d5db' : 'none',
+                    fontWeight: '600',
+                    color: hasLiked ? '#374151' : '#fff',
+                    boxShadow: hasLiked
+                      ? '0 1px 3px rgba(0,0,0,0.1)'
+                      : '0 4px 12px rgba(67, 97, 238, 0.3)',
+                  }}
+                >
+                  {hasLiked ? '✓ Liked' : 'Like'} ({post.likes || 0})
+                </Button>
+              </Tooltip>
               <Button
                 onClick={() => navigate('/blog')}
+                onMouseEnter={() => setBackHoverBottom(true)}
+                onMouseLeave={() => setBackHoverBottom(false)}
                 style={{
                   borderRadius: '8px',
-                  border: '1px solid #d9d9d9',
+                  border: backHoverBottom ? '1px solid #b3b3b3' : '1px solid #d9d9d9',
+                  background: backHoverBottom ? '#eef2f6' : 'white',
+                  boxShadow: backHoverBottom ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all .2s ease',
+                  color: backHoverBottom ? '#0f172a' : '#1f2937',
+                  fontWeight: 500,
                 }}
               >
                 Back to Blog
@@ -434,12 +478,20 @@ const BlogDetailPage = () => {
                       disabled={commenting || !comment.trim()}
                       style={{
                         borderRadius: '8px',
-                        background: 'linear-gradient(135deg, #4361ee 0%, #0077cc 100%)',
+                        background:
+                          commenting || !comment.trim()
+                            ? '#d1d5db'
+                            : 'linear-gradient(135deg, #4361ee 0%, #0077cc 100%)',
                         border: 'none',
                         fontWeight: '600',
                         padding: '6px 20px',
                         height: 'auto',
-                        boxShadow: '0 4px 12px rgba(67, 97, 238, 0.3)',
+                        boxShadow:
+                          commenting || !comment.trim()
+                            ? 'none'
+                            : '0 4px 12px rgba(67, 97, 238, 0.3)',
+                        color: commenting || !comment.trim() ? '#9ca3af' : '#fff',
+                        cursor: commenting || !comment.trim() ? 'not-allowed' : 'pointer',
                       }}
                     >
                       {commenting ? 'Sending...' : 'Send'}

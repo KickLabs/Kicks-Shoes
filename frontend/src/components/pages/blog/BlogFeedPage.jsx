@@ -52,7 +52,7 @@ const BlogFeedPage = () => {
   const [categories, setCategories] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
 
-  const canCreate = !!user;
+  const canCreate = !!user && user.role !== 'customer';
 
   const load = async (nextPage = 1, append = false) => {
     try {

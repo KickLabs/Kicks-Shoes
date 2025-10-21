@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { PersistGate } from 'redux-persist/integration/react';
+import { App as AntApp } from 'antd';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { VideoCallProvider } from './contexts/VideoCallContext';
@@ -30,11 +31,13 @@ import RegisterPage from './components/pages/authentication/pages/Register';
 import Account from './components/pages/account/Account';
 import FavouritesTab from './components/pages/account/components/FavouritesTab';
 import ProfileTab from './components/pages/account/components/ProfileTab';
+import VoucherTab from './components/pages/account/components/VoucherTab';
 import RewardPointsDetail from './components/pages/account/components/RewardPointsDetail';
 import CartPage from './components/pages/cart/pages/CartPage';
 import AllCategories from './components/pages/categories/AllCategories';
 import CheckoutPage from './components/pages/checkout/CheckOut';
 import HomePage from './components/pages/home/pages/HomePage';
+import VoucherDiscoveryPage from './components/pages/voucher-discovery/VoucherDiscoveryPage';
 import AccessoryPage from './components/pages/listing-page/pages/AccessoryPage';
 import ClothingPage from './components/pages/listing-page/pages/ClothingPage';
 import ListingPage from './components/pages/listing-page/pages/ListingPage';
@@ -78,6 +81,7 @@ import LiveStreamViewer from './components/pages/livestream/LiveStreamViewer';
 import BlogFeedPage from './components/pages/blog/BlogFeedPage';
 import BlogComposerPage from './components/pages/blog/BlogComposerPage';
 import BlogDetailPage from './components/pages/blog/BlogDetailPage';
+// Voucher
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -107,6 +111,16 @@ const ShopOwnerProtectedRoute = ({ children }) => {
   const { user } = useAuth();
 
   if (!user || user.role !== 'shop') {
+    return <Navigate to="/login-admin" replace />;
+  }
+
+  return children;
+};
+
+const AdminOrShopProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user || (user.role !== 'admin' && user.role !== 'shop')) {
     return <Navigate to="/login-admin" replace />;
   }
 
@@ -214,6 +228,10 @@ const router = createBrowserRouter([
       {
         path: 'product/:id',
         element: <ProductDetailPage />,
+      },
+      {
+        path: 'voucher-discovery',
+        element: <VoucherDiscoveryPage />,
       },
       {
         path: 'privacy-policy',
@@ -454,6 +472,10 @@ const router = createBrowserRouter([
             element: <OrderDetails />,
           },
           {
+            path: 'voucher',
+            element: <VoucherTab />,
+          },
+          {
             path: 'reward-points',
             element: <RewardPointsDetail />,
           },
@@ -522,18 +544,22 @@ const router = createBrowserRouter([
       {
         path: 'blog/create',
         element: (
-          <ShopOwnerProtectedRoute>
+          <AdminOrShopProtectedRoute>
             <BlogComposerPage />
-          </ShopOwnerProtectedRoute>
+          </AdminOrShopProtectedRoute>
         ),
       },
       {
         path: 'blog/edit/:id',
         element: (
-          <ShopOwnerProtectedRoute>
+          <AdminOrShopProtectedRoute>
             <BlogComposerPage />
-          </ShopOwnerProtectedRoute>
+          </AdminOrShopProtectedRoute>
         ),
+      },
+      {
+        path: 'voucher-discovery',
+        element: <VoucherDiscoveryPage />,
       },
       {
         path: 'livestream/:roomId',
@@ -558,21 +584,23 @@ const Root = () => (
         <AuthProvider>
           <CartProvider>
             <VideoCallProvider>
-              <ToastContainer
-                position="top-right"
-                autoClose={5000}
-                hideProgressBar={false}
-                newestOnTop
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-              />
-              <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-                <RouterProvider router={router} />
-              </GoogleOAuthProvider>
+              <AntApp>
+                <ToastContainer
+                  position="top-right"
+                  autoClose={5000}
+                  hideProgressBar={false}
+                  newestOnTop
+                  closeOnClick
+                  rtl={false}
+                  pauseOnFocusLoss
+                  draggable
+                  pauseOnHover
+                  theme="light"
+                />
+                <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+                  <RouterProvider router={router} />
+                </GoogleOAuthProvider>
+              </AntApp>
             </VideoCallProvider>
           </CartProvider>
         </AuthProvider>

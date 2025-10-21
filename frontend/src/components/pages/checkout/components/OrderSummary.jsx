@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { formatPrice } from '../../../../utils/StringFormat';
 import { validateDiscountCode } from '../../../../services/discountService';
 import './OrderSummary.css';
+import VoucherPicker from './VoucherPicker';
 
 const { Title, Text } = Typography;
 
@@ -18,6 +19,7 @@ export default function OrderSummary({
   const [coupon, setCoupon] = useState('');
   const [applying, setApplying] = useState(false);
   const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [voucherOpen, setVoucherOpen] = useState(false);
 
   const handleApplyCoupon = async () => {
     if (!coupon.trim()) {
@@ -43,6 +45,17 @@ export default function OrderSummary({
       message.error('Error applying coupon. Please try again.');
     } finally {
       setApplying(false);
+    }
+  };
+
+  const handleVoucherApplied = async payload => {
+    // payload: { code, discountAmount, meta }
+    setAppliedDiscount({
+      discountAmount: payload.discountAmount,
+      discount: { code: payload.code },
+    });
+    if (onApplyCoupon) {
+      await onApplyCoupon(payload.code, payload.discountAmount);
     }
   };
 
@@ -105,8 +118,22 @@ export default function OrderSummary({
           onChange={e => setCoupon(e.target.value)}
           size="large"
         />
-        <Button type="default" size="large" loading={applying} onClick={handleApplyCoupon}>
+        <Button
+          style={{ marginLeft: 5 }}
+          type="default"
+          size="large"
+          loading={applying}
+          onClick={handleApplyCoupon}
+        >
           Apply
+        </Button>
+        <Button
+          style={{ marginLeft: 5 }}
+          type="primary"
+          size="large"
+          onClick={() => setVoucherOpen(true)}
+        >
+          Voucher
         </Button>
       </div>
       <Divider className="order-summary-divider" />
@@ -123,6 +150,12 @@ export default function OrderSummary({
           </Text>
         </Col>
       </Row>
+      <VoucherPicker
+        open={voucherOpen}
+        onClose={() => setVoucherOpen(false)}
+        orderAmount={subtotal}
+        onApplied={handleVoucherApplied}
+      />
     </Card>
   );
 }
