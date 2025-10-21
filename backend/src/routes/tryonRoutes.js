@@ -23,11 +23,44 @@ router.post(
     { name: 'clothingImage', maxCount: 1 },
   ]),
   async (req, res) => {
+    console.log('=== TRYON ENDPOINT DEBUG ===');
+    console.log('Request received at:', new Date().toISOString());
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
+    console.log('Request headers:', req.headers);
+    console.log('Request files:', req.files ? Object.keys(req.files) : 'No files');
+    console.log('Request body keys:', Object.keys(req.body));
+
     try {
       const userImageFile = req.files?.userImage?.[0];
       const clothingImageFile = req.files?.clothingImage?.[0];
 
+      console.log(
+        'User image file:',
+        userImageFile
+          ? {
+              fieldname: userImageFile.fieldname,
+              originalname: userImageFile.originalname,
+              mimetype: userImageFile.mimetype,
+              size: userImageFile.size,
+            }
+          : 'Not found'
+      );
+
+      console.log(
+        'Clothing image file:',
+        clothingImageFile
+          ? {
+              fieldname: clothingImageFile.fieldname,
+              originalname: clothingImageFile.originalname,
+              mimetype: clothingImageFile.mimetype,
+              size: clothingImageFile.size,
+            }
+          : 'Not found'
+      );
+
       if (!userImageFile || !clothingImageFile) {
+        console.log('Missing files - returning 400 error');
         return res
           .status(400)
           .json({ error: 'Both userImage and clothingImage files are required' });
@@ -151,12 +184,19 @@ Your primary objective is to execute a FLAWLESS virtual try-on. You will take a 
         return res.status(500).json({ error: `Empty AI response (${reason})` });
       }
 
-      return res.json({
+      const responseData = {
         image: imageData ? `data:${imageMimeType};base64,${imageData}` : null,
         description: textResponse || 'AI description not available.',
-      });
+      };
+
+      console.log('Successfully processed try-on request');
+      console.log('Response data keys:', Object.keys(responseData));
+      console.log('Image data length:', responseData.image ? responseData.image.length : 0);
+
+      return res.json(responseData);
     } catch (error) {
       console.error('Error processing try-on:', error);
+      console.error('Error stack:', error.stack);
       return res.status(500).json({ error: 'Failed to process virtual try-on' });
     }
   }
