@@ -9,6 +9,9 @@
 import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
+// START: Thêm import cho Product model
+import Product from '../models/Product.js'; // Giả định đường dẫn này là chính xác
+// END: Thêm import cho Product model
 import FlashSale from '../models/FlashSale.js';
 import logger from '../utils/logger.js';
 import { validateDiscountCode } from './discount.service.js';
@@ -95,6 +98,11 @@ export class OrderService {
    * @returns {Promise<Order>} The created order
    */
   static async createOrder(orderData) {
+    // START: Sử dụng Transaction để đảm bảo tính toàn vẹn dữ liệu
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    // END: Sử dụng Transaction
+
     try {
       logger.info('Creating order:', { orderData });
       const {
@@ -119,6 +127,79 @@ export class OrderService {
       if (!Array.isArray(products) || products.length === 0) {
         throw new Error('Products must be a non-empty array');
       }
+
+      // START: Cập nhật số lượng sản phẩm chi tiết theo variant
+      // 1. Kiểm tra tồn kho cho từng variant trước khi tạo đơn hàng
+      for (const item of products) {
+        const product = await Product.findById(item.id).session(session);
+        if (!product) {
+          throw new Error(`Product with ID ${item.id} not found.`);
+        }
+
+        // Tìm đúng variant trong mảng inventory
+        const variantInStock = product.inventory.find(inv => {
+          const colorMatch = inv.color === item.color;
+          if (!colorMatch) return false;
+
+          switch (product.productType) {
+            case 'shoes':
+              return inv.size === item.size;
+            case 'clothing':
+              // Giả định client gửi size quần áo (e.g., "M", "L") trong trường 'item.size'
+              return inv.clothingSize === item.size;
+            case 'accessory':
+              return inv.isOneSize === true;
+            default:
+              return false;
+          }
+        });
+
+        if (!variantInStock) {
+          throw new Error(
+            `Variant for product ${product.name} (Color: ${item.color}, Size: ${item.size}) not found.`
+          );
+        }
+
+        if (variantInStock.quantity < item.quantity) {
+          throw new Error(
+            `Not enough stock for ${product.name} (Color: ${item.color}, Size: ${item.size}). Available: ${variantInStock.quantity}, Required: ${item.quantity}`
+          );
+        }
+      }
+
+      // 2. Trừ số lượng tồn kho và tổng stock
+      for (const item of products) {
+        const product = await Product.findById(item.id).session(session);
+
+        // **FIXED**: Gộp các điều kiện filter vào một object duy nhất
+        const filterCondition = { 'elem.color': item.color };
+        switch (product.productType) {
+          case 'shoes':
+            filterCondition['elem.size'] = item.size;
+            break;
+          case 'clothing':
+            filterCondition['elem.clothingSize'] = item.size;
+            break;
+          case 'accessory':
+            filterCondition['elem.isOneSize'] = true;
+            break;
+        }
+
+        await Product.findByIdAndUpdate(
+          item.id,
+          {
+            $inc: {
+              'inventory.$[elem].quantity': -item.quantity, // Trừ số lượng của variant
+              stock: -item.quantity, // Trừ tổng stock
+            },
+          },
+          {
+            arrayFilters: [filterCondition], // Đưa object filter vào mảng
+            session,
+          }
+        );
+      }
+      // END: Cập nhật số lượng sản phẩm
 
       // Use totalAmount or totalPrice, whichever is provided
       const finalTotalAmount = totalAmount || totalPrice;
@@ -152,7 +233,7 @@ export class OrderService {
           const discountDoc = await Discount.findOne({ code: discountCode.toUpperCase() });
           if (discountDoc) {
             discountDoc.usedCount += 1;
-            await discountDoc.save();
+            await discountDoc.save({ session });
           }
         } else {
           throw new Error(`Invalid discount code: ${validation.message}`);
@@ -190,7 +271,7 @@ export class OrderService {
         vnpPayDate: orderData.vnpPayDate,
       });
 
-      await order.save();
+      await order.save({ session });
 
       const orderItems = await Promise.all(
         products.map(async product => {
@@ -221,13 +302,16 @@ export class OrderService {
             color: product.color,
             subtotal: subtotal,
           });
-          await orderItem.save();
+          await orderItem.save({ session });
           return orderItem._id;
         })
       );
 
       order.items = orderItems;
-      await order.save();
+      await order.save({ session });
+
+      // Commit the transaction
+      await session.commitTransaction();
 
       // Populate the order with items and products before returning
       const populatedOrder = await order.populate({
@@ -241,14 +325,22 @@ export class OrderService {
       logger.info('Order created successfully', { orderId: order._id });
       return populatedOrder;
     } catch (error) {
+      // If an error occurred, abort the whole transaction
+      await session.abortTransaction();
+
       logger.error('Error creating order:', {
         error: error.message,
         stack: error.stack,
       });
+      // Re-throw the error to be handled by the controller
       throw new Error(`Failed to create order: ${error.message}`);
+    } finally {
+      // End the session
+      session.endSession();
     }
   }
 
+  // ... (các hàm còn lại giữ nguyên)
   /**
    * Get all orders with pagination
    * @param {Object} options - Pagination and filter options
@@ -271,50 +363,34 @@ export class OrderService {
         };
       }
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      const [orders, total] = await Promise.all([
+        Order.find(query)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .populate({
+            path: 'user',
+            select: 'fullName email phone avatar',
+          })
+          .populate({
+            path: 'items',
+            populate: {
+              path: 'product',
+              select: 'name mainImage price inventory',
+            },
+          }),
+        Order.countDocuments(query),
+      ]);
 
-      try {
-        const [orders, total] = await Promise.all([
-          Order.find(query)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .populate({
-              path: 'user',
-              select: 'fullName email phone avatar',
-            })
-            .populate({
-              path: 'items',
-              populate: {
-                path: 'product',
-                select: 'name mainImage price inventory',
-              },
-            }),
-          Order.countDocuments(query),
-        ]);
-
-        await session.commitTransaction();
-
-        return {
-          orders,
-          pagination: {
-            total,
-            page: parseInt(page),
-            limit: parseInt(limit),
-            pages: Math.ceil(total / limit),
-          },
-        };
-      } catch (error) {
-        await session.abortTransaction();
-        logger.error('Error getting orders:', {
-          error: error.message,
-          stack: error.stack,
-        });
-        throw new Error(`Failed to get orders: ${error.message}`);
-      } finally {
-        session.endSession();
-      }
+      return {
+        orders,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
       logger.error('Error getting orders:', {
         error: error.message,
@@ -342,39 +418,24 @@ export class OrderService {
         throw new Error('Invalid order ID');
       }
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        const order = await Order.findById(orderId)
-          .populate({
-            path: 'user',
-            select: 'fullName email phone avatar',
-          })
-          .populate({
-            path: 'items',
-            populate: {
-              path: 'product',
-              select: 'name mainImage price inventory',
-            },
-          });
-
-        if (!order) {
-          throw new Error('Order not found');
-        }
-
-        await session.commitTransaction();
-        return order;
-      } catch (error) {
-        await session.abortTransaction();
-        logger.error('Error getting order by order ID:', {
-          error: error.message,
-          stack: error.stack,
+      const order = await Order.findById(orderId)
+        .populate({
+          path: 'user',
+          select: 'fullName email phone avatar',
+        })
+        .populate({
+          path: 'items',
+          populate: {
+            path: 'product',
+            select: 'name mainImage price inventory',
+          },
         });
-        throw new Error(`Failed to get order by order ID: ${error.message}`);
-      } finally {
-        session.endSession();
+
+      if (!order) {
+        throw new Error('Order not found');
       }
+
+      return order;
     } catch (error) {
       logger.error('Error getting order by order ID:', {
         error: error.message,
@@ -406,50 +467,34 @@ export class OrderService {
       const { page = 1, limit = 10 } = options;
       const skip = (page - 1) * limit;
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      const [orders, total] = await Promise.all([
+        Order.find({ user: userId })
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .populate({
+            path: 'user',
+            select: 'fullName email phone avatar',
+          })
+          .populate({
+            path: 'items',
+            populate: {
+              path: 'product',
+              select: 'name mainImage price inventory',
+            },
+          }),
+        Order.countDocuments({ user: userId }),
+      ]);
 
-      try {
-        const [orders, total] = await Promise.all([
-          Order.find({ user: userId })
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .populate({
-              path: 'user',
-              select: 'fullName email phone avatar',
-            })
-            .populate({
-              path: 'items',
-              populate: {
-                path: 'product',
-                select: 'name mainImage price inventory',
-              },
-            }),
-          Order.countDocuments({ user: userId }),
-        ]);
-
-        await session.commitTransaction();
-
-        return {
-          orders,
-          pagination: {
-            total,
-            page: parseInt(page),
-            limit: parseInt(limit),
-            pages: Math.ceil(total / limit),
-          },
-        };
-      } catch (error) {
-        await session.abortTransaction();
-        logger.error('Error getting orders by user ID:', {
-          error: error.message,
-          stack: error.stack,
-        });
-        throw new Error(`Failed to get orders by user ID: ${error.message}`);
-      } finally {
-        session.endSession();
-      }
+      return {
+        orders,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
       logger.error('Error getting orders by user ID:', {
         error: error.message,
@@ -478,53 +523,15 @@ export class OrderService {
         throw new Error('Invalid order ID');
       }
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        // Get current order
-        const currentOrder = await Order.findById(orderId);
-        if (!currentOrder) {
-          throw new Error('Order not found');
-        }
-
-        // If financial fields are being updated, recalculate total
-        const financialFields = ['shippingCost', 'tax', 'discount'];
-        const hasFinancialUpdates = financialFields.some(field => field in updateData);
-
-        if (hasFinancialUpdates) {
-          const OrderItem = mongoose.model('OrderItem');
-          const items = await OrderItem.find({
-            _id: { $in: currentOrder.items },
-          });
-          const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-
-          const newShippingCost = updateData.shippingCost ?? currentOrder.shippingCost;
-          const newTax = updateData.tax ?? currentOrder.tax;
-          const newDiscount = updateData.discount ?? currentOrder.discount;
-
-          updateData.subtotal = subtotal;
-          updateData.totalPrice = subtotal + newShippingCost + newTax - newDiscount;
-        }
-
-        const order = await Order.findByIdAndUpdate(
-          orderId,
-          { $set: updateData },
-          { new: true, runValidators: true }
-        );
-
-        await session.commitTransaction();
-        return order;
-      } catch (error) {
-        await session.abortTransaction();
-        logger.error('Error updating order:', {
-          error: error.message,
-          stack: error.stack,
-        });
-        throw new Error(`Failed to update order: ${error.message}`);
-      } finally {
-        session.endSession();
+      const order = await Order.findByIdAndUpdate(
+        orderId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+      if (!order) {
+        throw new Error('Order not found');
       }
+      return order;
     } catch (error) {
       logger.error('Error updating order:', {
         error: error.message,
@@ -541,59 +548,71 @@ export class OrderService {
    * @returns {Promise<Order>} The cancelled order
    */
   static async cancelOrder(orderId, reason) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       logger.info('Cancelling order:', { orderId, reason });
-      if (!orderId) {
-        logger.error('Order ID is required');
-        throw new Error('Order ID is required');
+      const order = await Order.findById(orderId).session(session).populate('items');
+      if (!order) {
+        throw new Error('Order not found');
       }
 
-      if (!mongoose.Types.ObjectId.isValid(orderId)) {
-        logger.error('Invalid order ID');
-        throw new Error('Invalid order ID');
-      }
+      // Hoàn lại số lượng sản phẩm vào kho cho từng variant
+      for (const item of order.items) {
+        const product = await Product.findById(item.product).session(session);
+        if (product) {
+          // **FIXED**: Gộp các điều kiện filter vào một object duy nhất
+          const filterCondition = { 'elem.color': item.color };
+          switch (product.productType) {
+            case 'shoes':
+              filterCondition['elem.size'] = item.size;
+              break;
+            case 'clothing':
+              filterCondition['elem.clothingSize'] = item.size;
+              break;
+            case 'accessory':
+              filterCondition['elem.isOneSize'] = true;
+              break;
+          }
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        const updateData = {
-          status: 'cancelled',
-          cancelledAt: new Date(),
-        };
-
-        if (reason) {
-          updateData.cancellationReason = reason;
+          await Product.findByIdAndUpdate(
+            item.product,
+            {
+              $inc: {
+                'inventory.$[elem].quantity': item.quantity,
+                stock: item.quantity,
+              },
+            },
+            {
+              arrayFilters: [filterCondition], // Đưa object filter vào mảng
+              session,
+            }
+          );
         }
-
-        const order = await Order.findByIdAndUpdate(
-          orderId,
-          { $set: updateData },
-          { new: true, runValidators: true }
-        );
-
-        if (!order) {
-          throw new Error('Order not found');
-        }
-
-        await session.commitTransaction();
-        return order;
-      } catch (error) {
-        await session.abortTransaction();
-        logger.error('Error cancelling order:', {
-          error: error.message,
-          stack: error.stack,
-        });
-        throw new Error(`Failed to cancel order: ${error.message}`);
-      } finally {
-        session.endSession();
       }
+
+      const updateData = {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+      };
+      if (reason) {
+        updateData.cancellationReason = reason;
+      }
+
+      const cancelledOrder = await Order.findByIdAndUpdate(
+        orderId,
+        { $set: updateData },
+        { new: true, runValidators: true, session }
+      );
+
+      await session.commitTransaction();
+      return cancelledOrder;
     } catch (error) {
-      logger.error('Error cancelling order:', {
-        error: error.message,
-        stack: error.stack,
-      });
+      await session.abortTransaction();
+      logger.error('Error cancelling order:', { error: error.message, stack: error.stack });
       throw new Error(`Failed to cancel order: ${error.message}`);
+    } finally {
+      session.endSession();
     }
   }
 
@@ -615,50 +634,35 @@ export class OrderService {
         throw new Error('Invalid order ID');
       }
 
-      const session = await mongoose.startSession();
-      session.startTransaction();
+      const updateData = {
+        status: 'refunded',
+        refundedAt: new Date(),
+      };
 
-      try {
-        const updateData = {
-          status: 'refunded',
-          refundedAt: new Date(),
-        };
-
-        if (refundData.reason) {
-          updateData.refundReason = refundData.reason;
-        }
-        if (refundData.amount) {
-          updateData.refundAmount = refundData.amount;
-        }
-        if (refundData.refundTransactionNo) {
-          updateData.refundTransactionNo = refundData.refundTransactionNo;
-        }
-        if (refundData.refundResponseCode) {
-          updateData.refundResponseCode = refundData.refundResponseCode;
-        }
-
-        const order = await Order.findByIdAndUpdate(
-          orderId,
-          { $set: updateData },
-          { new: true, runValidators: true }
-        );
-
-        if (!order) {
-          throw new Error('Order not found');
-        }
-
-        await session.commitTransaction();
-        return order;
-      } catch (error) {
-        await session.abortTransaction();
-        logger.error('Error refunding order:', {
-          error: error.message,
-          stack: error.stack,
-        });
-        throw new Error(`Failed to refund order: ${error.message}`);
-      } finally {
-        session.endSession();
+      if (refundData.reason) {
+        updateData.refundReason = refundData.reason;
       }
+      if (refundData.amount) {
+        updateData.refundAmount = refundData.amount;
+      }
+      if (refundData.refundTransactionNo) {
+        updateData.refundTransactionNo = refundData.refundTransactionNo;
+      }
+      if (refundData.refundResponseCode) {
+        updateData.refundResponseCode = refundData.refundResponseCode;
+      }
+
+      const order = await Order.findByIdAndUpdate(
+        orderId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      return order;
     } catch (error) {
       logger.error('Error refunding order:', {
         error: error.message,
