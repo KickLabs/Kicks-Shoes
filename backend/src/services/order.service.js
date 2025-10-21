@@ -130,14 +130,17 @@ export class OrderService {
         }
 
         const variantInStock = product.inventory.find(inv => {
-          const colorMatch = inv.color === item.color;
+          const colorMatch =
+            inv.color &&
+            item.color &&
+            inv.color.toLowerCase().trim() === item.color.toLowerCase().trim();
           if (!colorMatch) return false;
 
           switch (product.productType) {
             case 'shoes':
-              return inv.size === item.size;
+              return inv.size && item.size && inv.size === parseInt(item.size);
             case 'clothing':
-              return inv.clothingSize === item.size;
+              return inv.clothingSize && item.size && inv.clothingSize === item.size;
             case 'accessory':
               return inv.isOneSize === true;
             default:
@@ -146,6 +149,22 @@ export class OrderService {
         });
 
         if (!variantInStock) {
+          // Log available variants for debugging
+          logger.error('Variant not found for product:', {
+            productId: item.id,
+            productName: product.name,
+            requestedColor: item.color,
+            requestedSize: item.size,
+            productType: product.productType,
+            availableVariants: product.inventory.map(inv => ({
+              color: inv.color,
+              size: inv.size,
+              clothingSize: inv.clothingSize,
+              isOneSize: inv.isOneSize,
+              quantity: inv.quantity,
+            })),
+          });
+
           throw new Error(
             `Variant for product ${product.name} (Color: ${item.color}, Size: ${item.size}) not found.`
           );
@@ -162,10 +181,12 @@ export class OrderService {
       for (const item of products) {
         const product = await Product.findById(item.id).session(session);
 
-        const filterCondition = { 'elem.color': item.color };
+        const filterCondition = {
+          'elem.color': { $regex: new RegExp(`^${item.color}$`, 'i') },
+        };
         switch (product.productType) {
           case 'shoes':
-            filterCondition['elem.size'] = item.size;
+            filterCondition['elem.size'] = parseInt(item.size);
             break;
           case 'clothing':
             filterCondition['elem.clothingSize'] = item.size;
@@ -544,10 +565,12 @@ export class OrderService {
       for (const item of order.items) {
         const product = await Product.findById(item.product).session(session);
         if (product) {
-          const filterCondition = { 'elem.color': item.color };
+          const filterCondition = {
+            'elem.color': { $regex: new RegExp(`^${item.color}$`, 'i') },
+          };
           switch (product.productType) {
             case 'shoes':
-              filterCondition['elem.size'] = item.size;
+              filterCondition['elem.size'] = parseInt(item.size);
               break;
             case 'clothing':
               filterCondition['elem.clothingSize'] = item.size;
