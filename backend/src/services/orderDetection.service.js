@@ -6,11 +6,13 @@
  */
 
 import PotentialOrder from '../models/PotentialOrder.js';
-import Product from '../models/Product.js';
+import { ProductService } from './product.service.js';
 import logger from '../utils/logger.js';
 
 class OrderDetectionService {
-  constructor() {
+  constructor(potentialOrderModel = PotentialOrder) {
+    this.PotentialOrder = potentialOrderModel;
+
     // Vietnamese phone number patterns
     this.phoneRegex = /(0[3|5|7|8|9])+([0-9]{8})\b/g;
 
@@ -24,6 +26,7 @@ class OrderDetectionService {
       'order',
       'book',
       'đặt hàng',
+      'đơn',
 
       // Interest/inquiry
       'có',
@@ -54,38 +57,49 @@ class OrderDetectionService {
       'chiếc',
       'bộ',
       'combo',
+
+      // Payment and shipping keywords
+      'cod',
+      'giao hàng',
+      'thanh toán',
+      'chuyển khoản',
+
+      // Multi-word phrases
+      'chốt đơn',
+      'mua ngay',
+      'ship gấp',
     ];
 
     // Size patterns (Vietnamese + English)
     this.sizePatterns = [
+      // One size (check first)
+      /(one\s*size|onesize)/i,
+
+      // Clothing sizes (check before numeric to avoid matching digits in XL as 78)
+      /size\s*([xsmlXSML]+)/i,
+      /cỡ\s*([xsmlXSML]+)/i,
+      /([xsmlXSML]+)\s*(?:size|cỡ)/i,
+
       // Shoe sizes
-      /size\s*(\d{2})/gi,
-      /cỡ\s*(\d{2})/gi,
-      /số\s*(\d{2})/gi,
-      /(\d{2})\s*(?:size|cỡ|số)/gi,
-
-      // Clothing sizes
-      /size\s*([xsmlXSML]+)/gi,
-      /cỡ\s*([xsmlXSML]+)/gi,
-      /([xsmlXSML]+)\s*(?:size|cỡ)/gi,
-
-      // One size
-      /(one\s*size|onesize)/gi,
+      /size\s*(\d{2})/i,
+      /cỡ\s*(\d{2})/i,
+      /số\s*(\d{2})/i,
+      /(\d{2})\s*(?:size|cỡ|số)/i,
     ];
 
     // Color patterns (Vietnamese colors)
     this.colorPatterns = [
-      /màu\s*(đen|trắng|đỏ|xanh|vàng|hồng|nâu|xám|cam|tím)/gi,
-      /color\s*(black|white|red|blue|yellow|pink|brown|gray|orange|purple)/gi,
-      /(đen|trắng|đỏ|xanh|vàng|hồng|nâu|xám|cam|tím)/gi,
-      /(black|white|red|blue|yellow|pink|brown|gray|orange|purple)/gi,
+      /màu\s*(đen|trắng|đỏ|xanh|vàng|hồng|nâu|xám|cam|tím)/i,
+      /color\s*(black|white|red|blue|yellow|pink|brown|gray|orange|purple)/i,
+      /(đen|trắng|đỏ|xanh|vàng|hồng|nâu|xám|cam|tím)/i,
+      /(black|white|red|blue|yellow|pink|brown|gray|orange|purple)/i,
     ];
 
     // Quantity patterns
     this.quantityPatterns = [
-      /(\d+)\s*(?:đôi|cái|chiếc|bộ|combo)/gi,
-      /(?:đôi|cái|chiếc|bộ|combo)\s*(\d+)/gi,
-      /(\d+)\s*(?:pair|piece|set)/gi,
+      /(\d+)\s*(?:đôi|cái|chiếc|bộ|combo)/i,
+      /(?:đôi|cái|chiếc|bộ|combo)\s*(\d+)/i,
+      /(\d+)\s*(?:pair|piece|set)/i,
     ];
 
     // SKU patterns: HJ6777 (2 letters + 4 digits), NK-HBP-101 (alphanum with dashes)
@@ -114,6 +128,11 @@ class OrderDetectionService {
    */
   async analyzeMessage(messageData, streamData, userData) {
     try {
+      // Validate input
+      if (!messageData || !messageData.content || typeof messageData.content !== 'string') {
+        return null;
+      }
+
       const message = messageData.content.toLowerCase().trim();
 
       // Extract phone numbers
@@ -151,6 +170,7 @@ class OrderDetectionService {
             userId: userData._id,
             customerName: userData.username || userData.fullName,
             phoneNumber: phoneNumbers[0], // Use first phone number found
+            phoneNumbers: phoneNumbers, // All phone numbers found
           },
           productInfo: {
             originalMessage: messageData.content,
@@ -158,9 +178,10 @@ class OrderDetectionService {
             extractedSize: productInfo.size,
             extractedColor: productInfo.color,
             extractedQuantity: productInfo.quantity,
+            quantity: productInfo.quantity, // Alias for compatibility
           },
           detectionData: {
-            confidence,
+            confidence: Math.min(confidence, 1.0),
             detectedKeywords,
             phoneMatches: phoneNumbers,
             timestamp: new Date(),
@@ -243,13 +264,24 @@ class OrderDetectionService {
       confidence -= 0.1;
     }
 
-    return Math.max(confidence, 0);
+    // Cap confidence between 0 and 1
+    return Math.max(0, Math.min(confidence, 1.0));
   }
 
   /**
    * Extract product information from message
+   * Optimized version with early returns and better error handling
    */
   async extractProductInfo(rawMessage, streamData) {
+    if (!rawMessage || typeof rawMessage !== 'string') {
+      return {
+        size: null,
+        color: null,
+        quantity: 1,
+        productId: null,
+      };
+    }
+
     const message = rawMessage.toLowerCase();
     const result = {
       size: null,
@@ -260,23 +292,30 @@ class OrderDetectionService {
 
     try {
       // Parse composite pattern: chốt <qty> <unit> <SKU> màu <color> size <size|onesize>
-      const compositeRegex =
-        /(chốt|dat|đặt|mua)?\s*(\d+)\s*(đôi|cái|chiếc|bộ|combo)?\s*([A-Z]{2}[0-9]{4}|[A-Z0-9]+(?:-[A-Z0-9]+)+)\s*(?:màu|color)\s*([a-zA-ZđĐ]+)\s*(?:size|cỡ)?\s*(\d{2}|[XSML]{1,3}|ONE\s*SIZE|ONESIZE)?/i;
-      const compositeMatch = compositeRegex.exec(rawMessage.toUpperCase());
-      if (compositeMatch) {
-        const qty = parseInt(compositeMatch[2]);
-        if (!isNaN(qty)) result.quantity = qty;
-        const skuCandidate = compositeMatch[4];
-        if (skuCandidate) {
-          const skuProduct = await Product.findOne({ sku: skuCandidate }).select('_id');
-          if (skuProduct) {
-            result.productId = skuProduct._id;
+      const hasColorKeyword = /màu|color/i.test(rawMessage);
+      const hasSizeKeyword = /size|cỡ|số/i.test(rawMessage);
+
+      if (hasColorKeyword && hasSizeKeyword) {
+        const compositeRegex =
+          /(chốt|dat|đặt|mua)?\s*(\d+)\s*(đôi|cái|chiếc|bộ|combo)?\s*([A-Z]{2}[0-9]{4}|[A-Z0-9]+(?:-[A-Z0-9]+)+)\s*(?:màu|color)\s*([a-zA-ZđĐáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)\s*(?:size|cỡ)?\s*(\d{2}|[XSML]{1,3}|ONE\s*SIZE|ONESIZE)?/i;
+        const compositeMatch = compositeRegex.exec(rawMessage.toUpperCase());
+        if (compositeMatch) {
+          const qty = parseInt(compositeMatch[2]);
+          if (!isNaN(qty)) result.quantity = qty;
+          const skuCandidate = compositeMatch[4];
+          if (skuCandidate) {
+            const skuProduct = await ProductService.findOneBySku(skuCandidate);
+            if (skuProduct) {
+              result.productId = skuProduct._id;
+            }
           }
+          const clr = compositeMatch[5];
+          if (clr) result.color = clr.toLowerCase();
+          const sz = compositeMatch[6];
+          if (sz) result.size = sz.replace(/\s+/g, '').toUpperCase();
+
+          return result;
         }
-        const clr = compositeMatch[5];
-        if (clr) result.color = clr.toLowerCase();
-        const sz = compositeMatch[6];
-        if (sz) result.size = sz.replace(/\s+/g, '').toUpperCase();
       }
 
       // Extract size (fallbacks)
@@ -307,65 +346,77 @@ class OrderDetectionService {
         }
       }
 
-      // Try to match SKU first
-      const upper = rawMessage.toUpperCase();
-      let matchedSku = null;
-      for (const p of this.skuPatterns) {
-        const m = upper.match(p);
-        if (m && m.length > 0) {
-          matchedSku = m[0];
-          break;
-        }
-      }
-      if (matchedSku) {
-        // Try base SKU first
-        let skuProduct = await Product.findOne({ sku: matchedSku }).select('_id');
-        if (!skuProduct) {
-          // Fallback to variant/inventory SKU
-          skuProduct = await Product.findOne({ 'inventory.sku': matchedSku }).select(
-            '_id inventory productType'
-          );
-          // If inventory SKU matched and size/color not parsed yet, try to infer from inventory
-          if (skuProduct && (!result.size || !result.color)) {
-            const inv = (skuProduct.inventory || []).find(i => i.sku === matchedSku);
-            if (inv) {
-              if (!result.color && inv.color) result.color = String(inv.color).toLowerCase();
-              if (!result.size) {
-                if (skuProduct.productType === 'shoes' && inv.size != null) {
-                  result.size = String(inv.size);
-                } else if (skuProduct.productType === 'clothing' && inv.clothingSize) {
-                  result.size = inv.clothingSize;
-                } else if (skuProduct.productType === 'accessory' && inv.isOneSize) {
-                  result.size = 'ONESIZE';
+      // Try to match SKU first - Skip if productId already set from composite pattern
+      if (!result.productId) {
+        const upper = rawMessage.toUpperCase();
+        let matchedSku = null;
+
+        // Optimize: Use single combined regex instead of loop
+        const combinedSkuPattern = /\b([A-Z]{2}[0-9]{4}|[A-Z0-9]+(?:-[A-Z0-9]+)+)\b/g;
+        const skuMatches = upper.match(combinedSkuPattern);
+
+        if (skuMatches && skuMatches.length > 0) {
+          matchedSku = skuMatches[0]; // Use first match
+
+          // Try base SKU first
+          let skuProduct = await ProductService.findOneBySku(matchedSku);
+          if (!skuProduct) {
+            // Fallback to variant/inventory SKU
+            skuProduct = await ProductService.findOneByInventorySku(matchedSku);
+            // If inventory SKU matched and size/color not parsed yet, try to infer from inventory
+            if (skuProduct && (!result.size || !result.color)) {
+              const inv = (skuProduct.inventory || []).find(i => i.sku === matchedSku);
+              if (inv) {
+                if (!result.color && inv.color) result.color = String(inv.color).toLowerCase();
+                if (!result.size) {
+                  if (skuProduct.productType === 'shoes' && inv.size != null) {
+                    result.size = String(inv.size);
+                  } else if (skuProduct.productType === 'clothing' && inv.clothingSize) {
+                    result.size = inv.clothingSize;
+                  } else if (skuProduct.productType === 'accessory' && inv.isOneSize) {
+                    result.size = 'ONESIZE';
+                  }
                 }
               }
             }
           }
-        }
-        if (skuProduct) {
-          result.productId = skuProduct._id;
+          if (skuProduct) {
+            result.productId = skuProduct._id;
+          }
         }
       }
 
       // If not found by SKU, try to match with featured products in the stream
-      if (streamData.featuredProducts && streamData.featuredProducts.length > 0) {
+      // Optimize: Only check if productId not found yet
+      if (
+        !result.productId &&
+        streamData &&
+        streamData.featuredProducts &&
+        streamData.featuredProducts.length > 0
+      ) {
         const latestFeatured = streamData.featuredProducts[streamData.featuredProducts.length - 1];
         if (latestFeatured.productId) {
-          // Check if message mentions the product
-          const product = await Product.findById(latestFeatured.productId).select('name brand');
+          // Quick check for reference keywords first (avoid DB call if not needed)
+          const hasProductReference = /này|cái này|sản phẩm/i.test(message);
 
-          if (product) {
-            const productName = product.name.toLowerCase();
-            const productBrand = product.brand.toLowerCase();
+          if (hasProductReference) {
+            // Check if message mentions the product
+            const product = await ProductService.getProductById(
+              latestFeatured.productId,
+              'name brand'
+            );
 
-            if (
-              message.includes(productName) ||
-              message.includes(productBrand) ||
-              message.includes('này') || // "this one" in Vietnamese
-              message.includes('cái này') ||
-              message.includes('sản phẩm')
-            ) {
-              result.productId = product._id;
+            if (product) {
+              const productName = product.name.toLowerCase();
+              const productBrand = product.brand?.toLowerCase();
+
+              if (
+                message.includes(productName) ||
+                (productBrand && message.includes(productBrand)) ||
+                hasProductReference
+              ) {
+                result.productId = product._id;
+              }
             }
           }
         }
@@ -382,7 +433,7 @@ class OrderDetectionService {
    */
   async savePotentialOrder(detectionResult) {
     try {
-      const potentialOrder = new PotentialOrder(detectionResult.data);
+      const potentialOrder = new this.PotentialOrder(detectionResult.data);
       await potentialOrder.save();
 
       logger.info(`Potential order saved:`, {
@@ -403,7 +454,7 @@ class OrderDetectionService {
    */
   async getPendingOrdersForStream(streamId) {
     try {
-      return await PotentialOrder.getPendingOrdersForStream(streamId);
+      return await this.PotentialOrder.getPendingOrdersForStream(streamId);
     } catch (error) {
       logger.error('Error getting pending orders:', error);
       throw error;
@@ -415,7 +466,7 @@ class OrderDetectionService {
    */
   async getOrdersForHost(hostId, limit = 50) {
     try {
-      const orders = await PotentialOrder.getOrdersByHost(hostId, limit);
+      const orders = await this.PotentialOrder.getOrdersByHost(hostId, limit);
       return orders.filter(order => order.streamId); // Filter out orders where stream doesn't match host
     } catch (error) {
       logger.error('Error getting orders for host:', error);
@@ -428,19 +479,30 @@ class OrderDetectionService {
    */
   async updateOrderStatus(orderId, status, hostId, notes) {
     try {
-      const order = await PotentialOrder.findById(orderId);
+      const order = await this.PotentialOrder.findById(orderId);
       if (!order) {
         throw new Error('Order not found');
       }
 
       order.status = status;
+      order.hostActions = order.hostActions || {};
+
       if (notes) {
         order.hostActions.notes = notes;
-        order.hostActions.confirmedBy = hostId;
-        order.hostActions.confirmedAt = new Date();
       }
 
+      order.hostActions.confirmedBy = hostId;
+      order.hostActions.confirmedAt = new Date();
+
       await order.save();
+
+      logger.info(`Order status updated:`, {
+        orderId,
+        status,
+        hostId,
+        notes: notes || 'No notes',
+      });
+
       return order;
     } catch (error) {
       logger.error('Error updating order status:', error);
@@ -449,4 +511,5 @@ class OrderDetectionService {
   }
 }
 
+export { OrderDetectionService };
 export default new OrderDetectionService();

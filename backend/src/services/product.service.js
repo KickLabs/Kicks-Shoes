@@ -271,16 +271,22 @@ export class ProductService {
   /**
    * Get a product by ID
    * @param {String} productId - The ID of the product to retrieve
+   * @param {String} select - Fields to select (optional)
    * @returns {Promise<Product|null>} The product or null if not found
    */
-  static async getProductById(productId) {
+  static async getProductById(productId, select = '') {
     try {
       if (!mongoose.Types.ObjectId.isValid(productId)) {
         throw new Error('Invalid product ID');
       }
 
-      const product = await Product.findById(productId).populate('category');
-      return product;
+      const query = Product.findById(productId);
+      if (select) {
+        query.select(select);
+      } else {
+        query.populate('category');
+      }
+      return await query;
     } catch (error) {
       logger.error('Error retrieving product by ID', {
         productId,
@@ -620,6 +626,36 @@ export class ProductService {
       return [];
     } catch (error) {
       console.error('Error searching products by keywords', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Find a product by SKU
+   * @param {string} sku - Product SKU
+   * @returns {Promise<Product|null>} The product or null if not found
+   */
+  static async findOneBySku(sku) {
+    try {
+      return await Product.findOne({ sku }).select('_id sku');
+    } catch (error) {
+      console.error('Error finding product by SKU:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Find a product by inventory SKU
+   * @param {string} invSku - Inventory SKU
+   * @returns {Promise<Product|null>} The product or null if not found
+   */
+  static async findOneByInventorySku(invSku) {
+    try {
+      return await Product.findOne({ 'inventory.sku': invSku }).select(
+        '_id sku inventory productType'
+      );
+    } catch (error) {
+      console.error('Error finding product by inventory SKU:', error.message);
       throw error;
     }
   }
