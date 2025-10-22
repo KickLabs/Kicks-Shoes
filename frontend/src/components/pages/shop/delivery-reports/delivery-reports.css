@@ -1,0 +1,66 @@
+.delivery-reports-container {
+  padding: 24px;
+}
+
+.delivery-reports-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.delivery-reports-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* Custom table styles */
+.delivery-reports-container .ant-table {
+  font-size: 14px;
+}
+
+.delivery-reports-container .ant-table-thead > tr > th {
+  background-color: #fafafa;
+  font-weight: 600;
+}
+
+.delivery-reports-container .ant-table-tbody > tr:hover {
+  background-color: #f5f5f5;
+}
+
+/* Modal styles */
+.delivery-reports-container .ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.delivery-reports-container .ant-descriptions-bordered .ant-descriptions-item-label {
+  background-color: #fafafa;
+  font-weight: 600;
+}
+
+/* Statistics cards */
+.delivery-reports-container .ant-statistic-title {
+  font-size: 14px;
+  color: #8c8c8c;
+}
+
+.delivery-reports-container .ant-statistic-content {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .delivery-reports-container {
+    padding: 16px;
+  }
+
+  .delivery-reports-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+}
+

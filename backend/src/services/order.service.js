@@ -254,31 +254,42 @@ export class OrderService {
         throw new Error('Total price does not match sum of items');
       }
 
-      const order = new Order({
-        user,
-        items: [],
-        totalPrice: calculatedTotal,
-        subtotal: calculatedSubtotal,
+    // Ensure COD orders always have pending payment status
+    let finalPaymentStatus = orderData.paymentStatus || 'pending';
+    if (paymentMethod === 'cash_on_delivery') {
+      finalPaymentStatus = 'pending';
+      logger.info('COD order created with pending payment status', {
+        orderId: 'creating',
         paymentMethod,
-        shippingAddress,
-        shippingMethod,
-        shippingCost,
-        tax,
-        discount: finalDiscount,
-        discountCode: finalDiscountCode,
-        notes,
-        status: orderData.status || 'pending',
-        paymentStatus: orderData.paymentStatus || 'pending',
-        paymentDate: orderData.paymentDate,
-        transactionId: orderData.transactionId,
-        vnpResponseCode: orderData.vnpResponseCode,
-        vnpTxnRef: orderData.vnpTxnRef,
-        vnpAmount: orderData.vnpAmount,
-        vnpBankCode: orderData.vnpBankCode,
-        vnpPayDate: orderData.vnpPayDate,
+        originalPaymentStatus: orderData.paymentStatus,
+        finalPaymentStatus,
       });
+    }
 
-      await order.save({ session });
+    const order = new Order({
+      user,
+      items: [],
+      totalPrice: calculatedTotal,
+      subtotal: calculatedSubtotal,
+      paymentMethod,
+      shippingAddress,
+      shippingMethod,
+      shippingCost,
+      tax,
+      discount: finalDiscount,
+      discountCode: finalDiscountCode,
+      notes,
+      status: orderData.status || 'pending',
+      paymentStatus: finalPaymentStatus,
+      paymentDate: orderData.paymentDate,
+      transactionId: orderData.transactionId,
+      vnpResponseCode: orderData.vnpResponseCode,
+      vnpTxnRef: orderData.vnpTxnRef,
+      vnpAmount: orderData.vnpAmount,
+      vnpBankCode: orderData.vnpBankCode,
+      vnpPayDate: orderData.vnpPayDate,
+    });
+      await order.save();
 
       let itemsSubtotalAccurate = 0;
       const orderItems = await Promise.all(
@@ -424,17 +435,38 @@ export class OrderService {
         throw new Error('Invalid order ID');
       }
 
-      const order = await Order.findById(orderId)
-        .populate({
-          path: 'user',
-          select: 'fullName email phone avatar',
-        })
-        .populate({
-          path: 'items',
-          populate: {
-            path: 'product',
-            select: 'name mainImage price inventory',
-          },
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        const order = await Order.findById(orderId)
+          .populate({
+            path: 'user',
+            select: 'fullName email phone avatar',
+          })
+          .populate({
+            path: 'items',
+            populate: {
+              path: 'product',
+              select: 'name mainImage price inventory',
+            },
+          })
+          .populate({
+            path: 'shipper',
+            select: 'fullName email phone avatar vehicleType currentDeliveryCount',
+          });
+
+        if (!order) {
+          throw new Error('Order not found');
+        }
+
+        await session.commitTransaction();
+        return order;
+      } catch (error) {
+        await session.abortTransaction();
+        logger.error('Error getting order by order ID:', {
+          error: error.message,
+          stack: error.stack,
         });
 
       if (!order) {

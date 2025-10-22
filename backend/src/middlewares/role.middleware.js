@@ -12,6 +12,7 @@ import logger from '../utils/logger.js';
 export const ROLES = {
   GUEST: 'guest',
   CUSTOMER: 'customer',
+  SHIPPER: 'shipper',
   SHOP: 'shop',
   ADMIN: 'admin',
 };
@@ -20,8 +21,9 @@ export const ROLES = {
 const ROLE_HIERARCHY = {
   [ROLES.GUEST]: 0,
   [ROLES.CUSTOMER]: 1,
-  [ROLES.SHOP]: 2,
-  [ROLES.ADMIN]: 3,
+  [ROLES.SHIPPER]: 2,
+  [ROLES.SHOP]: 3,
+  [ROLES.ADMIN]: 4,
 };
 
 /**
@@ -61,6 +63,7 @@ export const checkRoleLevel = requiredLevel => {
 
 // Predefined role middleware functions
 export const requireCustomer = checkRoleLevel(ROLE_HIERARCHY[ROLES.CUSTOMER]);
+export const requireShipper = checkRoleLevel(ROLE_HIERARCHY[ROLES.SHIPPER]);
 export const requireShop = checkRoleLevel(ROLE_HIERARCHY[ROLES.SHOP]);
 export const requireAdmin = checkRoleLevel(ROLE_HIERARCHY[ROLES.ADMIN]);
 

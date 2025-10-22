@@ -49,13 +49,14 @@ import VisualSearch from './components/pages/shop/VisualSearch';
 // New Role-Based Dashboard Components
 import AdminDashboard from './components/pages/dashboard/AdminDashboard';
 import DashboardLayout from './components/pages/dashboard/DashboardLayout';
-import RoleSwitcher from './components/pages/dashboard/RoleSwitcher';
 import ShopDashboard from './components/pages/dashboard/ShopDashboard';
 
 // Product Management Components
 import AddNewProduct from './components/pages/dashboard/AddNewProduct';
 import EditProduct from './components/pages/dashboard/EditProduct';
 import FlashSaleManagement from './components/pages/dashboard/FlashSaleManagement';
+import DeliveryReports from './components/pages/shop/delivery-reports/DeliveryReports';
+import ShipperApplications from './components/pages/shop/shipper-applications/ShipperApplications';
 
 // Styles
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -79,6 +80,9 @@ import LiveStreamViewer from './components/pages/livestream/LiveStreamViewer';
 import BlogComposerPage from './components/pages/blog/BlogComposerPage';
 import BlogDetailPage from './components/pages/blog/BlogDetailPage';
 import BlogFeedPage from './components/pages/blog/BlogFeedPage';
+
+// Shipper
+import ShipperDashboard from './components/pages/shipper/ShipperDashboard';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -109,6 +113,16 @@ const ShopOwnerProtectedRoute = ({ children }) => {
 
   if (!user || user.role !== 'shop') {
     return <Navigate to="/login-admin" replace />;
+  }
+
+  return children;
+};
+
+const ShipperProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user || user.role !== 'shipper') {
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -147,14 +161,6 @@ const router = createBrowserRouter([
       {
         path: 'dashboard',
         element: <DashboardRedirect />,
-      },
-      {
-        path: 'role-switcher',
-        element: <RoleSwitcher />,
-      },
-      {
-        path: 'dashboard-new',
-        element: <RoleSwitcher />,
       },
       {
         path: 'verify-email',
@@ -432,6 +438,22 @@ const router = createBrowserRouter([
               </ShopOwnerProtectedRoute>
             ),
           },
+          {
+            path: 'delivery-reports',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <DeliveryReports />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'shipper-applications',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShipperApplications />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
         ],
       },
       {
@@ -479,6 +501,14 @@ const router = createBrowserRouter([
       {
         path: 'categories/:storeId',
         element: <CategoryDetails />,
+      },
+      {
+        path: 'shipper-dashboard',
+        element: (
+          <ShipperProtectedRoute>
+            <ShipperDashboard />
+          </ShipperProtectedRoute>
+        ),
       },
       {
         path: 'forgot-password',

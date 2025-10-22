@@ -149,16 +149,35 @@ export const getUserTotalPoints = async userId => {
       },
     ]);
 
+    // Calculate total adjusted points (type: adjust) - includes both positive (refund) and negative (deduct)
+    const adjustedPoints = await RewardPoint.aggregate([
+      {
+        $match: {
+          user: userIdObj,
+          type: 'adjust',
+          status: 'active',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$points' },
+        },
+      },
+    ]);
+
     const earned = earnedPoints[0]?.total || 0;
     const redeemed = redeemedPoints[0]?.total || 0;
     const expired = expiredPoints[0]?.total || 0;
-    const available = earned - redeemed - expired;
+    const adjusted = adjustedPoints[0]?.total || 0;
+    const available = earned + adjusted - redeemed - expired;
 
     logger.info('Calculated reward points totals:', {
       userId,
       earned,
       redeemed,
       expired,
+      adjusted,
       available,
     });
 
@@ -166,6 +185,7 @@ export const getUserTotalPoints = async userId => {
       totalEarned: earned,
       totalRedeemed: redeemed,
       totalExpired: expired,
+      totalAdjusted: adjusted,
       availablePoints: Math.max(0, available),
     };
   } catch (error) {
