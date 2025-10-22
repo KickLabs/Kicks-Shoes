@@ -339,12 +339,14 @@ export class OrderService {
         error: error.message,
         stack: error.stack,
       });
+      // Re-throw the error to be handled by the controller
       throw new Error(`Failed to create order: ${error.message}`);
     } finally {
       session.endSession();
     }
   }
 
+  // ... (các hàm còn lại giữ nguyên)
   /**
    * Get all orders with pagination
    * @param {Object} options - Pagination and filter options
