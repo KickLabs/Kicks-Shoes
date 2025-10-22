@@ -5,6 +5,28 @@ import './OrderDetails.css';
 
 const { Title, Text } = Typography;
 
+const getProductImageForOrder = (productData, selectedColor) => {
+  const product = productData.productDetails || productData.product || productData;
+
+  if (!product) return 'https://via.placeholder.com/150x150?text=No+Image';
+
+  // 1. Ưu tiên tìm ảnh theo MÀU đã chọn
+  if (product.colorOptions && Array.isArray(product.colorOptions)) {
+    const colorMatch = product.colorOptions.find(opt => opt.color === selectedColor);
+    if (colorMatch && colorMatch.images && colorMatch.images.length > 0) {
+      return colorMatch.images[0];
+    }
+  }
+
+  // 2. Nếu không, lấy ảnh đại diện
+  if (product.mainImage) {
+    return product.mainImage;
+  }
+
+  // 3. Fallback
+  return 'https://via.placeholder.com/150x150?text=No+Image';
+};
+
 export default function OrderDetails({
   products = [],
   notes = '',
@@ -75,6 +97,8 @@ export default function OrderDetails({
 
           console.log('Processed product:', { prod, priceRegular, priceDiscount, isDiscount });
 
+          const imageUrl = getProductImageForOrder(product, product.color);
+
           return (
             <Row
               gutter={16}
@@ -83,12 +107,7 @@ export default function OrderDetails({
               style={{ marginBottom: 16 }}
             >
               <Col span={8}>
-                <Image
-                  src={prod.mainImage}
-                  alt={prod.name}
-                  preview={false}
-                  className="order-image"
-                />
+                <Image src={imageUrl} alt={prod.name} preview={false} className="order-image" />
               </Col>
               <Col span={16}>
                 <Text strong className="order-product-name">

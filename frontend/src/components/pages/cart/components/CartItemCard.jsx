@@ -42,17 +42,33 @@ const CartItemCard = ({ item, isSelected, onSelectChange }) => {
   }
 
   // Handle different image structures
-  const getProductImage = product => {
-    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-      return product.images[0];
+  const getProductImage = item => {
+    const product = item.product;
+    if (!product) {
+      return 'https://via.placeholder.com/150x150?text=No+Image';
     }
+
+    // 1. Ưu tiên tìm ảnh theo MÀU đã chọn (item.color)
+    if (product.colorOptions && Array.isArray(product.colorOptions)) {
+      const colorMatch = product.colorOptions.find(opt => opt.color === item.color);
+      if (colorMatch && colorMatch.images && colorMatch.images.length > 0) {
+        return colorMatch.images[0]; // Lấy ảnh đầu tiên của màu đó
+      }
+    }
+
+    // 2. Nếu không, lấy ảnh đại diện
     if (product.mainImage) {
       return product.mainImage;
+    }
+
+    // 3. Fallback (logic cũ của bạn)
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      return product.images[0];
     }
     if (product.image) {
       return product.image;
     }
-    // Return a placeholder image
+
     return 'https://via.placeholder.com/150x150?text=No+Image';
   };
 
@@ -81,7 +97,7 @@ const CartItemCard = ({ item, isSelected, onSelectChange }) => {
     return [];
   };
 
-  const productImage = getProductImage(item.product);
+  const productImage = getProductImage(item);
   const productPrice = getProductPrice(item.product);
   const productSizes = getProductSizes(item.product);
 

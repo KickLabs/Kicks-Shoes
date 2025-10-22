@@ -5,6 +5,8 @@ import {
   UserOutlined,
   ExclamationCircleOutlined,
   ArrowLeftOutlined,
+  TruckOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import {
   Avatar,
@@ -19,6 +21,7 @@ import {
   Tag,
   Spin,
   message,
+  Modal,
 } from 'antd';
 import dayjs from 'dayjs';
 import React, { useContext, useEffect, useState } from 'react';
@@ -54,6 +57,23 @@ export default function OrderDetails() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedFeedbackId, setSelectedFeedbackId] = useState(null);
 
+  // **Shipper assignment state**
+  const [shippers, setShippers] = useState([]);
+  const [shipperModalVisible, setShipperModalVisible] = useState(false);
+  const [selectedShipper, setSelectedShipper] = useState(null);
+  const [assigningShipper, setAssigningShipper] = useState(false);
+
+  // **Delivery tracking state**
+  const [deliveryTracking, setDeliveryTracking] = useState(null);
+  const [loadingTracking, setLoadingTracking] = useState(false);
+
+  // **Report issue state**
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportType, setReportType] = useState('not_received');
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
+
   const columns = [
     {
       title: 'Product Name',
@@ -85,8 +105,8 @@ export default function OrderDetails() {
     },
     { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
     { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => formatPrice(v || 0) },
-    // Only show Review column for customers
-    ...(user?.role === 'customer'
+    // Only show Review column for order owner
+    ...((order?.user?._id === user?._id || order?.user === user?._id)
       ? [
           {
             title: 'Review',
@@ -174,6 +194,11 @@ export default function OrderDetails() {
         if (response.data.success) {
           setOrder(response.data.data);
           setNote(response.data.data.notes || '');
+          
+          // If order has delivery info, set it
+          if (response.data.data.delivery) {
+            setDeliveryTracking(response.data.data.delivery);
+          }
         } else {
           throw new Error(response.data.message);
         }
@@ -186,6 +211,29 @@ export default function OrderDetails() {
     };
     fetchOrder();
   }, [orderId]);
+
+  // Fetch delivery tracking if order has shipper assigned
+  useEffect(() => {
+    const fetchDeliveryTracking = async () => {
+      if (!order?.shipper || deliveryTracking) return;
+      
+      try {
+        setLoadingTracking(true);
+        const response = await axiosInstance.get(`/orders/${orderId}/tracking`);
+        if (response.data.success) {
+          setDeliveryTracking(response.data.data);
+        }
+      } catch (err) {
+        console.log('No delivery tracking available yet');
+      } finally {
+        setLoadingTracking(false);
+      }
+    };
+    
+    if (order?.shipper) {
+      fetchDeliveryTracking();
+    }
+  }, [order?.shipper, orderId, deliveryTracking]);
 
   // **Load all feedbacks for this order**
   useEffect(() => {
@@ -248,19 +296,167 @@ export default function OrderDetails() {
     }
   };
 
+  // Handle confirm order received
+  const handleConfirmOrderReceived = async () => {
+    Modal.confirm({
+      title: 'Confirm Order Received',
+      content: 'Are you sure you have received this order? This action will complete the order.',
+      okText: 'Yes, I received it',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          const response = await axiosInstance.post(`/orders/${orderId}/confirm`);
+          if (response.data.success) {
+            message.success('Order confirmed successfully! Thank you for your purchase.');
+            // Refresh order details
+            window.location.reload();
+          } else {
+            message.error(response.data.message || 'Failed to confirm order');
+          }
+        } catch (error) {
+          console.error('Error confirming order:', error);
+          message.error(error.response?.data?.message || 'Failed to confirm order');
+        }
+      },
+    });
+  };
+
+  // Handle report delivery issue
+  const handleReportIssue = () => {
+    setReportModalVisible(true);
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportReason.trim()) {
+      message.error('Please provide a reason for the report');
+      return;
+    }
+
+    try {
+      setSubmittingReport(true);
+      const response = await axiosInstance.post(`/orders/${orderId}/report-issue`, {
+        reportType,
+        reason: reportReason,
+        description: reportDescription,
+      });
+
+      if (response.data.success) {
+        message.success('Report submitted successfully. Our team will investigate and contact you soon.');
+        setReportModalVisible(false);
+        setReportType('not_received');
+        setReportReason('');
+        setReportDescription('');
+        // Refresh order details
+        window.location.reload();
+      } else {
+        message.error(response.data.message || 'Failed to submit report');
+      }
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      message.error(error.response?.data?.message || 'Failed to submit report');
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
+  const handleCancelReport = () => {
+    setReportModalVisible(false);
+    setReportType('not_received');
+    setReportReason('');
+    setReportDescription('');
+  };
+
+  // Fetch available shippers
+  const fetchAvailableShippers = async () => {
+    try {
+      console.log('Fetching shippers from /orders/shippers/available');
+      const response = await axiosInstance.get('/orders/shippers/available');
+      console.log('Shippers response:', response.data);
+      
+      if (response.data.success) {
+        if (response.data.data && response.data.data.length > 0) {
+          setShippers(response.data.data);
+          console.log('Set shippers:', response.data.data);
+        } else {
+          console.warn('No shippers found in response');
+          message.warning('No available shipper found');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch shippers:', err);
+      console.error('Error response:', err.response?.data);
+      message.error(err.response?.data?.message || 'Failed to fetch available shippers');
+    }
+  };
+
+  // Assign shipper manually
+  const handleAssignShipper = async () => {
+    if (!selectedShipper) {
+      message.error('Please select a shipper');
+      return;
+    }
+
+    try {
+      setAssigningShipper(true);
+      const response = await axiosInstance.post(`/orders/${orderId}/assign-shipper`, {
+        shipperId: selectedShipper,
+      });
+
+      if (response.data.success) {
+        message.success('Shipper assigned successfully');
+        setShipperModalVisible(false);
+        setSelectedShipper(null);
+        // Reload order
+        const orderResponse = await axiosInstance.get(`/orders/${orderId}`);
+        if (orderResponse.data.success) {
+          setOrder(orderResponse.data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to assign shipper:', err);
+      message.error(err.response?.data?.message || 'Failed to assign shipper');
+    } finally {
+      setAssigningShipper(false);
+    }
+  };
+
+  // Auto-assign shipper
+  const handleAutoAssignShipper = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.post(`/orders/${orderId}/auto-assign-shipper`);
+
+      if (response.data.success) {
+        message.success(
+          `Shipper ${response.data.data.shipper.fullName} assigned successfully`
+        );
+        // Reload order
+        const orderResponse = await axiosInstance.get(`/orders/${orderId}`);
+        if (orderResponse.data.success) {
+          setOrder(orderResponse.data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to auto-assign shipper:', err);
+      message.error(err.response?.data?.message || 'Failed to auto-assign shipper');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleStatusChange = async newStatus => {
     try {
       setLoading(true);
 
-      // Validate status transition
+      // Shop can only change pending -> processing
+      // Shipper handles shipping and delivery
       const currentStatus = order.status;
       const validTransitions = {
         pending: ['processing', 'cancelled'],
-        processing: ['shipped', 'cancelled'],
-        shipped: ['delivered'],
+        processing: ['cancelled'], // Shop can only cancel, not ship
         delivered: ['refunded'],
-        cancelled: [], // No further transitions
-        refunded: [], // No further transitions
+        cancelled: [],
+        refunded: [],
       };
 
       if (!validTransitions[currentStatus]?.includes(newStatus)) {
@@ -331,15 +527,16 @@ export default function OrderDetails() {
     }
   };
 
-  // Check if customer can cancel order (processing or pending status)
+  // Check if order owner can cancel order (processing or pending status)
   const canCancel =
-    user?.role === 'customer' &&
-    order?.user?._id === user?._id &&
+    (order?.user?._id === user?._id || order?.user === user?._id) &&
     (order?.status === 'processing' || order?.status === 'pending');
 
-  // Check if customer can refund order
+  // Check if order owner can refund order
   const canRefund = () => {
-    if (user?.role !== 'customer' || order?.user?._id !== user?._id) {
+    // Check if user is the order owner
+    const isOrderOwner = order?.user?._id === user?._id || order?.user === user?._id;
+    if (!isOrderOwner) {
       return false;
     }
 
@@ -364,6 +561,18 @@ export default function OrderDetails() {
       return false;
     }
 
+    // Case 3: Completed and paid orders (any payment method) within 3 days of completion
+    if (order?.paymentStatus === 'paid' && order?.status === 'completed') {
+      if (order?.completedAt) {
+        const completedDate = new Date(order.completedAt);
+        const currentDate = new Date();
+        const daysDiff = (currentDate - completedDate) / (1000 * 60 * 60 * 24);
+        return daysDiff <= 3; // Refund available within 3 days of completion
+      }
+      // If no completedAt date, don't allow refund
+      return false;
+    }
+
     return false;
   };
 
@@ -374,6 +583,9 @@ export default function OrderDetails() {
     processing: 'blue',
     shipped: 'purple',
     delivered: 'green',
+    delivered_pending_confirmation: 'gold',
+    completed: 'cyan',
+    under_investigation: 'volcano',
     cancelled: 'red',
     refunded: 'default',
   };
@@ -403,6 +615,7 @@ export default function OrderDetails() {
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod,
     deliveredAt: order.deliveredAt,
+    completedAt: order.completedAt,
     updatedAt: order.updatedAt,
     canCancel,
     shouldShowRefund,
@@ -419,6 +632,11 @@ export default function OrderDetails() {
       order?.status === 'delivered' &&
       order?.deliveredAt &&
       new Date() - new Date(order.deliveredAt) <= 3 * 24 * 60 * 60 * 1000,
+    isCompletedAndPaidWithin3Days:
+      order?.paymentStatus === 'paid' &&
+      order?.status === 'completed' &&
+      order?.completedAt &&
+      new Date() - new Date(order.completedAt) <= 3 * 24 * 60 * 60 * 1000,
   });
 
   return (
@@ -471,6 +689,7 @@ export default function OrderDetails() {
               )}
               {shouldShowRefund && (
                 <div className="order-details-actions">
+                  {/* Show remaining days for delivered orders */}
                   {order?.status === 'delivered' && order?.deliveredAt && (
                     <div style={{ marginBottom: 8, fontSize: '12px', color: '#666' }}>
                       {(() => {
@@ -479,6 +698,18 @@ export default function OrderDetails() {
                         const daysDiff = (currentDate - deliveredDate) / (1000 * 60 * 60 * 24);
                         const remainingDays = Math.max(0, 3 - Math.ceil(daysDiff));
                         return `Refund available for ${remainingDays} more day${remainingDays !== 1 ? 's' : ''}`;
+                      })()}
+                    </div>
+                  )}
+                  {/* Show remaining days for completed orders */}
+                  {order?.status === 'completed' && order?.completedAt && (
+                    <div style={{ marginBottom: 8, fontSize: '12px', color: '#666' }}>
+                      {(() => {
+                        const completedDate = new Date(order.completedAt);
+                        const currentDate = new Date();
+                        const daysDiff = (currentDate - completedDate) / (1000 * 60 * 60 * 24);
+                        const remainingDays = Math.max(0, 3 - Math.ceil(daysDiff));
+                        return `Refund available for ${remainingDays} more day${remainingDays !== 1 ? 's' : ''} (since completion)`;
                       })()}
                     </div>
                   )}
@@ -494,6 +725,60 @@ export default function OrderDetails() {
                   </Button>
                 </div>
               )}
+              
+              {/* Order Owner Confirmation Buttons for delivered_pending_confirmation */}
+              {(() => {
+                const isOrderOwner = order?.user?._id === user?._id || order?.user === user?._id;
+                const isDeliveredPending = order?.status === 'delivered_pending_confirmation';
+                
+                console.log('🔍 Confirmation Buttons Debug:', {
+                  isOrderOwner,
+                  isDeliveredPending,
+                  userId: user?._id,
+                  orderUserId: order?.user?._id || order?.user,
+                  orderStatus: order?.status
+                });
+                
+                return isOrderOwner && isDeliveredPending;
+              })() && (
+                <div className="order-details-actions">
+                  <div style={{ 
+                    padding: '12px', 
+                    background: '#fff7e6', 
+                    border: '1px solid #ffd666',
+                    borderRadius: '4px',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{ fontWeight: 600, color: '#ad6800', marginBottom: '4px', fontSize: '14px' }}>
+                      ⏰ Action Required
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#ad6800' }}>
+                      Please confirm whether you have received this order.
+                      {order?.autoCompleteDueAt && (
+                        <div style={{ marginTop: '4px' }}>
+                          Auto-complete in: {Math.max(0, Math.ceil((new Date(order.autoCompleteDueAt) - new Date()) / (1000 * 60 * 60 * 24)))} days
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Button 
+                    type="primary" 
+                    onClick={handleConfirmOrderReceived}
+                    block
+                    style={{ marginBottom: '8px', background: '#52c41a', borderColor: '#52c41a' }}
+                  >
+                    ✓ Yes, I Received the Order
+                  </Button>
+                  <Button 
+                    danger
+                    onClick={handleReportIssue}
+                    block
+                  >
+                    ⚠ I Didn't Receive It / Report Issue
+                  </Button>
+                </div>
+              )}
+              
               {showActions && (
                 <div className="order-details-header-actions">
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -525,26 +810,46 @@ export default function OrderDetails() {
                       </Button>
                     )}
 
-                    {/* Processing -> Shipped */}
-                    {order.status === 'processing' && (
-                      <Button
-                        type="primary"
-                        onClick={() => handleStatusChange('shipped')}
-                        loading={loading}
-                      >
-                        Mark as Shipped
-                      </Button>
+                    {/* Processing -> Assign Shipper */}
+                    {order.status === 'processing' && !order.shipper && (
+                      <>
+                        <Button
+                          type="primary"
+                          icon={<TeamOutlined />}
+                          onClick={() => {
+                            fetchAvailableShippers();
+                            setShipperModalVisible(true);
+                          }}
+                          loading={loading}
+                        >
+                          Assign Shipper
+                        </Button>
+                        <Button
+                          type="default"
+                          icon={<TruckOutlined />}
+                          onClick={handleAutoAssignShipper}
+                          loading={loading}
+                        >
+                          Auto Assign
+                        </Button>
+                      </>
                     )}
 
-                    {/* Shipped -> Delivered */}
-                    {order.status === 'shipped' && (
-                      <Button
-                        type="primary"
-                        onClick={() => handleStatusChange('delivered')}
-                        loading={loading}
+                    {/* Show shipper info if assigned */}
+                    {order.shipper && (
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: '#52c41a',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
                       >
-                        Mark as Delivered
-                      </Button>
+                        <TruckOutlined />
+                        Shipper: {order.shipper?.fullName || 'Assigned'}
+                      </div>
                     )}
 
                     {/* Cancel button for pending and processing orders */}
@@ -737,6 +1042,141 @@ export default function OrderDetails() {
                 </Row>
               </Card>
             </div>
+
+            {/* Delivery Tracking Timeline */}
+            {deliveryTracking && deliveryTracking.timeline && (
+              <div className="order-details-tracking">
+                <div className="order-details-products-title">
+                  <TruckOutlined style={{ marginRight: 8 }} />
+                  Delivery Tracking
+                </div>
+                <Card bordered={false} className="order-details-card">
+                  {loadingTracking ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                      <Spin />
+                    </div>
+                  ) : (
+                    <>
+                      {/* Shipper Info */}
+                      {deliveryTracking.shipper && (
+                        <div
+                          style={{
+                            marginBottom: 24,
+                            padding: 16,
+                            background: '#f8f9fa',
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                          }}
+                        >
+                          <Avatar
+                            src={deliveryTracking.shipper.avatar}
+                            size={48}
+                            icon={<UserOutlined />}
+                          />
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 16 }}>
+                              {deliveryTracking.shipper.fullName}
+                            </div>
+                            <div style={{ color: '#666', fontSize: 14 }}>
+                              {deliveryTracking.shipper.phone}
+                            </div>
+                            {deliveryTracking.shipper.vehicleType && (
+                              <Tag style={{ marginTop: 4 }}>
+                                {deliveryTracking.shipper.vehicleType}
+                              </Tag>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Timeline */}
+                      <div className="delivery-timeline">
+                        {deliveryTracking.timeline.map((step, index) => {
+                          const isLatest =
+                            step.completed &&
+                            index ===
+                              deliveryTracking.timeline.filter(s => s.completed).length - 1;
+                          
+                          return (
+                            <div
+                              key={step.status}
+                              className={`timeline-step ${step.completed ? 'completed' : 'pending'} ${
+                                isLatest ? 'latest' : ''
+                              }`}
+                            >
+                              <div className="timeline-step-icon">
+                                {step.completed ? (
+                                  <div className="timeline-icon-completed">✓</div>
+                                ) : (
+                                  <div className="timeline-icon-pending">•</div>
+                                )}
+                              </div>
+                              <div className="timeline-step-content">
+                                <div className="timeline-step-label">{step.label}</div>
+                                {step.timestamp && (
+                                  <div className="timeline-step-time">
+                                    {dayjs(step.timestamp).format('DD/MM/YYYY HH:mm')}
+                                  </div>
+                                )}
+                                {step.recipientName && (
+                                  <div className="timeline-step-detail">
+                                    Recipient: {step.recipientName}
+                                  </div>
+                                )}
+                                {step.failureReason && (
+                                  <div className="timeline-step-detail error">
+                                    Reason: {step.failureReason}
+                                  </div>
+                                )}
+                              </div>
+                              {!step.completed && index < deliveryTracking.timeline.length - 1 && (
+                                <div className="timeline-connector pending"></div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Status History Accordion */}
+                      {deliveryTracking.statusHistory &&
+                        deliveryTracking.statusHistory.length > 0 && (
+                          <div style={{ marginTop: 24 }}>
+                            <details>
+                              <summary
+                                style={{
+                                  cursor: 'pointer',
+                                  fontWeight: 600,
+                                  color: '#4A69E2',
+                                  marginBottom: 12,
+                                }}
+                              >
+                                View detailed update history
+                              </summary>
+                              <div className="status-history">
+                                {[...deliveryTracking.statusHistory]
+                                  .reverse()
+                                  .map((history, index) => (
+                                    <div key={index} className="status-history-item">
+                                      <Tag color="blue">{history.status}</Tag>
+                                      <span style={{ flex: 1 }}>
+                                        {history.note || 'Status updated'}
+                                      </span>
+                                      <span style={{ color: '#999', fontSize: 12 }}>
+                                        {dayjs(history.timestamp).format('DD/MM/YYYY HH:mm:ss')}
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </details>
+                          </div>
+                        )}
+                    </>
+                  )}
+                </Card>
+              </div>
+            )}
           </div>
           <FeedbackModal
             visible={feedbackVisible}
@@ -746,6 +1186,124 @@ export default function OrderDetails() {
             productId={selectedProduct}
             feedbackId={selectedFeedbackId} // **added**
           />
+
+          {/* Shipper Assignment Modal */}
+          <Modal
+            title="Assign Shipper to Order"
+            open={shipperModalVisible}
+            onOk={handleAssignShipper}
+            onCancel={() => {
+              setShipperModalVisible(false);
+              setSelectedShipper(null);
+            }}
+            confirmLoading={assigningShipper}
+            okText="Assign"
+          >
+            <div style={{ marginBottom: 16 }}>
+              <p>Select a shipper for order #{order?.orderNumber}</p>
+            </div>
+            <Select
+              style={{ width: '100%' }}
+              placeholder="Select a shipper"
+              value={selectedShipper}
+              onChange={value => setSelectedShipper(value)}
+              showSearch
+              optionFilterProp="children"
+            >
+              {shippers.map(shipper => (
+                <Select.Option key={shipper._id} value={shipper._id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>
+                      {shipper.fullName} ({shipper.vehicleType || 'N/A'})
+                    </span>
+                    <span style={{ color: '#999', fontSize: '12px' }}>
+                      Active: {shipper.currentDeliveryCount} orders
+                    </span>
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
+          </Modal>
+
+          {/* Report Delivery Issue Modal */}
+          <Modal
+            title={
+              <div>
+                <ExclamationCircleOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />
+                Report Delivery Issue
+              </div>
+            }
+            open={reportModalVisible}
+            onOk={handleSubmitReport}
+            onCancel={handleCancelReport}
+            confirmLoading={submittingReport}
+            okText="Submit Report"
+            cancelText="Cancel"
+            okButtonProps={{ danger: true }}
+          >
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ color: '#666', marginBottom: 16 }}>
+                Please provide details about the issue with your delivery. Our team will investigate and contact you soon.
+              </p>
+              
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                  Issue Type <span style={{ color: '#ff4d4f' }}>*</span>
+                </label>
+                <Select
+                  style={{ width: '100%' }}
+                  value={reportType}
+                  onChange={value => setReportType(value)}
+                >
+                  <Select.Option value="not_received">Not Received</Select.Option>
+                  <Select.Option value="damaged">Damaged Product</Select.Option>
+                  <Select.Option value="wrong_item">Wrong Item</Select.Option>
+                  <Select.Option value="incomplete">Incomplete Order</Select.Option>
+                  <Select.Option value="other">Other</Select.Option>
+                </Select>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                  Reason <span style={{ color: '#ff4d4f' }}>*</span>
+                </label>
+                <Input.TextArea
+                  placeholder="Please describe the issue briefly (required)"
+                  value={reportReason}
+                  onChange={e => setReportReason(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  showCount
+                />
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                  Additional Details (Optional)
+                </label>
+                <Input.TextArea
+                  placeholder="Provide any additional information that might help us resolve the issue"
+                  value={reportDescription}
+                  onChange={e => setReportDescription(e.target.value)}
+                  rows={4}
+                  maxLength={2000}
+                  showCount
+                />
+              </div>
+
+              <div style={{ 
+                background: '#fff7e6', 
+                padding: '12px', 
+                borderRadius: '4px',
+                border: '1px solid #ffd666'
+              }}>
+                <div style={{ fontSize: '12px', color: '#ad6800' }}>
+                  <strong>Note:</strong> Submitting this report will change your order status to "Under Investigation". 
+                  Our support team will review and contact you within 24-48 hours.
+                </div>
+              </div>
+            </div>
+          </Modal>
         </>
       ) : (
         <div>

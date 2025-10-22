@@ -11,7 +11,9 @@ import {
   ShoppingCartOutlined,
   UserOutlined,
   VideoCameraOutlined,
+  CarOutlined,
 } from '@ant-design/icons';
+import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal, Badge, message } from 'antd';
 import logo from '@assets/Logo.svg';
 import { Avatar, Badge, Button, Dropdown, Input, Layout, Menu, Modal, Upload, message } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
@@ -19,6 +21,9 @@ import { useSelector } from 'react-redux';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import axiosInstance from '../../../services/axiosInstance';
+import { useSelector } from 'react-redux';
+import ShipperApplicationModal from './ShipperApplicationModal';
+import shipperApplicationService from '../../../services/shipperApplicationService';
 import './Header.css';
 
 const { Header } = Layout;
@@ -34,6 +39,9 @@ const AppHeader = () => {
   const [showInput, setShowInput] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showShipperApplicationModal, setShowShipperApplicationModal] = useState(false);
+  const [pendingApplication, setPendingApplication] = useState(null);
+  const [loadingApplication, setLoadingApplication] = useState(false);
   const [isVisualSearchModalVisible, setIsVisualSearchModalVisible] = useState(false);
   const [visualSearchFile, setVisualSearchFile] = useState(null);
   const [visualSearchPreview, setVisualSearchPreview] = useState(null);
@@ -69,6 +77,28 @@ const AppHeader = () => {
 
   useEffect(() => {
     console.log('Current user:', user); // Debug log
+  }, [user]);
+
+  // Check if user has pending shipper application
+  useEffect(() => {
+    const checkPendingApplication = async () => {
+      if (user?.role === 'customer') {
+        try {
+          setLoadingApplication(true);
+          const response = await shipperApplicationService.getMyApplications();
+          if (response.success) {
+            // Find pending application
+            const pending = response.data.find(app => app.status === 'pending');
+            setPendingApplication(pending || null);
+          }
+        } catch (error) {
+          console.error('Error checking application:', error);
+        } finally {
+          setLoadingApplication(false);
+        }
+      }
+    };
+    checkPendingApplication();
   }, [user]);
 
   useEffect(() => {
@@ -356,6 +386,15 @@ const AppHeader = () => {
           },
         ]
       : []),
+    ...(user?.role === 'shipper'
+      ? [
+          {
+            key: 'shipper-dashboard',
+            icon: <DashboardOutlined />,
+            label: 'Shipper Dashboard',
+          },
+        ]
+      : []),
     {
       key: 'change-password',
       icon: <LockOutlined />,
@@ -369,6 +408,10 @@ const AppHeader = () => {
   ];
 
   const handleAvatarMenuClick = ({ key }) => {
+    if (key === 'shipper-dashboard') {
+      navigate('/shipper-dashboard');
+      return;
+    }
     if (key === 'profile') {
       navigate('/account');
     } else if (key === 'logout') {
@@ -481,6 +524,31 @@ const AppHeader = () => {
             >
               <ShoppingCartOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
             </Badge>
+            {user?.role === 'customer' && (
+              <Button
+                type="primary"
+                icon={<CarOutlined />}
+                loading={loadingApplication}
+                disabled={!!pendingApplication}
+                onClick={() => {
+                  if (pendingApplication) {
+                    message.info('You already have a pending application. Please wait for approval.');
+                    return;
+                  }
+                  console.log('🚗 Mobile: Become Shipper button clicked!');
+                  setShowShipperApplicationModal(true);
+                }}
+                style={{
+                  marginRight: 12,
+                  borderRadius: 8,
+                  background: pendingApplication ? '#faad14' : '#52c41a',
+                  borderColor: pendingApplication ? '#faad14' : '#52c41a',
+                }}
+                size="small"
+              >
+                {pendingApplication ? '📋 Pending' : '🚗 Shipper'}
+              </Button>
+            )}
             <Dropdown
               menu={{
                 items: avatarMenuItems,
@@ -569,15 +637,41 @@ const AppHeader = () => {
               </div>
             )}
             {isLoggedIn ? (
-              <Dropdown
-                menu={{
-                  items: avatarMenuItems,
-                  onClick: handleAvatarMenuClick,
-                }}
-                trigger={['click']}
-              >
-                <div style={{ display: 'inline-block', cursor: 'pointer' }}>{renderAvatar()}</div>
-              </Dropdown>
+              <>
+                {user?.role === 'customer' && (
+                  <Button
+                    type="primary"
+                    icon={<CarOutlined />}
+                    loading={loadingApplication}
+                    disabled={!!pendingApplication}
+                    onClick={() => {
+                      if (pendingApplication) {
+                        message.info('You already have a pending application. Please wait for approval.');
+                        return;
+                      }
+                      console.log('🚗 Desktop: Become Shipper button clicked!');
+                      setShowShipperApplicationModal(true);
+                    }}
+                    style={{
+                      marginRight: 12,
+                      borderRadius: 8,
+                      background: pendingApplication ? '#faad14' : '#52c41a',
+                      borderColor: pendingApplication ? '#faad14' : '#52c41a',
+                    }}
+                  >
+                    {pendingApplication ? '📋 Application Pending' : 'Become a Shipper'}
+                  </Button>
+                )}
+                <Dropdown
+                  menu={{
+                    items: avatarMenuItems,
+                    onClick: handleAvatarMenuClick,
+                  }}
+                  trigger={['click']}
+                >
+                  <div style={{ display: 'inline-block', cursor: 'pointer' }}>{renderAvatar()}</div>
+                </Dropdown>
+              </>
             ) : (
               <div onClick={() => navigate('/login')}>
                 <UserOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
@@ -611,6 +705,23 @@ const AppHeader = () => {
         )}
       </div>
 
+      {/* Shipper Application Modal */}
+      <ShipperApplicationModal
+        visible={showShipperApplicationModal}
+        onClose={() => setShowShipperApplicationModal(false)}
+        onSuccess={async () => {
+          // Refresh pending application status
+          try {
+            const response = await shipperApplicationService.getMyApplications();
+            if (response.success) {
+              const pending = response.data.find(app => app.status === 'pending');
+              setPendingApplication(pending || null);
+            }
+          } catch (error) {
+            console.error('Error refreshing application:', error);
+          }
+        }}
+      />
       {/* Visual Search Modal */}
       <Modal
         title="Tìm Kiếm Bằng Hình Ảnh"

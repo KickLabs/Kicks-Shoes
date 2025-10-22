@@ -28,9 +28,12 @@ const orderSchema = new mongoose.Schema(
         'processing',
         'shipped',
         'delivered',
+        'delivered_pending_confirmation',
+        'completed',
         'cancelled',
         'refunded',
         'refund_pending',
+        'under_investigation',
       ],
       default: 'pending',
     },
@@ -262,6 +265,23 @@ const orderSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: [500, 'Cancellation reason cannot exceed 500 characters'],
+    },
+    // Shipper and delivery fields
+    shipper: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    assignedAt: {
+      type: Date,
+    },
+    autoCompleteDueAt: {
+      type: Date,
+    },
+    completedAt: {
+      type: Date,
+    },
+    customerConfirmedAt: {
+      type: Date,
     },
     // paymentDetails: {
     //   cardNumber: {

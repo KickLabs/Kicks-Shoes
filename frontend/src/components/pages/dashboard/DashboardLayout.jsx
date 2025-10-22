@@ -19,6 +19,7 @@ import {
   VideoCameraOutlined,
   ShoppingCartOutlined,
   ThunderboltOutlined,
+  AlertOutlined,
 } from '@ant-design/icons';
 
 const { Content } = Layout;
@@ -58,6 +59,18 @@ const shopTabs = [
     name: 'Potential Orders',
     icon: <ShoppingCartOutlined />,
     path: '/shop/potential-orders',
+  },
+  {
+    key: '10',
+    name: 'Delivery Reports',
+    icon: <AlertOutlined />,
+    path: '/shop/delivery-reports',
+  },
+  {
+    key: '11',
+    name: 'Shipper Applications',
+    icon: <UserOutlined />,
+    path: '/shop/shipper-applications',
   },
 ];
 
