@@ -1,14 +1,14 @@
-import './ProductCard.css';
-import { formatPrice } from '../../../utils/StringFormat';
-import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { favouriteService } from '../../../services/favouriteService';
-import { addOrUpdateCartItem } from '../../pages/cart/cartService';
+import { Alert, message, Modal, Spin } from 'antd';
+import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Modal, message, Spin, Alert } from 'antd';
-import SizePanel from '../../pages/product/components/SizePanel';
-import ProductImageGallery from '../../pages/product/components/ProductImageGallery';
+import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../../services/axiosInstance';
+import { favouriteService } from '../../../services/favouriteService';
+import { formatPrice } from '../../../utils/StringFormat';
+import { addOrUpdateCartItem } from '../../pages/cart/cartService';
+import ProductImageGallery from '../../pages/product/components/ProductImageGallery';
+import SizePanel from '../../pages/product/components/SizePanel';
+import './ProductCard.css';
 
 const FavouriteCard = ({ product, onRemoveFromFavourites }) => {
   const navigate = useNavigate();
@@ -195,7 +195,14 @@ const FavouriteCard = ({ product, onRemoveFromFavourites }) => {
         )}
 
         <img
-          src={Array.isArray(product.mainImage) ? product.mainImage[0] : product.mainImage}
+          src={
+            product.mainImage ||
+            (product.colorOptions &&
+            product.colorOptions.length > 0 &&
+            product.colorOptions[0].images.length > 0
+              ? product.colorOptions[0].images[0]
+              : '/no-image.png')
+          }
           alt={product.name}
           className="product-card__image"
         />
@@ -274,9 +281,10 @@ const FavouriteCard = ({ product, onRemoveFromFavourites }) => {
           <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start' }}>
             {/* Gallery bên trái */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              {productDetail.inventory && productDetail.inventory.length > 0 ? (
+              {productDetail.colorOptions && productDetail.colorOptions.length > 0 ? (
                 <ProductImageGallery
-                  inventory={productDetail.inventory}
+                  // THAY ĐỔI Ở ĐÂY
+                  colorOptions={productDetail.colorOptions}
                   selectedColor={selectedColor}
                 />
               ) : (

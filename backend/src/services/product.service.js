@@ -30,8 +30,9 @@ export class ProductService {
         category,
         brand,
         productType = 'shoes', // Default to shoes if not provided
-        images,
-        mainImage,
+        mainImage, // <-- GIỮ LẠI
+        colorOptions, // <-- THAY ĐỔI: Thêm
+        // images, // <-- THAY ĐỔI: Xóa
         variants,
         inventory,
         tags,
@@ -62,8 +63,9 @@ export class ProductService {
         category,
         brand,
         productType, // Include productType
-        images: Array.isArray(images) ? images : [],
-        mainImage: mainImage || '',
+        colorOptions: Array.isArray(colorOptions) ? colorOptions : [], // <-- THAY ĐỔI
+        mainImage: mainImage || '', // <-- GIỮ LẠI
+        // images: Array.isArray(images) ? images : [], // <-- THAY ĐỔI: Xóa
         variants: {
           sizes: variants?.sizes || [],
           colors: variants?.colors || [],

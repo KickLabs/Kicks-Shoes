@@ -97,6 +97,7 @@ export const updateProduct = async (req, res, next) => {
       product.description = req.body.description?.trim() || '';
     if (req.body.brand) product.brand = req.body.brand;
     if (req.body.category) product.category = req.body.category;
+    if (req.body.productType) product.productType = req.body.productType; // <-- THÊM DÒNG NÀY
 
     // IMPORTANT: Update price fields to trigger finalPrice recalculation
     if (req.body.price) {
@@ -119,13 +120,18 @@ export const updateProduct = async (req, res, next) => {
       product.inventory = Array.isArray(req.body.inventory) ? req.body.inventory : [];
     }
 
-    if (req.body.images !== undefined) {
-      product.images = Array.isArray(req.body.images) ? req.body.images : [];
+    // --- THAY ĐỔI LOGIC ẢNH ---
+    if (req.body.colorOptions !== undefined) {
+      product.colorOptions = Array.isArray(req.body.colorOptions) ? req.body.colorOptions : [];
     }
+    // if (req.body.images !== undefined) { // <-- XÓA
+    //   product.images = Array.isArray(req.body.images) ? req.body.images : []; // <-- XÓA
+    // } // <-- XÓA
 
     if (req.body.mainImage !== undefined) {
       product.mainImage = req.body.mainImage || '';
     }
+    // --- KẾT THÚC THAY ĐỔI ---
 
     if (req.body.tags !== undefined) {
       product.tags = Array.isArray(req.body.tags) ? req.body.tags : [];
@@ -145,6 +151,7 @@ export const updateProduct = async (req, res, next) => {
       data: updatedProduct,
     });
   } catch (error) {
+    // ... (phần catch error giữ nguyên)
     console.error('Controller error updating product:', error);
     logger.error('Error updating product', {
       error: error.message,
