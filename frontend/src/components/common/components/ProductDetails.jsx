@@ -1040,18 +1040,11 @@ export default function ProductDetails() {
       dataIndex: 'size',
       key: 'size',
       render: (size, record) => {
-        // Display size based on product type
         let displaySize = '';
-        if (product.productType === 'shoes') {
-          displaySize = record.size || size;
-        } else if (product.productType === 'clothing') {
-          displaySize = record.clothingSize || 'N/A';
-        } else if (product.productType === 'accessory') {
-          displaySize = 'OneSize';
-        } else {
-          displaySize = record.size || record.clothingSize || size || 'N/A';
-        }
-
+        if (product.productType === 'shoes') displaySize = record.size;
+        else if (product.productType === 'clothing') displaySize = record.clothingSize;
+        else if (product.productType === 'accessory') displaySize = 'OneSize';
+        else displaySize = record.size || record.clothingSize || 'N/A';
         return (
           <Tag color="blue" style={{ fontSize: '12px', fontWeight: 'bold' }}>
             {displaySize}
@@ -1064,7 +1057,7 @@ export default function ProductDetails() {
       dataIndex: 'color',
       key: 'color',
       render: color => {
-        const colorOption = colorOptions.find(opt => opt.value === color);
+        const colorOption = colorOptions.find(opt => opt.value === color); // Use static list for hex
         return (
           <Space>
             <div
@@ -1112,20 +1105,18 @@ export default function ProductDetails() {
       key: 'isAvailable',
       render: (isAvailable, record) => {
         const quantity = record.quantity;
-        if (quantity === 0) {
+        if (quantity === 0)
           return (
             <Tag color="red" icon={<ExclamationCircleOutlined />}>
               Out of Stock
             </Tag>
           );
-        }
-        if (quantity <= STOCK_THRESHOLDS.ITEM_LOW_STOCK) {
+        if (quantity <= STOCK_THRESHOLDS.ITEM_LOW_STOCK)
           return (
             <Tag color="orange" icon={<WarningOutlined />}>
               Low Stock
             </Tag>
           );
-        }
         return (
           <Tag color="green" icon={<CheckCircleOutlined />}>
             In Stock
@@ -1139,28 +1130,31 @@ export default function ProductDetails() {
       key: 'sku',
       render: sku => <Text type="secondary">{sku || 'Auto-generated'}</Text>,
     },
-    // --- CỘT IMAGES ĐÃ BỊ XÓA BỎ ---
     {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
         <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => openInventoryModal(record)}
-            style={{ color: '#1890ff' }}
-          />
+          <Tooltip title="Edit Quantity/Details">
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={() => openInventoryModal(record)}
+              style={{ color: '#1890ff' }}
+            />
+          </Tooltip>
           <Popconfirm
-            title="Delete inventory item"
-            description="Are you sure you want to delete this inventory item?"
+            title="Delete inventory item?"
+            description="Are you sure? This action cannot be undone."
             onConfirm={() =>
               deleteInventoryItem(record.size || record.clothingSize || 'OneSize', record.color)
             }
             okText="Yes"
             cancelText="No"
           >
-            <Button type="link" danger icon={<DeleteOutlined />} />
+            <Tooltip title="Delete Item">
+              <Button type="link" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -2133,28 +2127,35 @@ export default function ProductDetails() {
                   label="Color"
                   rules={[{ required: true, message: 'Please select a color!' }]}
                 >
+                  {/* --- UPDATED: Dynamic Color Options --- */}
                   <Select
-                    placeholder="Select color"
+                    placeholder="Select color from gallery" // Updated placeholder
                     size="large"
-                    disabled={!!editingInventoryItem} // Không cho sửa Size/Color khi Edit
+                    disabled={!!editingInventoryItem} // Keep disabled logic for edit mode
                   >
-                    {colorOptions.map(color => (
-                      <Option key={color.value} value={color.value}>
-                        <Space>
-                          <div
-                            style={{
-                              width: 20,
-                              height: 20,
-                              backgroundColor: color.hex,
-                              border: '1px solid #d9d9d9',
-                              borderRadius: 4,
-                            }}
-                          />
-                          {color.label}
-                        </Space>
-                      </Option>
-                    ))}
+                    {/* Map through colors defined in the product's gallery */}
+                    {product.colorOptions.map(opt => {
+                      // Find the static color info (like hex) for display
+                      const staticColorInfo = colorOptions.find(c => c.value === opt.color);
+                      return (
+                        <Option key={opt.color} value={opt.color}>
+                          <Space>
+                            <div
+                              style={{
+                                width: 20,
+                                height: 20,
+                                backgroundColor: staticColorInfo?.hex || '#ccc', // Use hex from static list
+                                border: '1px solid #d9d9d9',
+                                borderRadius: 4,
+                              }}
+                            />
+                            {opt.color} {/* Display the color name */}
+                          </Space>
+                        </Option>
+                      );
+                    })}
                   </Select>
+                  {/* --- END OF UPDATE --- */}
                 </Form.Item>
               </Col>
             </Row>
