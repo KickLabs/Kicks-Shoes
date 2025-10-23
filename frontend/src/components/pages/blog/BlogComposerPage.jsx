@@ -117,7 +117,6 @@ const BlogComposerPage = () => {
         />
 
         <Editor
-          apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
           value={form.content}
           onEditorChange={newValue => handleChange('content', newValue)}
           init={{
@@ -146,6 +145,9 @@ const BlogComposerPage = () => {
               'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table | removeformat | code | help',
             content_style:
               'body { font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; font-size:14px }',
+            // Disable API key requirement for development
+            branding: false,
+            promotion: false,
           }}
         />
 

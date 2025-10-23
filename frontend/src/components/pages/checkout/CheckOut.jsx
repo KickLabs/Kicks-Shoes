@@ -7,6 +7,7 @@ import OrderDetails from './components/OrderDetails';
 import { useFlashSales } from '../../../hooks/useFlashSales';
 import './CheckOut.css';
 import { useSelector } from 'react-redux';
+// Removed legacy VoucherApply import; voucher selection handled inside OrderSummary via VoucherPicker
 
 export default function CheckoutPage() {
   const location = useLocation();
@@ -211,6 +212,7 @@ export default function CheckoutPage() {
             paymentStatus={paymentStatus}
             isBuyNow={isBuyNow}
           />
+
           <OrderSummary
             subtotal={subtotal}
             deliveryCost={deliveryCost}

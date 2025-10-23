@@ -255,16 +255,31 @@ export const setLike = async (req, res) => {
   try {
     const { id } = req.params;
     const { like } = req.body; // boolean
-    const blog = await Blog.findByIdAndUpdate(
-      id,
-      { $inc: { likes: like ? 1 : -1 } },
-      { new: true }
-    );
+    const userId = req.user?._id;
+
+    const blog = await Blog.findById(id);
     if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
-    if (blog.likes < 0) {
-      blog.likes = 0;
-      await blog.save();
+
+    const hasLiked = blog.likedBy?.some(u => String(u) === String(userId));
+
+    if (like) {
+      // Idempotent: if already liked, just return current state
+      if (hasLiked) {
+        return res.json({ success: true, data: blog });
+      }
+      blog.likes += 1;
+      blog.likedBy = [...(blog.likedBy || []), userId];
+    } else {
+      // Unlike only if previously liked; otherwise no-op (idempotent)
+      if (hasLiked) {
+        blog.likes = Math.max(0, blog.likes - 1);
+        blog.likedBy = blog.likedBy.filter(u => String(u) !== String(userId));
+      } else {
+        return res.json({ success: true, data: blog });
+      }
     }
+
+    await blog.save();
     res.json({ success: true, data: blog });
   } catch (error) {
     logger.error('Error setting like', { error: error.message });

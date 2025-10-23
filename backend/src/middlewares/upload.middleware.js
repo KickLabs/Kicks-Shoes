@@ -7,7 +7,7 @@
 
 import multer from 'multer';
 import { ErrorResponse } from '../utils/errorResponse.js';
-import { storage } from '../config/cloudinary.js';
+import { storage, deliveryProofStorage } from '../config/cloudinary.js';
 
 // File filter
 const fileFilter = (req, file, cb) => {
@@ -18,7 +18,7 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
-// Configure upload
+// Configure upload for avatars
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
@@ -27,4 +27,14 @@ const upload = multer({
   },
 });
 
+// Configure upload for delivery proofs
+const deliveryProofUpload = multer({
+  storage: deliveryProofStorage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+});
+
 export default upload;
+export { deliveryProofUpload };

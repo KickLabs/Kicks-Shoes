@@ -203,6 +203,82 @@ class EmailService {
   }
 
   /**
+   * Send order shipped email
+   * @param {string} to - Recipient email
+   * @param {Object} data - Email data
+   */
+  static async sendOrderShippedEmail(to, data) {
+    try {
+      await this.sendTemplatedEmail(to, 'ORDER_SHIPPED', data);
+      logger.info('Order shipped email sent', { to });
+    } catch (error) {
+      logger.error('Error sending order shipped email:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send order delivered email
+   * @param {string} to - Recipient email
+   * @param {Object} data - Email data
+   */
+  static async sendOrderDeliveredEmail(to, data) {
+    try {
+      await this.sendTemplatedEmail(to, 'ORDER_DELIVERED', data);
+      logger.info('Order delivered email sent', { to });
+    } catch (error) {
+      logger.error('Error sending order delivered email:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send order auto-completed email
+   * @param {string} to - Recipient email
+   * @param {Object} data - Email data
+   */
+  static async sendOrderAutoCompletedEmail(to, data) {
+    try {
+      await this.sendTemplatedEmail(to, 'ORDER_AUTO_COMPLETED', data);
+      logger.info('Order auto-completed email sent', { to });
+    } catch (error) {
+      logger.error('Error sending order auto-completed email:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send delivery issue report email to admin/shop
+   * @param {Object} data - Email data (customerName, orderNumber, reportType, reason, description)
+   */
+  static async sendDeliveryIssueReportEmail(data) {
+    try {
+      // Send to admin email (you can configure this)
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@kicks-shoes.com';
+      await this.sendTemplatedEmail(adminEmail, 'DELIVERY_ISSUE_REPORT', data);
+      logger.info('Delivery issue report email sent to admin', { orderNumber: data.orderNumber });
+    } catch (error) {
+      logger.error('Error sending delivery issue report email:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send delivery issue notification to customer
+   * @param {string} to - Customer email
+   * @param {Object} data - Email data (customerName, orderNumber)
+   */
+  static async sendDeliveryIssueCustomerNotification(to, data) {
+    try {
+      await this.sendTemplatedEmail(to, 'DELIVERY_ISSUE_CUSTOMER_NOTIFICATION', data);
+      logger.info('Delivery issue customer notification sent', { to });
+    } catch (error) {
+      logger.error('Error sending delivery issue customer notification:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Generate order details HTML for email
    * @param {Object} order - Order object
    * @returns {Promise<string>} HTML string of order details

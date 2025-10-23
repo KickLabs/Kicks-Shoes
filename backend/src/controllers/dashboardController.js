@@ -13,6 +13,7 @@ import User from '../models/User.js';
 import Product from '../models/Product.js';
 import Feedback from '../models/Feedback.js';
 import Discount from '../models/Discount.js';
+import UserDiscount from '../models/UserDiscount.js';
 import Store from '../models/Store.js';
 import Category from '../models/Category.js';
 import Report from '../models/Report.js';
@@ -241,10 +242,101 @@ export const getShopDiscounts = asyncHandler(async (req, res) => {
 });
 
 /**
- * Get shop sales data
- * @route GET /api/dashboard/shop/sales
- * @access Private (Shop)
+ * Save voucher for user
+ * @route POST /api/dashboard/save-voucher
+ * @access Private
  */
+export const saveVoucher = asyncHandler(async (req, res) => {
+  const { discountId } = req.body;
+  const userId = req.user._id;
+
+  console.log('Save voucher request:', { discountId, userId, user: req.user });
+
+  // Validate required fields
+  if (!discountId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Discount ID is required',
+    });
+  }
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'User not authenticated',
+    });
+  }
+
+  // Check if discount exists and is active
+  const discount = await Discount.findById(discountId);
+  if (!discount) {
+    return res.status(404).json({
+      success: false,
+      message: 'Discount not found',
+    });
+  }
+
+  if (discount.status !== 'active') {
+    return res.status(400).json({
+      success: false,
+      message: 'Discount is not active',
+    });
+  }
+
+  // Check if user already has this discount saved
+  const existingUserDiscount = await UserDiscount.findOne({
+    user: userId,
+    discount: discountId,
+  });
+
+  if (existingUserDiscount) {
+    return res.status(400).json({
+      success: false,
+      message: 'You have already saved this voucher',
+    });
+  }
+
+  // Check if user has any saved vouchers (limit 1 per user)
+  const userSavedCount = await UserDiscount.countDocuments({
+    user: userId,
+    status: 'saved',
+  });
+
+  if (userSavedCount >= 1) {
+    return res.status(400).json({
+      success: false,
+      message: 'You can only save one voucher at a time',
+    });
+  }
+
+  // Check if discount still has available usage
+  if (discount.usedCount >= discount.usageLimit) {
+    return res.status(400).json({
+      success: false,
+      message: 'This voucher is no longer available',
+    });
+  }
+
+  // Create user discount record
+  const userDiscount = await UserDiscount.create({
+    user: userId,
+    discount: discountId,
+    status: 'saved',
+    collectedAt: new Date(),
+  });
+
+  // Update discount usedCount
+  await Discount.findByIdAndUpdate(discountId, {
+    $inc: { usedCount: 1 },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Voucher saved successfully',
+    data: userDiscount,
+  });
+});
+
 export const getShopSalesData = asyncHandler(async (req, res) => {
   const period = req.query.period || 'monthly';
 

@@ -128,15 +128,26 @@ export default function RewardPointsDetail() {
       render: (points, record) => {
         const typeConfig = getTypeDisplay(record.type);
         const displayPoints = Math.abs(points); // Use absolute value
+        
+        // Determine if this is a positive or negative transaction
+        const isPositive = 
+          record.type === 'earn' || 
+          (record.type === 'adjust' && (points > 0 || record.description?.includes('Refund')));
+        
+        const isNegative = 
+          record.type === 'redeem' || 
+          record.type === 'expire' ||
+          (record.type === 'adjust' && points < 0 && !record.description?.includes('Refund'));
+        
         return (
           <span
             style={{
-              color: typeConfig.color,
+              color: isPositive ? '#52c41a' : (isNegative ? '#f5222d' : typeConfig.color),
               fontWeight: 600,
               fontSize: 16,
             }}
           >
-            {record.type === 'earn' ? `+${displayPoints}` : `-${displayPoints}`}
+            {isPositive ? `+${displayPoints}` : `-${displayPoints}`}
           </span>
         );
       },

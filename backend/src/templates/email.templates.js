@@ -161,6 +161,46 @@ export const emailTemplates = {
     `,
   },
 
+  ORDER_DELIVERED: {
+    subject: 'Order Delivered - Kicks Shoes',
+    getContent: ({ customerName, orderNumber, autoCompleteDate }) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #2c3e50; margin: 0;">Order Delivered</h1>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="color: #34495e; margin: 0;">Hi ${customerName},</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">Your order #${orderNumber} has been delivered successfully!</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">If you have received your order and are satisfied, it will be automatically completed on ${autoCompleteDate}.</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">You can also confirm receipt now by visiting your order details.</p>
+        </div>
+        <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+          <p style="margin: 0;">Best regards,<br>Kicks Shoes Team</p>
+        </div>
+      </div>
+    `,
+  },
+
+  ORDER_AUTO_COMPLETED: {
+    subject: 'Order Completed - Kicks Shoes',
+    getContent: ({ customerName, orderNumber, completedDate }) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #2c3e50; margin: 0;">Order Completed</h1>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="color: #34495e; margin: 0;">Hi ${customerName},</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">Your order #${orderNumber} has been automatically completed on ${completedDate}.</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">Thank you for shopping with us! We hope you enjoy your purchase.</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">If you have any concerns, please contact our support team.</p>
+        </div>
+        <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+          <p style="margin: 0;">Best regards,<br>Kicks Shoes Team</p>
+        </div>
+      </div>
+    `,
+  },
+
   OTP: {
     subject: 'Your OTP Code - Kicks Shoes',
     getContent: ({ name, otp }) => `
@@ -693,6 +733,68 @@ export const emailTemplates = {
         <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
           <p style="margin: 0;">Thank you for your patience. We look forward to serving you again!</p>
           <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Team</p>
+        </div>
+      </div>
+    `,
+  },
+
+  DELIVERY_ISSUE_REPORT: {
+    subject: 'Delivery Issue Reported - Requires Investigation',
+    getContent: ({ customerName, orderNumber, reportType, reason, description }) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #e74c3c; margin: 0;">⚠️ Delivery Issue Reported</h1>
+        </div>
+        <div style="background-color: #fff3cd; padding: 20px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+          <p style="color: #34495e; margin: 0;"><strong>Customer:</strong> ${customerName}</p>
+          <p style="color: #34495e; margin: 10px 0 0 0;"><strong>Order Number:</strong> #${orderNumber}</p>
+          <p style="color: #34495e; margin: 10px 0 0 0;"><strong>Issue Type:</strong> ${reportType.replace('_', ' ').toUpperCase()}</p>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+          <h3 style="color: #2c3e50; margin: 0 0 10px 0;">Issue Details:</h3>
+          <p style="color: #34495e; margin: 0;"><strong>Reason:</strong></p>
+          <p style="color: #34495e; margin: 5px 0 15px 20px;">${reason}</p>
+          ${description ? `
+            <p style="color: #34495e; margin: 0;"><strong>Additional Description:</strong></p>
+            <p style="color: #34495e; margin: 5px 0 0 20px;">${description}</p>
+          ` : ''}
+        </div>
+        <div style="background-color: #d1ecf1; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #17a2b8;">
+          <p style="color: #34495e; margin: 0;"><strong>⚡ Action Required:</strong></p>
+          <p style="color: #34495e; margin: 10px 0 0 0;">Please investigate this delivery issue immediately and contact the customer.</p>
+          <p style="color: #34495e; margin: 10px 0 0 0;">The order status has been changed to "Under Investigation".</p>
+        </div>
+        <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+          <p style="margin: 0;">This is an automated notification from the system.</p>
+          <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes System</p>
+        </div>
+      </div>
+    `,
+  },
+
+  DELIVERY_ISSUE_CUSTOMER_NOTIFICATION: {
+    subject: 'Your Delivery Issue Report - Under Investigation',
+    getContent: ({ customerName, orderNumber }) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #2c3e50; margin: 0;">Delivery Issue Received</h1>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="color: #34495e; margin: 0;">Hi ${customerName},</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">We have received your delivery issue report for order #${orderNumber}.</p>
+          <p style="color: #34495e; margin: 15px 0 0 0;">Our team is investigating this matter and will contact you within 24-48 hours with an update.</p>
+        </div>
+        <div style="background-color: #d1ecf1; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #17a2b8;">
+          <p style="color: #34495e; margin: 0;"><strong>What happens next?</strong></p>
+          <ul style="color: #34495e; margin: 10px 0 0 0; padding-left: 20px;">
+            <li>Our support team will review your report</li>
+            <li>We will contact the shipper to verify the delivery status</li>
+            <li>You will receive an email with the resolution</li>
+          </ul>
+        </div>
+        <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+          <p style="margin: 0;">If you have any urgent questions, please contact our support team.</p>
+          <p style="margin: 10px 0 0 0;">Best regards,<br>Kicks Shoes Support Team</p>
         </div>
       </div>
     `,
