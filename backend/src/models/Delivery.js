@@ -170,8 +170,7 @@ deliverySchema.virtual('timeline').get(function () {
     });
   } else if (
     this.status !== 'assigned' &&
-    this.status !== 'picked_up' &&
-    this.status !== 'failed'
+    this.status !== 'picked_up'
   ) {
     timeline.push({
       status: 'in_transit',
@@ -191,7 +190,8 @@ deliverySchema.virtual('timeline').get(function () {
       recipientName: this.recipientName,
       proofOfDelivery: this.proofOfDelivery,
     });
-  } else if (this.failedAt) {
+  } else if (this.failedAt && this.status === 'failed') {
+    // Only show failed if current status is failed
     timeline.push({
       status: 'failed',
       label: 'Delivery Failed',
@@ -202,7 +202,8 @@ deliverySchema.virtual('timeline').get(function () {
   } else if (
     this.status !== 'assigned' &&
     this.status !== 'picked_up' &&
-    this.status !== 'in_transit'
+    this.status !== 'in_transit' &&
+    this.status !== 'failed'
   ) {
     timeline.push({
       status: 'delivered',
@@ -217,6 +218,7 @@ deliverySchema.virtual('timeline').get(function () {
 
 // Method to update status
 deliverySchema.methods.updateStatus = async function (newStatus, note = '') {
+  const previousStatus = this.status;
   this.status = newStatus;
   
   const statusTimestampMap = {
@@ -226,8 +228,12 @@ deliverySchema.methods.updateStatus = async function (newStatus, note = '') {
     failed: 'failedAt',
   };
 
+  // Update timestamp for new status
   if (statusTimestampMap[newStatus]) {
-    this[statusTimestampMap[newStatus]] = new Date();
+    // Only update if not already set OR if retrying after failed
+    if (!this[statusTimestampMap[newStatus]] || previousStatus === 'failed') {
+      this[statusTimestampMap[newStatus]] = new Date();
+    }
     
     // Set actual times
     if (newStatus === 'picked_up') {
@@ -241,7 +247,7 @@ deliverySchema.methods.updateStatus = async function (newStatus, note = '') {
   this.statusHistory.push({
     status: newStatus,
     timestamp: new Date(),
-    note,
+    note: note || (previousStatus === 'failed' && newStatus !== 'failed' ? 'Retrying delivery after failure' : ''),
   });
 
   await this.save();

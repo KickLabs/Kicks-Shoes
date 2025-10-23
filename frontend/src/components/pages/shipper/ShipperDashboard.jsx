@@ -270,7 +270,7 @@ const ShipperDashboard = () => {
             setSelectedOrder(record);
             setIsUpdateModalVisible(true);
           }}
-          disabled={record.status === 'delivered' || record.status === 'failed'}
+          disabled={record.status === 'delivered'}
         >
           Update Status
         </Button>

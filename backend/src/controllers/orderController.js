@@ -422,8 +422,7 @@ function getDeliveryTimeline(delivery) {
     });
   } else if (
     delivery.status !== 'assigned' &&
-    delivery.status !== 'picked_up' &&
-    delivery.status !== 'failed'
+    delivery.status !== 'picked_up'
   ) {
     timeline.push({
       status: 'in_transit',
@@ -443,10 +442,11 @@ function getDeliveryTimeline(delivery) {
       recipientName: delivery.recipientName,
       proofOfDelivery: delivery.proofOfDelivery,
     });
-  } else if (delivery.failedAt) {
+  } else if (delivery.failedAt && delivery.status === 'failed') {
+    // Only show failed status if current status is still failed
     timeline.push({
       status: 'failed',
-      label: 'Giao hàng thất bại',
+      label: 'Delivery Failed',
       timestamp: delivery.failedAt,
       completed: true,
       failureReason: delivery.failureReason,
@@ -454,7 +454,8 @@ function getDeliveryTimeline(delivery) {
   } else if (
     delivery.status !== 'assigned' &&
     delivery.status !== 'picked_up' &&
-    delivery.status !== 'in_transit'
+    delivery.status !== 'in_transit' &&
+    delivery.status !== 'failed'
   ) {
     timeline.push({
       status: 'delivered',
@@ -1229,9 +1230,9 @@ export const confirmOrderReceived = async (req, res, next) => {
 
     // Check if order belongs to this user
     if (order.user.toString() !== userId.toString()) {
-      return res.status(403).json({
+      return res.status(400).json({
         success: false,
-        message: 'Not authorized to confirm this order',
+        message: 'You can only confirm your own orders',
       });
     }
 
@@ -1330,9 +1331,9 @@ export const reportDeliveryIssue = async (req, res, next) => {
 
     // Check if order belongs to this user
     if (order.user._id.toString() !== userId.toString()) {
-      return res.status(403).json({
+      return res.status(400).json({
         success: false,
-        message: 'Not authorized to report this order',
+        message: 'You can only report issues for your own orders',
       });
     }
 
