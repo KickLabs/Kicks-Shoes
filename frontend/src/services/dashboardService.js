@@ -54,6 +54,18 @@ export const getShopDiscounts = async () => {
   }
 };
 
+export const saveVoucher = async discountId => {
+  try {
+    const response = await axiosInstance.post('/dashboard/save-voucher', {
+      discountId,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error saving voucher:', error);
+    throw error;
+  }
+};
+
 export const getShopSalesData = async (period = 'monthly') => {
   try {
     const response = await axiosInstance.get(`/dashboard/shop/sales?period=${period}`);

@@ -49,6 +49,7 @@ import blogRoutes from './routes/blogRoutes.js';
 import blogCommentRoutes from './routes/blogCommentRoutes.js';
 import potentialOrderRoutes from './routes/potentialOrderRoutes.js'; // Added Potential Order routes
 import flashSaleRoutes from './routes/flashSaleRoutes.js'; // Added Flash Sale routes
+import userDiscountRoutes from './routes/userDiscountRoutes.js'; // Added UserDiscount routes
 import aiRoutes from './routes/aiRoutes.js';
 import shipperRoutes from './routes/shipperRoutes.js'; // Added Shipper routes
 import deliveryReportRoutes from './routes/deliveryReportRoutes.js'; // Added Delivery Report routes
@@ -198,6 +199,7 @@ app.use('/api/blog-comments', blogCommentRoutes);
 app.use('/api/potential-orders', potentialOrderRoutes); // Added Potential Order routes
 app.use('/api/tryon', tryonRoutes);
 app.use('/api/flash-sales', flashSaleRoutes); // Added Flash Sale routes
+app.use('/api/user-discounts', userDiscountRoutes); // Added UserDiscount routes
 app.use('/api/ai', aiRoutes); // AI proxy routes
 app.use('/api/shipper', shipperRoutes); // Added Shipper routes
 app.use('/api/delivery-reports', deliveryReportRoutes); // Added Delivery Report routes

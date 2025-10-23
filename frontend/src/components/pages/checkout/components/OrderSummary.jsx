@@ -18,6 +18,7 @@ import { formatPrice } from '../../../../utils/StringFormat';
 import { validateDiscountCode, getActiveDiscounts } from '../../../../services/discountService';
 import { PlusOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import './OrderSummary.css';
+import VoucherPicker from './VoucherPicker';
 
 const { Title, Text } = Typography;
 
@@ -53,6 +54,8 @@ export default function OrderSummary({
       setLoadingDiscounts(false);
     }
   };
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [voucherOpen, setVoucherOpen] = useState(false);
 
   const handleApplyCoupon = async () => {
     if (!coupon.trim()) {
@@ -79,10 +82,13 @@ export default function OrderSummary({
           description: response.data.discount.description,
         };
 
-        setAppliedDiscounts(prev => [...prev, newDiscount]);
+        // ✅ Thay vì cộng thêm, chỉ giữ 1 voucher
+        setAppliedDiscounts([newDiscount]);
+
         if (onApplyCoupon) {
           await onApplyCoupon(coupon.trim(), response.data.discountAmount);
         }
+
         message.success('Coupon applied successfully!');
         setCoupon('');
       } else {
@@ -102,11 +108,6 @@ export default function OrderSummary({
   };
 
   const handleSelectDiscount = async discount => {
-    if (appliedDiscounts.some(d => d.code === discount.code)) {
-      message.warning('This coupon is already applied');
-      return;
-    }
-
     setApplying(true);
     try {
       const response = await validateDiscountCode(discount.code, subtotal, cartItems);
@@ -120,10 +121,13 @@ export default function OrderSummary({
           description: discount.description,
         };
 
-        setAppliedDiscounts(prev => [...prev, newDiscount]);
+        // ✅ Chỉ giữ 1 voucher duy nhất
+        setAppliedDiscounts([newDiscount]);
+
         if (onApplyCoupon) {
           await onApplyCoupon(discount.code, response.data.discountAmount);
         }
+
         message.success('Coupon applied successfully!');
         setShowDiscountModal(false);
       } else {
@@ -228,7 +232,13 @@ export default function OrderSummary({
             size="large"
             onPressEnter={handleApplyCoupon}
           />
-          <Button type="default" size="large" loading={applying} onClick={handleApplyCoupon}>
+          <Button
+            style={{ marginLeft: 7 }}
+            type="default"
+            size="large"
+            loading={applying}
+            onClick={handleApplyCoupon}
+          >
             Apply
           </Button>
         </Space.Compact>
