@@ -10,7 +10,7 @@ import './ShippingAddress.css';
 
 const { Title, Text } = Typography;
 
-export default function ShippingAddress({ form, user }) {
+export default function ShippingAddress({ form, user, onAddressOptionChange }) {
   const [provinces, setProvinces] = useState([]);
   const [wards, setWards] = useState([]);
   const [loadingProvinces, setLoadingProvinces] = useState(false);
@@ -65,9 +65,22 @@ export default function ShippingAddress({ form, user }) {
     const option = e.target.value;
     setAddressOption(option);
 
+    // Notify parent component about address option change
+    if (onAddressOptionChange) {
+      onAddressOptionChange(option === 'default');
+    }
+
     if (option === 'default') {
       // Reset form to user's default address
       if (user) {
+        console.log('Setting default address for user:', {
+          fullName: user.fullName,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          address: user.address,
+          phone: user.phone,
+        });
+
         form.setFieldsValue({
           firstName: user.firstName || '',
           lastName: user.lastName || '',
@@ -78,6 +91,10 @@ export default function ShippingAddress({ form, user }) {
           provinceName: undefined,
           wardName: undefined,
         });
+
+        console.log('Form values after setting default:', form.getFieldsValue());
+      } else {
+        console.warn('No user data available for default address');
       }
     } else {
       // Clear form for custom address
@@ -95,14 +112,21 @@ export default function ShippingAddress({ form, user }) {
   };
 
   const getDefaultAddressDisplay = () => {
-    if (!user) return 'No default address available';
+    console.log('Getting default address display for user:', user);
+
+    if (!user) {
+      console.log('No user data available');
+      return 'No default address available';
+    }
 
     const parts = [];
     if (user.fullName) parts.push(user.fullName);
     if (user.address) parts.push(user.address);
     if (user.phone) parts.push(user.phone);
 
-    return parts.length > 0 ? parts.join(', ') : 'No default address available';
+    const result = parts.length > 0 ? parts.join(', ') : 'No default address available';
+    console.log('Default address display:', result);
+    return result;
   };
 
   return (
@@ -141,23 +165,21 @@ export default function ShippingAddress({ form, user }) {
         <Form layout="vertical" form={form}>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="firstName" className="shipping-address-item">
-                <Input
-                  placeholder="First Name*"
-                  size="large"
-                  className="shipping-address-input"
-                  value={user?.fullName}
-                />
+              <Form.Item
+                name="firstName"
+                className="shipping-address-item"
+                rules={[{ required: true, message: 'Please enter your first name' }]}
+              >
+                <Input placeholder="First Name*" size="large" className="shipping-address-input" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="lastName" className="shipping-address-item">
-                <Input
-                  placeholder="Last Name*"
-                  size="large"
-                  className="shipping-address-input"
-                  value={user?.lastName}
-                />
+              <Form.Item
+                name="lastName"
+                className="shipping-address-item"
+                rules={[{ required: true, message: 'Please enter your last name' }]}
+              >
+                <Input placeholder="Last Name*" size="large" className="shipping-address-input" />
               </Form.Item>
             </Col>
           </Row>
@@ -200,12 +222,15 @@ export default function ShippingAddress({ form, user }) {
             </Col>
           </Row>
 
-          <Form.Item name="address" className="shipping-address-item">
+          <Form.Item
+            name="address"
+            className="shipping-address-item"
+            rules={[{ required: true, message: 'Please enter your address' }]}
+          >
             <Input
               placeholder="Detailed Address (street, building, etc.)*"
               size="large"
               className="shipping-address-input"
-              value={user?.address}
             />
           </Form.Item>
           {/* Hidden fields to carry display names for composition */}
@@ -219,7 +244,14 @@ export default function ShippingAddress({ form, user }) {
             Start typing your street address or zip code for suggestion
           </Text>
 
-          <Form.Item name="phone" className="shipping-address-item">
+          <Form.Item
+            name="phone"
+            className="shipping-address-item"
+            rules={[
+              { required: true, message: 'Please enter your phone number' },
+              { pattern: /^\d{9,15}$/, message: 'Please enter a valid phone number' },
+            ]}
+          >
             <Input placeholder="Phone Number*" size="large" className="shipping-address-input" />
           </Form.Item>
           <Text type="secondary" className="shipping-address-note">

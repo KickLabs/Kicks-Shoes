@@ -42,6 +42,7 @@ export default function CheckoutForm({
   const [form] = Form.useForm();
   const [shippingForm] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [useDefaultAddress, setUseDefaultAddress] = useState(false);
   const { user } = useAuth();
   const { getProductFlashSale } = useFlashSales();
   const navigate = useNavigate();
@@ -69,39 +70,33 @@ export default function CheckoutForm({
     }
   }, [user]);
 
-  const validateForm = () => {
-    const email = form.getFieldValue('email');
-    const shippingValues = shippingForm.getFieldsValue();
+  const validateForm = async () => {
+    try {
+      // Validate email form
+      await form.validateFields(['email']);
 
-    if (!email || !/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)) {
-      message.error('Please enter a valid email address.');
+      // Only validate shipping form if not using default address
+      if (!useDefaultAddress) {
+        await shippingForm.validateFields([
+          'firstName',
+          'lastName',
+          'address',
+          'provinceCode',
+          'wardCode',
+          'phone',
+        ]);
+      }
+
+      if (!paymentMethod) {
+        message.error('Please select a payment method.');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Form validation error:', error);
       return false;
     }
-    if (!shippingValues.firstName || !shippingValues.lastName) {
-      message.error('Please enter your full name.');
-      return false;
-    }
-    if (!shippingValues.address) {
-      message.error('Please enter your shipping address.');
-      return false;
-    }
-    if (!shippingValues.provinceCode) {
-      message.error('Please select your province/city.');
-      return false;
-    }
-    if (!shippingValues.wardCode) {
-      message.error('Please select your ward/commune.');
-      return false;
-    }
-    if (!shippingValues.phone || !/^\d{9,15}$/.test(shippingValues.phone)) {
-      message.error('Please enter a valid phone number.');
-      return false;
-    }
-    if (!paymentMethod) {
-      message.error('Please select a payment method.');
-      return false;
-    }
-    return true;
   };
 
   const prepareOrderData = () => {
@@ -491,7 +486,7 @@ export default function CheckoutForm({
   const handleSubmit = async e => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!(await validateForm())) {
       return;
     }
 
@@ -539,7 +534,11 @@ export default function CheckoutForm({
   return (
     <>
       <ContactDetails form={form} user={user} />
-      <ShippingAddress form={shippingForm} user={user} />
+      <ShippingAddress
+        form={shippingForm}
+        user={user}
+        onAddressOptionChange={setUseDefaultAddress}
+      />
       <DeliveryOptions
         deliveryMethod={deliveryMethod}
         setDeliveryMethod={setDeliveryMethod}
