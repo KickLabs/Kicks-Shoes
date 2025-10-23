@@ -1,5 +1,4 @@
-import { Card, Typography, Form, Input, Row, Col, Select, Radio, Button, Space } from 'antd';
-import './ShippingAddress.css';
+import { Card, Col, Form, Input, Radio, Row, Select, Space, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import {
   fetchProvinces,
@@ -7,6 +6,7 @@ import {
   formatProvinceName,
   formatWardName,
 } from '../../../../utils/vietnamProvinceApi';
+import './ShippingAddress.css';
 
 const { Title, Text } = Typography;
 

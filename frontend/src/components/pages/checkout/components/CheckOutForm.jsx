@@ -1,16 +1,16 @@
 import { Button, Form, message, Typography } from 'antd';
 import { useEffect, useState } from 'react';
-import ContactDetails from './ContactDetails';
-import ShippingAddress from './ShippingAddress';
-import DeliveryOptions from './DeliveryOptions';
-import orderService from '../../../../services/orderService';
-import VNPayService from '../../../../services/vnpayService';
-import { useFlashSales } from '../../../../hooks/useFlashSales';
-import { useAuth } from '../../../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import PayOSService from '../../../../services/payosService';
 import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { useFlashSales } from '../../../../hooks/useFlashSales';
+import orderService from '../../../../services/orderService';
+import PayOSService from '../../../../services/payosService';
+import VNPayService from '../../../../services/vnpayService';
 import { removeOrderedItems } from '../../cart/cartSlice';
+import ContactDetails from './ContactDetails';
+import DeliveryOptions from './DeliveryOptions';
+import ShippingAddress from './ShippingAddress';
 
 const { Text } = Typography;
 
@@ -255,6 +255,12 @@ export default function CheckoutForm({
 
   const handleVNPayPayment = async () => {
     try {
+      // Prevent multiple submissions
+      if (loading) {
+        console.log('Payment already in progress, ignoring duplicate request');
+        return;
+      }
+
       setLoading(true);
 
       // Check if user is authenticated
@@ -337,6 +343,12 @@ export default function CheckoutForm({
 
   const handlePayOSPayment = async () => {
     try {
+      // Prevent multiple submissions
+      if (loading) {
+        console.log('Payment already in progress, ignoring duplicate request');
+        return;
+      }
+
       setLoading(true);
 
       // Check if user is authenticated
@@ -539,6 +551,7 @@ export default function CheckoutForm({
         size="large"
         block
         loading={loading}
+        disabled={loading}
         className="review-button"
         onClick={handleSubmit}
         style={{ height: 48, width: '100%', color: 'white', margin: 0 }}
