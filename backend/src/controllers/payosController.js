@@ -294,6 +294,57 @@ export const handleWebhook = [
           }
         }
 
+        // Handle cancelled/failed payment
+        else if (result.data.code !== '00' || result.data.desc !== 'success') {
+          try {
+            // Find order by PayOS order code (last 6 digits of order ID)
+            const Order = (await import('../models/Order.js')).default;
+            const orderCodeStr = result.data.orderCode.toString();
+
+            // Find order by matching the last 6 digits of order ID
+            const orders = await Order.find({}).lean();
+            const matchingOrder = orders.find(order => {
+              const orderIdStr = order._id.toString();
+              return orderIdStr.slice(-6) === orderCodeStr;
+            });
+
+            if (matchingOrder) {
+              // Only cancel if order is still pending
+              if (matchingOrder.status === 'pending' && matchingOrder.paymentStatus === 'pending') {
+                await Order.findByIdAndUpdate(matchingOrder._id, {
+                  status: 'cancelled',
+                  paymentStatus: 'failed',
+                  cancelledAt: new Date(),
+                  cancellationReason: `PayOS payment cancelled: ${result.data.desc}`,
+                  payosOrderCode: result.data.orderCode,
+                  payosCode: result.data.code,
+                  payosDesc: result.data.desc,
+                });
+
+                logger.info('Order cancelled after PayOS payment failure', {
+                  orderId: matchingOrder._id,
+                  payosOrderCode: result.data.orderCode,
+                  code: result.data.code,
+                  desc: result.data.desc,
+                });
+              } else {
+                logger.info('Order already processed, skipping cancellation', {
+                  orderId: matchingOrder._id,
+                  currentStatus: matchingOrder.status,
+                  currentPaymentStatus: matchingOrder.paymentStatus,
+                });
+              }
+            } else {
+              logger.warn('No matching order found for PayOS payment cancellation', {
+                payosOrderCode: result.data.orderCode,
+              });
+            }
+          } catch (updateError) {
+            logger.error('Error cancelling order after PayOS payment failure:', updateError);
+            // Don't fail the webhook response, just log the error
+          }
+        }
+
         res.status(200).json({
           error: 0,
           message: 'Ok',
