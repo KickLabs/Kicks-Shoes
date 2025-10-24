@@ -81,6 +81,29 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
     await mongoose.connection.close();
   });
 
+  // Helper function to setup room
+  const setupRoom = () => {
+    const roomData = {
+      host: null,
+      viewers: new Map(),
+      streamData: {
+        ..._testStream,
+        _id: TEST_STREAM_ID,
+        hostId: TEST_HOST_ID,
+        isActive: true,
+        status: 'live',
+        roomId: TEST_ROOM_ID,
+        settings: {
+          maxViewers: 100,
+          allowChat: true,
+          allowProductFeature: true,
+        },
+      },
+    };
+    liveStreamService.rooms.set(TEST_ROOM_ID, roomData);
+    return roomData;
+  };
+
   beforeEach(done => {
     // Create HTTP server and Socket.IO first
     httpServer = createServer();
@@ -91,11 +114,19 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
     liveStreamService.socketToRoom.clear();
 
     // Setup test room BEFORE setting up handlers
-    liveStreamService.rooms.set(TEST_ROOM_ID, {
-      host: null,
-      viewers: new Map(),
-      streamData: _testStream,
-    });
+    setupRoom();
+
+    // Ensure stream is active in database with correct settings
+    LiveStream.findByIdAndUpdate(TEST_STREAM_ID, {
+      isActive: true,
+      status: 'live',
+      settings: {
+        maxViewers: 100,
+        allowChat: true,
+        isPublic: true,
+        recordStream: false,
+      },
+    }).catch(() => {});
 
     // Setup handlers AFTER room is created
     setupLiveStreamHandlers(io);
@@ -111,23 +142,45 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       clientSocket.on('connect', () => {
         // Ensure room still exists after connection
         if (!liveStreamService.rooms.has(TEST_ROOM_ID)) {
-          liveStreamService.rooms.set(TEST_ROOM_ID, {
-            host: null,
-            viewers: new Map(),
-            streamData: _testStream,
-          });
+          setupRoom();
         }
+
+        // Ensure stream is active in database
+        LiveStream.findByIdAndUpdate(TEST_STREAM_ID, {
+          isActive: true,
+          status: 'live',
+          settings: {
+            maxViewers: 100,
+            allowChat: true,
+            isPublic: true,
+            recordStream: false,
+          },
+        }).catch(() => {});
+
         done();
       });
     });
   });
 
   afterEach(async () => {
-    // CRITICAL: Restore stream to active state
-    await LiveStream.findByIdAndUpdate(TEST_STREAM_ID, { isActive: true });
+    // CRITICAL: Restore stream to active state with correct settings
+    await LiveStream.findByIdAndUpdate(TEST_STREAM_ID, {
+      isActive: true,
+      status: 'live',
+      settings: {
+        maxViewers: 100,
+        allowChat: true,
+        isPublic: true,
+        recordStream: false,
+      },
+    });
 
     // Clean up messages
     await LiveStreamChat.deleteMany({ streamId: TEST_STREAM_ID });
+
+    // Clean up service state
+    liveStreamService.rooms.clear();
+    liveStreamService.socketToRoom.clear();
 
     // Close sockets
     if (clientSocket?.connected) {
@@ -198,6 +251,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
         expect(data.type).toBe('joined');
         expect(data.role).toBe('viewer');
         expect(data.viewerId).toBeTruthy();
+        done();
       });
 
       clientSocket.emit('join_as_viewer', {
@@ -205,11 +259,13 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
         userId: TEST_USER_ID.toString(),
       });
 
-      // Give time for event to arrive
+      // Fallback timeout
       setTimeout(() => {
-        expect(eventReceived).toBe(true);
-        done();
-      }, 300);
+        if (!eventReceived) {
+          expect(eventReceived).toBe(true);
+          done();
+        }
+      }, 1000);
     });
 
     test('TC-806 | Verify join_as_viewer with inactive stream emits error', async () => {
@@ -382,23 +438,24 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
   // ========== MESSAGE PINNING EVENTS ==========
   describe('Message Pin/Unpin Events', () => {
     test('TC-812 | Verify pin_message works for host', done => {
-      clientSocket.on('message_pinned', data => {
-        expect(data.type).toBe('message_pinned');
-        expect(data.messageId).toBe('msg-123');
-        done();
-      });
-
+      // First join as host
       clientSocket.emit('join_as_host', {
         roomId: TEST_ROOM_ID,
         userId: TEST_HOST_ID.toString(),
       });
 
       setTimeout(() => {
+        clientSocket.on('message_pinned', data => {
+          expect(data.type).toBe('message_pinned');
+          expect(data.messageId).toBe('msg-123');
+          done();
+        });
+
         clientSocket.emit('pin_message', {
           messageId: 'msg-123',
           roomId: TEST_ROOM_ID,
         });
-      }, 100);
+      }, 200);
     });
 
     test.skip('TC-813 | Verify pin_message fails for viewer', done => {
@@ -407,20 +464,21 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
     });
 
     test('TC-814 | Verify unpin_message clears pinned message', done => {
-      clientSocket.on('message_unpinned', data => {
-        expect(data.type).toBe('message_unpinned');
-
-        const room = liveStreamService.rooms.get(TEST_ROOM_ID);
-        expect(room.pinnedMessageId).toBeNull();
-        done();
-      });
-
+      // First join as host
       clientSocket.emit('join_as_host', {
         roomId: TEST_ROOM_ID,
         userId: TEST_HOST_ID.toString(),
       });
 
       setTimeout(() => {
+        clientSocket.on('message_unpinned', data => {
+          expect(data.type).toBe('message_unpinned');
+
+          const room = liveStreamService.rooms.get(TEST_ROOM_ID);
+          expect(room.pinnedMessageId).toBeNull();
+          done();
+        });
+
         // Set a pinned message first
         const room = liveStreamService.rooms.get(TEST_ROOM_ID);
         if (room) {
@@ -430,7 +488,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
         clientSocket.emit('unpin_message', {
           roomId: TEST_ROOM_ID,
         });
-      }, 100);
+      }, 200);
     });
   });
 
@@ -586,11 +644,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
           expect(data.message).toContain('Room not found');
 
           // Restore room for next tests
-          liveStreamService.rooms.set(TEST_ROOM_ID, {
-            host: null,
-            viewers: new Map(),
-            streamData: _testStream,
-          });
+          setupRoom();
           done();
         }
       });
@@ -610,11 +664,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       setTimeout(() => {
         if (!errorReceived) {
           // Restore room for next tests
-          liveStreamService.rooms.set(TEST_ROOM_ID, {
-            host: null,
-            viewers: new Map(),
-            streamData: _testStream,
-          });
+          setupRoom();
           done();
         }
       }, 1000);
@@ -630,11 +680,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
           expect(data.type).toBe('pin_error');
 
           // Restore room
-          liveStreamService.rooms.set(TEST_ROOM_ID, {
-            host: null,
-            viewers: new Map(),
-            streamData: _testStream,
-          });
+          setupRoom();
           done();
         }
       });
@@ -651,52 +697,78 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       setTimeout(() => {
         if (!errorReceived) {
           // Restore room
-          liveStreamService.rooms.set(TEST_ROOM_ID, {
-            host: null,
-            viewers: new Map(),
-            streamData: _testStream,
-          });
+          setupRoom();
           done();
         }
       }, 1000);
     });
 
-    test('TC-824 | Verify feature_product broadcasts to room', done => {
+    test('TC-824 | Verify feature_product broadcasts to room', async () => {
       const validProductId = new mongoose.Types.ObjectId();
+      let viewerSocket = null;
 
-      clientSocket.emit('join_as_host', {
-        roomId: TEST_ROOM_ID,
-        userId: TEST_HOST_ID.toString(),
-      });
+      // Set timeout to prevent hanging
+      const testTimeout = setTimeout(() => {
+        if (viewerSocket) viewerSocket.close();
+        throw new Error('Test timeout - feature_product broadcast test failed');
+      }, 10000);
 
-      setTimeout(() => {
-        // Create a viewer to receive the broadcast
-        const viewerSocket = ioc(`http://localhost:${httpServer.address().port}/livestream`);
+      // Ensure room exists and is active
+      if (!liveStreamService.rooms.has(TEST_ROOM_ID)) {
+        setupRoom();
+      }
 
-        viewerSocket.on('connect', () => {
-          viewerSocket.emit('join_as_viewer', {
-            roomId: TEST_ROOM_ID,
-            userId: TEST_USER_ID.toString(),
+      // Ensure stream is active in database
+      await LiveStream.findByIdAndUpdate(TEST_STREAM_ID, { isActive: true });
+
+      // Wait a bit for database update to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      return new Promise((resolve, reject) => {
+        // First, host joins
+        clientSocket.emit('join_as_host', {
+          roomId: TEST_ROOM_ID,
+          userId: TEST_HOST_ID.toString(),
+        });
+
+        // Wait for host to join, then create viewer
+        setTimeout(() => {
+          // Create a viewer to receive the broadcast
+          viewerSocket = ioc(`http://localhost:${httpServer.address().port}/livestream`);
+
+          viewerSocket.on('connect', () => {
+            viewerSocket.emit('join_as_viewer', {
+              roomId: TEST_ROOM_ID,
+              userId: TEST_USER_ID.toString(),
+            });
+
+            setTimeout(() => {
+              viewerSocket.on('product_featured', data => {
+                expect(data.type).toBe('product_featured');
+                expect(data.product.name).toBe('Cool Shoes');
+                clearTimeout(testTimeout);
+                viewerSocket.close();
+                resolve();
+              });
+
+              // Now feature product as host
+              clientSocket.emit('feature_product', {
+                productId: validProductId.toString(),
+                product: { _id: validProductId.toString(), name: 'Cool Shoes' },
+              });
+            }, 200);
           });
 
-          setTimeout(() => {
-            viewerSocket.on('product_featured', data => {
-              expect(data.type).toBe('product_featured');
-              expect(data.product.name).toBe('Cool Shoes');
-              viewerSocket.close();
-              done();
-            });
-
-            clientSocket.emit('feature_product', {
-              productId: validProductId.toString(),
-              product: { _id: validProductId.toString(), name: 'Cool Shoes' },
-            });
-          }, 200);
-        });
-      }, 200);
+          viewerSocket.on('connect_error', () => {
+            clearTimeout(testTimeout);
+            reject(new Error('Failed to connect viewer socket'));
+          });
+        }, 200);
+      });
     });
 
     test('TC-825 | Verify feature_product fails for viewer', done => {
+      // First join as viewer
       clientSocket.emit('join_as_viewer', {
         roomId: TEST_ROOM_ID,
         userId: TEST_USER_ID.toString(),
@@ -709,14 +781,16 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
           done();
         });
 
+        // Try to feature product as viewer (should fail)
         clientSocket.emit('feature_product', {
           productId: 'prod-456',
           product: { name: 'Test Product' },
         });
-      }, 100);
+      }, 200);
     });
 
     test('TC-826 | Verify feature_product handles missing room', done => {
+      // Set socket mapping to non-existent room
       liveStreamService.socketToRoom.set(clientSocket.id, {
         roomId: 'non-existent-room',
         role: 'host',

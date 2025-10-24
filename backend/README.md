@@ -134,7 +134,18 @@ Tests for `potentialOrderController` operations:
 - Authorization checks
 - Statistics aggregation
 
-### Suite 5: Livestream Socket Handlers (27 tests)
+### Suite 5: Order Auto-Creation (15 tests)
+
+Tests for `updateOrderStatus()` with status = "confirmed":
+
+- Order creation from potential orders
+- Flash sale price application
+- Inventory checks and out-of-stock handling
+- Email notifications
+- Error handling and rollback scenarios
+- Authorization and security checks
+
+# Suite 6: Livestream Socket Handlers (27 tests)
 
 Tests for Socket.IO integration:
 

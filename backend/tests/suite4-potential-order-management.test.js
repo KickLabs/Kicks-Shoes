@@ -1119,11 +1119,12 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
   // ========== TC-1034: Export for Stream - Error Handling ==========
   test('TC-1034 | Verify exportPotentialOrdersForStream handles errors', async () => {
     // Given: Database error occurs
-    PotentialOrder.find.mockReturnValue({
+    const mockError = new Error('Database error');
+    PotentialOrder.find.mockImplementation(() => ({
       populate: jest.fn().mockReturnThis(),
       sort: jest.fn().mockReturnThis(),
-      lean: jest.fn().mockRejectedValue(new Error('Database error')),
-    });
+      lean: jest.fn().mockRejectedValue(mockError),
+    }));
 
     const req = mockRequest({
       params: { streamId: 'test-room-001' },
@@ -1143,8 +1144,9 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
   // ========== TC-1035: Export with Filters - Error Handling ==========
   test('TC-1035 | Verify exportPotentialOrders handles errors', async () => {
     // Given: Export service error
-    PotentialOrder.find.mockReturnValue(createMockQueryChain([makePotentialOrderData()]));
-    excelExportService.exportWithFilters.mockRejectedValue(new Error('Excel generation failed'));
+    const mockError = new Error('Excel generation failed');
+    PotentialOrder.find.mockImplementation(() => createMockQueryChain([makePotentialOrderData()]));
+    excelExportService.exportWithFilters.mockRejectedValue(mockError);
 
     const req = mockRequest({
       query: { status: 'all', priority: 'all' },
@@ -2705,9 +2707,13 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
   test('TC-1091 | Verify getPotentialOrdersForStream handles database errors', async () => {
     // Given: LiveStream found but PotentialOrder.find throws error
     LiveStream.findOne.mockResolvedValue(mockTestStream);
-    PotentialOrder.find.mockImplementation(() => {
-      throw new Error('Database connection failed');
-    });
+    PotentialOrder.find.mockImplementation(() => ({
+      populate: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockRejectedValue(new Error('Database connection failed')),
+    }));
 
     const req = mockRequest({
       params: { streamId: TEST_STREAM_ID },
