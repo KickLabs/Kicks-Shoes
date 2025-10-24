@@ -1,15 +1,11 @@
 /**
- * Test Suite 1: Message Analysis & Order Detection
+ * Test Suite 1: Message Analysis & Order Detection (UNIT TEST)
  *
- * Mục tiêu: Gom toàn bộ test liên quan tới nhận diện đơn hàng, confidence,
- * số điện thoại, keyword, ngôn ngữ, COD/ship/giao hàng.
- *
- * Cover các dòng: 151, 390–405, 427–428, 439–453, 464 trong orderDetection.service.js
+ * NOTE: This is a PURE UNIT TEST - no real database connections, all dependencies mocked
  */
 
 import { jest } from '@jest/globals';
-import mongoose from 'mongoose';
-import orderDetectionService from '../src/services/orderDetection.service.js';
+import { OrderDetectionService } from '../src/services/orderDetection.service.js';
 
 // Mock logger
 jest.mock('../src/utils/logger.js', () => ({
@@ -32,18 +28,53 @@ jest.mock('../src/services/product.service.js', () => ({
 // Get the mocked ProductService
 import { ProductService } from '../src/services/product.service.js';
 
-describe('Order Detection - Message Analysis', () => {
-  beforeAll(async () => {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/kicks-shoes-test';
-    await mongoose.connect(mongoUri);
-  });
+// Helper function to create mock ObjectId
+const createMockObjectId = (id = null) => {
+  const mockId = id || Math.random().toString(36).substring(7);
+  return {
+    toString: () => mockId,
+    _id: mockId,
+  };
+};
 
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
+describe('Order Detection - Message Analysis (Unit Tests)', () => {
+  let orderDetectionService;
+  let mockPotentialOrderModel;
 
   beforeEach(() => {
+    // Clear all mocks before each test
     jest.clearAllMocks();
+
+    // Create mock PotentialOrder model
+    mockPotentialOrderModel = {
+      // Constructor mock
+      prototype: {
+        save: jest.fn(),
+      },
+      // Static methods
+      getPendingOrdersForStream: jest.fn(),
+      getOrdersByHost: jest.fn(),
+      find: jest.fn(),
+      findById: jest.fn(),
+    };
+
+    // Mock constructor behavior
+    const MockPotentialOrderConstructor = jest.fn(function (data) {
+      this.data = data;
+      this._id = createMockObjectId();
+      this.status = 'pending';
+      this.streamId = data.streamId;
+      this.customerInfo = data.customerInfo;
+      this.hostActions = {};
+      this.save = jest.fn().mockResolvedValue(this);
+      return this;
+    });
+
+    // Copy static methods to constructor
+    Object.assign(MockPotentialOrderConstructor, mockPotentialOrderModel);
+
+    // Create service instance with mocked model
+    orderDetectionService = new OrderDetectionService(MockPotentialOrderConstructor);
   });
 
   // ========== CONFIDENCE & KEYWORD DETECTION ==========
@@ -63,7 +94,7 @@ describe('Order Detection - Message Analysis', () => {
     test.each(orderKeywords)('should detect order keyword: %s', async keyword => {
       const message = `${keyword} size 42 0912345678`;
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -82,7 +113,7 @@ describe('Order Detection - Message Analysis', () => {
       const message = `Chốt đơn size 42 ${phone}`;
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -95,7 +126,7 @@ describe('Order Detection - Message Analysis', () => {
       const message = 'Chốt đơn size 42 0212345678'; // Invalid prefix
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -107,7 +138,7 @@ describe('Order Detection - Message Analysis', () => {
       const message = 'Chốt đơn 0912345678 hoặc 0987654321 size 42';
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -122,7 +153,7 @@ describe('Order Detection - Message Analysis', () => {
       const message = 'hello 0912345678'; // No order keywords
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -135,7 +166,7 @@ describe('Order Detection - Message Analysis', () => {
         'chốt đơn đặt hàng mua ngay ship giao hàng thanh toán COD chuyển khoản 0912345678 size 42';
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -149,13 +180,13 @@ describe('Order Detection - Message Analysis', () => {
       const longMessage = 'chốt đơn size 42 0912345678';
 
       const shortResult = await orderDetectionService.analyzeMessage(
-        { content: shortMessage, _id: new mongoose.Types.ObjectId() },
+        { content: shortMessage, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
 
       const longResult = await orderDetectionService.analyzeMessage(
-        { content: longMessage, _id: new mongoose.Types.ObjectId() },
+        { content: longMessage, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -171,13 +202,13 @@ describe('Order Detection - Message Analysis', () => {
       const withoutProductInfo = 'Chốt đơn 0912345678';
 
       const resultWith = await orderDetectionService.analyzeMessage(
-        { content: withProductInfo, _id: new mongoose.Types.ObjectId() },
+        { content: withProductInfo, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
 
       const resultWithout = await orderDetectionService.analyzeMessage(
-        { content: withoutProductInfo, _id: new mongoose.Types.ObjectId() },
+        { content: withoutProductInfo, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -189,103 +220,101 @@ describe('Order Detection - Message Analysis', () => {
   // ========== FEATURED PRODUCTS MATCHING (Lines 390-405) ==========
 
   describe('Featured Products Matching', () => {
-    beforeEach(() => {
-      // Reset mocks before each test
-      jest.clearAllMocks();
-    });
-
     test('should match featured product by name', async () => {
       // Mock product data
+      const mockProductId = createMockObjectId('product123');
       const mockProduct = {
-        _id: new mongoose.Types.ObjectId(),
+        _id: mockProductId,
         name: 'Nike Air Max',
         brand: 'Nike',
       };
 
-      // Mock the method directly
-      jest.spyOn(ProductService, 'getProductById').mockResolvedValue(mockProduct);
+      // Mock the method - assign it fresh for each test
+      ProductService.getProductById = jest.fn().mockResolvedValue(mockProduct);
 
       const message = 'Chốt sản phẩm này size 42 0912345678';
       const streamData = {
         roomId: 'test-room',
         featuredProducts: [
           {
-            productId: mockProduct._id,
+            productId: mockProductId,
             timestamp: new Date(),
           },
         ],
       };
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         streamData,
         { _id: 'user123', username: 'testuser' }
       );
 
       expect(result).not.toBeNull();
-      expect(result.data.productInfo.productId.toString()).toBe(mockProduct._id.toString());
+      expect(result.data.productInfo.productId.toString()).toBe(mockProductId.toString());
     });
 
     test('should match featured product by brand', async () => {
+      const mockProductId = createMockObjectId('product456');
       const mockProduct = {
-        _id: new mongoose.Types.ObjectId(),
+        _id: mockProductId,
         name: 'Adidas Ultraboost',
         brand: 'Adidas',
       };
 
-      // Mock the method directly
-      jest.spyOn(ProductService, 'getProductById').mockResolvedValue(mockProduct);
+      // Mock the method - assign it fresh for each test
+      ProductService.getProductById = jest.fn().mockResolvedValue(mockProduct);
 
       const message = 'Chốt cái này size 42 0912345678';
       const streamData = {
         roomId: 'test-room',
         featuredProducts: [
           {
-            productId: mockProduct._id,
+            productId: mockProductId,
             timestamp: new Date(),
           },
         ],
       };
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         streamData,
         { _id: 'user123', username: 'testuser' }
       );
 
       expect(result).not.toBeNull();
-      expect(result.data.productInfo.productId.toString()).toBe(mockProduct._id.toString());
+      expect(result.data.productInfo.productId.toString()).toBe(mockProductId.toString());
     });
 
     test('should match with product reference keywords', async () => {
+      const mockProductId = createMockObjectId('product789');
       const mockProduct = {
-        _id: new mongoose.Types.ObjectId(),
+        _id: mockProductId,
         name: 'Jordan 1',
         brand: 'Nike',
       };
 
-      // Mock the method directly
-      jest.spyOn(ProductService, 'getProductById').mockResolvedValue(mockProduct);
+      // Mock the method - assign it fresh for each test
+      ProductService.getProductById = jest.fn().mockResolvedValue(mockProduct);
 
       const message = 'Chốt sản phẩm này size 42 0912345678';
       const streamData = {
         roomId: 'test-room',
         featuredProducts: [
           {
-            productId: mockProduct._id,
+            productId: mockProductId,
             timestamp: new Date(),
           },
         ],
       };
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         streamData,
         { _id: 'user123', username: 'testuser' }
       );
 
       expect(result).not.toBeNull();
-      expect(result.data.productInfo.productId.toString()).toBe(mockProduct._id.toString());
+      expect(result.data.productInfo.productId.toString()).toBe(mockProductId.toString());
     });
 
     test('should handle no featured products', async () => {
@@ -296,7 +325,7 @@ describe('Order Detection - Message Analysis', () => {
       };
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         streamData,
         { _id: 'user123', username: 'testuser' }
       );
@@ -311,11 +340,11 @@ describe('Order Detection - Message Analysis', () => {
   describe('Database Operations', () => {
     test('should save potential order successfully', async () => {
       const message = 'Chốt đơn size 42 0912345678';
-      const streamId = new mongoose.Types.ObjectId();
-      const userId = new mongoose.Types.ObjectId();
+      const streamId = createMockObjectId('stream123');
+      const userId = createMockObjectId('user123');
 
       const analysisResult = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         { _id: streamId, roomId: 'test-room' },
         { _id: userId, username: 'testuser' }
       );
@@ -326,34 +355,45 @@ describe('Order Detection - Message Analysis', () => {
       expect(savedOrder._id).toBeDefined();
       expect(savedOrder.streamId.toString()).toBe(streamId.toString());
       expect(savedOrder.status).toBe('pending');
+      expect(savedOrder.save).toHaveBeenCalled();
     });
 
     test('should get pending orders for stream', async () => {
-      const streamId = new mongoose.Types.ObjectId();
+      const streamId = createMockObjectId('stream456');
+      const mockOrders = [
+        { _id: createMockObjectId(), status: 'pending' },
+        { _id: createMockObjectId(), status: 'contacted' },
+      ];
+
+      // Mock the static method
+      orderDetectionService.PotentialOrder.getPendingOrdersForStream.mockResolvedValue(mockOrders);
 
       const pendingOrders = await orderDetectionService.getPendingOrdersForStream(streamId);
 
       expect(Array.isArray(pendingOrders)).toBe(true);
+      expect(pendingOrders).toEqual(mockOrders);
+      expect(orderDetectionService.PotentialOrder.getPendingOrdersForStream).toHaveBeenCalledWith(
+        streamId
+      );
     });
 
     test('should update order status successfully', async () => {
-      // First save an order
-      const message = 'Chốt đơn size 42 0912345678';
-      const streamId = new mongoose.Types.ObjectId();
-      const userId = new mongoose.Types.ObjectId();
-      const hostId = new mongoose.Types.ObjectId();
+      const orderId = createMockObjectId('order123');
+      const hostId = createMockObjectId('host456');
 
-      const analysisResult = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
-        { _id: streamId, roomId: 'test-room' },
-        { _id: userId, username: 'testuser' }
-      );
+      // Create mock order
+      const mockOrder = {
+        _id: orderId,
+        status: 'pending',
+        hostActions: {},
+        save: jest.fn().mockResolvedValue(true),
+      };
 
-      const savedOrder = await orderDetectionService.savePotentialOrder(analysisResult);
+      // Mock findById to return the order
+      orderDetectionService.PotentialOrder.findById.mockResolvedValue(mockOrder);
 
-      // Then update status
       const updatedOrder = await orderDetectionService.updateOrderStatus(
-        savedOrder._id.toString(),
+        orderId.toString(),
         'confirmed',
         hostId.toString(),
         'Order confirmed by host'
@@ -362,27 +402,42 @@ describe('Order Detection - Message Analysis', () => {
       expect(updatedOrder).toBeDefined();
       expect(updatedOrder.status).toBe('confirmed');
       expect(updatedOrder.hostActions.confirmedBy.toString()).toBe(hostId.toString());
+      expect(updatedOrder.hostActions.notes).toBe('Order confirmed by host');
+      expect(mockOrder.save).toHaveBeenCalled();
     });
 
     test('should handle invalid order ID in updateOrderStatus', async () => {
       const invalidOrderId = 'invalid-id-12345';
-      const hostId = new mongoose.Types.ObjectId();
+      const hostId = createMockObjectId('host789');
+
+      // Mock findById to return null
+      orderDetectionService.PotentialOrder.findById.mockResolvedValue(null);
 
       await expect(
         orderDetectionService.updateOrderStatus(invalidOrderId, 'confirmed', hostId.toString())
-      ).rejects.toThrow();
+      ).rejects.toThrow('Order not found');
     });
 
     test('should handle getOrdersForHost', async () => {
-      const hostId = new mongoose.Types.ObjectId();
+      const hostId = createMockObjectId('host999');
+      const mockOrders = [
+        {
+          _id: createMockObjectId(),
+          streamId: { hostId: hostId.toString() },
+          status: 'pending',
+        },
+      ];
 
-      try {
-        const orders = await orderDetectionService.getOrdersForHost(hostId.toString());
-        expect(Array.isArray(orders)).toBe(true);
-      } catch (error) {
-        // Method may not be fully implemented
-        expect(error).toBeDefined();
-      }
+      // Mock the static method
+      orderDetectionService.PotentialOrder.getOrdersByHost.mockResolvedValue(mockOrders);
+
+      const orders = await orderDetectionService.getOrdersForHost(hostId.toString());
+
+      expect(Array.isArray(orders)).toBe(true);
+      expect(orderDetectionService.PotentialOrder.getOrdersByHost).toHaveBeenCalledWith(
+        hostId.toString(),
+        50
+      );
     });
   });
 
@@ -391,7 +446,7 @@ describe('Order Detection - Message Analysis', () => {
   describe('Error Handling', () => {
     test('should handle null message content', async () => {
       const result = await orderDetectionService.analyzeMessage(
-        { content: null, _id: new mongoose.Types.ObjectId() },
+        { content: null, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -401,7 +456,7 @@ describe('Order Detection - Message Analysis', () => {
 
     test('should handle undefined message content', async () => {
       const result = await orderDetectionService.analyzeMessage(
-        { content: undefined, _id: new mongoose.Types.ObjectId() },
+        { content: undefined, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );
@@ -411,9 +466,19 @@ describe('Order Detection - Message Analysis', () => {
 
     test('should handle null user data', async () => {
       const result = await orderDetectionService.analyzeMessage(
-        { content: 'Chốt đơn 0912345678', _id: new mongoose.Types.ObjectId() },
+        { content: 'Chốt đơn 0912345678', _id: createMockObjectId() },
         { roomId: 'test-room' },
         null
+      );
+
+      expect(result).toBeNull();
+    });
+
+    test('should handle empty message content', async () => {
+      const result = await orderDetectionService.analyzeMessage(
+        { content: '', _id: createMockObjectId() },
+        { roomId: 'test-room' },
+        { _id: 'user123', username: 'testuser' }
       );
 
       expect(result).toBeNull();
@@ -432,7 +497,7 @@ describe('Order Detection - Message Analysis', () => {
         const message = `mua ${keyword} 0912345678`;
 
         const result = await orderDetectionService.analyzeMessage(
-          { content: message, _id: new mongoose.Types.ObjectId() },
+          { content: message, _id: createMockObjectId() },
           { roomId: 'test-room' },
           { _id: 'user123', username: 'testuser' }
         );
@@ -446,7 +511,7 @@ describe('Order Detection - Message Analysis', () => {
       const message = `mua ${keyword} 0912345678`;
 
       const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: new mongoose.Types.ObjectId() },
+        { content: message, _id: createMockObjectId() },
         { roomId: 'test-room' },
         { _id: 'user123', username: 'testuser' }
       );

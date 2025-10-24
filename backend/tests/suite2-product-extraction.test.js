@@ -1,13 +1,10 @@
 /**
- * Test Suite 2: Product Information Extraction
+ * Test Suite 2: Product Information Extraction (UNIT TEST)
  *
- * Mục tiêu: Gom toàn bộ test liên quan đến color, size, quantity, SKU/inventory, featured products.
- *
- * Cover nhánh 348–357 trong service.
+ * NOTE: This is a PURE UNIT TEST - no real database connections, all dependencies mocked
  */
 
 import { jest } from '@jest/globals';
-import mongoose from 'mongoose';
 import orderDetectionService from '../src/services/orderDetection.service.js';
 
 // Mock logger
@@ -28,18 +25,27 @@ jest.mock('../src/services/product.service.js', () => ({
   },
 }));
 
-describe('Order Detection - Product Information Extraction', () => {
-  beforeAll(async () => {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/kicks-shoes-test';
-    await mongoose.connect(mongoUri);
-  });
+// Get the mocked ProductService
+import { ProductService } from '../src/services/product.service.js';
 
-  afterAll(async () => {
-    await mongoose.connection.close();
-  });
+// Helper function to create mock ObjectId
+const createMockObjectId = (id = null) => {
+  const mockId = id || Math.random().toString(36).substring(7);
+  return {
+    toString: () => mockId,
+    _id: mockId,
+  };
+};
 
+describe('Order Detection - Product Information Extraction (Unit Tests)', () => {
   beforeEach(() => {
+    // Clear all mocks before each test
     jest.clearAllMocks();
+
+    // Set default mock implementations to prevent real DB calls
+    ProductService.findOneBySku = jest.fn().mockResolvedValue(null);
+    ProductService.findOneByInventorySku = jest.fn().mockResolvedValue(null);
+    ProductService.getProductById = jest.fn().mockResolvedValue(null);
   });
 
   // ========== COLOR EXTRACTION ==========
@@ -211,35 +217,26 @@ describe('Order Detection - Product Information Extraction', () => {
   // ========== SKU MATCHING & INVENTORY (Lines 348-357) ==========
 
   describe('SKU Matching and Inventory', () => {
-    let ProductService;
-
-    beforeAll(async () => {
-      const productServiceModule = await import('../src/services/product.service.js');
-      ProductService = productServiceModule.ProductService;
-    });
-
-    beforeEach(() => {
-      // Reset mocks before each test
-      jest.clearAllMocks();
-    });
-
     test('should match base SKU pattern', async () => {
+      const mockProductId = createMockObjectId('product-sku-123');
       const mockProduct = {
-        _id: new mongoose.Types.ObjectId(),
+        _id: mockProductId,
         productType: 'shoes',
       };
 
-      jest.spyOn(ProductService, 'findOneBySku').mockResolvedValue(mockProduct);
+      ProductService.findOneBySku = jest.fn().mockResolvedValue(mockProduct);
 
       const message = 'Chốt HJ6777 size 42';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
-      expect(result.productId.toString()).toBe(mockProduct._id.toString());
+      expect(result.productId.toString()).toBe(mockProductId.toString());
+      expect(ProductService.findOneBySku).toHaveBeenCalledWith('HJ6777');
     });
 
     test('should match inventory SKU for shoes', async () => {
+      const mockProductId = createMockObjectId('product-shoes-456');
       const mockProduct = {
-        _id: new mongoose.Types.ObjectId(),
+        _id: mockProductId,
         productType: 'shoes',
         inventory: [
           {
@@ -251,22 +248,23 @@ describe('Order Detection - Product Information Extraction', () => {
       };
 
       // Mock both methods to ensure the right one is called
-      const findOneBySkuSpy = jest.spyOn(ProductService, 'findOneBySku').mockResolvedValue(null);
-      const findOneByInventorySkuSpy = jest
-        .spyOn(ProductService, 'findOneByInventorySku')
-        .mockResolvedValue(mockProduct);
+      ProductService.findOneBySku = jest.fn().mockResolvedValue(null);
+      ProductService.findOneByInventorySku = jest.fn().mockResolvedValue(mockProduct);
 
       const message = 'Chốt HJ6777';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
-      expect(result.productId.toString()).toBe(mockProduct._id.toString());
+      expect(result.productId.toString()).toBe(mockProductId.toString());
       expect(result.color).toBe('red');
       expect(result.size).toBe('42');
+      expect(ProductService.findOneBySku).toHaveBeenCalledWith('HJ6777');
+      expect(ProductService.findOneByInventorySku).toHaveBeenCalledWith('HJ6777');
     });
 
     test('should match inventory SKU for clothing', async () => {
+      const mockProductId = createMockObjectId('product-clothing-789');
       const mockProduct = {
-        _id: new mongoose.Types.ObjectId(),
+        _id: mockProductId,
         productType: 'clothing',
         inventory: [
           {
@@ -277,19 +275,21 @@ describe('Order Detection - Product Information Extraction', () => {
         ],
       };
 
-      jest.spyOn(ProductService, 'findOneByInventorySku').mockResolvedValue(mockProduct);
+      ProductService.findOneBySku = jest.fn().mockResolvedValue(null);
+      ProductService.findOneByInventorySku = jest.fn().mockResolvedValue(mockProduct);
 
       const message = 'Chốt SHIRT-BLUE-L';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
-      expect(result.productId.toString()).toBe(mockProduct._id.toString());
+      expect(result.productId.toString()).toBe(mockProductId.toString());
       expect(result.color).toBe('blue');
       expect(result.size).toBe('L');
     });
 
     test('should match inventory SKU for accessory', async () => {
+      const mockProductId = createMockObjectId('product-accessory-999');
       const mockProduct = {
-        _id: new mongoose.Types.ObjectId(),
+        _id: mockProductId,
         productType: 'accessory',
         inventory: [
           {
@@ -300,19 +300,20 @@ describe('Order Detection - Product Information Extraction', () => {
         ],
       };
 
-      jest.spyOn(ProductService, 'findOneByInventorySku').mockResolvedValue(mockProduct);
+      ProductService.findOneBySku = jest.fn().mockResolvedValue(null);
+      ProductService.findOneByInventorySku = jest.fn().mockResolvedValue(mockProduct);
 
       const message = 'Chốt BAG-BLACK-ONESIZE';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
-      expect(result.productId.toString()).toBe(mockProduct._id.toString());
+      expect(result.productId.toString()).toBe(mockProductId.toString());
       expect(result.color).toBe('black');
       expect(result.size).toBe('ONESIZE');
     });
 
     test('should handle SKU not found', async () => {
-      jest.spyOn(ProductService, 'findOneBySku').mockResolvedValue(null);
-      jest.spyOn(ProductService, 'findOneByInventorySku').mockResolvedValue(null);
+      ProductService.findOneBySku = jest.fn().mockResolvedValue(null);
+      ProductService.findOneByInventorySku = jest.fn().mockResolvedValue(null);
 
       const message = 'Chốt INVALID-SKU';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });

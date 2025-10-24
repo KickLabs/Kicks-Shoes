@@ -9,6 +9,8 @@ export default {
   // Coverage configuration - chỉ collect coverage từ Order in Livestream feature
   collectCoverageFrom: [
     'src/services/orderDetection.service.js', // Order detection service
+    'src/services/livestream.service.js', // Livestream service
+    'src/services/livestreamSocket.service.js', // Livestream socket service
     'src/models/PotentialOrder.js', // Potential order model
     'src/models/LiveStream.js', // LiveStream model
     'src/models/LiveStreamChat.js', // LiveStream chat model
@@ -101,6 +103,12 @@ export default {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^@/(.*)$': '<rootDir>/src/$1',
+    // Map email config to a safe mock to avoid real env requirements in unit tests
+    '^../config/email.config.js$': '<rootDir>/tests/mocks/email.config.mock.js',
+    '^@/config/email.config.js$': '<rootDir>/tests/mocks/email.config.mock.js',
+    // Map middleware and utils to mocks
+    '^../middlewares/async.middleware.js$': '<rootDir>/tests/mocks/asyncHandler.mock.js',
+    '^../utils/errorResponse.js$': '<rootDir>/tests/mocks/errorResponse.mock.js',
   },
 
   // Setup files
