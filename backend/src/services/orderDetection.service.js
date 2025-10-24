@@ -297,7 +297,7 @@ class OrderDetectionService {
 
       if (hasColorKeyword && hasSizeKeyword) {
         const compositeRegex =
-          /(chốt|dat|đặt|mua)?\s*(\d+)\s*(đôi|cái|chiếc|bộ|combo)?\s*([A-Z]{2}[0-9]{4}|[A-Z0-9]+(?:-[A-Z0-9]+)+)\s*(?:màu|color)\s*([a-zA-ZđĐáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)\s*(?:size|cỡ)?\s*(\d{2}|[XSML]{1,3}|ONE\s*SIZE|ONESIZE)?/i;
+          /(chốt|dat|đặt|mua)?\s*(\d+)\s*(đôi|cái|chiếc|bộ|combo)?\s*([A-Z]{2,6}[0-9]{2,6}|[A-Z0-9]+(?:-[A-Z0-9]+)+)\s*(?:màu|color)\s*([a-zA-ZđĐáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵ]+)\s*(?:size|cỡ)?\s*(\d{2}|[XSML]{1,3}|ONE\s*SIZE|ONESIZE)?/i;
         const compositeMatch = compositeRegex.exec(rawMessage.toUpperCase());
         if (compositeMatch) {
           const qty = parseInt(compositeMatch[2]);
@@ -352,7 +352,8 @@ class OrderDetectionService {
         let matchedSku = null;
 
         // Optimize: Use single combined regex instead of loop
-        const combinedSkuPattern = /\b([A-Z]{2}[0-9]{4}|[A-Z0-9]+(?:-[A-Z0-9]+)+)\b/g;
+        // Flexible pattern: 2-6 letters followed by 2-6 numbers, or alphanumeric with dashes
+        const combinedSkuPattern = /\b([A-Z]{2,6}[0-9]{2,6}|[A-Z0-9]+(?:-[A-Z0-9]+)+)\b/g;
         const skuMatches = upper.match(combinedSkuPattern);
 
         if (skuMatches && skuMatches.length > 0) {

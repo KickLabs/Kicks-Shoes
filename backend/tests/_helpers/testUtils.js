@@ -19,8 +19,11 @@ export function makeStream(overrides = {}) {
 
 export function makeUser(overrides = {}) {
   return {
-    _id: 'user123',
-    username: 'buyer01',
+    fullName: 'Test User',
+    username: 'testuser_' + Math.random().toString(36).substring(7),
+    email: 'test_' + Math.random().toString(36).substring(7) + '@test.com',
+    password: 'password123',
+    role: 'customer',
     ...overrides,
   };
 }
@@ -220,6 +223,8 @@ export function makeProduct(overrides = {}) {
     _id: new mongoose.Types.ObjectId(),
     name: 'Nike Air Max 270',
     sku: 'HJ6777',
+    brand: 'Nike',
+    category: new mongoose.Types.ObjectId(),
     finalPrice: 3500000,
     price: { regular: 3500000 },
     productType: 'shoes',

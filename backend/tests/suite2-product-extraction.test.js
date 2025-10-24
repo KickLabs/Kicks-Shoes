@@ -77,21 +77,39 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       'purple',
     ];
 
-    test.each(vietnameseColors)('should extract Vietnamese color: %s', async color => {
-      const message = `màu ${color}`;
-      const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
+    test.each(vietnameseColors)(
+      '[TC2001-VietnameseColorExtraction] Should extract Vietnamese color: %s',
+      async color => {
+        // Description: Test extraction of Vietnamese color names with 'màu' keyword
+        // Input: Message containing 'màu' keyword followed by Vietnamese color name
+        // Expected: System extracts the Vietnamese color correctly
 
-      expect(result.color).toBe(color);
-    });
+        const message = `màu ${color}`;
+        const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
-    test.each(englishColors)('should extract English color: %s', async color => {
-      const message = `color ${color}`;
-      const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
+        expect(result.color).toBe(color);
+      }
+    );
 
-      expect(result.color.toLowerCase()).toBe(color);
-    });
+    test.each(englishColors)(
+      '[TC2002-EnglishColorExtraction] Should extract English color: %s',
+      async color => {
+        // Description: Test extraction of English color names with 'color' keyword
+        // Input: Message containing 'color' keyword followed by English color name
+        // Expected: System extracts the English color correctly (case insensitive)
 
-    test('should extract standalone Vietnamese colors', async () => {
+        const message = `color ${color}`;
+        const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
+
+        expect(result.color.toLowerCase()).toBe(color);
+      }
+    );
+
+    test('[TC2003-StandaloneVietnameseColors] Should extract standalone Vietnamese colors', async () => {
+      // Description: Test extraction of Vietnamese colors without 'màu' keyword
+      // Input: Message with product name followed by Vietnamese color
+      // Expected: System extracts the Vietnamese color even without explicit color keyword
+
       const standaloneColors = ['đỏ', 'xanh', 'vàng'];
 
       for (const color of standaloneColors) {
@@ -104,7 +122,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       }
     });
 
-    test('should extract standalone English colors', async () => {
+    test('[TC2004-StandaloneEnglishColors] Should extract standalone English colors', async () => {
+      // Description: Test extraction of English colors without 'color' keyword
+      // Input: Message with product name followed by English color
+      // Expected: System extracts the English color even without explicit color keyword
+
       const standaloneColors = ['red', 'blue', 'yellow'];
 
       for (const color of standaloneColors) {
@@ -123,14 +145,25 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
   describe('Size Pattern Detection', () => {
     const sizeKeywords = ['size', 'cỡ', 'số'];
 
-    test.each(sizeKeywords)('should extract size with keyword: %s', async keyword => {
-      const message = `${keyword} 42`;
-      const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
+    test.each(sizeKeywords)(
+      '[TC2005-SizeKeywordExtraction] Should extract size with keyword: %s',
+      async keyword => {
+        // Description: Test extraction of numeric sizes with different size keywords
+        // Input: Message containing size keyword followed by numeric size
+        // Expected: System extracts the numeric size correctly
 
-      expect(result.size).toBe('42');
-    });
+        const message = `${keyword} 42`;
+        const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
-    test('should extract clothing sizes', async () => {
+        expect(result.size).toBe('42');
+      }
+    );
+
+    test('[TC2006-ClothingSizeExtraction] Should extract clothing sizes', async () => {
+      // Description: Test extraction of clothing size codes (S, M, L, XL, etc.)
+      // Input: Message containing 'size' keyword followed by clothing size code
+      // Expected: System extracts the clothing size and converts to uppercase
+
       const clothingSizes = ['S', 'M', 'L', 'XL', 'XXL', 'XS'];
 
       for (const size of clothingSizes) {
@@ -141,7 +174,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       }
     });
 
-    test('should extract one size', async () => {
+    test('[TC2007-OneSizeExtraction] Should extract one size variations', async () => {
+      // Description: Test extraction of 'one size' variations in different formats
+      // Input: Message containing 'size' keyword followed by one size variations
+      // Expected: System normalizes all one size variations to 'ONESIZE'
+
       const oneSizeVariations = ['one size', 'onesize', 'ONE SIZE', 'ONESIZE'];
 
       for (const size of oneSizeVariations) {
@@ -152,14 +189,22 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       }
     });
 
-    test('should extract reversed size pattern', async () => {
+    test('[TC2008-ReversedSizePattern] Should extract reversed size pattern', async () => {
+      // Description: Test extraction of size when number comes before size keyword
+      // Input: Message with numeric size followed by 'size' keyword
+      // Expected: System extracts the numeric size correctly
+
       const message = '42 size';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
       expect(result.size).toBe('42');
     });
 
-    test('should prioritize one size over numeric', async () => {
+    test('[TC2009-OneSizePriority] Should prioritize one size over numeric', async () => {
+      // Description: Test that 'one size' takes priority over numeric size when both are present
+      // Input: Message containing both 'one size' and numeric size
+      // Expected: System prioritizes 'one size' and returns 'ONESIZE'
+
       const message = 'one size 42';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
@@ -176,8 +221,12 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
     };
 
     test.each(quantityUnits.vietnamese)(
-      'should extract Vietnamese quantity unit: %s',
+      '[TC2010-VietnameseQuantityExtraction] Should extract Vietnamese quantity unit: %s',
       async unit => {
+        // Description: Test extraction of quantity with Vietnamese unit words
+        // Input: Message containing number followed by Vietnamese quantity unit
+        // Expected: System extracts the numeric quantity correctly
+
         const message = `3 ${unit}`;
         const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
@@ -185,28 +234,47 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       }
     );
 
-    test.each(quantityUnits.english)('should extract English quantity unit: %s', async unit => {
-      const message = `3 ${unit}`;
-      const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
+    test.each(quantityUnits.english)(
+      '[TC2011-EnglishQuantityExtraction] Should extract English quantity unit: %s',
+      async unit => {
+        // Description: Test extraction of quantity with English unit words
+        // Input: Message containing number followed by English quantity unit
+        // Expected: System extracts the numeric quantity correctly
 
-      expect(result.quantity).toBe(3);
-    });
+        const message = `3 ${unit}`;
+        const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
-    test('should extract unit before number pattern', async () => {
+        expect(result.quantity).toBe(3);
+      }
+    );
+
+    test('[TC2012-UnitBeforeNumberPattern] Should extract unit before number pattern', async () => {
+      // Description: Test extraction of quantity when unit word comes before number
+      // Input: Message with quantity unit followed by number
+      // Expected: System extracts the numeric quantity correctly
+
       const message = 'đôi 3';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
       expect(result.quantity).toBe(3);
     });
 
-    test('should default to quantity 1 when no quantity found', async () => {
+    test('[TC2013-DefaultQuantity] Should default to quantity 1 when no quantity found', async () => {
+      // Description: Test that system defaults to quantity 1 when no quantity is specified
+      // Input: Message without any quantity information
+      // Expected: System defaults to quantity 1
+
       const message = 'chốt đơn';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
       expect(result.quantity).toBe(1);
     });
 
-    test('should handle NaN quantity in composite pattern', async () => {
+    test('[TC2014-NaNQuantityHandling] Should handle NaN quantity in composite pattern', async () => {
+      // Description: Test handling of quantity unit without number in composite pattern
+      // Input: Message with quantity unit but no number (causing NaN)
+      // Expected: System defaults to quantity 1 when NaN is encountered
+
       const message = 'chốt đôi AB1234 màu đỏ size 42'; // "đôi" without number
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
@@ -217,7 +285,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
   // ========== SKU MATCHING & INVENTORY (Lines 348-357) ==========
 
   describe('SKU Matching and Inventory', () => {
-    test('should match base SKU pattern', async () => {
+    test('[TC2015-BaseSKUMatching] Should match base SKU pattern', async () => {
+      // Description: Test matching of base SKU patterns in product messages
+      // Input: Message containing SKU code with size information
+      // Expected: System finds product by SKU and extracts product ID
+
       const mockProductId = createMockObjectId('product-sku-123');
       const mockProduct = {
         _id: mockProductId,
@@ -233,7 +305,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       expect(ProductService.findOneBySku).toHaveBeenCalledWith('HJ6777');
     });
 
-    test('should match inventory SKU for shoes', async () => {
+    test('[TC2016-InventorySKUShoes] Should match inventory SKU for shoes', async () => {
+      // Description: Test matching of inventory SKU for shoes with color and size extraction
+      // Input: Message containing SKU code for shoes
+      // Expected: System finds product by inventory SKU and extracts color/size from inventory
+
       const mockProductId = createMockObjectId('product-shoes-456');
       const mockProduct = {
         _id: mockProductId,
@@ -261,7 +337,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       expect(ProductService.findOneByInventorySku).toHaveBeenCalledWith('HJ6777');
     });
 
-    test('should match inventory SKU for clothing', async () => {
+    test('[TC2017-InventorySKUClothing] Should match inventory SKU for clothing', async () => {
+      // Description: Test matching of inventory SKU for clothing with color and size extraction
+      // Input: Message containing SKU code for clothing
+      // Expected: System finds product by inventory SKU and extracts color/clothing size from inventory
+
       const mockProductId = createMockObjectId('product-clothing-789');
       const mockProduct = {
         _id: mockProductId,
@@ -286,7 +366,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       expect(result.size).toBe('L');
     });
 
-    test('should match inventory SKU for accessory', async () => {
+    test('[TC2018-InventorySKUAccessory] Should match inventory SKU for accessory', async () => {
+      // Description: Test matching of inventory SKU for accessories with one size
+      // Input: Message containing SKU code for accessory
+      // Expected: System finds product by inventory SKU and extracts color/one size from inventory
+
       const mockProductId = createMockObjectId('product-accessory-999');
       const mockProduct = {
         _id: mockProductId,
@@ -311,7 +395,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       expect(result.size).toBe('ONESIZE');
     });
 
-    test('should handle SKU not found', async () => {
+    test('[TC2019-SKUNotFound] Should handle SKU not found gracefully', async () => {
+      // Description: Test handling when SKU is not found in database
+      // Input: Message containing invalid/non-existent SKU code
+      // Expected: System returns null for productId without throwing error
+
       ProductService.findOneBySku = jest.fn().mockResolvedValue(null);
       ProductService.findOneByInventorySku = jest.fn().mockResolvedValue(null);
 
@@ -325,7 +413,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
   // ========== COMPOSITE PATTERN ==========
 
   describe('Composite Pattern Matching', () => {
-    test('should extract all fields from complete composite pattern', async () => {
+    test('[TC2020-CompleteCompositePattern] Should extract all fields from complete composite pattern', async () => {
+      // Description: Test extraction of all product fields from complete composite pattern
+      // Input: Message with quantity, unit, SKU, color, and size
+      // Expected: System extracts quantity, color, and size correctly
+
       const message = 'chốt 3 đôi HJ6777 màu đỏ size 42';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
@@ -334,7 +426,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       expect(result.size).toBe('42');
     });
 
-    test('should skip composite pattern when no color keyword', async () => {
+    test('[TC2021-CompositePatternNoColor] Should skip composite pattern when no color keyword', async () => {
+      // Description: Test composite pattern handling when color keyword is missing
+      // Input: Message with quantity, unit, and size but no color keyword
+      // Expected: System extracts quantity and size, leaves color as null
+
       const message = 'chốt 2 đôi size 42'; // No color keyword
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
@@ -343,7 +439,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       expect(result.color).toBeNull();
     });
 
-    test('should skip composite pattern when no size keyword', async () => {
+    test('[TC2022-CompositePatternNoSize] Should skip composite pattern when no size keyword', async () => {
+      // Description: Test composite pattern handling when size keyword is missing
+      // Input: Message with quantity, unit, and color but no size keyword
+      // Expected: System extracts quantity and color, leaves size as null
+
       const message = 'chốt 2 đôi màu đỏ'; // No size keyword
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
@@ -355,44 +455,54 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
 
   // ========== ERROR HANDLING ==========
 
-  describe('Error Handling in ExtractProductInfo', () => {
-    test('should handle null message', async () => {
-      const result = await orderDetectionService.extractProductInfo(null, { roomId: 'test' });
+  describe('Error Handling in extractProductInfo', () => {
+    test('[TC2023-InvalidMessageHandling] Should handle invalid message input (null, undefined)', async () => {
+      // Description: Test handling of various invalid message input types
+      // Input: Null/undefined message with valid stream data
+      // Expected: System returns default result with quantity 1 without throwing error
 
-      expect(result).toBeDefined();
-      expect(result.quantity).toBe(1);
+      const invalidMessages = [null, undefined];
+
+      for (const message of invalidMessages) {
+        const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
+
+        expect(result).toBeDefined();
+        expect(result.quantity).toBe(1);
+        expect(result.size).toBeNull();
+        expect(result.color).toBeNull();
+        expect(result.productId).toBeNull();
+      }
     });
 
-    test('should handle undefined message', async () => {
-      const result = await orderDetectionService.extractProductInfo(undefined, { roomId: 'test' });
+    test('[TC2024-InvalidStreamDataHandling] Should handle invalid streamData (null, malformed)', async () => {
+      // Description: Test handling of null or malformed stream data
+      // Input: Valid message with null/malformed stream data
+      // Expected: System processes message and extracts size correctly without errors
 
-      expect(result).toBeDefined();
-      expect(result.quantity).toBe(1);
-    });
-
-    test('should handle null streamData', async () => {
       const message = 'Chốt size 42';
-      const result = await orderDetectionService.extractProductInfo(message, null);
 
-      expect(result).toBeDefined();
-      expect(result.size).toBe('42');
-    });
+      // Test with null
+      const resultNull = await orderDetectionService.extractProductInfo(message, null);
+      expect(resultNull).toBeDefined();
+      expect(resultNull.size).toBe('42');
 
-    test('should handle malformed streamData', async () => {
-      const message = 'Chốt size 42';
-      const result = await orderDetectionService.extractProductInfo(message, {
+      // Test with malformed
+      const resultMalformed = await orderDetectionService.extractProductInfo(message, {
         featuredProducts: 'invalid',
       });
-
-      expect(result).toBeDefined();
-      expect(result.size).toBe('42');
+      expect(resultMalformed).toBeDefined();
+      expect(resultMalformed.size).toBe('42');
     });
   });
 
   // ========== COMBINED PATTERNS ==========
 
   describe('Combined Pattern Extraction', () => {
-    test('should extract size and color together', async () => {
+    test('[TC2027-SizeColorCombination] Should extract size and color together', async () => {
+      // Description: Test extraction of size and color in the same message
+      // Input: Message containing both size and color information
+      // Expected: System extracts both size and color correctly
+
       const message = 'size 42 màu đỏ';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
@@ -400,7 +510,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       expect(result.color).toBe('đỏ');
     });
 
-    test('should extract quantity and size together', async () => {
+    test('[TC2028-QuantitySizeCombination] Should extract quantity and size together', async () => {
+      // Description: Test extraction of quantity and size in the same message
+      // Input: Message containing both quantity and size information
+      // Expected: System extracts both quantity and size correctly
+
       const message = '3 đôi size 42';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
@@ -408,7 +522,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       expect(result.size).toBe('42');
     });
 
-    test('should extract all product info together', async () => {
+    test('[TC2029-AllProductInfoCombination] Should extract all product info together', async () => {
+      // Description: Test extraction of all product information in one message
+      // Input: Message containing quantity, size, and color information
+      // Expected: System extracts quantity, size, and color correctly
+
       const message = 'chốt 2 đôi size 42 màu đỏ';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 
@@ -421,21 +539,33 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
   // ========== EDGE CASES ==========
 
   describe('Edge Cases', () => {
-    test('should handle empty message', async () => {
+    test('[TC2030-EmptyMessageHandling] Should handle empty message gracefully', async () => {
+      // Description: Test handling of empty string message
+      // Input: Empty string message with valid stream data
+      // Expected: System returns default result with quantity 1
+
       const result = await orderDetectionService.extractProductInfo('', { roomId: 'test' });
 
       expect(result).toBeDefined();
       expect(result.quantity).toBe(1);
     });
 
-    test('should handle whitespace only message', async () => {
+    test('[TC2031-WhitespaceMessageHandling] Should handle whitespace only message gracefully', async () => {
+      // Description: Test handling of message containing only whitespace
+      // Input: Message with only whitespace characters
+      // Expected: System returns default result with quantity 1
+
       const result = await orderDetectionService.extractProductInfo('   ', { roomId: 'test' });
 
       expect(result).toBeDefined();
       expect(result.quantity).toBe(1);
     });
 
-    test('should handle very long message', async () => {
+    test('[TC2032-LongMessageHandling] Should handle very long message', async () => {
+      // Description: Test handling of very long messages with repeated content
+      // Input: Long message with repeated product information
+      // Expected: System processes long message and extracts size and color correctly
+
       const longMessage = 'chốt đơn size 42 màu đỏ 0912345678 '.repeat(10);
       const result = await orderDetectionService.extractProductInfo(longMessage, {
         roomId: 'test',
@@ -446,7 +576,11 @@ describe('Order Detection - Product Information Extraction (Unit Tests)', () => 
       expect(result.color).toBe('đỏ');
     });
 
-    test('should handle special characters', async () => {
+    test('[TC2033-SpecialCharactersHandling] Should handle special characters gracefully', async () => {
+      // Description: Test handling of messages with special characters and punctuation
+      // Input: Message containing special characters and punctuation marks
+      // Expected: System processes message and extracts size and color correctly
+
       const message = 'chốt!!! size 42 màu đỏ???';
       const result = await orderDetectionService.extractProductInfo(message, { roomId: 'test' });
 

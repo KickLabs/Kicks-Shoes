@@ -384,6 +384,12 @@ class EmailService {
         throw new Error('Missing required email parameters');
       }
 
+      // Skip email sending in test environment
+      if (process.env.NODE_ENV === 'test') {
+        logger.info('Email skipped (test environment):', { to, subject });
+        return;
+      }
+
       // Get AccessToken from RefreshToken
       const myAccessTokenObject = await myOAuth2Client.getAccessToken();
       const myAccessToken = myAccessTokenObject?.token;

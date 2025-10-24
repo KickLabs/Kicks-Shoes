@@ -91,38 +91,56 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       'chuyển khoản',
     ];
 
-    test.each(orderKeywords)('should detect order keyword: %s', async keyword => {
-      const message = `${keyword} size 42 0912345678`;
-      const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: createMockObjectId() },
-        { roomId: 'test-room' },
-        { _id: 'user123', username: 'testuser' }
-      );
+    test.each(orderKeywords)(
+      '[TC1001-OrderKeywordDetection] Should detect order keyword: %s',
+      async keyword => {
+        // Description: Test detection of order keywords in chat messages
+        // Input: Message containing order keyword + size + phone number
+        // Expected: System recognizes it as order and extracts keyword correctly
 
-      expect(result).not.toBeNull();
-      expect(result.isOrder).toBe(true);
-      expect(result.data.detectionData.detectedKeywords).toContain(keyword.toLowerCase());
-    });
+        const message = `${keyword} size 42 0912345678`;
+        const result = await orderDetectionService.analyzeMessage(
+          { content: message, _id: createMockObjectId() },
+          { roomId: 'test-room' },
+          { _id: 'user123', username: 'testuser' }
+        );
+
+        expect(result).not.toBeNull();
+        expect(result.isOrder).toBe(true);
+        expect(result.data.detectionData.detectedKeywords).toContain(keyword.toLowerCase());
+      }
+    );
   });
 
   describe('Phone Number Detection', () => {
     const phonePrefixes = ['03', '05', '07', '08', '09'];
 
-    test.each(phonePrefixes)('should detect phone with prefix %s', async prefix => {
-      const phone = `${prefix}12345678`;
-      const message = `Chốt đơn size 42 ${phone}`;
+    test.each(phonePrefixes)(
+      '[TC1002-PhoneNumberDetection] Should detect valid phone number with prefix %s',
+      async prefix => {
+        // Description: Test detection of valid Vietnamese phone numbers with different prefixes
+        // Input: Message containing order keyword + size + valid phone number with prefix %s
+        // Expected: System extracts phone number correctly and recognizes it as valid
 
-      const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: createMockObjectId() },
-        { roomId: 'test-room' },
-        { _id: 'user123', username: 'testuser' }
-      );
+        const phone = `${prefix}12345678`;
+        const message = `Chốt đơn size 42 ${phone}`;
 
-      expect(result).not.toBeNull();
-      expect(result.data.customerInfo.phoneNumber).toBe(phone);
-    });
+        const result = await orderDetectionService.analyzeMessage(
+          { content: message, _id: createMockObjectId() },
+          { roomId: 'test-room' },
+          { _id: 'user123', username: 'testuser' }
+        );
 
-    test('should reject invalid phone prefix', async () => {
+        expect(result).not.toBeNull();
+        expect(result.data.customerInfo.phoneNumber).toBe(phone);
+      }
+    );
+
+    test('[TC1003-PhoneNumberValidation] Should reject invalid phone number prefix', async () => {
+      // Description: Test rejection of invalid phone number prefixes
+      // Input: Message with order keyword + size + invalid phone prefix (02)
+      // Expected: System returns null as phone number is invalid
+
       const message = 'Chốt đơn size 42 0212345678'; // Invalid prefix
 
       const result = await orderDetectionService.analyzeMessage(
@@ -134,7 +152,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       expect(result).toBeNull();
     });
 
-    test('should handle multiple phone numbers', async () => {
+    test('[TC1004-MultiplePhoneNumbers] Should handle multiple phone numbers in message', async () => {
+      // Description: Test detection and extraction of multiple phone numbers in a single message
+      // Input: Message containing order keyword + multiple phone numbers + size
+      // Expected: System extracts all valid phone numbers into an array
+
       const message = 'Chốt đơn 0912345678 hoặc 0987654321 size 42';
 
       const result = await orderDetectionService.analyzeMessage(
@@ -149,7 +171,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
   });
 
   describe('Confidence Calculation', () => {
-    test('should return null for confidence < 0.3', async () => {
+    test('[TC1005-ConfidenceThreshold] Should return null for confidence below threshold', async () => {
+      // Description: Test that messages without order keywords are rejected due to low confidence
+      // Input: Message with phone number but no order keywords
+      // Expected: System returns null as confidence is below 0.3 threshold
+
       const message = 'hello 0912345678'; // No order keywords
 
       const result = await orderDetectionService.analyzeMessage(
@@ -161,7 +187,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       expect(result).toBeNull();
     });
 
-    test('should cap confidence at 1.0', async () => {
+    test('[TC1006-ConfidenceCap] Should cap confidence at maximum value of 1.0', async () => {
+      // Description: Test that confidence score is capped at 1.0 even with multiple keywords
+      // Input: Message with multiple order keywords, phone number, and size
+      // Expected: System caps confidence at 1.0 maximum
+
       const message =
         'chốt đơn đặt hàng mua ngay ship giao hàng thanh toán COD chuyển khoản 0912345678 size 42';
 
@@ -175,7 +205,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       expect(result.confidence).toBeLessThanOrEqual(1.0);
     });
 
-    test('should apply short message penalty', async () => {
+    test('[TC1007-ShortMessagePenalty] Should apply penalty for short messages', async () => {
+      // Description: Test that short messages receive confidence penalty compared to longer messages
+      // Input: Short message vs longer message with same order intent
+      // Expected: Short message has lower confidence or is null compared to longer message
+
       const shortMessage = 'ok 0912345678';
       const longMessage = 'chốt đơn size 42 0912345678';
 
@@ -197,7 +231,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       }
     });
 
-    test('should boost confidence for product info', async () => {
+    test('[TC1008-ProductInfoBoost] Should boost confidence for messages with product information', async () => {
+      // Description: Test that messages with product details receive higher confidence scores
+      // Input: Message with product info vs message without product info
+      // Expected: Message with product info has higher confidence score
+
       const withProductInfo = 'Chốt đơn size 42 màu đỏ 0912345678';
       const withoutProductInfo = 'Chốt đơn 0912345678';
 
@@ -220,7 +258,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
   // ========== FEATURED PRODUCTS MATCHING (Lines 390-405) ==========
 
   describe('Featured Products Matching', () => {
-    test('should match featured product by name', async () => {
+    test('[TC1009-FeaturedProductMatch] Should match featured product by product reference', async () => {
+      // Description: Test matching of featured products when user references 'this product'
+      // Input: Message with product reference + size + phone number + stream with featured product
+      // Expected: System matches the featured product and extracts product ID
+
       // Mock product data
       const mockProductId = createMockObjectId('product123');
       const mockProduct = {
@@ -253,7 +295,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       expect(result.data.productInfo.productId.toString()).toBe(mockProductId.toString());
     });
 
-    test('should match featured product by brand', async () => {
+    test('[TC1010-FeaturedProductBrandMatch] Should match featured product by brand reference', async () => {
+      // Description: Test matching of featured products when user references brand
+      // Input: Message with brand reference + size + phone number + stream with featured product
+      // Expected: System matches the featured product by brand and extracts product ID
+
       const mockProductId = createMockObjectId('product456');
       const mockProduct = {
         _id: mockProductId,
@@ -285,7 +331,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       expect(result.data.productInfo.productId.toString()).toBe(mockProductId.toString());
     });
 
-    test('should match with product reference keywords', async () => {
+    test('[TC1011-ProductReferenceKeywords] Should match with product reference keywords', async () => {
+      // Description: Test matching of featured products using product reference keywords
+      // Input: Message with product reference keywords + size + phone number + stream with featured product
+      // Expected: System matches the featured product using reference keywords and extracts product ID
+
       const mockProductId = createMockObjectId('product789');
       const mockProduct = {
         _id: mockProductId,
@@ -317,7 +367,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       expect(result.data.productInfo.productId.toString()).toBe(mockProductId.toString());
     });
 
-    test('should handle no featured products', async () => {
+    test('[TC1012-NoFeaturedProducts] Should handle messages when no featured products are available', async () => {
+      // Description: Test order detection when stream has no featured products
+      // Input: Message with product reference + size + phone number + empty featured products
+      // Expected: System still recognizes order but without specific product matching
+
       const message = 'Chốt sản phẩm này size 42 0912345678';
       const streamData = {
         roomId: 'test-room',
@@ -338,7 +392,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
   // ========== DATABASE OPERATIONS (Lines 427-428, 439-453, 464) ==========
 
   describe('Database Operations', () => {
-    test('should save potential order successfully', async () => {
+    test('[TC1013-SavePotentialOrder] Should save potential order successfully to database', async () => {
+      // Description: Test successful saving of detected order to database
+      // Input: Valid order analysis result with stream ID and user ID
+      // Expected: Order is saved with correct stream ID, status, and save method is called
+
       const message = 'Chốt đơn size 42 0912345678';
       const streamId = createMockObjectId('stream123');
       const userId = createMockObjectId('user123');
@@ -358,7 +416,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       expect(savedOrder.save).toHaveBeenCalled();
     });
 
-    test('should get pending orders for stream', async () => {
+    test('[TC1014-GetPendingOrders] Should retrieve pending orders for a specific stream', async () => {
+      // Description: Test retrieval of pending orders for a specific stream
+      // Input: Stream ID with mock pending orders
+      // Expected: System returns array of pending orders for the stream
+
       const streamId = createMockObjectId('stream456');
       const mockOrders = [
         { _id: createMockObjectId(), status: 'pending' },
@@ -377,7 +439,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       );
     });
 
-    test('should update order status successfully', async () => {
+    test('[TC1015-UpdateOrderStatus] Should update order status successfully', async () => {
+      // Description: Test successful update of order status by host
+      // Input: Order ID, new status, host ID, and notes
+      // Expected: Order status is updated, host actions are recorded, and save method is called
+
       const orderId = createMockObjectId('order123');
       const hostId = createMockObjectId('host456');
 
@@ -406,7 +472,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       expect(mockOrder.save).toHaveBeenCalled();
     });
 
-    test('should handle invalid order ID in updateOrderStatus', async () => {
+    test('[TC1016-InvalidOrderUpdate] Should handle invalid order ID in updateOrderStatus', async () => {
+      // Description: Test error handling when updating status of non-existent order
+      // Input: Invalid order ID, status, and host ID
+      // Expected: System throws 'Order not found' error
+
       const invalidOrderId = 'invalid-id-12345';
       const hostId = createMockObjectId('host789');
 
@@ -418,7 +488,11 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       ).rejects.toThrow('Order not found');
     });
 
-    test('should handle getOrdersForHost', async () => {
+    test('[TC1017-GetOrdersForHost] Should retrieve orders for a specific host', async () => {
+      // Description: Test retrieval of orders associated with a specific host
+      // Input: Host ID with mock orders
+      // Expected: System returns array of orders for the host with default limit of 50
+
       const hostId = createMockObjectId('host999');
       const mockOrders = [
         {
@@ -443,28 +517,30 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
 
   // ========== ERROR HANDLING ==========
 
-  describe('Error Handling', () => {
-    test('should handle null message content', async () => {
-      const result = await orderDetectionService.analyzeMessage(
-        { content: null, _id: createMockObjectId() },
-        { roomId: 'test-room' },
-        { _id: 'user123', username: 'testuser' }
-      );
+  describe('Error Handling in analyzeMessage', () => {
+    test('[TC1018-InvalidMessageContent] Should handle invalid message content (null, undefined, empty)', async () => {
+      // Description: Test handling of various invalid message content types in analyzeMessage
+      // Input: Message object with null/undefined/empty content
+      // Expected: System returns null without throwing error
 
-      expect(result).toBeNull();
+      const invalidContents = [null, undefined, ''];
+
+      for (const content of invalidContents) {
+        const result = await orderDetectionService.analyzeMessage(
+          { content, _id: createMockObjectId() },
+          { roomId: 'test-room' },
+          { _id: 'user123', username: 'testuser' }
+        );
+
+        expect(result).toBeNull();
+      }
     });
 
-    test('should handle undefined message content', async () => {
-      const result = await orderDetectionService.analyzeMessage(
-        { content: undefined, _id: createMockObjectId() },
-        { roomId: 'test-room' },
-        { _id: 'user123', username: 'testuser' }
-      );
+    test('[TC1019-NullUserData] Should handle null user data gracefully', async () => {
+      // Description: Test handling of null user data in message analysis
+      // Input: Valid message with null user data
+      // Expected: System returns null or throws error gracefully
 
-      expect(result).toBeNull();
-    });
-
-    test('should handle null user data', async () => {
       try {
         const result = await orderDetectionService.analyzeMessage(
           { content: 'Chốt đơn 0912345678', _id: createMockObjectId() },
@@ -479,14 +555,22 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       }
     });
 
-    test('should handle empty message content', async () => {
-      const result = await orderDetectionService.analyzeMessage(
-        { content: '', _id: createMockObjectId() },
-        { roomId: 'test-room' },
-        { _id: 'user123', username: 'testuser' }
-      );
+    test('[TC1020-NonStringMessageContent] Should handle non-string message content', async () => {
+      // Description: Test handling of non-string message content types
+      // Input: Message object with number/object/array content
+      // Expected: System returns null without throwing error
 
-      expect(result).toBeNull();
+      const nonStringContents = [123, { text: 'message' }, ['message']];
+
+      for (const content of nonStringContents) {
+        const result = await orderDetectionService.analyzeMessage(
+          { content, _id: createMockObjectId() },
+          { roomId: 'test-room' },
+          { _id: 'user123', username: 'testuser' }
+        );
+
+        expect(result).toBeNull();
+      }
     });
   });
 
@@ -497,8 +581,12 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
     const paymentKeywords = ['cod', 'chuyển khoản'];
 
     test.each(shippingKeywords)(
-      'should boost confidence for shipping keyword: %s',
+      '[TC1022-ShippingKeywordBoost] Should boost confidence for shipping keyword: %s',
       async keyword => {
+        // Description: Test confidence boost for shipping-related keywords
+        // Input: Message with shipping keyword + phone number
+        // Expected: System recognizes order with confidence > 0.4
+
         const message = `mua ${keyword} 0912345678`;
 
         const result = await orderDetectionService.analyzeMessage(
@@ -512,17 +600,24 @@ describe('Order Detection - Message Analysis (Unit Tests)', () => {
       }
     );
 
-    test.each(paymentKeywords)('should boost confidence for payment keyword: %s', async keyword => {
-      const message = `mua ${keyword} 0912345678`;
+    test.each(paymentKeywords)(
+      '[TC1023-PaymentKeywordBoost] Should boost confidence for payment keyword: %s',
+      async keyword => {
+        // Description: Test confidence boost for payment-related keywords
+        // Input: Message with payment keyword + phone number
+        // Expected: System recognizes order with confidence > 0.4
 
-      const result = await orderDetectionService.analyzeMessage(
-        { content: message, _id: createMockObjectId() },
-        { roomId: 'test-room' },
-        { _id: 'user123', username: 'testuser' }
-      );
+        const message = `mua ${keyword} 0912345678`;
 
-      expect(result).not.toBeNull();
-      expect(result.confidence).toBeGreaterThan(0.4);
-    });
+        const result = await orderDetectionService.analyzeMessage(
+          { content: message, _id: createMockObjectId() },
+          { roomId: 'test-room' },
+          { _id: 'user123', username: 'testuser' }
+        );
+
+        expect(result).not.toBeNull();
+        expect(result.confidence).toBeGreaterThan(0.4);
+      }
+    );
   });
 });

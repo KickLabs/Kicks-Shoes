@@ -370,53 +370,54 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
                 logger.error('[PO] failed to send out-of-stock email', { error: mailErr.message });
               }
 
-              // Keep status as confirmed; do not create order
-              return;
+              // Keep status as confirmed; do not create order - skip to sending response
+              // No early return here - let the function continue to send response
+            } else {
+              // Product is in stock - create order
+              logger.info('[PO] creating real order', {
+                userId: String(user._id),
+                productId: String(product._id),
+                quantity,
+                price,
+                size,
+                color,
+              });
+              const created = await OrderService.createOrder({
+                user: user._id,
+                products: [{ id: product._id, quantity, price, size, color }],
+                totalAmount: price * quantity,
+                paymentMethod: 'cash_on_delivery',
+                shippingAddress: user.address || 'COD - address from profile',
+                notes: `Auto-created from potential order ${updatedOrder._id}, Order in livestream chat`,
+                status: 'pending',
+                paymentStatus: 'pending',
+              });
+
+              // Link back to potential order
+              await PotentialOrder.findByIdAndUpdate(updatedOrder._id, {
+                $set: { convertedOrderId: created._id },
+              });
+              logger.info('[PO] real order created and linked', {
+                potentialOrderId: String(updatedOrder._id),
+                orderId: String(created._id),
+              });
+
+              // Send success email
+              try {
+                await EmailService.sendTemplatedEmail(user.email, 'LIVESTREAM_ORDER_SUCCESS', {
+                  name: user.fullName || user.email,
+                  orderNumber: created._id.toString(),
+                  paymentMethod: 'Cash on Delivery (COD)',
+                });
+              } catch (mailErr2) {
+                logger.error('[PO] failed to send livestream order success email', {
+                  error: mailErr2.message,
+                });
+              }
             }
           } catch (invErr) {
             logger.error('[PO] inventory check failed, proceeding without stock guard', {
               error: invErr.message,
-            });
-          }
-
-          logger.info('[PO] creating real order', {
-            userId: String(user._id),
-            productId: String(product._id),
-            quantity,
-            price,
-            size,
-            color,
-          });
-          const created = await OrderService.createOrder({
-            user: user._id,
-            products: [{ id: product._id, quantity, price, size, color }],
-            totalAmount: price * quantity,
-            paymentMethod: 'cash_on_delivery',
-            shippingAddress: user.address || 'COD - address from profile',
-            notes: `Auto-created from potential order ${updatedOrder._id}, Order in livestream chat`,
-            status: 'pending',
-            paymentStatus: 'pending',
-          });
-
-          // Link back to potential order
-          await PotentialOrder.findByIdAndUpdate(updatedOrder._id, {
-            $set: { convertedOrderId: created._id },
-          });
-          logger.info('[PO] real order created and linked', {
-            potentialOrderId: String(updatedOrder._id),
-            orderId: String(created._id),
-          });
-
-          // Send success email
-          try {
-            await EmailService.sendTemplatedEmail(user.email, 'LIVESTREAM_ORDER_SUCCESS', {
-              name: user.fullName || user.email,
-              orderNumber: created._id.toString(),
-              paymentMethod: 'Cash on Delivery (COD)',
-            });
-          } catch (mailErr2) {
-            logger.error('[PO] failed to send livestream order success email', {
-              error: mailErr2.message,
             });
           }
         }

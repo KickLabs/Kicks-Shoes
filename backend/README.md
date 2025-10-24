@@ -145,14 +145,78 @@ Tests for `updateOrderStatus()` with status = "confirmed":
 - Error handling and rollback scenarios
 - Authorization and security checks
 
-# Suite 6: Livestream Socket Handlers (27 tests)
+# Suite 6: Edge Cases & Error Handling (15 tests)
 
-Tests for Socket.IO integration:
+Tests for error scenarios and edge cases:
 
-- Join/leave events
-- WebRTC signaling
-- Message broadcasting
-- Error handling
+- Invalid input handling
+- Database errors
+- Race conditions
+- Network failures
+- Validation errors
+
+# Suite 7: Integration & End-to-End Tests (10 tests)
+
+**WHY Suite 7 is CRITICAL:**
+
+Integration tests verify that ALL components work together correctly in real-world scenarios. While Suites 1-6 test individual units, Suite 7 ensures the entire system functions as a cohesive application.
+
+**What Suite 7 Tests:**
+
+### Complete Workflows (TC-701)
+
+- **Full order flow**: Chat → AI Detection → Potential Order → Confirmation → Real Order
+- Verifies all services integrate properly
+- Tests database transactions across multiple collections
+
+### Concurrent Operations (TC-702)
+
+- Multiple users ordering simultaneously
+- Race condition handling
+- Inventory management under load
+- Data consistency with concurrent writes
+
+### Real-time Communication (TC-703, TC-704)
+
+- Socket.IO message broadcasting
+- WebRTC signaling integration
+- Real-time order notifications
+- Connection management
+
+### Error Recovery (TC-705, TC-706)
+
+- Out-of-stock handling in complete flow
+- Transaction rollback on failures
+- Graceful degradation
+- System resilience
+
+### Performance & Scale (TC-707)
+
+- High message volume handling
+- Response time under load
+- Memory and resource usage
+- Bottleneck identification
+
+### Security & Authorization (TC-708, TC-709)
+
+- Session management across services
+- Role-based access control in workflows
+- Authentication persistence
+- Authorization enforcement
+
+### Data Integrity (TC-710)
+
+- Referential integrity between entities
+- Consistency across services
+- Foreign key relationships
+- Cascade operations
+
+**Why NOT just unit tests:**
+
+- Unit tests: "Does this function work?"
+- Integration tests: "Does the SYSTEM work?"
+- Real bugs often occur at integration points
+- Tests user journeys, not just code units
 
 ## Writing New Tests
 

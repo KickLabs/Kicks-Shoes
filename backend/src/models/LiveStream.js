@@ -64,6 +64,14 @@ const liveStreamSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Active viewers
+    viewers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+
     // Stream settings
     settings: {
       maxViewers: {

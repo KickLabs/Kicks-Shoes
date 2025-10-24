@@ -94,7 +94,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-501 | Verify confirm potential order tạo real order thành công', () => {
+  describe('TC5001 | Verify confirm potential order tạo real order thành công', () => {
     test('should create real order when confirming potential order', async () => {
       // Given: PotentialOrder với status = "pending", Product có inventory, User exists, Email service working
 
@@ -127,7 +127,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-502 | Verify flash sale price được apply khi confirm', () => {
+  describe('TC5002 | Verify flash sale price được apply khi confirm', () => {
     test('should apply flash sale price when confirming order', async () => {
       // Given: PotentialOrder với product trong flash sale, Flash sale active
       const flashSaleProduct = {
@@ -164,7 +164,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-503 | Verify quantity > 1 tạo order với đúng quantity', () => {
+  describe('TC5003 | Verify quantity > 1 tạo order với đúng quantity', () => {
     test('should create order with correct quantity when quantity > 1', async () => {
       // Given: PotentialOrder với quantity = 3
 
@@ -194,7 +194,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-504 | Verify shipping address từ customer info được sử dụng', () => {
+  describe('TC5004 | Verify shipping address từ customer info được sử dụng', () => {
     test('should use shipping address from customer info', async () => {
       // Given: PotentialOrder có customerInfo.address
 
@@ -250,7 +250,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-505 | Verify product out of stock → không tạo order, send email', () => {
+  describe('TC5005 | Verify product out of stock → không tạo order, send email', () => {
     test('should not create order and send out-of-stock email when product is out of stock', async () => {
       // Given: PotentialOrder valid, Product inventory = 0
       const outOfStockProduct = {
@@ -287,7 +287,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-506 | Verify variant out of stock (specific size)', () => {
+  describe('TC5006 | Verify variant out of stock (specific size)', () => {
     test('should not create order when specific size is out of stock', async () => {
       // Given: Product có inventory cho size 40, 42, PotentialOrder yêu cầu size 41 (out of stock)
       const sizeSpecificProduct = {
@@ -332,7 +332,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-507 | Verify price = 0 → skip auto-create order', () => {
+  describe('TC5007 | Verify price = 0 → skip auto-create order', () => {
     test('should skip auto-create order when price is 0', async () => {
       // Given: PotentialOrder linked với product price = 0
       const zeroPriceProduct = {
@@ -353,7 +353,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-508 | Verify user không tồn tại → skip order creation', () => {
+  describe('TC5008 | Verify user không tồn tại → skip order creation', () => {
     test('should skip order creation when user does not exist', async () => {
       // Given: PotentialOrder.customerInfo.userId invalid
       const user = null; // User not found
@@ -367,7 +367,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-509 | Verify product không tồn tại → cannot create order', () => {
+  describe('TC5009 | Verify product không tồn tại → cannot create order', () => {
     test('should not create order when product does not exist', async () => {
       // Given: PotentialOrder với productId null hoặc invalid
       const product = null; // Product not found
@@ -381,7 +381,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-510 | Verify email failure không block order creation', () => {
+  describe('TC5010 | Verify email failure không block order creation', () => {
     test('should still create order when email sending fails', async () => {
       // Given: Email service throws error
 
@@ -404,7 +404,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-511 | Verify inventory check failure → graceful handling', () => {
+  describe('TC5011 | Verify inventory check failure → graceful handling', () => {
     test('should handle inventory check failure gracefully', async () => {
       // Given: checkInventory() throws exception
       const failingProduct = {
@@ -428,7 +428,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-512 | Verify OrderService.createOrder() failure rollback', () => {
+  describe('TC5012 | Verify OrderService.createOrder() failure rollback', () => {
     test('should rollback when OrderService.createOrder() fails', async () => {
       // Given: Order creation fails mid-process
       const orderCreationError = new Error('Order creation failed');
@@ -447,7 +447,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-513 | Verify confirm multiple orders đồng thời không bị conflict', () => {
+  describe('TC5013 | Verify confirm multiple orders đồng thời không bị conflict', () => {
     test('should handle multiple concurrent order confirmations without conflicts', async () => {
       // Given: 3 hosts confirm 3 different orders cùng lúc
       const concurrentOrders = [
@@ -472,7 +472,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-514 | Verify không thể confirm order của stream khác', () => {
+  describe('TC5014 | Verify không thể confirm order của stream khác', () => {
     test('should not allow confirming order from different host stream', async () => {
       // Given: PotentialOrder thuộc stream của host khác
       const differentHostOrder = {
@@ -495,7 +495,7 @@ describe('Order in Livestream — Test Suite 5: Order Auto-Creation', () => {
     });
   });
 
-  describe('TC-515 | Verify notes từ host được lưu vào Order', () => {
+  describe('TC5015 | Verify notes từ host được lưu vào Order', () => {
     test('should save host notes to Order when confirming', async () => {
       // Given: Host adds notes khi confirm
       const orderData = {

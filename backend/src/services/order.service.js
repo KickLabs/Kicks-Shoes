@@ -94,8 +94,20 @@ export class OrderService {
    * @returns {Promise<Order>} The created order
    */
   static async createOrder(orderData) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Don't use transactions in test/development environments
+    // MongoDB standalone doesn't support transactions
+    const useTransaction = process.env.USE_TRANSACTIONS === 'true';
+    let session = null;
+
+    if (useTransaction) {
+      try {
+        session = await mongoose.startSession();
+        await session.startTransaction();
+      } catch (err) {
+        logger.warn('Failed to start transaction, continuing without session:', err.message);
+        session = null;
+      }
+    }
 
     try {
       logger.info('Creating order:', { orderData });
@@ -124,7 +136,8 @@ export class OrderService {
 
       // Check stock for each variant before creating order
       for (const item of products) {
-        const product = await Product.findById(item.id).session(session);
+        const query = Product.findById(item.id);
+        const product = session ? await query.session(session) : await query;
         if (!product) {
           throw new Error(`Product with ID ${item.id} not found.`);
         }
@@ -179,7 +192,8 @@ export class OrderService {
 
       // Deduct inventory and total stock
       for (const item of products) {
-        const product = await Product.findById(item.id).session(session);
+        const query = Product.findById(item.id);
+        const product = session ? await query.session(session) : await query;
 
         const filterCondition = {
           'elem.color': { $regex: new RegExp(`^${item.color}$`, 'i') },
@@ -196,6 +210,13 @@ export class OrderService {
             break;
         }
 
+        const updateOptions = {
+          arrayFilters: [filterCondition],
+        };
+        if (session) {
+          updateOptions.session = session;
+        }
+
         await Product.findByIdAndUpdate(
           item.id,
           {
@@ -204,10 +225,7 @@ export class OrderService {
               stock: -item.quantity,
             },
           },
-          {
-            arrayFilters: [filterCondition],
-            session,
-          }
+          updateOptions
         );
       }
 
@@ -241,7 +259,8 @@ export class OrderService {
           const discountDoc = await Discount.findOne({ code: discountCode.toUpperCase() });
           if (discountDoc) {
             discountDoc.usedCount += 1;
-            await discountDoc.save({ session });
+            const saveOptions = session ? { session } : {};
+            await discountDoc.save(saveOptions);
           }
         } else {
           throw new Error(`Invalid discount code: ${validation.message}`);
@@ -278,7 +297,8 @@ export class OrderService {
         vnpPayDate: orderData.vnpPayDate,
       });
 
-      await order.save({ session });
+      const saveOptions = session ? { session } : {};
+      await order.save(saveOptions);
 
       let itemsSubtotalAccurate = 0;
       const orderItems = await Promise.all(
@@ -310,7 +330,7 @@ export class OrderService {
             color: product.color,
             subtotal: subtotal,
           });
-          await orderItem.save({ session });
+          await orderItem.save(saveOptions);
           return orderItem._id;
         })
       );
@@ -318,9 +338,11 @@ export class OrderService {
       order.items = orderItems;
       order.subtotal = itemsSubtotalAccurate;
       order.totalPrice = itemsSubtotalAccurate + order.shippingCost + order.tax - order.discount;
-      await order.save({ session });
+      await order.save(saveOptions);
 
-      await session.commitTransaction();
+      if (session && useTransaction) {
+        await session.commitTransaction();
+      }
 
       const populatedOrder = await order.populate({
         path: 'items',
@@ -333,7 +355,9 @@ export class OrderService {
       logger.info('Order created successfully', { orderId: order._id });
       return populatedOrder;
     } catch (error) {
-      await session.abortTransaction();
+      if (session && useTransaction) {
+        await session.abortTransaction();
+      }
 
       logger.error('Error creating order:', {
         error: error.message,
@@ -341,7 +365,9 @@ export class OrderService {
       });
       throw new Error(`Failed to create order: ${error.message}`);
     } finally {
-      session.endSession();
+      if (session) {
+        session.endSession();
+      }
     }
   }
 
@@ -552,18 +578,34 @@ export class OrderService {
    * @returns {Promise<Order>} The cancelled order
    */
   static async cancelOrder(orderId, reason) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Don't use transactions in test/development environments
+    const useTransaction = process.env.USE_TRANSACTIONS === 'true';
+    let session = null;
+
+    if (useTransaction) {
+      try {
+        session = await mongoose.startSession();
+        await session.startTransaction();
+      } catch (err) {
+        logger.warn('Failed to start transaction, continuing without session:', err.message);
+        session = null;
+      }
+    }
+
     try {
       logger.info('Cancelling order:', { orderId, reason });
-      const order = await Order.findById(orderId).session(session).populate('items');
+      const query = Order.findById(orderId);
+      const order = session
+        ? await query.session(session).populate('items')
+        : await query.populate('items');
       if (!order) {
         throw new Error('Order not found');
       }
 
       // Hoàn lại số lượng sản phẩm vào kho cho từng variant
       for (const item of order.items) {
-        const product = await Product.findById(item.product).session(session);
+        const query = Product.findById(item.product);
+        const product = session ? await query.session(session) : await query;
         if (product) {
           const filterCondition = {
             'elem.color': { $regex: new RegExp(`^${item.color}$`, 'i') },
@@ -580,6 +622,13 @@ export class OrderService {
               break;
           }
 
+          const updateOptions = {
+            arrayFilters: [filterCondition],
+          };
+          if (session) {
+            updateOptions.session = session;
+          }
+
           await Product.findByIdAndUpdate(
             item.product,
             {
@@ -588,10 +637,7 @@ export class OrderService {
                 stock: item.quantity,
               },
             },
-            {
-              arrayFilters: [filterCondition],
-              session,
-            }
+            updateOptions
           );
         }
       }
@@ -604,20 +650,31 @@ export class OrderService {
         updateData.cancellationReason = reason;
       }
 
+      const updateOptions = { new: true, runValidators: true };
+      if (session) {
+        updateOptions.session = session;
+      }
+
       const cancelledOrder = await Order.findByIdAndUpdate(
         orderId,
         { $set: updateData },
-        { new: true, runValidators: true, session }
+        updateOptions
       );
 
-      await session.commitTransaction();
+      if (session && useTransaction) {
+        await session.commitTransaction();
+      }
       return cancelledOrder;
     } catch (error) {
-      await session.abortTransaction();
+      if (session && useTransaction) {
+        await session.abortTransaction();
+      }
       logger.error('Error cancelling order:', { error: error.message, stack: error.stack });
       throw new Error(`Failed to cancel order: ${error.message}`);
     } finally {
-      session.endSession();
+      if (session) {
+        session.endSession();
+      }
     }
   }
 

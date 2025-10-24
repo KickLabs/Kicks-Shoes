@@ -1,27 +1,202 @@
-2025-10-21 17:00 | Generated tests for "Test Suite 1: Message Analysis & Order Detection" (15 cases)
+# AI Prompt Log — Unit Testing Challenge
 
-### Test Suite 2: Product Information Extraction
+Team Name: Kicks Teams
+Date & Time: (Start – End)  
+AI Model Used (Only One Allowed): GPT-5  
+Environment: Node.js v**, Jest v**, OS: \_\_
 
-- Jest test cases generated in `tests/product-information-extraction.test.js`
-- Mock service created/updated in `tests/mocks/productService.mock.js`
-- Helpers reviewed in `tests/_helpers/testUtils.js` (no changes required)
+## Stage 3 — Test Code Generation (75’)
 
-2025-10-22 23:00 | Generated tests for "Test Suite 4: Potential Order Management" (10 cases)
+### Prompt
 
-### Test Suite 4: Potential Order Management
+"Read the Test Case Matrix file and generate runnable Jest test code for **Test Suite 1: Message Analysis & Order Detection** of the _Order in Livestream_ feature.
 
-- Jest test cases generated in `tests/potential-order-management.test.js`
-- Test cases: TC-401 to TC-410 (CRUD operations, filtering, authorization, pagination)
-- Helpers updated in `tests/_helpers/testUtils.js` (added makePotentialOrder, converted to CommonJS)
-- Focus: potentialOrderController operations with real MongoDB integration
+## Inputs
 
-2025-01-21 15:45 | Generated tests for "Test Suite 5: Order Auto-Creation" (15 cases)
+- **Test matrix file path:** `<ABSOLUTE_PATH_TO_MATRIX_MD>`  
+  Example: `D:\Workspace\Kicks-Shoes\backend\prompts\output_phase2.md`
+- **Suite heading (exact or case-insensitive match):** `<SUITE_HEADING>`  
+  Example: `Test Suite 3: Chat Message Handling`
 
-- Focus: updateOrderStatus() with status = "confirmed" + OrderService.createOrder()
-- Test file: tests/order-auto-creation.test.js
-- Coverage: Happy path, edge cases, error handling, performance, security, business logic
-- Mock updates: productService.mock.js with order/user/email capabilities
-- Helper updates: testUtils.js with comprehensive Order Auto-Creation utilities
-- All 15 test cases implemented with Given-When-Then structure
-- Includes inventory checks, flash sale pricing, email notifications, rollback scenarios
-- Target: >80% branch coverage for Order Auto-Creation functionality
+## Your Task
+
+- Parse the `<SUITE_HEADING>` section from the Test Case Matrix.
+- For **each test case** under that suite, create **one** corresponding `test()` block in Jest.
+- Test name must keep the **Test ID prefix**: `TC-xxx | <concise scenario>`.
+- Use **Given–When–Then** structure as comments inside each test.
+- Map the correct Subject Under Test based on the suite:
+
+| Suite   | Subject Under Test                                                              |
+| ------- | ------------------------------------------------------------------------------- |
+| Suite 1 | `orderDetection.service.analyzeMessage(messageData, streamData, userData)`      |
+| Suite 2 | `orderDetection.service.extractProductInfo(rawMessage, streamData)`             |
+| Suite 3 | `liveStreamService.handleChatMessage(socketId, messageData)` (+ Socket.IO mock) |
+| Suite 4 | `potentialOrderController.*` (CRUD / filter / stats)                            |
+| Suite 5 | `updateOrderStatus(req,res)` + `OrderService.createOrder(orderData)`            |
+| Suite 6 | Cross-service edge/error handling                                               |
+| Suite 7 | E2E Integration (Express + Supertest + Socket.IO client with mocks)             |
+
+## Output Requirements (code only)
+
+Generate the following files:
+
+1. `tests/<suite-slug>.test.js`
+
+   - `<suite-slug>` = lowercase suite title, spaces and “&” replaced with hyphens (e.g., `chat-message-handling`).
+   - Use: `describe('Order in Livestream — <SUITE_HEADING>', ...)`
+   - One `test()` per test case (no merging, no missing tests).
+   - Assertions must reflect the “Expected Result” from the matrix (return values, DB mock updates, socket events, etc.).
+   - Include **Given / When / Then** comments in each test.
+
+2. `tests/mocks/productService.mock.js`
+
+   - Provide an in-memory mock module with: `findOneBySku`, `findOneByInventorySku`, `__set`, `__clear`.
+
+3. `tests/_helpers/testUtils.js`
+
+   - Include helpers: `makeMessage`, `makeStream`, `makeUser`, `normalizePhone`, `perf(fn)`.
+
+4. `prompts/log.md`
+
+   - Append this entry:  
+     `YYYY-MM-DD HH:mm | Generated tests for "<SUITE_HEADING>" (N cases)`
+
+5. `README.md`
+   - Add test execution guide if missing:  
+     `npm test -- --coverage`
+
+## Requirements
+
+- Use **Jest** (CommonJS). No additional test libraries.
+- Include setup/teardown (`beforeAll`, `beforeEach`, `afterEach`, `afterAll`).
+- Use proper assertions: `toEqual`, `toBe`, `toThrow`, `toHaveBeenCalledWith`, etc.
+- Test names must be clear, descriptive, and start with **TC-ID**.
+- Mock all external I/O (DB, network, email, Socket.IO).
+- Tests must be **deterministic**, CI-friendly, target ≥ 80% coverage.
+- Output only the code files listed above — no extra explanation.
+
+## Sample Suite Headings
+
+- `"Test Suite 1: Message Analysis & Order Detection"`
+- `"Test Suite 3: Chat Message Handling"`
+
+---
+
+### Save Time with AI
+
+- AI generates test templates → You review & refine assertions
+- AI suggests realistic mock data → You validate accuracy (SKU, phone, size/color)
+- AI writes boilerplate & mocks → You focus on logic & edge cases
+  "
+
+### AI Output (Generated Test Code)
+
+```js
+// <example> shoppingCart.test.js
+<PASTE GENERATED TEST CODE HERE>
+```
+
+Additional Suggestions from AI:
+<PASTE ANY EXTRA TIPS AI PROVIDED>
+
+---
+
+## Stage 4 — Debugging & Fixing Tests (40’)
+
+Issue Encountered  
+Error Message:  
+<PASTE ERROR HERE>
+
+### Prompt #4 (Debug Assistance)
+
+<PASTE PROMPT YOU ASKED AI>
+
+### AI Output (Fix Recommendation)
+
+<PASTE RAW AI RESPONSE>
+
+### Fix Applied
+
+```diff
+<PASTE ACTUAL FIX YOU IMPLEMENTED>
+```
+
+---
+
+## Stage 5 — Optimization & Mocking (15’)
+
+### Prompt #5 (Mocking Services)
+
+<PASTE EXACT PROMPT USED>
+
+### AI Output (Mock Code)
+
+```js
+<PASTE MOCKS GENERATED BY AI>
+```
+
+Improvements Applied:
+
+- …
+- …
+
+---
+
+## Stage 6 — Documentation & Demo (15’)
+
+### Prompt #6 (Documentation)
+
+<PASTE EXACT PROMPT USED>
+
+### AI Output (README / Demo Script Excerpt)
+
+<PASTE AI GENERATED README OR DEMO SCRIPT>
+
+---
+
+## Test Run Evidence
+
+### Test Command Used
+
+npm test  
+npm test -- --coverage
+
+### Test Result Summary
+
+Total Tests: **  
+Passed: **  
+Failed: \_\_
+
+### Coverage Snapshot
+
+| File    | Stmts | Branch | Func | Lines | Missing |
+| ------- | ----- | ------ | ---- | ----- | ------- |
+| src/... | 89%   | 85%    | 92%  | 90%   | …       |
+
+---
+
+## Decisions & Assumptions
+
+- Reason for choosing the feature:
+  - …
+- Business rules assumed:
+  - …
+- Scope constraints:
+  - …
+
+---
+
+## Limitations & Risks
+
+- AI misunderstood \_\_\_ initially
+- Non-covered scenarios due to time:
+  - …
+- Future improvement opportunities:
+  - …
+
+---
+
+## Appendix (Optional)
+
+- Links to commits/screenshots
+- Alternative prompts tried (v1, v2, …)

@@ -21,6 +21,9 @@ import {
   addFeaturedProduct,
   removeFeaturedProduct,
   getLiveStreamAnalytics,
+  joinLiveStream,
+  leaveLiveStream,
+  sendChatMessage,
 } from '../controllers/livestreamController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
@@ -84,6 +87,13 @@ router.get('/all', protect, requireRoles('shop', 'admin'), getAllLiveStreams);
 // Public parameterized routes (must come after specific routes)
 router.get('/:roomId', getLiveStream);
 router.get('/:roomId/chat', getChatMessages);
+
+// Livestream interaction routes
+router.post('/:id/join', protect, joinLiveStream);
+router.post('/:id/leave', protect, leaveLiveStream);
+router.post('/:id/chat', protect, sendChatMessage);
+router.get('/:id/chat', protect, getChatMessages); // GET chat history by stream ID
+
 router.post(
   '/',
   protect,

@@ -199,14 +199,14 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
 
   // ========== HELPER BROADCAST FUNCTION TESTS ==========
   describe('Broadcast Helper Functions', () => {
-    test('TC-801 | Verify broadcastSystemMessage works without error', () => {
+    test('TC-LI-3001 | Verify broadcastSystemMessage works without error', () => {
       // Just verify the function can be called without error
       expect(() => {
         broadcastSystemMessage(io, TEST_ROOM_ID, 'Test system message');
       }).not.toThrow();
     });
 
-    test('TC-802 | Verify broadcastViewerCount works without error', () => {
+    test('TC-LI-3002 | Verify broadcastViewerCount works without error', () => {
       // Just verify the function can be called without error
       expect(() => {
         broadcastViewerCount(io, TEST_ROOM_ID, 42);
@@ -216,7 +216,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
 
   // ========== JOIN EVENTS ==========
   describe('Join Events', () => {
-    test('TC-803 | Verify join_as_host emits joined event', done => {
+    test('TC-LI-3003 | Verify join_as_host emits joined event', done => {
       clientSocket.on('joined', data => {
         expect(data.type).toBe('joined');
         expect(data.role).toBe('host');
@@ -230,7 +230,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       });
     });
 
-    test('TC-804 | Verify join_as_host with invalid room emits error', done => {
+    test('TC-LI-3004 | Verify join_as_host with invalid room emits error', done => {
       clientSocket.on('error', data => {
         expect(data.type).toBe('join_error');
         expect(data.message).toBeTruthy();
@@ -243,7 +243,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       });
     });
 
-    test('TC-805 | Verify join_as_viewer emits joined event', done => {
+    test('TC-LI-3005 | Verify join_as_viewer emits joined event', done => {
       let eventReceived = false;
 
       clientSocket.on('joined', data => {
@@ -268,7 +268,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 1000);
     });
 
-    test('TC-806 | Verify join_as_viewer with inactive stream emits error', async () => {
+    test('TC-LI-3006 | Verify join_as_viewer with inactive stream emits error', async () => {
       // Set stream inactive
       await LiveStream.findByIdAndUpdate(TEST_STREAM_ID, { isActive: false });
 
@@ -293,7 +293,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
 
   // ========== WEBRTC SIGNALING EVENTS ==========
   describe('WebRTC Signaling Events', () => {
-    test('TC-807 | Verify webrtc_offer forwards to viewer', done => {
+    test('TC-LI-3007 | Verify webrtc_offer forwards to viewer', done => {
       // Setup: Create host and viewer
       const viewerSocket = ioc(`http://localhost:${httpServer.address().port}/livestream`);
 
@@ -332,7 +332,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       });
     });
 
-    test('TC-808 | Verify webrtc_answer forwards to host', done => {
+    test('TC-LI-3008 | Verify webrtc_answer forwards to host', done => {
       // Setup host first
       clientSocket.emit('join_as_host', {
         roomId: TEST_ROOM_ID,
@@ -368,7 +368,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 100);
     });
 
-    test('TC-809 | Verify webrtc_ice forwards ICE candidate', done => {
+    test('TC-LI-3009 | Verify webrtc_ice forwards ICE candidate', done => {
       clientSocket.emit('join_as_host', {
         roomId: TEST_ROOM_ID,
         userId: TEST_HOST_ID.toString(),
@@ -402,7 +402,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
 
   // ========== CHAT EVENTS ==========
   describe('Chat Events', () => {
-    test('TC-810 | Verify chat_message can be sent without error', done => {
+    test('TC-LI-3010 | Verify chat_message can be sent without error', done => {
       clientSocket.emit('join_as_viewer', {
         roomId: TEST_ROOM_ID,
         userId: TEST_USER_ID.toString(),
@@ -421,7 +421,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 200);
     });
 
-    test('TC-811 | Verify chat_message without socket mapping emits error', done => {
+    test('TC-LI-3011 | Verify chat_message without socket mapping emits error', done => {
       clientSocket.on('error', data => {
         expect(data.type).toBe('chat_error');
         done();
@@ -437,7 +437,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
 
   // ========== MESSAGE PINNING EVENTS ==========
   describe('Message Pin/Unpin Events', () => {
-    test('TC-812 | Verify pin_message works for host', done => {
+    test('TC-LI-3012 | Verify pin_message works for host', done => {
       // First join as host
       clientSocket.emit('join_as_host', {
         roomId: TEST_ROOM_ID,
@@ -458,12 +458,12 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 200);
     });
 
-    test.skip('TC-813 | Verify pin_message fails for viewer', done => {
+    test.skip('TC-LI-3013 | Verify pin_message fails for viewer', done => {
       // Skip: Complex async test with stream state dependencies
       done();
     });
 
-    test('TC-814 | Verify unpin_message clears pinned message', done => {
+    test('TC-LI-3014 | Verify unpin_message clears pinned message', done => {
       // First join as host
       clientSocket.emit('join_as_host', {
         roomId: TEST_ROOM_ID,
@@ -494,7 +494,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
 
   // ========== ROOM STATUS EVENTS ==========
   describe('Room Status Events', () => {
-    test('TC-815 | Verify get_room_status returns status', done => {
+    test('TC-LI-3015 | Verify get_room_status returns status', done => {
       clientSocket.on('room_status', data => {
         expect(data).toBeTruthy();
         expect(data.roomId).toBe(TEST_ROOM_ID);
@@ -509,7 +509,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
 
   // ========== DISCONNECT EVENTS ==========
   describe('Disconnect Events', () => {
-    test('TC-816 | Verify host disconnect is handled', done => {
+    test('TC-LI-3016 | Verify host disconnect is handled', done => {
       clientSocket.emit('join_as_host', {
         roomId: TEST_ROOM_ID,
         userId: TEST_HOST_ID.toString(),
@@ -525,7 +525,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 200);
     });
 
-    test('TC-817 | Verify viewer disconnect updates count', done => {
+    test('TC-LI-3017 | Verify viewer disconnect updates count', done => {
       clientSocket.emit('join_as_host', {
         roomId: TEST_ROOM_ID,
         userId: TEST_HOST_ID.toString(),
@@ -555,7 +555,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
 
   // ========== ERROR PATH & EDGE CASE TESTS ==========
   describe('Error Paths and Edge Cases', () => {
-    test('TC-818 | Verify webrtc_offer error handling', done => {
+    test('TC-LI-3018 | Verify webrtc_offer error handling', done => {
       // Send offer without joining (no socket mapping)
       clientSocket.emit('webrtc_offer', {
         sdp: 'test-sdp',
@@ -569,7 +569,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 100);
     });
 
-    test('TC-819 | Verify webrtc_answer error handling', done => {
+    test('TC-LI-3019 | Verify webrtc_answer error handling', done => {
       // Send answer without joining
       clientSocket.emit('webrtc_answer', {
         sdp: 'answer-sdp',
@@ -581,7 +581,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 100);
     });
 
-    test('TC-820 | Verify webrtc_ice error handling', done => {
+    test('TC-LI-3020 | Verify webrtc_ice error handling', done => {
       // Send ICE without joining
       clientSocket.emit('webrtc_ice', {
         candidate: 'bad-candidate',
@@ -593,7 +593,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 100);
     });
 
-    test('TC-821 | Verify chat_message with potential order triggers notification', done => {
+    test('TC-LI-3021 | Verify chat_message with potential order triggers notification', done => {
       // Join as host first
       clientSocket.emit('join_as_host', {
         roomId: TEST_ROOM_ID,
@@ -632,7 +632,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 200);
     });
 
-    test('TC-822 | Verify pin_message with non-existent room emits error', done => {
+    test('TC-LI-3022 | Verify pin_message with non-existent room emits error', done => {
       // Delete room
       liveStreamService.rooms.delete(TEST_ROOM_ID);
 
@@ -670,7 +670,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 1000);
     });
 
-    test('TC-823 | Verify unpin_message with non-existent room emits error', done => {
+    test('TC-LI-3023 | Verify unpin_message with non-existent room emits error', done => {
       liveStreamService.rooms.delete(TEST_ROOM_ID);
 
       let errorReceived = false;
@@ -703,7 +703,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 1000);
     });
 
-    test('TC-824 | Verify feature_product broadcasts to room', async () => {
+    test('TC-LI-3024 | Verify feature_product broadcasts to room', async () => {
       const validProductId = new mongoose.Types.ObjectId();
       let viewerSocket = null;
 
@@ -767,7 +767,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       });
     });
 
-    test('TC-825 | Verify feature_product fails for viewer', done => {
+    test('TC-LI-3025 | Verify feature_product fails for viewer', done => {
       // First join as viewer
       clientSocket.emit('join_as_viewer', {
         roomId: TEST_ROOM_ID,
@@ -789,7 +789,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 200);
     });
 
-    test('TC-826 | Verify feature_product handles missing room', done => {
+    test('TC-LI-3026 | Verify feature_product handles missing room', done => {
       // Set socket mapping to non-existent room
       liveStreamService.socketToRoom.set(clientSocket.id, {
         roomId: 'non-existent-room',
@@ -812,7 +812,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       }, 200);
     });
 
-    test('TC-827 | Verify get_room_status handles errors gracefully', done => {
+    test('TC-LI-3027 | Verify get_room_status handles errors gracefully', done => {
       clientSocket.on('room_status', data => {
         // Non-existent room returns null - that's expected behavior
         expect(data).toBeNull();
@@ -824,7 +824,7 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
       });
     });
 
-    test('TC-828 | Verify disconnect without active room', done => {
+    test('TC-LI-3028 | Verify disconnect without active room', done => {
       // Socket not in any room
       liveStreamService.socketToRoom.delete(clientSocket.id);
 

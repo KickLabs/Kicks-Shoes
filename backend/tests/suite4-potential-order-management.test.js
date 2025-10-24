@@ -223,8 +223,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     });
   });
 
-  // ========== TC-1001: Controller - Get Orders for Stream ==========
-  test('TC-1001 | Verify getPotentialOrdersForStream returns orders for valid stream', async () => {
+  // ========== TC4001: Controller - Get Orders for Stream ==========
+  test('TC4001 | Verify getPotentialOrdersForStream returns orders for valid stream', async () => {
     // Given: Stream has 5 potential orders
     const mockOrders = Array(5)
       .fill(null)
@@ -256,8 +256,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(Array.isArray(res.jsonData.data)).toBe(true);
   });
 
-  // ========== TC-1002: Controller - Filter by Status ==========
-  test('TC-1002 | Verify getMyPotentialOrders filters by status correctly', async () => {
+  // ========== TC4002: Controller - Filter by Status ==========
+  test('TC4002 | Verify getMyPotentialOrders filters by status correctly', async () => {
     // Given: Mixed status orders (3 pending)
     const pendingOrders = Array(3)
       .fill(null)
@@ -289,8 +289,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.data).toBeDefined();
   });
 
-  // ========== TC-1003: Controller - Get Statistics ==========
-  test('TC-1003 | Verify getOrderStats returns correct counts', async () => {
+  // ========== TC4003: Controller - Get Statistics ==========
+  test('TC4003 | Verify getOrderStats returns correct counts', async () => {
     // Given: Mock aggregate results
     const mockStats = [
       { _id: 'pending', count: 5 },
@@ -312,8 +312,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.data).toBeDefined();
   });
 
-  // ========== TC-1004: Controller - Get Single Order ==========
-  test('TC-1004 | Verify getPotentialOrder returns single order detail', async () => {
+  // ========== TC4004: Controller - Get Single Order ==========
+  test('TC4004 | Verify getPotentialOrder returns single order detail', async () => {
     // Given: An order exists with populated streamId
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -342,8 +342,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.statusCode).toBeDefined();
   });
 
-  // ========== TC-1005: Controller - Mark as Viewed ==========
-  test('TC-1005 | Verify markAsViewed updates viewedAt timestamp', async () => {
+  // ========== TC4005: Controller - Mark as Viewed ==========
+  test('TC4005 | Verify markAsViewed updates viewedAt timestamp', async () => {
     // Given: An unviewed order with populated streamId
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -373,8 +373,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1006: Controller - Add Note ==========
-  test('TC-1006 | Verify addNote adds host note to order', async () => {
+  // ========== TC4006: Controller - Add Note ==========
+  test('TC4006 | Verify addNote adds host note to order', async () => {
     // Given: An order exists with populated streamId
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -406,8 +406,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(mockOrder.save).toHaveBeenCalled();
   });
 
-  // ========== TC-1007: Controller - Update Status ==========
-  test('TC-1007 | Verify updateOrderStatus changes order status', async () => {
+  // ========== TC4007: Controller - Update Status ==========
+  test('TC4007 | Verify updateOrderStatus changes order status', async () => {
     // Given: A pending order with populated streamId
     const mockOrder = makePotentialOrderData({ status: 'pending' });
     mockOrder.streamId = {
@@ -438,8 +438,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(mockOrder.save).toHaveBeenCalled();
   });
 
-  // ========== TC-1008: Controller - Pagination ==========
-  test('TC-1008 | Verify getMyPotentialOrders pagination works correctly', async () => {
+  // ========== TC4008: Controller - Pagination ==========
+  test('TC4008 | Verify getMyPotentialOrders pagination works correctly', async () => {
     // Given: 25 orders exist
     const mockOrders = Array(10)
       .fill(null)
@@ -470,8 +470,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.data).toBeDefined();
   });
 
-  // ========== TC-1009: Controller - Invalid ObjectId ==========
-  test('TC-1009 | Verify getPotentialOrder handles invalid ObjectId', async () => {
+  // ========== TC4009: Controller - Invalid ObjectId ==========
+  test('TC4009 | Verify getPotentialOrder handles invalid ObjectId', async () => {
     // Given: Invalid order ID - return null for invalid ID
     const mockChain = createMockQueryChain(null);
     PotentialOrder.findById.mockReturnValue(mockChain);
@@ -489,8 +489,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect([200, 404, 500]).toContain(res.statusCode);
   });
 
-  // ========== TC-1010: Controller - Database Error Handling ==========
-  test('TC-1010 | Verify controller handles database errors gracefully', async () => {
+  // ========== TC4010: Controller - Database Error Handling ==========
+  test('TC4010 | Verify controller handles database errors gracefully', async () => {
     // Given: Stream not found
     LiveStream.findOne.mockResolvedValue(null);
 
@@ -508,8 +508,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('not found');
   });
 
-  // ========== TC-1011: Controller - Delete Order ==========
-  test('TC-1011 | Verify deletePotentialOrder removes order', async () => {
+  // ========== TC4011: Controller - Delete Order ==========
+  test('TC4011 | Verify deletePotentialOrder removes order', async () => {
     // Given: An order exists with populated streamId
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -540,8 +540,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1012: Controller - Get Grouped Orders ==========
-  test('TC-1012 | Verify getMyPotentialOrdersGrouped returns grouped data', async () => {
+  // ========== TC4012: Controller - Get Grouped Orders ==========
+  test('TC4012 | Verify getMyPotentialOrdersGrouped returns grouped data', async () => {
     // Given: Mock aggregate results
     const mockGrouped = [
       { _id: 'pending', orders: [makePotentialOrderData()] },
@@ -561,8 +561,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1013: Controller - Search by Phone ==========
-  test('TC-1013 | Verify getMyPotentialOrders searches by phone number', async () => {
+  // ========== TC4013: Controller - Search by Phone ==========
+  test('TC4013 | Verify getMyPotentialOrders searches by phone number', async () => {
     // Given: Orders with specific phone
     const mockOrders = [
       makePotentialOrderData({
@@ -590,8 +590,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1014: Controller - Filter by Priority ==========
-  test('TC-1014 | Verify getMyPotentialOrders filters by priority', async () => {
+  // ========== TC4014: Controller - Filter by Priority ==========
+  test('TC4014 | Verify getMyPotentialOrders filters by priority', async () => {
     // Given: Orders with different priorities
     const mockOrders = [makePotentialOrderData({ priority: 'urgent' })];
 
@@ -611,8 +611,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1015: Controller - Update Status to Ignored ==========
-  test('TC-1015 | Verify updateOrderStatus can set status to ignored', async () => {
+  // ========== TC4015: Controller - Update Status to Ignored ==========
+  test('TC4015 | Verify updateOrderStatus can set status to ignored', async () => {
     // Given: A pending order with populated streamId
     const mockOrder = makePotentialOrderData({ status: 'pending' });
     mockOrder.streamId = {
@@ -643,8 +643,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(mockOrder.save).toHaveBeenCalled();
   });
 
-  // ========== TC-1016: Controller - Get Order with Non-existent ID ==========
-  test('TC-1016 | Verify getPotentialOrder returns 404 for non-existent order', async () => {
+  // ========== TC4016: Controller - Get Order with Non-existent ID ==========
+  test('TC4016 | Verify getPotentialOrder returns 404 for non-existent order', async () => {
     // Given: Valid but non-existent ObjectId
     const mockChain = createMockQueryChain(null);
     PotentialOrder.findById.mockReturnValue(mockChain);
@@ -665,8 +665,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.statusCode).toBeDefined();
   });
 
-  // ========== TC-1017: Controller - Mark as Viewed Twice ==========
-  test('TC-1017 | Verify markAsViewed can be called multiple times', async () => {
+  // ========== TC4017: Controller - Mark as Viewed Twice ==========
+  test('TC4017 | Verify markAsViewed can be called multiple times', async () => {
     // Given: An order with populated streamId
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -698,8 +698,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res2.statusCode).toBe(200);
   });
 
-  // ========== TC-1018: Controller - Add Empty Note ==========
-  test('TC-1018 | Verify addNote handles empty note', async () => {
+  // ========== TC4018: Controller - Add Empty Note ==========
+  test('TC4018 | Verify addNote handles empty note', async () => {
     // Given: An order with populated streamId
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -729,8 +729,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.statusCode).toBeDefined();
   });
 
-  // ========== TC-1019: Controller - Get Stats with No Orders ==========
-  test('TC-1019 | Verify getOrderStats works with no orders', async () => {
+  // ========== TC4019: Controller - Get Stats with No Orders ==========
+  test('TC4019 | Verify getOrderStats works with no orders', async () => {
     // Given: No orders exist
     PotentialOrder.aggregate.mockResolvedValue([]);
     PotentialOrder.countDocuments.mockResolvedValue(0);
@@ -746,8 +746,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1020: Controller - Filter All Status ==========
-  test('TC-1020 | Verify getMyPotentialOrders with status=all returns all orders', async () => {
+  // ========== TC4020: Controller - Filter All Status ==========
+  test('TC4020 | Verify getMyPotentialOrders with status=all returns all orders', async () => {
     // Given: Orders with mixed statuses
     const mockOrders = [
       makePotentialOrderData({ status: 'pending' }),
@@ -771,8 +771,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1021: Mark as Viewed - Order Not Found ==========
-  test('TC-1021 | Verify markAsViewed returns 404 for non-existent order', async () => {
+  // ========== TC4021: Mark as Viewed - Order Not Found ==========
+  test('TC4021 | Verify markAsViewed returns 404 for non-existent order', async () => {
     // Given: Order doesn't exist
     const mockChain = {
       populate: jest.fn().mockReturnThis(),
@@ -796,8 +796,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('not found');
   });
 
-  // ========== TC-1022: Mark as Viewed - Unauthorized ==========
-  test('TC-1022 | Verify markAsViewed returns 403 for unauthorized user', async () => {
+  // ========== TC4022: Mark as Viewed - Unauthorized ==========
+  test('TC4022 | Verify markAsViewed returns 403 for unauthorized user', async () => {
     // Given: Order exists but belongs to different host
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -829,8 +829,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('Not authorized');
   });
 
-  // ========== TC-1023: Add Note - Validation Error ==========
-  test('TC-1023 | Verify addNote returns 400 for missing note', async () => {
+  // ========== TC4023: Add Note - Validation Error ==========
+  test('TC4023 | Verify addNote returns 400 for missing note', async () => {
     // Given: No note provided
     const req = mockRequest({
       params: { id: createMockObjectId().toString() },
@@ -847,8 +847,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('required');
   });
 
-  // ========== TC-1024: Add Note - Order Not Found ==========
-  test('TC-1024 | Verify addNote returns 404 for non-existent order', async () => {
+  // ========== TC4024: Add Note - Order Not Found ==========
+  test('TC4024 | Verify addNote returns 404 for non-existent order', async () => {
     // Given: Order doesn't exist
     const mockChain = {
       populate: jest.fn().mockReturnThis(),
@@ -872,8 +872,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(false);
   });
 
-  // ========== TC-1025: Update Status - Order Not Found ==========
-  test('TC-1025 | Verify updateOrderStatus returns 404 for non-existent order', async () => {
+  // ========== TC4025: Update Status - Order Not Found ==========
+  test('TC4025 | Verify updateOrderStatus returns 404 for non-existent order', async () => {
     // Given: Order doesn't exist
     const mockChain = {
       populate: jest.fn().mockReturnThis(),
@@ -897,8 +897,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(false);
   });
 
-  // ========== TC-1026: Delete Order - Order Not Found ==========
-  test('TC-1026 | Verify deletePotentialOrder returns 404 for non-existent order', async () => {
+  // ========== TC4026: Delete Order - Order Not Found ==========
+  test('TC4026 | Verify deletePotentialOrder returns 404 for non-existent order', async () => {
     // Given: Order doesn't exist
     const mockChain = {
       populate: jest.fn().mockReturnThis(),
@@ -921,8 +921,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(false);
   });
 
-  // ========== TC-1027: Mark as Viewed - Admin Override ==========
-  test('TC-1027 | Verify admin can mark any order as viewed', async () => {
+  // ========== TC4027: Mark as Viewed - Admin Override ==========
+  test('TC4027 | Verify admin can mark any order as viewed', async () => {
     // Given: Order exists, user is admin
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -953,8 +953,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1028: Export for Stream - Success ==========
-  test('TC-1028 | Verify exportPotentialOrdersForStream generates Excel', async () => {
+  // ========== TC4028: Export for Stream - Success ==========
+  test('TC4028 | Verify exportPotentialOrdersForStream generates Excel', async () => {
     // Given: Stream and orders exist
     const mockOrders = [makePotentialOrderData(), makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel content');
@@ -983,8 +983,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1029: Export for Stream - Stream Not Found ==========
-  test('TC-1029 | Verify exportPotentialOrdersForStream returns 404 for non-existent stream', async () => {
+  // ========== TC4029: Export for Stream - Stream Not Found ==========
+  test('TC4029 | Verify exportPotentialOrdersForStream returns 404 for non-existent stream', async () => {
     // Given: Stream doesn't exist
     LiveStream.findOne.mockResolvedValue(null);
 
@@ -1003,8 +1003,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('not found');
   });
 
-  // ========== TC-1030: Export with Filters - Success ==========
-  test('TC-1030 | Verify exportPotentialOrders generates Excel with filters', async () => {
+  // ========== TC4030: Export with Filters - Success ==========
+  test('TC4030 | Verify exportPotentialOrders generates Excel with filters', async () => {
     // Given: Orders exist
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel with filters');
@@ -1032,8 +1032,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1031: Export with Date Range Filter ==========
-  test('TC-1031 | Verify exportPotentialOrders with date range filter', async () => {
+  // ========== TC4031: Export with Date Range Filter ==========
+  test('TC4031 | Verify exportPotentialOrders with date range filter', async () => {
     // Given: Orders exist with date filter
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel with date filter');
@@ -1061,8 +1061,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(PotentialOrder.find).toHaveBeenCalled();
   });
 
-  // ========== TC-1032: Export with Stream Filter ==========
-  test('TC-1032 | Verify exportPotentialOrders with streamId filter', async () => {
+  // ========== TC4032: Export with Stream Filter ==========
+  test('TC4032 | Verify exportPotentialOrders with streamId filter', async () => {
     // Given: Orders exist with stream filter
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel with stream filter');
@@ -1089,8 +1089,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1033: Export with No Filters ==========
-  test('TC-1033 | Verify exportPotentialOrders with no filters (all defaults)', async () => {
+  // ========== TC4033: Export with No Filters ==========
+  test('TC4033 | Verify exportPotentialOrders with no filters (all defaults)', async () => {
     // Given: Orders exist, no filters
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel no filters');
@@ -1116,8 +1116,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1034: Export for Stream - Error Handling ==========
-  test('TC-1034 | Verify exportPotentialOrdersForStream handles errors', async () => {
+  // ========== TC4034: Export for Stream - Error Handling ==========
+  test('TC4034 | Verify exportPotentialOrdersForStream handles errors', async () => {
     // Given: Database error occurs
     const mockError = new Error('Database error');
     PotentialOrder.find.mockImplementation(() => ({
@@ -1141,8 +1141,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('Error exporting');
   });
 
-  // ========== TC-1035: Export with Filters - Error Handling ==========
-  test('TC-1035 | Verify exportPotentialOrders handles errors', async () => {
+  // ========== TC4035: Export with Filters - Error Handling ==========
+  test('TC4035 | Verify exportPotentialOrders handles errors', async () => {
     // Given: Export service error
     const mockError = new Error('Excel generation failed');
     PotentialOrder.find.mockImplementation(() => createMockQueryChain([makePotentialOrderData()]));
@@ -1161,8 +1161,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(false);
   });
 
-  // ========== TC-1036: Export for Stream with Status Filter ==========
-  test('TC-1036 | Verify exportPotentialOrdersForStream with status filter', async () => {
+  // ========== TC4036: Export for Stream with Status Filter ==========
+  test('TC4036 | Verify exportPotentialOrdersForStream with status filter', async () => {
     // Given: Stream exists, status filter applied
     const mockOrders = [makePotentialOrderData({ status: 'confirmed' })];
     const mockExcelBuffer = Buffer.from('mock excel confirmed orders');
@@ -1186,8 +1186,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1037: Export for Stream with Priority Filter ==========
-  test('TC-1037 | Verify exportPotentialOrdersForStream with priority filter', async () => {
+  // ========== TC4037: Export for Stream with Priority Filter ==========
+  test('TC4037 | Verify exportPotentialOrdersForStream with priority filter', async () => {
     // Given: Stream exists, priority filter applied
     const mockOrders = [makePotentialOrderData({ priority: 'urgent' })];
     const mockExcelBuffer = Buffer.from('mock excel urgent orders');
@@ -1211,8 +1211,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1038: Add Note - Unauthorized User ==========
-  test('TC-1038 | Verify addNote returns 403 for unauthorized user', async () => {
+  // ========== TC4038: Add Note - Unauthorized User ==========
+  test('TC4038 | Verify addNote returns 403 for unauthorized user', async () => {
     // Given: Order exists but belongs to different host
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -1245,8 +1245,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('Not authorized');
   });
 
-  // ========== TC-1039: Delete Order - Unauthorized User ==========
-  test('TC-1039 | Verify deletePotentialOrder returns 403 for unauthorized user', async () => {
+  // ========== TC4039: Delete Order - Unauthorized User ==========
+  test('TC4039 | Verify deletePotentialOrder returns 403 for unauthorized user', async () => {
     // Given: Order exists but belongs to different host
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -1278,8 +1278,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('Not authorized');
   });
 
-  // ========== TC-1040: Get Potential Orders for Stream - Error Handling ==========
-  test('TC-1040 | Verify getPotentialOrdersForStream handles database errors', async () => {
+  // ========== TC4040: Get Potential Orders for Stream - Error Handling ==========
+  test('TC4040 | Verify getPotentialOrdersForStream handles database errors', async () => {
     // Given: Database error occurs
     LiveStream.findOne.mockRejectedValue(new Error('Database connection failed'));
 
@@ -1298,8 +1298,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('Failed to load potential orders');
   });
 
-  // ========== TC-1041: Get My Orders with Date Range Filter ==========
-  test('TC-1041 | Verify getMyPotentialOrders with dateRange.start and dateRange.end', async () => {
+  // ========== TC4041: Get My Orders with Date Range Filter ==========
+  test('TC4041 | Verify getMyPotentialOrders with dateRange.start and dateRange.end', async () => {
     // Given: Orders with date range filter
     const mockOrders = [makePotentialOrderData()];
 
@@ -1328,8 +1328,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(PotentialOrder.find).toHaveBeenCalled();
   });
 
-  // ========== TC-1042: Get Grouped Orders - Host Has No Streams ==========
-  test('TC-1042 | Verify getMyPotentialOrdersGrouped returns empty when host has no streams', async () => {
+  // ========== TC4042: Get Grouped Orders - Host Has No Streams ==========
+  test('TC4042 | Verify getMyPotentialOrdersGrouped returns empty when host has no streams', async () => {
     // Given: Host has no streams
     LiveStream.find.mockReturnValue({
       select: jest.fn().mockReturnThis(),
@@ -1350,8 +1350,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.data).toEqual([]);
   });
 
-  // ========== TC-1043: Get Potential Order - Unauthorized User ==========
-  test('TC-1043 | Verify getPotentialOrder returns 403 for unauthorized user', async () => {
+  // ========== TC4043: Get Potential Order - Unauthorized User ==========
+  test('TC4043 | Verify getPotentialOrder returns 403 for unauthorized user', async () => {
     // Given: Order exists but belongs to different host
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -1383,8 +1383,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('Not authorized to access');
   });
 
-  // ========== TC-1044: Update Order Status - Unauthorized User ==========
-  test('TC-1044 | Verify updateOrderStatus returns 403 for unauthorized user', async () => {
+  // ========== TC4044: Update Order Status - Unauthorized User ==========
+  test('TC4044 | Verify updateOrderStatus returns 403 for unauthorized user', async () => {
     // Given: Order exists but belongs to different host
     const mockOrder = makePotentialOrderData({ status: 'pending' });
     mockOrder.streamId = {
@@ -1417,8 +1417,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('Not authorized to update');
   });
 
-  // ========== TC-1045: Update Order Status - Invalid Status ==========
-  test('TC-1045 | Verify updateOrderStatus returns 400 for invalid status', async () => {
+  // ========== TC4045: Update Order Status - Invalid Status ==========
+  test('TC4045 | Verify updateOrderStatus returns 400 for invalid status', async () => {
     // Given: Order exists with valid authorization
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -1450,8 +1450,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('Invalid status');
   });
 
-  // ========== TC-1046: Get My Orders - Filter by specific status ==========
-  test('TC-1046 | Verify getMyPotentialOrders filters by specific status (not all)', async () => {
+  // ========== TC4046: Get My Orders - Filter by specific status ==========
+  test('TC4046 | Verify getMyPotentialOrders filters by specific status (not all)', async () => {
     // Given: Orders with specific status filter
     const mockOrders = [makePotentialOrderData({ status: 'confirmed' })];
 
@@ -1475,8 +1475,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1047: Get My Orders - Filter by specific priority ==========
-  test('TC-1047 | Verify getMyPotentialOrders filters by specific priority (not all)', async () => {
+  // ========== TC4047: Get My Orders - Filter by specific priority ==========
+  test('TC4047 | Verify getMyPotentialOrders filters by specific priority (not all)', async () => {
     // Given: Orders with specific priority filter
     const mockOrders = [makePotentialOrderData({ priority: 'urgent' })];
 
@@ -1501,8 +1501,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1048: Get My Orders - Orders without streamId filtered out ==========
-  test('TC-1048 | Verify getMyPotentialOrders filters out orders without streamId', async () => {
+  // ========== TC4048: Get My Orders - Orders without streamId filtered out ==========
+  test('TC4048 | Verify getMyPotentialOrders filters out orders without streamId', async () => {
     // Given: Some orders have null streamId (shouldn't match host)
     const mockOrders = [
       makePotentialOrderData(),
@@ -1529,8 +1529,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.count).toBe(1);
   });
 
-  // ========== TC-1049: Get Grouped Orders - Stream info fallback ==========
-  test('TC-1049 | Verify getMyPotentialOrdersGrouped handles missing stream info', async () => {
+  // ========== TC4049: Get Grouped Orders - Stream info fallback ==========
+  test('TC4049 | Verify getMyPotentialOrdersGrouped handles missing stream info', async () => {
     // Given: Aggregation returns stream ID not in streamIdToInfo map
     const unknownStreamId = createMockObjectId('unknown999');
 
@@ -1576,8 +1576,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.data[0].stream._id).toEqual(unknownStreamId);
   });
 
-  // ========== TC-1050: Get My Orders - Combined filters ==========
-  test('TC-1050 | Verify getMyPotentialOrders with multiple filters combined', async () => {
+  // ========== TC4050: Get My Orders - Combined filters ==========
+  test('TC4050 | Verify getMyPotentialOrders with multiple filters combined', async () => {
     // Given: Multiple filters applied at once
     const mockOrders = [makePotentialOrderData({ status: 'pending', priority: 'high' })];
 
@@ -1608,8 +1608,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(PotentialOrder.find).toHaveBeenCalled();
   });
 
-  // ========== TC-1051: Get My Orders - Empty searchText handled ==========
-  test('TC-1051 | Verify getMyPotentialOrders handles empty searchText', async () => {
+  // ========== TC4051: Get My Orders - Empty searchText handled ==========
+  test('TC4051 | Verify getMyPotentialOrders handles empty searchText', async () => {
     // Given: searchText is empty string (should be ignored)
     const mockOrders = [makePotentialOrderData()];
 
@@ -1634,8 +1634,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1052: Add Note - Empty note with whitespace ==========
-  test('TC-1052 | Verify addNote returns 400 for note with only whitespace', async () => {
+  // ========== TC4052: Add Note - Empty note with whitespace ==========
+  test('TC4052 | Verify addNote returns 400 for note with only whitespace', async () => {
     // Given: Note with only whitespace
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -1667,8 +1667,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('required');
   });
 
-  // ========== TC-1053: Export with Filters - Date Range Array Format ==========
-  test('TC-1053 | Verify exportPotentialOrders with dateRange array format', async () => {
+  // ========== TC4053: Export with Filters - Date Range Array Format ==========
+  test('TC4053 | Verify exportPotentialOrders with dateRange array format', async () => {
     // Given: Orders with date range in array format
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel with date array');
@@ -1695,8 +1695,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1054: Export with Filters - No dateRange ==========
-  test('TC-1054 | Verify exportPotentialOrders without dateRange', async () => {
+  // ========== TC4054: Export with Filters - No dateRange ==========
+  test('TC4054 | Verify exportPotentialOrders without dateRange', async () => {
     // Given: Orders without date filter
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel no date');
@@ -1723,8 +1723,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1055: Export with Filters - No searchText ==========
-  test('TC-1055 | Verify exportPotentialOrders without searchText', async () => {
+  // ========== TC4055: Export with Filters - No searchText ==========
+  test('TC4055 | Verify exportPotentialOrders without searchText', async () => {
     // Given: Orders without search filter
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel no search');
@@ -1751,8 +1751,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1056: Export with Filters - No streamId ==========
-  test('TC-1056 | Verify exportPotentialOrders without streamId', async () => {
+  // ========== TC4056: Export with Filters - No streamId ==========
+  test('TC4056 | Verify exportPotentialOrders without streamId', async () => {
     // Given: Orders without stream filter
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel no stream');
@@ -1779,8 +1779,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1057: Get My Orders - No dateRange ==========
-  test('TC-1057 | Verify getMyPotentialOrders without dateRange', async () => {
+  // ========== TC4057: Get My Orders - No dateRange ==========
+  test('TC4057 | Verify getMyPotentialOrders without dateRange', async () => {
     // Given: Orders without date filter
     const mockOrders = [makePotentialOrderData()];
 
@@ -1805,8 +1805,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1058: Get My Orders - No searchText ==========
-  test('TC-1058 | Verify getMyPotentialOrders without searchText', async () => {
+  // ========== TC4058: Get My Orders - No searchText ==========
+  test('TC4058 | Verify getMyPotentialOrders without searchText', async () => {
     // Given: Orders without search filter
     const mockOrders = [makePotentialOrderData()];
 
@@ -1831,8 +1831,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1059: Get My Orders - No status filter ==========
-  test('TC-1059 | Verify getMyPotentialOrders without status filter', async () => {
+  // ========== TC4059: Get My Orders - No status filter ==========
+  test('TC4059 | Verify getMyPotentialOrders without status filter', async () => {
     // Given: Orders without status filter
     const mockOrders = [makePotentialOrderData()];
 
@@ -1856,8 +1856,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1060: Get My Orders - No priority filter ==========
-  test('TC-1060 | Verify getMyPotentialOrders without priority filter', async () => {
+  // ========== TC4060: Get My Orders - No priority filter ==========
+  test('TC4060 | Verify getMyPotentialOrders without priority filter', async () => {
     // Given: Orders without priority filter
     const mockOrders = [makePotentialOrderData()];
 
@@ -1882,8 +1882,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1061: Add Note - Null note ==========
-  test('TC-1061 | Verify addNote returns 400 for null note', async () => {
+  // ========== TC4061: Add Note - Null note ==========
+  test('TC4061 | Verify addNote returns 400 for null note', async () => {
     // Given: Note is null
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -1915,8 +1915,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('required');
   });
 
-  // ========== TC-1062: Add Note - Undefined note ==========
-  test('TC-1062 | Verify addNote returns 400 for undefined note', async () => {
+  // ========== TC4062: Add Note - Undefined note ==========
+  test('TC4062 | Verify addNote returns 400 for undefined note', async () => {
     // Given: Note is undefined
     const mockOrder = makePotentialOrderData();
     mockOrder.streamId = {
@@ -1948,8 +1948,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('required');
   });
 
-  // ========== TC-1063: Export with Filters - Date Range with length !== 2 ==========
-  test('TC-1063 | Verify exportPotentialOrders ignores invalid dateRange length', async () => {
+  // ========== TC4063: Export with Filters - Date Range with length !== 2 ==========
+  test('TC4063 | Verify exportPotentialOrders ignores invalid dateRange length', async () => {
     // Given: Orders with invalid dateRange length
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel invalid date');
@@ -1976,8 +1976,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1064: Get My Orders - Status is undefined ==========
-  test('TC-1064 | Verify getMyPotentialOrders handles undefined status', async () => {
+  // ========== TC4064: Get My Orders - Status is undefined ==========
+  test('TC4064 | Verify getMyPotentialOrders handles undefined status', async () => {
     // Given: Status is undefined
     const mockOrders = [makePotentialOrderData()];
 
@@ -2001,8 +2001,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1065: Get My Orders - Priority is undefined ==========
-  test('TC-1065 | Verify getMyPotentialOrders handles undefined priority', async () => {
+  // ========== TC4065: Get My Orders - Priority is undefined ==========
+  test('TC4065 | Verify getMyPotentialOrders handles undefined priority', async () => {
     // Given: Priority is undefined
     const mockOrders = [makePotentialOrderData()];
 
@@ -2027,8 +2027,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1066: Export for Stream - Stream title fallback ==========
-  test('TC-1066 | Verify exportPotentialOrdersForStream uses roomId when title is missing', async () => {
+  // ========== TC4066: Export for Stream - Stream title fallback ==========
+  test('TC4066 | Verify exportPotentialOrdersForStream uses roomId when title is missing', async () => {
     // Given: Stream without title
     const mockStream = {
       _id: TEST_STREAM_ID,
@@ -2062,8 +2062,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     );
   });
 
-  // ========== TC-1067: Get Potential Orders for Stream - Database Error ==========
-  test('TC-1067 | Verify getPotentialOrdersForStream handles database errors', async () => {
+  // ========== TC4067: Get Potential Orders for Stream - Database Error ==========
+  test('TC4067 | Verify getPotentialOrdersForStream handles database errors', async () => {
     // Given: Database error occurs
     LiveStream.findOne.mockRejectedValue(new Error('Database connection failed'));
 
@@ -2081,8 +2081,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.message).toContain('Failed to load potential orders');
   });
 
-  // ========== TC-1068: Get My Orders - Date Range with start and end ==========
-  test('TC-1068 | Verify getMyPotentialOrders with dateRange object format', async () => {
+  // ========== TC4068: Get My Orders - Date Range with start and end ==========
+  test('TC4068 | Verify getMyPotentialOrders with dateRange object format', async () => {
     // Given: Orders with date range object format
     const mockOrders = [makePotentialOrderData()];
 
@@ -2110,8 +2110,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1069: Get My Orders - Search Text with Special Characters ==========
-  test('TC-1069 | Verify getMyPotentialOrders handles special characters in searchText', async () => {
+  // ========== TC4069: Get My Orders - Search Text with Special Characters ==========
+  test('TC4069 | Verify getMyPotentialOrders handles special characters in searchText', async () => {
     // Given: Search text with special regex characters
     const mockOrders = [makePotentialOrderData()];
 
@@ -2136,8 +2136,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1070: Get My Orders - Empty searchText after trim ==========
-  test('TC-1070 | Verify getMyPotentialOrders handles whitespace-only searchText', async () => {
+  // ========== TC4070: Get My Orders - Empty searchText after trim ==========
+  test('TC4070 | Verify getMyPotentialOrders handles whitespace-only searchText', async () => {
     // Given: Search text with only whitespace
     const mockOrders = [makePotentialOrderData()];
 
@@ -2162,8 +2162,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1071: Export with Filters - Date Range with Invalid Format ==========
-  test('TC-1071 | Verify exportPotentialOrders handles invalid dateRange format', async () => {
+  // ========== TC4071: Export with Filters - Date Range with Invalid Format ==========
+  test('TC4071 | Verify exportPotentialOrders handles invalid dateRange format', async () => {
     // Given: Orders with invalid dateRange
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel invalid date');
@@ -2190,8 +2190,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1072: Export with Filters - Date Range with Single Date ==========
-  test('TC-1072 | Verify exportPotentialOrders handles single date in dateRange', async () => {
+  // ========== TC4072: Export with Filters - Date Range with Single Date ==========
+  test('TC4072 | Verify exportPotentialOrders handles single date in dateRange', async () => {
     // Given: Orders with single date in dateRange
     const mockOrders = [makePotentialOrderData()];
     const mockExcelBuffer = Buffer.from('mock excel single date');
@@ -2218,8 +2218,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.send).toHaveBeenCalledWith(mockExcelBuffer);
   });
 
-  // ========== TC-1073: Get My Orders - Default Pagination ==========
-  test('TC-1073 | Verify getMyPotentialOrders uses default pagination when not provided', async () => {
+  // ========== TC4073: Get My Orders - Default Pagination ==========
+  test('TC4073 | Verify getMyPotentialOrders uses default pagination when not provided', async () => {
     // Given: No pagination parameters
     const mockOrders = [makePotentialOrderData()];
 
@@ -2240,8 +2240,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.page).toBe(1);
   });
 
-  // ========== TC-1074: Get My Orders - Large Page Number ==========
-  test('TC-1074 | Verify getMyPotentialOrders handles large page numbers', async () => {
+  // ========== TC4074: Get My Orders - Large Page Number ==========
+  test('TC4074 | Verify getMyPotentialOrders handles large page numbers', async () => {
     // Given: Large page number
     const mockOrders = [];
 
@@ -2265,8 +2265,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.data).toEqual([]);
   });
 
-  // ========== TC-1075: Get My Orders - Zero Limit ==========
-  test('TC-1075 | Verify getMyPotentialOrders handles zero limit', async () => {
+  // ========== TC4075: Get My Orders - Zero Limit ==========
+  test('TC4075 | Verify getMyPotentialOrders handles zero limit', async () => {
     // Given: Zero limit
     const mockOrders = [];
 
@@ -2289,8 +2289,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1076: Get My Orders - Negative Page ==========
-  test('TC-1076 | Verify getMyPotentialOrders handles negative page', async () => {
+  // ========== TC4076: Get My Orders - Negative Page ==========
+  test('TC4076 | Verify getMyPotentialOrders handles negative page', async () => {
     // Given: Negative page number
     const mockOrders = [];
 
@@ -2313,8 +2313,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1077: Get My Orders - String Page Number ==========
-  test('TC-1077 | Verify getMyPotentialOrders handles string page number', async () => {
+  // ========== TC4077: Get My Orders - String Page Number ==========
+  test('TC4077 | Verify getMyPotentialOrders handles string page number', async () => {
     // Given: String page number
     const mockOrders = [makePotentialOrderData()];
 
@@ -2338,8 +2338,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.page).toBe(2);
   });
 
-  // ========== TC-1078: Get My Orders - String Limit ==========
-  test('TC-1078 | Verify getMyPotentialOrders handles string limit', async () => {
+  // ========== TC4078: Get My Orders - String Limit ==========
+  test('TC4078 | Verify getMyPotentialOrders handles string limit', async () => {
     // Given: String limit
     const mockOrders = [makePotentialOrderData()];
 
@@ -2362,8 +2362,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1079: Get My Orders - Very Large Limit ==========
-  test('TC-1079 | Verify getMyPotentialOrders handles very large limit', async () => {
+  // ========== TC4079: Get My Orders - Very Large Limit ==========
+  test('TC4079 | Verify getMyPotentialOrders handles very large limit', async () => {
     // Given: Very large limit
     const mockOrders = [makePotentialOrderData()];
 
@@ -2386,8 +2386,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1080: Get My Orders - Filter by Multiple Statuses ==========
-  test('TC-1080 | Verify getMyPotentialOrders filters by multiple statuses', async () => {
+  // ========== TC4080: Get My Orders - Filter by Multiple Statuses ==========
+  test('TC4080 | Verify getMyPotentialOrders filters by multiple statuses', async () => {
     // Given: Orders with multiple statuses
     const mockOrders = [
       makePotentialOrderData({ status: 'pending' }),
@@ -2414,8 +2414,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1081: Get My Orders - Filter by Multiple Priorities ==========
-  test('TC-1081 | Verify getMyPotentialOrders filters by multiple priorities', async () => {
+  // ========== TC4081: Get My Orders - Filter by Multiple Priorities ==========
+  test('TC4081 | Verify getMyPotentialOrders filters by multiple priorities', async () => {
     // Given: Orders with multiple priorities
     const mockOrders = [
       makePotentialOrderData({ priority: 'high' }),
@@ -2442,8 +2442,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1082: Get My Orders - Date Range with Invalid Dates ==========
-  test('TC-1082 | Verify getMyPotentialOrders handles invalid date range', async () => {
+  // ========== TC4082: Get My Orders - Date Range with Invalid Dates ==========
+  test('TC4082 | Verify getMyPotentialOrders handles invalid date range', async () => {
     // Given: Invalid date range
     const mockOrders = [makePotentialOrderData()];
 
@@ -2471,8 +2471,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1083: Get My Orders - Date Range with Only Start Date ==========
-  test('TC-1083 | Verify getMyPotentialOrders handles date range with only start date', async () => {
+  // ========== TC4083: Get My Orders - Date Range with Only Start Date ==========
+  test('TC4083 | Verify getMyPotentialOrders handles date range with only start date', async () => {
     // Given: Date range with only start date
     const mockOrders = [makePotentialOrderData()];
 
@@ -2500,8 +2500,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1084: Get My Orders - Date Range with Only End Date ==========
-  test('TC-1084 | Verify getMyPotentialOrders handles date range with only end date', async () => {
+  // ========== TC4084: Get My Orders - Date Range with Only End Date ==========
+  test('TC4084 | Verify getMyPotentialOrders handles date range with only end date', async () => {
     // Given: Date range with only end date
     const mockOrders = [makePotentialOrderData()];
 
@@ -2529,8 +2529,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1085: Get My Orders - Date Range with Null Values ==========
-  test('TC-1085 | Verify getMyPotentialOrders handles date range with null values', async () => {
+  // ========== TC4085: Get My Orders - Date Range with Null Values ==========
+  test('TC4085 | Verify getMyPotentialOrders handles date range with null values', async () => {
     // Given: Date range with null values
     const mockOrders = [makePotentialOrderData()];
 
@@ -2558,8 +2558,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1086: Get My Orders - Date Range with Empty String Values ==========
-  test('TC-1086 | Verify getMyPotentialOrders handles date range with empty string values', async () => {
+  // ========== TC4086: Get My Orders - Date Range with Empty String Values ==========
+  test('TC4086 | Verify getMyPotentialOrders handles date range with empty string values', async () => {
     // Given: Date range with empty string values
     const mockOrders = [makePotentialOrderData()];
 
@@ -2587,8 +2587,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1087: Get My Orders - Date Range with Undefined Values ==========
-  test('TC-1087 | Verify getMyPotentialOrders handles date range with undefined values', async () => {
+  // ========== TC4087: Get My Orders - Date Range with Undefined Values ==========
+  test('TC4087 | Verify getMyPotentialOrders handles date range with undefined values', async () => {
     // Given: Date range with undefined values
     const mockOrders = [makePotentialOrderData()];
 
@@ -2616,8 +2616,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1088: Get My Orders - Date Range with Mixed Types ==========
-  test('TC-1088 | Verify getMyPotentialOrders handles date range with mixed types', async () => {
+  // ========== TC4088: Get My Orders - Date Range with Mixed Types ==========
+  test('TC4088 | Verify getMyPotentialOrders handles date range with mixed types', async () => {
     // Given: Date range with mixed types
     const mockOrders = [makePotentialOrderData()];
 
@@ -2645,8 +2645,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1089: Get My Orders - Date Range with Zero Values ==========
-  test('TC-1089 | Verify getMyPotentialOrders handles date range with zero values', async () => {
+  // ========== TC4089: Get My Orders - Date Range with Zero Values ==========
+  test('TC4089 | Verify getMyPotentialOrders handles date range with zero values', async () => {
     // Given: Date range with zero values
     const mockOrders = [makePotentialOrderData()];
 
@@ -2674,8 +2674,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1090: Get My Orders - Date Range with Boolean Values ==========
-  test('TC-1090 | Verify getMyPotentialOrders handles date range with boolean values', async () => {
+  // ========== TC4090: Get My Orders - Date Range with Boolean Values ==========
+  test('TC4090 | Verify getMyPotentialOrders handles date range with boolean values', async () => {
     // Given: Date range with boolean values
     const mockOrders = [makePotentialOrderData()];
 
@@ -2703,8 +2703,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     expect(res.jsonData.success).toBe(true);
   });
 
-  // ========== TC-1091: getPotentialOrdersForStream - Database error handling ==========
-  test('TC-1091 | Verify getPotentialOrdersForStream handles database errors', async () => {
+  // ========== TC4091: getPotentialOrdersForStream - Database error handling ==========
+  test('TC4091 | Verify getPotentialOrdersForStream handles database errors', async () => {
     // Given: LiveStream found but PotentialOrder.find throws error
     LiveStream.findOne.mockResolvedValue(mockTestStream);
     PotentialOrder.find.mockImplementation(() => ({
@@ -2734,8 +2734,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     );
   });
 
-  // ========== TC-1092: getMyPotentialOrders - Database error handling ==========
-  test('TC-1092 | Verify getMyPotentialOrders handles database errors', async () => {
+  // ========== TC4092: getMyPotentialOrders - Database error handling ==========
+  test('TC4092 | Verify getMyPotentialOrders handles database errors', async () => {
     // Given: Database error
     PotentialOrder.find.mockImplementation(() => {
       const mockQuery = {
@@ -2762,8 +2762,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     );
   });
 
-  // ========== TC-1093: getPotentialOrder - Database error handling ==========
-  test('TC-1093 | Verify getPotentialOrder handles database errors', async () => {
+  // ========== TC4093: getPotentialOrder - Database error handling ==========
+  test('TC4093 | Verify getPotentialOrder handles database errors', async () => {
     // Given: Database error
     const mockQuery = {
       populate: jest.fn().mockReturnThis(),
@@ -2784,8 +2784,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     );
   });
 
-  // ========== TC-1094: updateOrderStatus - Database error handling ==========
-  test('TC-1094 | Verify updateOrderStatus handles database errors', async () => {
+  // ========== TC4094: updateOrderStatus - Database error handling ==========
+  test('TC4094 | Verify updateOrderStatus handles database errors', async () => {
     // Given: Database error
     const mockQuery = {
       populate: jest.fn().mockReturnThis(),
@@ -2807,8 +2807,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     );
   });
 
-  // ========== TC-1095: markAsViewed - Database error handling ==========
-  test('TC-1095 | Verify markAsViewed handles database errors', async () => {
+  // ========== TC4095: markAsViewed - Database error handling ==========
+  test('TC4095 | Verify markAsViewed handles database errors', async () => {
     // Given: Database error
     const mockQuery = {
       populate: jest.fn().mockReturnThis(),
@@ -2827,8 +2827,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     await expect(controller.markAsViewed(req, res)).rejects.toThrow('Database connection failed');
   });
 
-  // ========== TC-1096: addNote - Database error handling ==========
-  test('TC-1096 | Verify addNote handles database errors', async () => {
+  // ========== TC4096: addNote - Database error handling ==========
+  test('TC4096 | Verify addNote handles database errors', async () => {
     // Given: Database error
     const mockQuery = {
       populate: jest.fn().mockReturnThis(),
@@ -2848,8 +2848,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     await expect(controller.addNote(req, res)).rejects.toThrow('Database connection failed');
   });
 
-  // ========== TC-1097: getOrderStats - Database error handling ==========
-  test('TC-1097 | Verify getOrderStats handles database errors', async () => {
+  // ========== TC4097: getOrderStats - Database error handling ==========
+  test('TC4097 | Verify getOrderStats handles database errors', async () => {
     // Given: Database error
     PotentialOrder.aggregate.mockImplementation(() => {
       throw new Error('Database connection failed');
@@ -2864,8 +2864,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     await expect(controller.getOrderStats(req, res)).rejects.toThrow('Database connection failed');
   });
 
-  // ========== TC-1098: deletePotentialOrder - Database error handling ==========
-  test('TC-1098 | Verify deletePotentialOrder handles database errors', async () => {
+  // ========== TC4098: deletePotentialOrder - Database error handling ==========
+  test('TC4098 | Verify deletePotentialOrder handles database errors', async () => {
     // Given: Database error
     const mockQuery = {
       populate: jest.fn().mockReturnThis(),
@@ -2886,8 +2886,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     );
   });
 
-  // ========== TC-1099: exportPotentialOrders - Database error handling ==========
-  test('TC-1099 | Verify exportPotentialOrders handles database errors', async () => {
+  // ========== TC4099: exportPotentialOrders - Database error handling ==========
+  test('TC4099 | Verify exportPotentialOrders handles database errors', async () => {
     // Given: Database error
     PotentialOrder.find.mockImplementation(() => {
       throw new Error('Database connection failed');
@@ -2911,8 +2911,8 @@ describe('Order in Livestream — Test Suite 4: Potential Order Management (Unit
     );
   });
 
-  // ========== TC-1100: exportPotentialOrdersForStream - Database error handling ==========
-  test('TC-1100 | Verify exportPotentialOrdersForStream handles database errors', async () => {
+  // ========== TC4100: exportPotentialOrdersForStream - Database error handling ==========
+  test('TC4100 | Verify exportPotentialOrdersForStream handles database errors', async () => {
     // Given: Stream found but database error when finding orders
     LiveStream.findOne.mockResolvedValue(mockTestStream);
     PotentialOrder.find.mockImplementation(() => {

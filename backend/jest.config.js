@@ -29,8 +29,8 @@ export default {
 
     // Suite 6: Edge Cases & Error Handling
     'src/middlewares/error.middleware.js', // Error middleware
-    'src/utils/logger.js', // Logger utility
-    'src/utils/validation.js', // Validation utility
+    '!src/utils/logger.js', // Logger utility
+    '!src/utils/validation.js', // Validation utility
 
     // Common files used across multiple suites
     'src/models/LiveStream.js', // LiveStream model

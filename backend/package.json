@@ -8,14 +8,14 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "lint": "eslint .",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest",
     "test:all": "node run-all-tests.js",
-    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
-    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
-    "test:verbose": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --verbose",
-    "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/utils --coverage",
-    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration --coverage",
-    "test:services": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/services --coverage"
+    "test:watch": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:verbose": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --verbose",
+    "test:unit": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest tests/utils --coverage",
+    "test:integration": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest tests/integration --coverage",
+    "test:services": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest tests/services --coverage"
   },
   "dependencies": {
     "@google/genai": "^1.19.0",

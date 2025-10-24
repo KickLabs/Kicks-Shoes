@@ -463,8 +463,9 @@ describe('Suite 6: Edge Cases & Error Handling - Unit Tests Only', () => {
           })
         ).toBe(true);
 
-        // And: Order creation was attempted (controller auto-create path executed)
-        expect(mockOrderService.createOrder).toHaveBeenCalled();
+        // And: Order creation was NOT attempted because inventory check failed
+        // (Fixed behavior: don't create order when inventory check fails)
+        expect(mockOrderService.createOrder).not.toHaveBeenCalled();
 
         // And: No email is sent
         expect(mockEmailService.sendTemplatedEmail).not.toHaveBeenCalled();

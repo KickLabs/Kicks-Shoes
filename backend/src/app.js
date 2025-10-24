@@ -185,7 +185,7 @@ app.use('/api', uploadRoutes);
 app.use('/api/payment/vnpay', vnpayRoutes); // Added VNPay payment routes
 app.use('/api/payos', payosRoutes); // Added PayOS payment routes
 app.use('/api/chat', chatRoutes);
-app.use('/api/livestream', livestreamRoutes); // Added LiveStream routes
+app.use('/api/livestreams', livestreamRoutes); // Added LiveStream routes (with 's')
 app.use('/api/blogs', blogRoutes);
 app.use('/api/blog-comments', blogCommentRoutes);
 app.use('/api/potential-orders', potentialOrderRoutes); // Added Potential Order routes
@@ -193,9 +193,11 @@ app.use('/api/tryon', tryonRoutes);
 app.use('/api/flash-sales', flashSaleRoutes); // Added Flash Sale routes
 app.use('/api/ai', aiRoutes); // AI proxy routes
 
-// Start cron jobs
-startDiscountStatusUpdateCron();
-startFlashSaleStatusUpdateCron();
+// Start cron jobs (skip in test environment to prevent blocking)
+if (process.env.NODE_ENV !== 'test') {
+  startDiscountStatusUpdateCron();
+  startFlashSaleStatusUpdateCron();
+}
 
 // Error handler
 app.use(errorHandler);
@@ -243,9 +245,12 @@ const io = new SocketIOServer(server, {
 import setupSocketHandlers from './socket.js';
 setupSocketHandlers(io);
 
-server.listen(PORT, HOST, () => {
-  logger.info(`Server is running on port ${PORT}`);
-});
+// Only start server if not in test environment (tests will start their own server)
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(PORT, HOST, () => {
+    logger.info(`Server is running on port ${PORT}`);
+  });
+}
 
 export default app;
 export { io, server };

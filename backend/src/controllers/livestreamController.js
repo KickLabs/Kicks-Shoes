@@ -5,10 +5,13 @@
  * @description Controller for managing livestream operations and API endpoints
  */
 
+import mongoose from 'mongoose';
 import { validationResult } from 'express-validator';
 import LiveStream from '../models/LiveStream.js';
 import LiveStreamChat from '../models/LiveStreamChat.js';
+import PotentialOrder from '../models/PotentialOrder.js';
 import liveStreamService from '../services/livestream.service.js';
+import orderDetectionService from '../services/orderDetection.service.js';
 import { asyncHandler } from '../middlewares/async.middleware.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
@@ -393,11 +396,25 @@ export const deleteLiveStream = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getChatMessages = asyncHandler(async (req, res) => {
-  const { roomId } = req.params;
+  const { roomId, id } = req.params;
+  const streamIdentifier = roomId || id; // Support both :roomId and :id params
   const limit = parseInt(req.query.limit) || 50;
   const page = parseInt(req.query.page) || 1;
 
-  const liveStream = await LiveStream.findOne({ roomId });
+  let liveStream;
+
+  // Check if it's an ObjectId (MongoDB ID) or roomId string
+  if (
+    mongoose.Types.ObjectId.isValid(streamIdentifier) &&
+    /^[0-9a-fA-F]{24}$/.test(streamIdentifier)
+  ) {
+    // It's a valid MongoDB ObjectId - search by _id
+    liveStream = await LiveStream.findById(streamIdentifier);
+  } else {
+    // It's a roomId string
+    liveStream = await LiveStream.findOne({ roomId: streamIdentifier });
+  }
+
   if (!liveStream) {
     throw new ErrorResponse('Livestream not found', 404);
   }
@@ -563,5 +580,241 @@ export const getLiveStreamAnalytics = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: analytics,
+  });
+});
+
+/**
+ * @desc    Join a livestream
+ * @route   POST /api/livestreams/:id/join
+ * @access  Private
+ */
+export const joinLiveStream = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  // Find livestream by _id or roomId
+  const liveStream = await LiveStream.findOne({
+    $or: [{ _id: id }, { roomId: id }],
+  });
+
+  if (!liveStream) {
+    throw new ErrorResponse('Livestream not found', 404);
+  }
+
+  if (liveStream.status !== 'live') {
+    throw new ErrorResponse('Livestream is not currently active', 400);
+  }
+
+  // Check if already at max viewers
+  if (
+    liveStream.settings.maxViewers &&
+    liveStream.viewers.length >= liveStream.settings.maxViewers
+  ) {
+    throw new ErrorResponse('Livestream has reached maximum viewers', 400);
+  }
+
+  // Add viewer if not already in list
+  if (!liveStream.viewers.includes(userId)) {
+    liveStream.viewers.push(userId);
+    liveStream.stats.peakViewers = Math.max(
+      liveStream.stats.peakViewers,
+      liveStream.viewers.length
+    );
+    await liveStream.save();
+  }
+
+  logger.info('User joined livestream', {
+    userId,
+    streamId: liveStream._id,
+    roomId: liveStream.roomId,
+    viewerCount: liveStream.viewers.length,
+  });
+
+  res.json({
+    success: true,
+    data: {
+      streamId: liveStream._id,
+      roomId: liveStream.roomId,
+      title: liveStream.title,
+      hostId: liveStream.hostId,
+      viewerCount: liveStream.viewers.length,
+    },
+  });
+});
+
+/**
+ * @desc    Leave a livestream
+ * @route   POST /api/livestreams/:id/leave
+ * @access  Private
+ */
+export const leaveLiveStream = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  // Find livestream by _id or roomId
+  const liveStream = await LiveStream.findOne({
+    $or: [{ _id: id }, { roomId: id }],
+  });
+
+  if (!liveStream) {
+    throw new ErrorResponse('Livestream not found', 404);
+  }
+
+  // Remove viewer from list
+  liveStream.viewers = liveStream.viewers.filter(viewerId => viewerId.toString() !== userId);
+  await liveStream.save();
+
+  logger.info('User left livestream', {
+    userId,
+    streamId: liveStream._id,
+    roomId: liveStream.roomId,
+    viewerCount: liveStream.viewers.length,
+  });
+
+  res.json({
+    success: true,
+    message: 'Left livestream successfully',
+    data: {
+      viewerCount: liveStream.viewers.length,
+    },
+  });
+});
+
+/**
+ * @desc    Send a chat message in livestream
+ * @route   POST /api/livestreams/:id/chat
+ * @access  Private
+ */
+export const sendChatMessage = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { message, type = 'text' } = req.body;
+  const userId = req.user.id;
+
+  if (!message || message.trim().length === 0) {
+    throw new ErrorResponse('Message cannot be empty', 400);
+  }
+
+  // Find livestream by _id or roomId
+  const liveStream = await LiveStream.findOne({
+    $or: [{ _id: id }, { roomId: id }],
+  });
+
+  if (!liveStream) {
+    throw new ErrorResponse('Livestream not found', 404);
+  }
+
+  if (liveStream.status !== 'live') {
+    throw new ErrorResponse('Cannot send messages to inactive livestream', 400);
+  }
+
+  if (!liveStream.settings.allowChat) {
+    throw new ErrorResponse('Chat is disabled for this livestream', 403);
+  }
+
+  // Create chat message
+  const chatMessage = await LiveStreamChat.create({
+    streamId: liveStream._id,
+    roomId: liveStream.roomId,
+    senderId: userId,
+    content: message.trim(),
+    messageType: type,
+    timestamp: new Date(),
+  });
+
+  // Update livestream stats
+  liveStream.stats.totalMessages += 1;
+  await liveStream.save();
+
+  // Populate user info
+  await chatMessage.populate('senderId', 'username fullName avatar');
+
+  logger.info('Chat message sent', {
+    userId,
+    streamId: liveStream._id,
+    roomId: liveStream.roomId,
+    messageId: chatMessage._id,
+    messageLength: message.length,
+  });
+
+  // Broadcast message via Socket.IO (for real-time updates)
+  try {
+    const { getIO } = await import('../socket.js');
+    const io = getIO();
+    if (io) {
+      io.to(`livestream_${liveStream._id}`).emit('new-chat-message', {
+        message: chatMessage.content,
+        livestreamId: liveStream._id.toString(),
+        roomId: liveStream.roomId,
+        messageId: chatMessage._id.toString(),
+        sender: {
+          id: userId,
+          username: chatMessage.senderId?.username,
+          fullName: chatMessage.senderId?.fullName,
+          avatar: chatMessage.senderId?.avatar,
+        },
+        messageType: type,
+        timestamp: chatMessage.timestamp,
+      });
+    }
+  } catch (error) {
+    logger.error('Error broadcasting chat message via Socket.IO:', error);
+  }
+
+  // Analyze message for potential orders (async, don't block response)
+  setImmediate(async () => {
+    try {
+      const User = (await import('../models/User.js')).default;
+      const user = await User.findById(userId);
+
+      if (user) {
+        const detectionResult = await orderDetectionService.analyzeMessage(
+          {
+            _id: chatMessage._id,
+            content: chatMessage.content,
+          },
+          {
+            _id: liveStream._id,
+            roomId: liveStream.roomId,
+          },
+          user
+        );
+
+        if (detectionResult && detectionResult.isOrder) {
+          // Create potential order matching nested schema
+          await PotentialOrder.create({
+            streamId: liveStream._id,
+            roomId: liveStream.roomId,
+            chatMessageId: chatMessage._id,
+            customerInfo: {
+              userId: user._id,
+              customerName: user.fullName || user.username,
+              phoneNumber: detectionResult.data.customerInfo.phoneNumber,
+            },
+            productInfo: {
+              originalMessage: chatMessage.content,
+              productId: detectionResult.data.productInfo.productId || null,
+              extractedSize: detectionResult.data.productInfo.extractedSize || null,
+              extractedColor: detectionResult.data.productInfo.extractedColor || null,
+              extractedQuantity: detectionResult.data.productInfo.extractedQuantity || 1,
+            },
+            detectionData: detectionResult.data.detectionData,
+            status: 'pending',
+          });
+
+          logger.info('Potential order created from chat', {
+            messageId: chatMessage._id,
+            userId,
+            confidence: detectionResult.data.detectionData.confidence,
+          });
+        }
+      }
+    } catch (error) {
+      logger.error('Error detecting order from chat message:', error);
+    }
+  });
+
+  res.status(201).json({
+    success: true,
+    data: chatMessage,
   });
 });

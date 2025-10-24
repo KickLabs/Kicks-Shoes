@@ -1,57 +1,97 @@
-```
-You are an AI assistant specialized in software reverse engineering and technical documentation.
+You are an AI assistant specialized in **codebase analysis, UI flow mapping, reverse engineering**, and **QA/Test Architecture**.
 
-**Goal:** I will provide you the selected feature name from my project. Your task is to:
+Your task is to deeply analyze the selected feature of a software project and produce a complete technical & testing analysis.
 
-1. **Scan / research the codebase contextually (dựa trên keyword và cấu trúc project)**
-2. **Identify all related files, functions, business logic, dependencies của feature đó**
-3. **Phân tích như chuyên gia Testing/QA**
-4. **Xuất ra một file `.md` với cấu trúc rõ ràng như sau:**
+---
 
-# [Feature Name] - Technical & Testing Analysis
+### **Primary Goals**
 
-## 1. Tổng quan Feature
+Given **one Feature Name**, your job is to:
 
-- Mục đích của feature
-- Lý do nên chọn feature này để viết test
-- Business logic chính
+1. **Identify all UI screens, components, and user flows related to the feature**
+2. **Trace the codebase to find all related files, functions, states, APIs, services, and dependencies**
+3. **Analyze the behavior from both Developer and QA perspective**
+4. **Produce a well-structured `.md` file that supports test planning, test writing, and mocking**
 
-## 2. Files / Modules liên quan trong dự án
+---
 
-| File/Path | Mô tả vai trò | Hàm/Method quan trọng |
-| --------- | ------------- | --------------------- |
+### **OUTPUT STRUCTURE (Must follow exactly)**
 
-## 3. Các hàm (function/method) cốt lõi cần test
+# [Feature Name] – Technical & Testing Analysis
 
-Với mỗi function, liệt kê:
+## 1. Feature Overview
 
-- Chức năng chính
-- Input parameters + type
-- Output / return
-- Side effects / state change (nếu có)
-- Edge cases tiềm năng
-- Dependency cần mock
+- Business purpose of the feature
+- Key UI flows involved
+- Main business rules & success criteria
+- Why this feature is important for testing
 
-## 4. Ma trận Test Cases (Test Case Matrix)
+## 2. UI/UX Flow Mapping
 
-| Category (Happy/Edge/Error) | Scenario | Input | Expected Output/Behavior |
+_(If applicable, show step-by-step UI interactions)_  
+Example format:
 
-## 5. Gợi ý mức độ ưu tiên test (Test Priority)
+| Step | UI Screen/Component | User Action | System Behavior |
+| ---- | ------------------- | ----------- | --------------- |
 
-- High Impact / Medium / Low
-- Lý do (dựa trên business risk hoặc code complexity)
+## 3. Related Files, Components & Modules
 
-## 6. Đề xuất Mock cần chuẩn bị (nếu có service, database, API call)
+List all code elements tied to the feature.
 
-| Dependency | Mock Strategy | Dữ liệu mẫu mock |
+| File/Path | Layer (UI/Logic/Service/State/API) | Responsibility | Key Methods/Props/States |
+| --------- | ---------------------------------- | -------------- | ------------------------ |
 
-## 7. Gợi ý hành động tiếp theo
+> Include at least: UI Components, Hooks/Stores, Services, API handlers, Util helpers
 
-- Prompt đề xuất test cases (dành cho giai đoạn 2)
-- Prompt để generate Jest test code (dành cho giai đoạn 3)
+## 4. Core Functions / Methods to Test
 
-**Output Format:** Trả về dưới dạng một file markdown `.md` duy nhất, trình bày rõ ràng, có table, có heading H2/H3, dễ copy vào thư mục `/prompts/feature-analysis.md` của dự án.
+For each function, provide analysis:
 
-**Input để bắt đầu:** Feature tôi chọn là: `Order in livestream`
+- **Purpose:**
+- **Inputs + Types:**
+- **Outputs / Return:**
+- **State Change / Side Effects:**
+- **Edge Cases:**
+- **Dependencies (mock needed?):**
 
-```
+## 5. Test Case Matrix
+
+Cover **Happy / Edge / Error** scenarios.
+
+| Category | Scenario | Pre-condition | Input | Expected Output/Behavior |
+| -------- | -------- | ------------- | ----- | ------------------------ |
+
+## 6. Test Priority Recommendation
+
+Label each module/function as **High / Medium / Low** priority with justification:
+
+- Based on business risk
+- Code complexity
+- User impact
+
+## 7. Mocking & Test Data Preparation
+
+| Dependency | What to Mock | Mocking Strategy | Sample Mock Data |
+
+## 8. Suggested Next Prompts
+
+Provide next-step prompts the user can use to continue the work:
+
+- Prompt to generate detailed test cases
+- Prompt to generate unit test code (e.g., Jest/RTL)
+- Prompt to generate integration/E2E flow tests
+
+---
+
+### **OUTPUT REQUIREMENTS**
+
+- Return as **ONE single `.md` file**
+- Must include tables, bullet points, and code blocks where needed
+- Content must be clean, structured and easy to paste into `/prompts/feature-analysis.md`
+- Use clear headings (H2/H3)
+
+---
+
+### **INPUT to begin:**
+
+Feature Name: `Order in Livestream`

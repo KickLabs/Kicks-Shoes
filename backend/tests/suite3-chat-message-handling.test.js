@@ -144,8 +144,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     await LiveStreamChat.deleteMany({ streamId: TEST_STREAM_ID });
   });
 
-  // TC-301
-  test('TC-301 | Verify chat message được lưu vào DB và broadcast', async () => {
+  // TC-ME-3001
+  test('TC-ME-3001 | Verify chat message được lưu vào DB và broadcast', async () => {
     // Given
     const socketId = 'socket-123';
     const messageData = { text: 'Hello from viewer', type: 'text' };
@@ -170,8 +170,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     expect(savedMessage.content).toBe('Hello from viewer');
   });
 
-  // TC-302
-  test('TC-302 | Verify order message tạo PotentialOrder và emit notification', async () => {
+  // TC-ME-3002
+  test('TC-ME-3002 | Verify order message tạo PotentialOrder và emit notification', async () => {
     // Given
     const socketId = 'socket-123';
     const messageData = { text: 'Chốt HJ6777 size 42 sđt 0912345678', type: 'text' };
@@ -223,8 +223,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     }
   });
 
-  // TC-303
-  test('TC-303 | Verify system message không bị analyze order', async () => {
+  // TC-ME-3003
+  test('TC-ME-3003 | Verify system message không bị analyze order', async () => {
     // Given
     const socketId = 'socket-123';
     const messageData = { text: 'User joined the stream', type: 'system' };
@@ -238,8 +238,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     expect(result.potentialOrder).toBeNull();
   });
 
-  // TC-304 — via Socket.IO handler broadcasting
-  test('TC-304 | Verify message trong room có nhiều viewers được broadcast correctly', async () => {
+  // TC-ME-3004 — via Socket.IO handler broadcasting
+  test('TC-ME-3004 | Verify message trong room có nhiều viewers được broadcast correctly', async () => {
     // Given
     const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
     room.viewers = new Map([
@@ -282,8 +282,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     expect(toMock).toHaveBeenCalledTimes(1);
   });
 
-  // TC-305
-  test('TC-305 | Verify socket không tồn tại trong socketToRoom Map', async () => {
+  // TC-ME-3005
+  test('TC-ME-3005 | Verify socket không tồn tại trong socketToRoom Map', async () => {
     // Given
     const invalidSocketId = 'non-existent-socket';
 
@@ -301,8 +301,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     expect(messages.length).toBe(0);
   });
 
-  // TC-306
-  test('TC-306 | Verify room không tồn tại hoặc stream không active', async () => {
+  // TC-ME-3006
+  test('TC-ME-3006 | Verify room không tồn tại hoặc stream không active', async () => {
     // Given
     liveStreamService.socketToRoom.set('socket-bad', {
       roomId: 'invalid-room',
@@ -324,8 +324,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     expect(messages.length).toBe(0);
   });
 
-  // TC-307
-  test('TC-307 | Verify user không authenticated (anonymous)', async () => {
+  // TC-ME-3007
+  test('TC-ME-3007 | Verify user không authenticated (anonymous)', async () => {
     // Given
     liveStreamService.socketToRoom.set('socket-anon', {
       roomId: UNIQUE_ROOM_ID,
@@ -346,8 +346,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     expect(result.message.content).toBe('Hi');
   });
 
-  // TC-308
-  test('TC-308 | Verify analyzeMessage() throws error không làm crash chat', async () => {
+  // TC-ME-3008
+  test('TC-ME-3008 | Verify analyzeMessage() throws error không làm crash chat', async () => {
     // Given
     const socketId = 'socket-123';
     const messageData = { text: 'Chốt 0912345678', type: 'text' };
@@ -368,8 +368,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     expect(savedMessage).toBeTruthy();
   });
 
-  // TC-309
-  test('TC-309 | Verify LiveStreamChat.save() failure được xử lý', async () => {
+  // TC-ME-3009
+  test('TC-ME-3009 | Verify LiveStreamChat.save() failure được xử lý', async () => {
     // Given: Use invalid streamId to cause validation error
     const socketId = 'socket-invalid';
     liveStreamService.socketToRoom.set('socket-invalid', {
@@ -401,8 +401,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     }
   });
 
-  // TC-310
-  test('TC-310 | Verify xử lý 20 messages đồng thời trong cùng room', async () => {
+  // TC-ME-3010
+  test('TC-ME-3010 | Verify xử lý 20 messages đồng thời trong cùng room', async () => {
     // Given
     const socketId = 'socket-123';
     const messages = Array.from({ length: 20 }, (_, i) => ({ text: `Msg ${i}`, type: 'text' }));
@@ -432,8 +432,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     expect(duration).toBeLessThan(5000); // More realistic for DB operations
   });
 
-  // TC-311
-  test('TC-311 | Verify order detection không làm chậm chat response time', async () => {
+  // TC-ME-3011
+  test('TC-ME-3011 | Verify order detection không làm chậm chat response time', async () => {
     // Given
     const socketId = 'socket-123';
     const messageData = { text: 'Chốt HJ6777 0912345678 size 42', type: 'text' };
@@ -459,8 +459,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     expect(duration).toBeLessThan(1000);
   });
 
-  // TC-312
-  test('TC-312 | Verify message content được sanitize trước khi save', async () => {
+  // TC-ME-3012
+  test('TC-ME-3012 | Verify message content được sanitize trước khi save', async () => {
     // Given: Test that dangerous content is saved as-is (sanitization should happen on frontend)
     const socketId = 'socket-123';
     const raw = "<script>alert('xss')</script>Chốt 0912345678";
@@ -479,8 +479,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
   // ========== ADDITIONAL TESTS FOR FULL COVERAGE ==========
 
   describe('Room Management Methods', () => {
-    // TC-401: Test createRoom
-    test('TC-401 | Verify createRoom tạo room mới thành công', async () => {
+    // TC-ME2-3001: Test createRoom
+    test('TC-ME2-3001 | Verify createRoom tạo room mới thành công', async () => {
       // Given
       const hostUserId = TEST_HOST_ID;
       const streamData = {
@@ -509,8 +509,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       liveStreamService.rooms.delete(result.roomId);
     });
 
-    // TC-402: Test joinAsHost
-    test('TC-402 | Verify host join room thành công', async () => {
+    // TC-ME2-3002: Test joinAsHost
+    test('TC-ME2-3002 | Verify host join room thành công', async () => {
       // Given
       const hostSocketId = 'host-socket-123';
       const roomId = UNIQUE_ROOM_ID;
@@ -539,8 +539,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(socketInfo.role).toBe('host');
     });
 
-    // TC-403: Test joinAsHost with wrong user
-    test('TC-403 | Verify joinAsHost reject non-host user', async () => {
+    // TC-ME2-3003: Test joinAsHost with wrong user
+    test('TC-ME2-3003 | Verify joinAsHost reject non-host user', async () => {
       // Given
       const fakeUserId = new mongoose.Types.ObjectId();
 
@@ -556,8 +556,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       ).rejects.toThrow('Unauthorized');
     });
 
-    // TC-404: Test joinAsViewer
-    test('TC-404 | Verify viewer join room thành công', async () => {
+    // TC-ME2-3004: Test joinAsViewer
+    test('TC-ME2-3004 | Verify viewer join room thành công', async () => {
       // Given
       const viewerSocketId = 'viewer-socket-456';
       const roomId = UNIQUE_ROOM_ID;
@@ -581,8 +581,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(socketInfo.viewerId).toBe(result.viewerId);
     });
 
-    // TC-405: Test joinAsViewer when stream not active
-    test('TC-405 | Verify joinAsViewer fail when stream not active', async () => {
+    // TC-ME2-3005: Test joinAsViewer when stream not active
+    test('TC-ME2-3005 | Verify joinAsViewer fail when stream not active', async () => {
       // Given: Set stream to inactive in DB
       await LiveStream.findByIdAndUpdate(TEST_STREAM_ID, { isActive: false });
 
@@ -595,8 +595,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       await LiveStream.findByIdAndUpdate(TEST_STREAM_ID, { isActive: true });
     });
 
-    // TC-406: Test viewer limit
-    test('TC-406 | Verify viewer limit enforcement', async () => {
+    // TC-ME2-3006: Test viewer limit
+    test('TC-ME2-3006 | Verify viewer limit enforcement', async () => {
       // Given: Create a room with maxViewers = 1
       const limitedStream = await LiveStream.create({
         roomId: 'limited-room',
@@ -625,8 +625,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
   });
 
   describe('WebRTC Signaling Methods', () => {
-    // TC-501: Test handleSignaling from host to viewer
-    test('TC-501 | Verify handleSignaling host->viewer', () => {
+    // TC-RTC-3001: Test handleSignaling from host to viewer
+    test('TC-RTC-3001 | Verify handleSignaling host->viewer', () => {
       // Given
       const hostSocketId = 'host-signal';
       const viewerId = 'viewer-1';
@@ -653,8 +653,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(result.socketInfo.role).toBe('host');
     });
 
-    // TC-502: Test handleSignaling from viewer to host
-    test('TC-502 | Verify handleSignaling viewer->host', () => {
+    // TC-RTC-3002: Test handleSignaling from viewer to host
+    test('TC-RTC-3002 | Verify handleSignaling viewer->host', () => {
       // Given
       const viewerSocketId = 'viewer-signal';
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
@@ -678,8 +678,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(result.socketInfo.role).toBe('viewer');
     });
 
-    // TC-503: Test handleSignaling with invalid socket
-    test('TC-503 | Verify handleSignaling fail với invalid socket', () => {
+    // TC-RTC-3003: Test handleSignaling with invalid socket
+    test('TC-RTC-3003 | Verify handleSignaling fail với invalid socket', () => {
       // When
       const result = liveStreamService.handleSignaling('non-existent', {});
 
@@ -687,8 +687,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(result).toBeNull();
     });
 
-    // TC-504: Test getTargetSocket
-    test('TC-504 | Verify getTargetSocket logic', () => {
+    // TC-RTC-3004: Test getTargetSocket
+    test('TC-RTC-3004 | Verify getTargetSocket logic', () => {
       // Given
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       room.host = { socketId: 'host-1' };
@@ -713,8 +713,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
   });
 
   describe('Session Management Methods', () => {
-    // TC-601: Test handleDisconnect for host
-    test('TC-601 | Verify handleDisconnect cho host ends stream', async () => {
+    // TC-SK-3001: Test handleDisconnect for host
+    test('TC-SK-3001 | Verify handleDisconnect cho host ends stream', async () => {
       // Given
       const hostSocketId = 'disconnect-host';
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
@@ -738,8 +738,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(room.host).toBeNull();
     });
 
-    // TC-602: Test handleDisconnect for viewer
-    test('TC-602 | Verify handleDisconnect cho viewer', async () => {
+    // TC-SK-3002: Test handleDisconnect for viewer
+    test('TC-SK-3002 | Verify handleDisconnect cho viewer', async () => {
       // Given
       const viewerSocketId = 'disconnect-viewer';
       const viewerId = 'viewer-disconnect';
@@ -767,8 +767,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(room.viewers.has(viewerId)).toBe(false);
     });
 
-    // TC-603: Test handleDisconnect for non-existent socket
-    test('TC-603 | Verify handleDisconnect với socket không tồn tại', async () => {
+    // TC-SK-3003: Test handleDisconnect for non-existent socket
+    test('TC-SK-3003 | Verify handleDisconnect với socket không tồn tại', async () => {
       // When
       const result = await liveStreamService.handleDisconnect('non-existent-socket');
 
@@ -776,8 +776,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(result).toBeNull();
     });
 
-    // TC-604: Test getRoomStatus
-    test('TC-604 | Verify getRoomStatus trả về đúng thông tin', () => {
+    // TC-SK-3004: Test getRoomStatus
+    test('TC-SK-3004 | Verify getRoomStatus trả về đúng thông tin', () => {
       // Given
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       room.host = { socketId: 'host' };
@@ -796,8 +796,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(status.streamData).toBeTruthy();
     });
 
-    // TC-605: Test getRoomStatus for non-existent room
-    test('TC-605 | Verify getRoomStatus với room không tồn tại', () => {
+    // TC-SK-3005: Test getRoomStatus for non-existent room
+    test('TC-SK-3005 | Verify getRoomStatus với room không tồn tại', () => {
       // When
       const status = liveStreamService.getRoomStatus('non-existent-room');
 
@@ -805,8 +805,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(status).toBeNull();
     });
 
-    // TC-606: Test getActiveRooms
-    test('TC-606 | Verify getActiveRooms returns correct rooms', () => {
+    // TC-SK-3006: Test getActiveRooms
+    test('TC-SK-3006 | Verify getActiveRooms returns correct rooms', () => {
       // Given: Setup multiple rooms
       const room1 = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       room1.host = { socketId: 'host-1' };
@@ -836,8 +836,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       liveStreamService.rooms.delete('room-003');
     });
 
-    // TC-607: Test cleanupInactiveRooms
-    test('TC-607 | Verify cleanupInactiveRooms removes old rooms', () => {
+    // TC-SK-3007: Test cleanupInactiveRooms
+    test('TC-SK-3007 | Verify cleanupInactiveRooms removes old rooms', () => {
       // Given: Create an old inactive room
       const oldDate = new Date(Date.now() - 10 * 60 * 1000); // 10 minutes ago
       liveStreamService.rooms.set('old-room', {
@@ -854,8 +854,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(liveStreamService.rooms.has('old-room')).toBe(false);
     });
 
-    // TC-608: Test cleanupInactiveRooms keeps active rooms
-    test('TC-608 | Verify cleanupInactiveRooms keeps active rooms', () => {
+    // TC-SK-3008: Test cleanupInactiveRooms keeps active rooms
+    test('TC-SK-3008 | Verify cleanupInactiveRooms keeps active rooms', () => {
       // Given
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       room.host = { socketId: 'host' };
@@ -868,10 +868,9 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     });
   });
 
-  // ========== BRANCH COVERAGE TESTS ==========
   describe('Branch Coverage - Error Paths & Edge Cases', () => {
-    // TC-701: Test createRoom with DB error
-    test('TC-701 | Verify createRoom handles DB errors', async () => {
+    // TC-SK-3009: Test createRoom with DB error
+    test('TC-SK-3009 | Verify createRoom handles DB errors', async () => {
       // Given: Invalid hostUserId will cause DB error
       const invalidHostId = 'invalid-not-objectid';
 
@@ -881,8 +880,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       ).rejects.toThrow();
     });
 
-    // TC-702: Test joinAsHost with existing host (reconnect scenario)
-    test('TC-702 | Verify joinAsHost replaces old host socket', async () => {
+    // TC-SK-3010: Test joinAsHost with existing host (reconnect scenario)
+    test('TC-SK-3010 | Verify joinAsHost replaces old host socket', async () => {
       // Given: Room already has a host
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       room.host = { socketId: 'old-host-socket', userId: TEST_HOST_ID };
@@ -907,8 +906,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(liveStreamService.socketToRoom.has('new-host-socket')).toBe(true);
     });
 
-    // TC-703: Test joinAsViewer loads room from DB when not in memory
-    test('TC-703 | Verify joinAsViewer loads room from DB', async () => {
+    // TC-SK-3011: Test joinAsViewer loads room from DB when not in memory
+    test('TC-SK-3011 | Verify joinAsViewer loads room from DB', async () => {
       // Given: Room not in memory but exists in DB
       const newRoomId = 'db-room-123';
       const dbStream = await LiveStream.create({
@@ -937,8 +936,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       liveStreamService.rooms.delete(newRoomId);
     });
 
-    // TC-704: Test joinAsViewer when room not in memory and not in DB
-    test('TC-704 | Verify joinAsViewer fails when room not found', async () => {
+    // TC-SK-3012: Test joinAsViewer when room not in memory and not in DB
+    test('TC-SK-3012 | Verify joinAsViewer fails when room not found', async () => {
       // Given: Room doesn't exist anywhere
       const fakeRoomId = 'non-existent-room-999';
 
@@ -948,8 +947,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       ).rejects.toThrow('Stream not found or not active');
     });
 
-    // TC-705: Test handleSignaling when room not found
-    test('TC-705 | Verify handleSignaling returns null when room deleted', () => {
+    // TC-SK-3013: Test handleSignaling when room not found
+    test('TC-SK-3013 | Verify handleSignaling returns null when room deleted', () => {
       // Given: Socket mapped to room, but room deleted
       liveStreamService.socketToRoom.set('orphan-socket', {
         roomId: 'deleted-room',
@@ -969,8 +968,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       liveStreamService.socketToRoom.delete('orphan-socket');
     });
 
-    // TC-706: Test getTargetSocket with invalid role
-    test('TC-706 | Verify getTargetSocket returns null for invalid role', () => {
+    // TC-SK-3014: Test getTargetSocket with invalid role
+    test('TC-SK-3014 | Verify getTargetSocket returns null for invalid role', () => {
       // Given
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       const senderInfo = { role: 'moderator' }; // Invalid role for signaling
@@ -982,8 +981,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(result).toBeNull();
     });
 
-    // TC-707: Test getTargetSocket when viewer doesn't exist
-    test('TC-707 | Verify getTargetSocket returns undefined for missing viewer', () => {
+    // TC-SK-3015: Test getTargetSocket when viewer doesn't exist
+    test('TC-SK-3015 | Verify getTargetSocket returns undefined for missing viewer', () => {
       // Given
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       room.host = { socketId: 'host' };
@@ -1000,8 +999,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(result).toBeUndefined();
     });
 
-    // TC-708: Test getTargetSocket when host doesn't exist
-    test('TC-708 | Verify getTargetSocket returns undefined when no host', () => {
+    // TC-SK-3016: Test getTargetSocket when host doesn't exist
+    test('TC-SK-3016 | Verify getTargetSocket returns undefined when no host', () => {
       // Given
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       room.host = null; // No host
@@ -1013,8 +1012,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(result).toBeUndefined();
     });
 
-    // TC-709: Test handleDisconnect when room deleted after socket lookup
-    test('TC-709 | Verify handleDisconnect handles deleted room', async () => {
+    // TC-SK-3017: Test handleDisconnect when room deleted after socket lookup
+    test('TC-SK-3017 | Verify handleDisconnect handles deleted room', async () => {
       // Given: Socket mapped but room will be deleted
       liveStreamService.socketToRoom.set('temp-socket', {
         roomId: 'temp-room',
@@ -1031,8 +1030,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(liveStreamService.socketToRoom.has('temp-socket')).toBe(false);
     });
 
-    // TC-710: Test getRoomStatus with inactive room (no host)
-    test('TC-710 | Verify getRoomStatus shows inactive when no host', () => {
+    // TC-SK-3018: Test getRoomStatus with inactive room (no host)
+    test('TC-SK-3018 | Verify getRoomStatus shows inactive when no host', () => {
       // Given
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       room.host = null; // No host = inactive
@@ -1046,8 +1045,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       expect(status.viewerCount).toBe(1);
     });
 
-    // TC-711: Test handleChatMessage with null userId (anonymous)
-    test('TC-711 | Verify anonymous user chat fails', async () => {
+    // TC-SK-3019: Test handleChatMessage with null userId (anonymous)
+    test('TC-SK-3019 | Verify anonymous user chat fails', async () => {
       // Given
       const anonSocketId = 'anon-socket';
       liveStreamService.socketToRoom.set(anonSocketId, {
@@ -1066,8 +1065,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       liveStreamService.socketToRoom.delete(anonSocketId);
     });
 
-    // TC-712: Test multiple viewers in same room
-    test('TC-712 | Verify multiple viewers can coexist', async () => {
+    // TC-SK-3020: Test multiple viewers in same room
+    test('TC-SK-3020 | Verify multiple viewers can coexist', async () => {
       // Given
       const room = liveStreamService.rooms.get(UNIQUE_ROOM_ID);
       const initialCount = room.viewers.size;
@@ -1094,8 +1093,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       }
     });
 
-    // TC-713: Test cleanupInactiveRooms with recent inactive room
-    test('TC-713 | Verify cleanupInactiveRooms keeps recent inactive rooms', () => {
+    // TC-SK-3021: Test cleanupInactiveRooms with recent inactive room
+    test('TC-SK-3021 | Verify cleanupInactiveRooms keeps recent inactive rooms', () => {
       // Given: Recently inactive room (< 5 minutes)
       const recentDate = new Date(Date.now() - 2 * 60 * 1000); // 2 minutes ago
       liveStreamService.rooms.set('recent-room', {
@@ -1115,8 +1114,8 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
       liveStreamService.rooms.delete('recent-room');
     });
 
-    // TC-714: Test handleDisconnect with viewer having userId
-    test('TC-714 | Verify handleDisconnect creates leave message for authenticated viewer', async () => {
+    // TC-SK-3022: Test handleDisconnect with viewer having userId
+    test('TC-SK-3022 | Verify handleDisconnect creates leave message for authenticated viewer', async () => {
       // Given: Authenticated viewer
       const viewerSocketId = 'auth-viewer-disconnect';
       const viewerId = 'auth-viewer-id';

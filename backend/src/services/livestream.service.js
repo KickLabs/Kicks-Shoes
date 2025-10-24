@@ -159,7 +159,12 @@ class LiveStreamService {
       this.socketToRoom.set(socketId, { roomId, role: 'viewer', userId, viewerId });
 
       // Update viewer count in database
-      await room.streamData.updateViewerCount(room.viewers.size);
+      // Note: streamData might be a plain object in tests, so use direct DB update
+      if (room.streamData._id) {
+        await LiveStream.findByIdAndUpdate(room.streamData._id, {
+          viewerCount: room.viewers.size,
+        });
+      }
 
       // Create join system message if user is authenticated
       if (userId) {
@@ -350,8 +355,13 @@ class LiveStreamService {
         // Viewer disconnected
         room.viewers.delete(socketInfo.viewerId);
 
-        // Update viewer count
-        await room.streamData.updateViewerCount(room.viewers.size);
+        // Update viewer count in database
+        // Note: streamData might be a plain object in tests, so use direct DB update
+        if (room.streamData._id) {
+          await LiveStream.findByIdAndUpdate(room.streamData._id, {
+            viewerCount: room.viewers.size,
+          });
+        }
 
         // Create leave system message if user was authenticated
         if (socketInfo.userId) {
