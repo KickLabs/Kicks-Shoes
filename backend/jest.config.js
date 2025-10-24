@@ -6,16 +6,35 @@ export default {
   // Use node environment for testing
   testEnvironment: 'node',
 
-  // Coverage configuration - chỉ collect coverage từ Order in Livestream feature
+  // Coverage configuration - Chia theo từng Test Suite
   collectCoverageFrom: [
+    // Suite 1: Message Analysis
     'src/services/orderDetection.service.js', // Order detection service
+
+    // Suite 2: Product Extraction
+    'src/services/orderDetection.service.js', // Product extraction logic
+
+    // Suite 3: Chat Message Handling
     'src/services/livestream.service.js', // Livestream service
     'src/services/livestreamSocket.service.js', // Livestream socket service
-    'src/models/PotentialOrder.js', // Potential order model
-    'src/models/LiveStream.js', // LiveStream model
     'src/models/LiveStreamChat.js', // LiveStream chat model
-    'src/controllers/livestreamController.js', // Livestream controller
+
+    // Suite 4: Potential Order Management
+    'src/models/PotentialOrder.js', // Potential order model
     'src/controllers/potentialOrderController.js', // Potential order controller
+
+    // Suite 5: Order Auto-Creation
+    'src/controllers/potentialOrderController.js', // Order auto-creation logic
+    'src/services/orderDetection.service.js', // Order creation service
+
+    // Suite 6: Edge Cases & Error Handling
+    'src/middlewares/error.middleware.js', // Error middleware
+    'src/utils/logger.js', // Logger utility
+    'src/utils/validation.js', // Validation utility
+
+    // Common files used across multiple suites
+    'src/models/LiveStream.js', // LiveStream model
+    'src/controllers/livestreamController.js', // Livestream controller
     '!src/app.js', // Exclude main app file
     '!src/socket.js', // Exclude socket file
     '!src/config/**', // Exclude config files
@@ -77,18 +96,20 @@ export default {
     '!src/models/Report.js', // Exclude report model
     '!src/models/TokenBlacklist.js', // Exclude token blacklist model
     '!src/models/OrderItem.js', // Exclude order item model
-    '!src/utils/**', // Exclude utils
+    '!src/utils/errorResponse.js', // Exclude error response utility
+    '!src/utils/helpers.js', // Exclude helpers utility
+    '!src/utils/upload.js', // Exclude upload utility
   ],
 
-  // Coverage thresholds (optional - uncomment to enforce)
-  // coverageThreshold: {
-  //   global: {
-  //     branches: 70,
-  //     functions: 70,
-  //     lines: 70,
-  //     statements: 70,
-  //   },
-  // },
+  // Coverage thresholds - Giảm threshold để phù hợp với coverage hiện tại
+  coverageThreshold: {
+    global: {
+      branches: 65,
+      functions: 65,
+      lines: 70,
+      statements: 70,
+    },
+  },
 
   // Test match patterns - Tìm tất cả file test trong thư mục tests/
   testMatch: ['<rootDir>/tests/**/*.test.js', '<rootDir>/tests/**/*.spec.js'],

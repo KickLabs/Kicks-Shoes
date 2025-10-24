@@ -1,7 +1,8 @@
 /**
  * @fileoverview Test Suite 6: Edge Cases & Error Handling - Unit Tests Only
- * @description This suite focuses on unit testing the core files for Suite 6
- * as per the original test plan. No integration tests.
+ * @description This suite focuses on unit testing edge cases and error handling
+ * for core components. Tests cover error middleware, controller error handling,
+ * logger failures, validation edge cases, and model edge cases.
  *
  * Files tested:
  * - error.middleware.js (Central error handling)
@@ -9,6 +10,8 @@
  * - utils/logger.js (Logger failure handling)
  * - utils/validation.js (Input sanitization edge cases)
  * - models/Product.js (Inventory edge cases)
+ *
+ * Coverage Target: >80% branch coverage for error handling paths
  */
 
 import { jest } from '@jest/globals';

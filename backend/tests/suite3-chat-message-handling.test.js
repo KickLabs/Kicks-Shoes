@@ -456,7 +456,7 @@ describe('Order in Livestream — Test Suite 3: Chat Message Handling', () => {
     // Then
     expect(result).toBeTruthy();
     expect(result.message).toBeTruthy();
-    expect(duration).toBeLessThan(1000); // More realistic for DB operations
+    expect(duration).toBeLessThan(1000);
   });
 
   // TC-312
