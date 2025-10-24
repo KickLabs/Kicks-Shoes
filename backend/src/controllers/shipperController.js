@@ -55,8 +55,7 @@ function getDeliveryTimeline(delivery) {
     });
   } else if (
     delivery.status !== 'assigned' &&
-    delivery.status !== 'picked_up' &&
-    delivery.status !== 'failed'
+    delivery.status !== 'picked_up'
   ) {
     timeline.push({
       status: 'in_transit',
@@ -76,7 +75,8 @@ function getDeliveryTimeline(delivery) {
       recipientName: delivery.recipientName,
       proofOfDelivery: delivery.proofOfDelivery,
     });
-  } else if (delivery.failedAt) {
+  } else if (delivery.failedAt && delivery.status === 'failed') {
+    // Only show failed status if current status is still failed
     timeline.push({
       status: 'failed',
       label: 'Giao hàng thất bại',
@@ -87,7 +87,8 @@ function getDeliveryTimeline(delivery) {
   } else if (
     delivery.status !== 'assigned' &&
     delivery.status !== 'picked_up' &&
-    delivery.status !== 'in_transit'
+    delivery.status !== 'in_transit' &&
+    delivery.status !== 'failed'
   ) {
     timeline.push({
       status: 'delivered',
@@ -247,6 +248,9 @@ export const updateDeliveryStatus = async (req, res, next) => {
       return next(new ErrorResponse('Order not found', 404));
     }
 
+    // Track previous status for handling delivery count
+    const previousStatus = delivery.status;
+
     // Update delivery status
     await delivery.updateStatus(status, note);
 
@@ -312,9 +316,36 @@ export const updateDeliveryStatus = async (req, res, next) => {
       delivery.failureReason = note;
       await delivery.save();
 
-      // Decrement shipper's current delivery count
+      // Only decrement shipper's delivery count if transitioning TO failed
+      // (not if already failed and updating again)
+      if (previousStatus !== 'failed') {
+        await User.findByIdAndUpdate(shipperId, {
+          $inc: { currentDeliveryCount: -1 },
+        });
+        logger.info('Decremented delivery count due to failed delivery', {
+          shipperId,
+          orderId,
+          previousStatus,
+        });
+      }
+    }
+
+    // If transitioning FROM failed to any other status, increment delivery count back
+    if (previousStatus === 'failed' && status !== 'failed') {
+      // Clear failed-related fields
+      delivery.failedAt = null;
+      delivery.failureReason = '';
+      await delivery.save();
+
+      // Increment shipper's current delivery count back
       await User.findByIdAndUpdate(shipperId, {
-        $inc: { currentDeliveryCount: -1 },
+        $inc: { currentDeliveryCount: 1 },
+      });
+      
+      logger.info('Incremented delivery count - retrying after failed delivery', {
+        shipperId,
+        orderId,
+        newStatus: status,
       });
     }
 

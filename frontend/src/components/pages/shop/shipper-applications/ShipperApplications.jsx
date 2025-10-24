@@ -95,25 +95,37 @@ const ShipperApplications = () => {
   const handleSubmitReview = async () => {
     if (!selectedApplication) return;
 
+    // Validate rejection requires note
+    if (reviewAction === 'reject' && !reviewNote.trim()) {
+      message.error('Please provide a reason for rejection');
+      return;
+    }
+
     try {
       setSubmitting(true);
+      console.log('Submitting review:', {
+        action: reviewAction,
+        applicationId: selectedApplication._id,
+        reviewNote,
+      });
+
       if (reviewAction === 'approve') {
         await shipperApplicationService.approveApplication(selectedApplication._id, reviewNote);
         message.success('Application approved! User is now a shipper.');
       } else {
-        if (!reviewNote.trim()) {
-          message.error('Please provide a reason for rejection');
-          return;
-        }
         await shipperApplicationService.rejectApplication(selectedApplication._id, reviewNote);
         message.success('Application rejected');
       }
+      
       setReviewModalVisible(false);
+      setSelectedApplication(null);
+      setReviewNote('');
       fetchApplications();
       fetchStats();
     } catch (error) {
       console.error('Error reviewing application:', error);
-      message.error(error.response?.data?.message || 'Failed to process application');
+      console.error('Error details:', error.response?.data);
+      message.error(error.response?.data?.message || error.response?.data?.error || 'Failed to process application');
     } finally {
       setSubmitting(false);
     }

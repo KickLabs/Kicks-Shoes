@@ -5,7 +5,6 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { PersistGate } from 'redux-persist/integration/react';
-import { App as AntApp } from 'antd';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { VideoCallProvider } from './contexts/VideoCallContext';
@@ -31,13 +30,12 @@ import RegisterPage from './components/pages/authentication/pages/Register';
 import Account from './components/pages/account/Account';
 import FavouritesTab from './components/pages/account/components/FavouritesTab';
 import ProfileTab from './components/pages/account/components/ProfileTab';
-import VoucherTab from './components/pages/account/components/VoucherTab';
 import RewardPointsDetail from './components/pages/account/components/RewardPointsDetail';
+import VoucherTab from './components/pages/account/components/VoucherTab';
 import CartPage from './components/pages/cart/pages/CartPage';
 import AllCategories from './components/pages/categories/AllCategories';
 import CheckoutPage from './components/pages/checkout/CheckOut';
 import HomePage from './components/pages/home/pages/HomePage';
-import VoucherDiscoveryPage from './components/pages/voucher-discovery/VoucherDiscoveryPage';
 import AccessoryPage from './components/pages/listing-page/pages/AccessoryPage';
 import ClothingPage from './components/pages/listing-page/pages/ClothingPage';
 import ListingPage from './components/pages/listing-page/pages/ListingPage';
@@ -48,6 +46,7 @@ import PaymentStatus from './components/pages/payment/PaymentStatus';
 import PaymentSuccess from './components/pages/payment/PaymentSuccess';
 import ProductDetailPage from './components/pages/product/pages/ProductDetailPage';
 import VisualSearch from './components/pages/shop/VisualSearch';
+import VoucherDiscoveryPage from './components/pages/voucher-discovery/VoucherDiscoveryPage';
 
 // New Role-Based Dashboard Components
 import AdminDashboard from './components/pages/dashboard/AdminDashboard';
@@ -126,6 +125,11 @@ const AdminOrShopProtectedRoute = ({ children }) => {
 
   if (!user || (user.role !== 'admin' && user.role !== 'shop')) {
     return <Navigate to="/login-admin" replace />;
+  }
+
+  return children;
+};
+
 const ShipperProtectedRoute = ({ children }) => {
   const { user } = useAuth();
 

@@ -13,7 +13,6 @@ import {
   VideoCameraOutlined,
   CarOutlined,
 } from '@ant-design/icons';
-import { Avatar, Dropdown, Input, Layout, Menu, Button, Modal, Badge, message } from 'antd';
 import logo from '@assets/Logo.svg';
 import { Avatar, Badge, Button, Dropdown, Input, Layout, Menu, Modal, Upload, message } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
@@ -21,7 +20,6 @@ import { useSelector } from 'react-redux';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import axiosInstance from '../../../services/axiosInstance';
-import { useSelector } from 'react-redux';
 import ShipperApplicationModal from './ShipperApplicationModal';
 import shipperApplicationService from '../../../services/shipperApplicationService';
 import './Header.css';
@@ -532,7 +530,9 @@ const AppHeader = () => {
                 disabled={!!pendingApplication}
                 onClick={() => {
                   if (pendingApplication) {
-                    message.info('You already have a pending application. Please wait for approval.');
+                    message.info(
+                      'You already have a pending application. Please wait for approval.'
+                    );
                     return;
                   }
                   console.log('🚗 Mobile: Become Shipper button clicked!');
@@ -646,7 +646,9 @@ const AppHeader = () => {
                     disabled={!!pendingApplication}
                     onClick={() => {
                       if (pendingApplication) {
-                        message.info('You already have a pending application. Please wait for approval.');
+                        message.info(
+                          'You already have a pending application. Please wait for approval.'
+                        );
                         return;
                       }
                       console.log('🚗 Desktop: Become Shipper button clicked!');

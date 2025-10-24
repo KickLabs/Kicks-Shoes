@@ -130,9 +130,9 @@ router.post('/:id/confirm', protect, confirmOrderReceived);
 
 /**
  * @route   POST /api/orders/:id/report-issue
- * @desc    Customer reports delivery issue (not received, damaged, etc.)
- * @access  Private/Customer
+ * @desc    Report delivery issue (only order owner can report)
+ * @access  Private
  */
-router.post('/:id/report-issue', protect, requireExactRole('customer'), reportDeliveryIssue);
+router.post('/:id/report-issue', protect, reportDeliveryIssue);
 
 export default router;

@@ -169,29 +169,68 @@ export const approveApplication = async (req, res, next) => {
     const { reviewNote } = req.body;
     const reviewerId = req.user._id;
 
+    logger.info('Approve application request', {
+      applicationId: id,
+      reviewNote,
+      reviewerId,
+      userRole: req.user.role,
+    });
+
+    // Validate application ID
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      logger.error('Invalid application ID format', { id });
+      return next(new ErrorResponse('Invalid application ID', 400));
+    }
+
     const application = await ShipperApplication.findById(id).populate('user');
+    
+    logger.info('Application found', {
+      applicationId: id,
+      status: application?.status,
+      hasUser: !!application?.user,
+    });
 
     if (!application) {
       return next(new ErrorResponse('Application not found', 404));
+    }
+
+    if (!application.user) {
+      return next(new ErrorResponse('Associated user not found', 404));
     }
 
     if (application.status !== 'pending') {
       return next(new ErrorResponse('Application has already been reviewed', 400));
     }
 
+    // Update user role to shipper
+    const updateData = {
+      role: 'shipper',
+      isActive: true,
+      isVerified: true,
+      currentDeliveryCount: 0, // Initialize delivery count for new shipper
+    };
+    
+    const user = await User.findByIdAndUpdate(
+      application.user._id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!user) {
+      return next(new ErrorResponse('Failed to update user role', 500));
+    }
+    
+    logger.info('User role updated to shipper', {
+      userId: user._id,
+      role: user.role,
+    });
+
     // Update application status
     application.status = 'approved';
     application.reviewedBy = reviewerId;
     application.reviewedAt = new Date();
-    application.reviewNote = reviewNote;
+    application.reviewNote = reviewNote || '';
     await application.save();
-
-    // Update user role to shipper
-    const user = await User.findById(application.user._id);
-    user.role = 'shipper';
-    user.isActive = true; // Activate shipper
-    user.isVerified = true; // Verify shipper
-    await user.save();
 
     logger.info('Shipper application approved', {
       applicationId: id,
@@ -206,6 +245,11 @@ export const approveApplication = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Error approving application:', error);
+    logger.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      applicationId: req.params.id,
+    });
     next(error);
   }
 };
@@ -220,6 +264,11 @@ export const rejectApplication = async (req, res, next) => {
     const { id } = req.params;
     const { reviewNote } = req.body;
     const reviewerId = req.user._id;
+
+    // Validate application ID
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      return next(new ErrorResponse('Invalid application ID', 400));
+    }
 
     const application = await ShipperApplication.findById(id);
 
@@ -251,6 +300,11 @@ export const rejectApplication = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Error rejecting application:', error);
+    logger.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      applicationId: req.params.id,
+    });
     next(error);
   }
 };
