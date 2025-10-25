@@ -20,11 +20,13 @@ import { jest } from '@jest/globals';
 // Create mock functions BEFORE any imports
 const mockFindOne = jest.fn();
 const mockFind = jest.fn();
+const mockFindById = jest.fn();
 const mockCountDocuments = jest.fn();
 const mockFindByIdAndUpdate = jest.fn();
 const mockFindByIdAndDelete = jest.fn();
 const mockGetUpcomingStreams = jest.fn();
 const mockChatFind = jest.fn();
+const mockChatCreate = jest.fn();
 const mockCreateSystemMessage = jest.fn();
 const mockDeleteMany = jest.fn();
 const mockAggregate = jest.fn();
@@ -39,6 +41,7 @@ jest.unstable_mockModule('../src/models/LiveStream.js', () => ({
   default: {
     findOne: mockFindOne,
     find: mockFind,
+    findById: mockFindById,
     countDocuments: mockCountDocuments,
     findByIdAndUpdate: mockFindByIdAndUpdate,
     findByIdAndDelete: mockFindByIdAndDelete,
@@ -49,6 +52,7 @@ jest.unstable_mockModule('../src/models/LiveStream.js', () => ({
 jest.unstable_mockModule('../src/models/LiveStreamChat.js', () => ({
   default: {
     find: mockChatFind,
+    create: mockChatCreate,
     createSystemMessage: mockCreateSystemMessage,
     deleteMany: mockDeleteMany,
     aggregate: mockAggregate,
@@ -1189,6 +1193,635 @@ describe('Livestream Controller Tests', () => {
       // Act & Assert
       await expect(controller.getLiveStreamAnalytics(mockReq, mockRes, mockNext)).rejects.toThrow(
         'Not authorized to view analytics for this livestream'
+      );
+    });
+  });
+
+  describe('joinLiveStream', () => {
+    beforeEach(() => {
+      // Mock mongoose.Types.ObjectId if needed
+      jest.unstable_mockModule('mongoose', () => ({
+        default: {
+          Types: {
+            ObjectId: {
+              isValid: jest.fn(() => true),
+            },
+          },
+        },
+      }));
+    });
+
+    it('should join livestream successfully with roomId', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.user.id = 'viewer456';
+
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        title: 'Test Stream',
+        hostId: 'host123',
+        status: 'live',
+        settings: { maxViewers: 100 },
+        viewers: [],
+        stats: { peakViewers: 0 },
+        save: jest.fn().mockResolvedValue(),
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+
+      // Act
+      await controller.joinLiveStream(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockLiveStream.viewers).toContain('viewer456');
+      expect(mockLiveStream.save).toHaveBeenCalled();
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          streamId: 'stream123',
+          roomId: 'room123',
+          title: 'Test Stream',
+          hostId: 'host123',
+          viewerCount: 1,
+        },
+      });
+    });
+
+    it('should not add viewer if already in list', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.user.id = 'viewer456';
+
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        title: 'Test Stream',
+        hostId: 'host123',
+        status: 'live',
+        settings: { maxViewers: 100 },
+        viewers: ['viewer456'], // Already in list
+        stats: { peakViewers: 1 },
+        save: jest.fn().mockResolvedValue(),
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+
+      // Act
+      await controller.joinLiveStream(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockLiveStream.viewers.length).toBe(1);
+      expect(mockLiveStream.save).not.toHaveBeenCalled();
+    });
+
+    it('should update peak viewers when joining', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.user.id = 'viewer789';
+
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        title: 'Test Stream',
+        hostId: 'host123',
+        status: 'live',
+        settings: { maxViewers: 100 },
+        viewers: ['viewer456', 'viewer789_old'],
+        stats: { peakViewers: 2 },
+        save: jest.fn().mockResolvedValue(),
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+
+      // Act
+      await controller.joinLiveStream(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockLiveStream.stats.peakViewers).toBe(3); // Should update to 3
+      expect(mockLiveStream.save).toHaveBeenCalled();
+    });
+
+    it('should throw error when livestream not found', async () => {
+      // Arrange
+      mockReq.params.id = 'nonexistent';
+      mockFindOne.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(controller.joinLiveStream(mockReq, mockRes, mockNext)).rejects.toThrow(
+        'Livestream not found'
+      );
+    });
+
+    it('should throw error when livestream not live', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        status: 'ended',
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+
+      // Act & Assert
+      await expect(controller.joinLiveStream(mockReq, mockRes, mockNext)).rejects.toThrow(
+        'Livestream is not currently active'
+      );
+    });
+
+    it('should throw error when max viewers reached', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.user.id = 'newviewer';
+
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        status: 'live',
+        settings: { maxViewers: 2 },
+        viewers: ['viewer1', 'viewer2'], // Already at max
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+
+      // Act & Assert
+      await expect(controller.joinLiveStream(mockReq, mockRes, mockNext)).rejects.toThrow(
+        'Livestream has reached maximum viewers'
+      );
+    });
+  });
+
+  describe('leaveLiveStream', () => {
+    it('should leave livestream successfully', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.user.id = 'viewer456';
+
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        viewers: ['viewer456', 'viewer789'],
+        save: jest.fn().mockResolvedValue(),
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+
+      // Act
+      await controller.leaveLiveStream(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockLiveStream.viewers).not.toContain('viewer456');
+      expect(mockLiveStream.viewers.length).toBe(1);
+      expect(mockLiveStream.save).toHaveBeenCalled();
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: true,
+        message: 'Left livestream successfully',
+        data: {
+          viewerCount: 1,
+        },
+      });
+    });
+
+    it('should throw error when livestream not found', async () => {
+      // Arrange
+      mockReq.params.id = 'nonexistent';
+      mockFindOne.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(controller.leaveLiveStream(mockReq, mockRes, mockNext)).rejects.toThrow(
+        'Livestream not found'
+      );
+    });
+
+    it('should handle leaving when not in viewer list', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.user.id = 'notinlist';
+
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        viewers: ['viewer456'],
+        save: jest.fn().mockResolvedValue(),
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+
+      // Act
+      await controller.leaveLiveStream(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockLiveStream.viewers.length).toBe(1);
+      expect(mockLiveStream.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('sendChatMessage', () => {
+    const mockGetIO = jest.fn();
+    const mockIoTo = jest.fn();
+    const mockIoEmit = jest.fn();
+
+    beforeEach(() => {
+      // Reset chat create mock
+      mockChatCreate.mockClear();
+
+      // Mock socket.io
+      mockIoTo.mockReturnValue({ emit: mockIoEmit });
+      mockGetIO.mockReturnValue({ to: mockIoTo });
+    });
+
+    it('should send chat message successfully', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.body = { message: 'Hello World', type: 'text' };
+      mockReq.user.id = 'viewer456';
+
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        status: 'live',
+        settings: { allowChat: true },
+        stats: { totalMessages: 10 },
+        save: jest.fn().mockResolvedValue(),
+      };
+
+      const mockChatMessage = {
+        _id: 'msg123',
+        streamId: 'stream123',
+        roomId: 'room123',
+        senderId: {
+          _id: 'viewer456',
+          username: 'testuser',
+          fullName: 'Test User',
+          avatar: 'avatar.png',
+        },
+        content: 'Hello World',
+        messageType: 'text',
+        timestamp: new Date(),
+        populate: jest.fn().mockResolvedValue(),
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+      mockChatCreate.mockResolvedValue(mockChatMessage);
+
+      // Act
+      await controller.sendChatMessage(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockChatCreate).toHaveBeenCalledWith({
+        streamId: 'stream123',
+        roomId: 'room123',
+        senderId: 'viewer456',
+        content: 'Hello World',
+        messageType: 'text',
+        timestamp: expect.any(Date),
+      });
+      expect(mockLiveStream.stats.totalMessages).toBe(11);
+      expect(mockLiveStream.save).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(201);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: true,
+        data: mockChatMessage,
+      });
+    });
+
+    it('should throw error when message is empty', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.body = { message: '   ' };
+
+      // Act & Assert
+      await expect(controller.sendChatMessage(mockReq, mockRes, mockNext)).rejects.toThrow(
+        'Message cannot be empty'
+      );
+    });
+
+    it('should throw error when livestream not found', async () => {
+      // Arrange
+      mockReq.params.id = 'nonexistent';
+      mockReq.body = { message: 'Hello' };
+      mockFindOne.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(controller.sendChatMessage(mockReq, mockRes, mockNext)).rejects.toThrow(
+        'Livestream not found'
+      );
+    });
+
+    it('should throw error when livestream not live', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.body = { message: 'Hello' };
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        status: 'ended',
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+
+      // Act & Assert
+      await expect(controller.sendChatMessage(mockReq, mockRes, mockNext)).rejects.toThrow(
+        'Cannot send messages to inactive livestream'
+      );
+    });
+
+    it('should throw error when chat is disabled', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.body = { message: 'Hello' };
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        status: 'live',
+        settings: { allowChat: false },
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+
+      // Act & Assert
+      await expect(controller.sendChatMessage(mockReq, mockRes, mockNext)).rejects.toThrow(
+        'Chat is disabled for this livestream'
+      );
+    });
+
+    it('should use default type when not provided', async () => {
+      // Arrange
+      mockReq.params.id = 'room123';
+      mockReq.body = { message: 'Hello' }; // No type specified
+      mockReq.user.id = 'viewer456';
+
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        status: 'live',
+        settings: { allowChat: true },
+        stats: { totalMessages: 0 },
+        save: jest.fn().mockResolvedValue(),
+      };
+
+      const mockChatMessage = {
+        _id: 'msg123',
+        streamId: 'stream123',
+        roomId: 'room123',
+        senderId: { _id: 'viewer456' },
+        content: 'Hello',
+        messageType: 'text',
+        timestamp: new Date(),
+        populate: jest.fn().mockResolvedValue(),
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+      mockChatCreate.mockResolvedValue(mockChatMessage);
+
+      // Act
+      await controller.sendChatMessage(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockChatCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageType: 'text', // Default type
+        })
+      );
+    });
+  });
+
+  describe('getChatMessages - ObjectId Support', () => {
+    it('should get chat messages by ObjectId', async () => {
+      // Arrange
+      const mockObjectId = '507f1f77bcf86cd799439011'; // Valid ObjectId
+      mockReq.params.id = mockObjectId;
+      mockReq.params.roomId = undefined;
+      mockReq.query = { limit: '50', page: '1' };
+
+      const mockLiveStream = { _id: mockObjectId };
+      const mockMessages = [{ _id: 'msg1', content: 'Test' }];
+
+      // Mock findById to return livestream
+      mockFindById.mockResolvedValue(mockLiveStream);
+
+      mockChatFind.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            limit: jest.fn().mockReturnValue({
+              skip: jest.fn().mockResolvedValue(mockMessages),
+            }),
+          }),
+        }),
+      });
+
+      // Act
+      await controller.getChatMessages(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: true,
+        data: mockMessages.reverse(),
+      });
+    });
+
+    it('should use default pagination values', async () => {
+      // Arrange
+      mockReq.params.roomId = 'room123';
+      mockReq.query = {}; // No pagination params
+
+      const mockLiveStream = { _id: 'stream123' };
+      const mockMessages = [];
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+      mockChatFind.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            limit: jest.fn().mockReturnValue({
+              skip: jest.fn().mockResolvedValue(mockMessages),
+            }),
+          }),
+        }),
+      });
+
+      // Act
+      await controller.getChatMessages(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockChatFind).toHaveBeenCalled();
+      expect(mockRes.json).toHaveBeenCalled();
+    });
+  });
+
+  describe('endLiveStream - Duration Calculation', () => {
+    it('should handle stream without startedAt', async () => {
+      // Arrange
+      mockReq.params.roomId = 'room123';
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        hostId: 'user123',
+        status: 'live',
+        isActive: true,
+        startedAt: null, // No startedAt
+        stats: {},
+        save: jest.fn().mockResolvedValue(),
+      };
+
+      mockFindOne.mockResolvedValue(mockLiveStream);
+      mockCreateSystemMessage.mockResolvedValue();
+
+      // Act
+      await controller.endLiveStream(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockLiveStream.status).toBe('ended');
+      expect(mockLiveStream.stats.duration).toBeUndefined(); // Duration should not be set
+      expect(mockLiveStream.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('getLiveStream - Edge Cases', () => {
+    it('should handle inactive room status', async () => {
+      // Arrange
+      mockReq.params.roomId = 'room123';
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        title: 'Test Stream',
+        isActive: true,
+        status: 'live',
+        stats: { currentViewers: 10 },
+      };
+
+      mockFindOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockLiveStream),
+        }),
+      });
+      mockGetRoomStatus.mockReturnValue(null); // No room status
+
+      // Act
+      await controller.getLiveStream(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          liveStream: mockLiveStream,
+          roomStatus: null,
+          isLive: false, // Should be false when roomStatus is null
+          viewerCount: 10, // Falls back to stats.currentViewers
+        },
+      });
+    });
+
+    it('should handle stream with no stats', async () => {
+      // Arrange
+      mockReq.params.roomId = 'room123';
+      const mockLiveStream = {
+        _id: 'stream123',
+        roomId: 'room123',
+        title: 'Test Stream',
+        isActive: true,
+        status: 'live',
+        stats: null, // No stats
+      };
+
+      mockFindOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockResolvedValue(mockLiveStream),
+        }),
+      });
+      mockGetRoomStatus.mockReturnValue({ viewerCount: 5 });
+
+      // Act
+      await controller.getLiveStream(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            viewerCount: 5,
+          }),
+        })
+      );
+    });
+  });
+
+  describe('getActiveLiveStreams - Edge Cases', () => {
+    it('should handle empty stream list', async () => {
+      // Arrange
+      mockReq.query = { page: '1', limit: '10' };
+
+      mockFind.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            skip: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      });
+      mockCountDocuments.mockResolvedValue(0);
+
+      // Act
+      await controller.getActiveLiveStreams(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          streams: [],
+          pagination: {
+            page: 1,
+            limit: 10,
+            total: 0,
+            pages: 0,
+          },
+        },
+      });
+    });
+
+    it('should use default pagination values', async () => {
+      // Arrange
+      mockReq.query = {}; // No pagination params
+
+      mockFind.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            skip: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      });
+      mockCountDocuments.mockResolvedValue(0);
+
+      // Act
+      await controller.getActiveLiveStreams(mockReq, mockRes, mockNext);
+
+      // Assert
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            pagination: expect.objectContaining({
+              page: 1,
+              limit: 10,
+            }),
+          }),
+        })
+      );
+    });
+  });
+
+  describe('createLiveStream - User Not Found', () => {
+    it('should throw error when user not found', async () => {
+      // Arrange
+      mockReq.body = { title: 'Test Stream' };
+      mockUserFindById.mockResolvedValue(null); // User not found
+      mockValidationResult.mockReturnValue({ isEmpty: () => true });
+
+      // Act & Assert
+      await expect(controller.createLiveStream(mockReq, mockRes, mockNext)).rejects.toThrow(
+        'Only shop owners can create livestreams'
       );
     });
   });
