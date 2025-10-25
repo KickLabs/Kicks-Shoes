@@ -10,11 +10,11 @@
 
 ```
         /\
-       /E2E\         ← Suite 7 (8 TCs) - Integration & E2E
+       /E2E\         ← Suite 7 (11 TCs) - Integration & E2E
       /------\
-     /  API   \      ← Suite 3,4,5 (37 TCs) - Integration Tests
+     /  API   \      ← Suite 3,4,5 (163 TCs) - Integration Tests
     /----------\
-   / Unit Tests \    ← Suite 1,2,6 (40 TCs) - Unit Tests
+   / Unit Tests \    ← Suite 1,2,6 (357 TCs) - Unit Tests
   /--------------\
 ```
 
@@ -29,11 +29,11 @@
 
 ## 📋 Giải thích từng Test Suite
 
-### **Suite 1-2: Unit Tests (Foundation Layer)**
+### **Suite 1: Message Analysis (Unit Tests) - 18 TCs**
 
 **Mục đích:** Test **từng function riêng lẻ** trước khi test tích hợp
 
-#### Tại sao test `analyzeMessage()` và `extractProductInfo()` trước?
+#### Tại sao test `analyzeMessage()` trước?
 
 ```javascript
 // Nếu function CƠ BẢN này sai → Toàn bộ flow sẽ sai!
@@ -49,6 +49,29 @@ analyzeMessage("Chốt 0912345678")
 - ✅ **Dễ debug** - Biết chính xác function nào lỗi
 - ✅ **Fast execution** - Unit test chạy nhanh nhất (< 1s)
 - ✅ **High coverage** - Test mọi edge case của parsing logic
+
+**Test Cases thực tế:**
+
+- TC1003: Phone number validation
+- TC1004: Multiple phone numbers handling
+- TC1005: Confidence threshold
+- TC1006: Confidence cap
+- TC1007: Short message penalty
+- TC1008: Product info boost
+- TC1009: Featured product match
+- TC1010: Featured product brand match
+- TC1011: Product reference keywords
+
+### **Suite 2: Product Extraction (Unit Tests) - 26 TCs**
+
+**Mục đích:** Test **product information extraction** từ chat messages
+
+**Test Cases thực tế:**
+
+- Product SKU extraction
+- Size and color parsing
+- Quantity detection
+- Product matching logic
 
 **Ví dụ thực tế:**
 
@@ -68,7 +91,7 @@ Nếu chỉ test E2E:
 
 ---
 
-### **Suite 3: Chat Message Handling (Integration Layer 1)**
+### **Suite 3: Chat Message Handling (Integration Tests) - 44 TCs**
 
 **Mục đích:** Test **WebSocket → DB → Order Detection** integration
 
@@ -93,6 +116,10 @@ Viewer gửi chat
 - **TC-301:** Chat message được lưu vào DB và broadcast
 - **TC-302:** Order message tạo PotentialOrder và emit notification
 - **TC-308:** analyzeMessage() throws error KHÔNG làm crash chat (CRITICAL!)
+- **TC-RTC-3001:** WebRTC signaling host→viewer
+- **TC-RTC-3002:** WebRTC signaling viewer→host
+- **TC-RTC-3003:** WebRTC signaling fail với invalid socket
+- **TC-RTC-3004:** getTargetSocket logic
 
 **Tại sao quan trọng:**
 
@@ -111,7 +138,7 @@ Viewer gửi chat
 
 ---
 
-### **Suite 4: Potential Order Management (API Layer)**
+### **Suite 4: Potential Order Management (Unit Tests) - 100 TCs**
 
 **Mục đích:** Test **CRUD operations** và **authorization**
 
@@ -133,6 +160,31 @@ GET /api/potential-orders/stats         // Statistics
 - **TC-407:** Host không thể xem orders của stream người khác
 - **TC-514 (Suite 5):** Host không thể confirm order của stream khác
 
+### **Suite 3: Livestream Controller (Unit Tests) - 42 TCs**
+
+**Mục đích:** Test **livestream controller endpoints**
+
+**Test Cases thực tế:**
+
+- Create livestream with validation
+- Get livestream details
+- Update livestream
+- End livestream
+- Chat message management
+- Featured product management
+- Analytics and statistics
+
+### **Suite 3: Livestream Socket Service (Integration Tests) - 27 TCs**
+
+**Mục đích:** Test **Socket.IO event handlers**
+
+**Test Cases thực tế:**
+
+- Socket connection handling
+- Room management
+- Real-time messaging
+- WebRTC signaling
+
 **Tại sao quan trọng:**
 
 ```javascript
@@ -145,7 +197,7 @@ GET /api/potential-orders/stats         // Statistics
 
 ---
 
-### **Suite 5: Order Auto-Creation (Critical Business Logic)** ⭐
+### **Suite 5: Order Auto-Creation (Critical Business Logic)** ⭐ - 19 TCs
 
 **Mục đích:** Test **CHÍNH XÁC quy trình confirm → create order**
 
@@ -161,7 +213,7 @@ Host click "Confirm"
   → Update PotentialOrder.status = "converted" ✓
 ```
 
-**15 test cases** trong suite này cover:
+**19 test cases** trong suite này cover:
 
 #### Happy Path (Quy trình thành công)
 
@@ -308,7 +360,7 @@ test('TC-501: Verify confirm potential order tạo real order thành công', asy
 
 ---
 
-### **Suite 6: Edge Cases & Error Handling (Safety Net)**
+### **Suite 6: Edge Cases & Error Handling (Unit Tests) - 51 TCs**
 
 **Mục đích:** Test **các trường hợp đặc biệt** và **concurrent operations**
 
@@ -331,6 +383,14 @@ test('TC-501: Verify confirm potential order tạo real order thành công', asy
 
 - **TC-614:** 2 hosts confirm cùng 1 PotentialOrder → Chỉ 1 Order được tạo
 - **TC-615:** 2 orders confirm cùng lúc, inventory = 1 → Chỉ 1 succeed
+
+**Test Cases thực tế:**
+
+- Error middleware testing
+- Controller error handling
+- Logger failure handling
+- Validation edge cases
+- Model edge cases
 
 **Tại sao quan trọng:**
 
@@ -355,7 +415,7 @@ Time: 10:00:00.001 - Order B confirms (Product inventory = 1)
 
 ---
 
-### **Suite 7: Integration & E2E (Full Flow Validation)** ⭐
+### **Suite 7: Integration & E2E (Full Flow Validation)** ⭐ - 11 TCs
 
 **Mục đích:** Test **TOÀN BỘ QUY TRÌNH** end-to-end
 
@@ -403,7 +463,7 @@ Step 5: Customer nhận email
 ✅ TOÀN BỘ FLOW HOÀN THÀNH!
 ```
 
-**8 test cases E2E** cover các scenarios khác nhau:
+**11 test cases E2E** cover các scenarios khác nhau:
 
 | Test ID    | Scenario                         | Mục đích                             |
 | ---------- | -------------------------------- | ------------------------------------ |
@@ -415,6 +475,9 @@ Step 5: Customer nhận email
 | **TC-706** | Status transitions               | Test pending → contacted → confirmed |
 | **TC-707** | Ignore order workflow            | Test host bỏ qua order               |
 | **TC-708** | Spam detection                   | Test host mark order as spam         |
+| **TC-709** | Database connection tests        | Test database connectivity           |
+| **TC-710** | Model validation tests           | Test model validation rules          |
+| **TC-711** | Error handling tests             | Test error scenarios                 |
 
 **Code example TC-701:**
 
@@ -585,16 +648,19 @@ describe('Full Flow E2E', () => {
 
 ## 📊 Coverage Map
 
-| Flow Step                   | Suite   | Test Cases       | Coverage Details                            | Execution Time |
-| --------------------------- | ------- | ---------------- | ------------------------------------------- | -------------- |
-| **1. Chat message parsing** | Suite 1 | TC-101 to TC-115 | Phone, keywords, confidence, security       | ~0.15s         |
-| **2. Product extraction**   | Suite 2 | TC-201 to TC-215 | SKU, size, color, quantity, patterns        | ~0.20s         |
-| **3. WebSocket handling**   | Suite 3 | TC-301 to TC-312 | Real-time, broadcast, errors, sanitization  | ~0.60s         |
-| **4. API operations**       | Suite 4 | TC-401 to TC-410 | CRUD, filtering, auth, pagination           | ~0.50s         |
-| **5. Order creation**       | Suite 5 | TC-501 to TC-515 | **Confirm → Create flow**, inventory, email | ~0.75s         |
-| **6. Edge cases**           | Suite 6 | TC-601 to TC-615 | Race conditions, errors, unicode, nulls     | ~0.50s         |
-| **7. Full integration**     | Suite 7 | TC-701 to TC-708 | **End-to-end flows**, all scenarios         | ~16s           |
-| **TOTAL**                   |         | **85 tests**     | **~95% code coverage**                      | **~19s**       |
+| Flow Step                    | Suite   | Test Cases    | Coverage Details                            | Execution Time |
+| ---------------------------- | ------- | ------------- | ------------------------------------------- | -------------- |
+| **1. Chat message parsing**  | Suite 1 | 18 TCs        | Phone, keywords, confidence, security       | ~0.15s         |
+| **2. Product extraction**    | Suite 2 | 26 TCs        | SKU, size, color, quantity, patterns        | ~0.20s         |
+| **3. WebSocket handling**    | Suite 3 | 44 TCs        | Real-time, broadcast, errors, sanitization  | ~0.60s         |
+| **3. Livestream Controller** | Suite 3 | 42 TCs        | CRUD endpoints, validation, authorization   | ~0.50s         |
+| **3. Socket Service**        | Suite 3 | 27 TCs        | Socket.IO events, WebRTC signaling          | ~0.40s         |
+| **4. API operations**        | Suite 4 | 100 TCs       | CRUD, filtering, auth, pagination           | ~0.50s         |
+| **5. Order creation**        | Suite 5 | 19 TCs        | **Confirm → Create flow**, inventory, email | ~0.75s         |
+| **6. Edge cases**            | Suite 6 | 51 TCs        | Race conditions, errors, unicode, nulls     | ~0.50s         |
+| **7. Full integration**      | Suite 7 | 11 TCs        | **End-to-end flows**, all scenarios         | ~16s           |
+| **Model Tests**              | Models  | 190 TCs       | Database models, validation, relationships  | ~2s            |
+| **TOTAL**                    |         | **531 tests** | **~95% code coverage**                      | **~21s**       |
 
 ---
 
@@ -608,52 +674,52 @@ describe('Full Flow E2E', () => {
 
 Nhưng thay vì test toàn bộ trong 1 test case dài 200 lines, chúng ta:
 
-1. **Suite 1-2 (Unit Tests):** Test **từng function riêng**
+1. **Suite 1-2 (Unit Tests - 44 TCs):** Test **từng function riêng**
 
    - `analyzeMessage()` - Phát hiện order từ chat
    - `extractProductInfo()` - Trích xuất thông tin sản phẩm
    - → **Tìm bug nhanh nhất** (5ms per test)
 
-2. **Suite 3-4 (Integration Tests):** Test **tích hợp giữa các services**
+2. **Suite 3-4 (Integration Tests - 163 TCs):** Test **tích hợp giữa các services**
 
    - WebSocket → DB → Order Detection
    - API endpoints → Authorization → Database
    - → **Tìm integration bugs** (50ms per test)
 
-3. **Suite 5 (Business Logic):** Test **CHÍNH XÁC quy trình confirm → create order** ⭐
+3. **Suite 5 (Business Logic - 19 TCs):** Test **CHÍNH XÁC quy trình confirm → create order** ⭐
 
    - TC-501: Confirm order thành công
    - TC-505: Out of stock handling
    - TC-510: Email failure handling
-   - → **15 test cases cover MỌI scenario** của confirm flow
+   - → **19 test cases cover MỌI scenario** của confirm flow
 
-4. **Suite 7 (E2E):** Test **TOÀN BỘ FLOW** từ đầu đến cuối ⭐
+4. **Suite 7 (E2E - 11 TCs):** Test **TOÀN BỘ FLOW** từ đầu đến cuối ⭐
    - TC-701: Viewer chat → Host confirm → Order created → Email sent
    - TC-703: Flash sale flow
    - TC-705: Out of stock flow
-   - → **8 test cases verify toàn bộ hệ thống**
+   - → **11 test cases verify toàn bộ hệ thống**
 
 ---
 
 ### So sánh cụ thể:
 
-#### ❌ Nếu chỉ test E2E (8 tests):
+#### ❌ Nếu chỉ test E2E (11 tests):
 
 ```
-✗ Thiếu coverage (chỉ 8 scenarios)
+✗ Thiếu coverage (chỉ 11 scenarios)
 ✗ Không test edge cases
 ✗ Debug khó (lỗi ở đâu trong 10 services?)
 ✗ Chạy chậm (80s total)
 ✗ Flaky tests
 ```
 
-#### ✅ Với layered approach (85 tests):
+#### ✅ Với layered approach (531 tests):
 
 ```
-✓ 85 test cases = 95%+ coverage
+✓ 531 test cases = 95%+ coverage
 ✓ Edge cases, errors, security đều được test
 ✓ Debug dễ (biết chính xác lỗi ở layer nào)
-✓ Chạy nhanh (~20s total)
+✓ Chạy nhanh (~21s total)
 ✓ Stable tests (mocked dependencies)
 ```
 
@@ -683,10 +749,10 @@ Nhưng thay vì test toàn bộ trong 1 test case dài 200 lines, chúng ta:
 
 3. **High Confidence**
 
-   - 85 test cases cover MỌI scenario
-   - Unit tests: 40 TCs (foundation)
-   - Integration: 37 TCs (services working together)
-   - E2E: 8 TCs (full flow validation)
+   - 531 test cases cover MỌI scenario
+   - Unit tests: 357 TCs (foundation)
+   - Integration: 163 TCs (services working together)
+   - E2E: 11 TCs (full flow validation)
 
 4. **Maintainable**
    - Mỗi test case ngắn, rõ ràng
@@ -701,14 +767,14 @@ Nhưng thay vì test toàn bộ trong 1 test case dài 200 lines, chúng ta:
 
 ✅ **CÓ! Suite 5 và Suite 7 chính là test quy trình này:**
 
-- **Suite 5 (15 TCs):** Test chi tiết từng bước của confirm flow
+- **Suite 5 (19 TCs):** Test chi tiết từng bước của confirm flow
 
   - TC-501: Full confirm → create order
   - TC-502-504: Flash sale, quantity, shipping
   - TC-505-509: Edge cases (out of stock, invalid data)
   - TC-510-515: Error handling
 
-- **Suite 7 (8 TCs):** Test toàn bộ flow từ A-Z
+- **Suite 7 (11 TCs):** Test toàn bộ flow từ A-Z
   - TC-701: **Viewer chat → Host confirm → Order created** (FULL FLOW!)
   - TC-703: Flash sale flow
   - TC-705: Out of stock flow
@@ -720,8 +786,8 @@ Nhưng thay vì test toàn bộ trong 1 test case dài 200 lines, chúng ta:
 
 | Question                                            | Answer                                                |
 | --------------------------------------------------- | ----------------------------------------------------- |
-| **Có test quy trình order in livestream không?**    | ✅ CÓ - 85 test cases cover toàn bộ flow              |
-| **Có test quy trình confirm → create order không?** | ✅ CÓ - Suite 5 (15 TCs) + Suite 7 (8 TCs)            |
+| **Có test quy trình order in livestream không?**    | ✅ CÓ - 531 test cases cover toàn bộ flow             |
+| **Có test quy trình confirm → create order không?** | ✅ CÓ - Suite 5 (19 TCs) + Suite 7 (11 TCs)           |
 | **Tại sao chia nhỏ thành nhiều suites?**            | ✅ Faster feedback, easier debugging, higher coverage |
 | **Test cases nào là E2E flow đầy đủ?**              | ✅ TC-701: Viewer → Host → Order → Email              |
 

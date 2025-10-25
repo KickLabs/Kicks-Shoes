@@ -6,6 +6,7 @@
  */
 
 import liveStreamService from './livestream.service.js';
+import LiveStream from '../models/LiveStream.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -239,7 +240,12 @@ export function setupLiveStreamHandlers(io) {
 
         const room = liveStreamService.rooms.get(socketInfo.roomId);
         if (room) {
-          await room.streamData.addFeaturedProduct(data.productId);
+          // Use direct DB update instead of method call (test setup uses plain objects)
+          if (room.streamData._id) {
+            await LiveStream.findByIdAndUpdate(room.streamData._id, {
+              $addToSet: { featuredProducts: { productId: data.productId } },
+            });
+          }
 
           // Broadcast to all viewers
           socket.to(socketInfo.roomId).emit('product_featured', {
