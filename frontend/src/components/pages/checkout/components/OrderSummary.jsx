@@ -47,7 +47,11 @@ export default function OrderSummary({
     setLoadingDiscounts(true);
     try {
       const response = await getActiveDiscounts();
-      setAvailableDiscounts(response.data || []);
+      // Filter out reward_points discounts (should already be filtered by backend, but double-check)
+      const filteredDiscounts = (response.data || []).filter(
+        discount => discount.source !== 'reward_points'
+      );
+      setAvailableDiscounts(filteredDiscounts);
     } catch (error) {
       console.error('Error loading discounts:', error);
     } finally {
@@ -104,6 +108,12 @@ export default function OrderSummary({
 
   const handleRemoveDiscount = codeToRemove => {
     setAppliedDiscounts(prev => prev.filter(d => d.code !== codeToRemove));
+
+    // Reset discount in parent component
+    if (onApplyCoupon) {
+      onApplyCoupon('', 0);
+    }
+
     message.success('Coupon removed');
   };
 

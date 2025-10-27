@@ -247,8 +247,9 @@ const getActiveDiscounts = async (req, res) => {
       startDate: { $lte: now },
       endDate: { $gte: now },
       $expr: { $lt: ['$usedCount', '$usageLimit'] },
+      source: { $ne: 'reward_points' }, // ❌ Loại bỏ discount từ reward points
     })
-      .select('code description type value minPurchase maxDiscount startDate endDate')
+      .select('code description type value minPurchase maxDiscount startDate endDate source')
       .sort({ createdAt: -1 });
 
     res.status(200).json({

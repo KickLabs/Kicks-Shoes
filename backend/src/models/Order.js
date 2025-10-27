@@ -28,9 +28,12 @@ const orderSchema = new mongoose.Schema(
         'processing',
         'shipped',
         'delivered',
+        'delivered_pending_confirmation',
+        'completed',
         'cancelled',
         'refunded',
         'refund_pending',
+        'under_investigation',
       ],
       default: 'pending',
     },
@@ -263,6 +266,23 @@ const orderSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, 'Cancellation reason cannot exceed 500 characters'],
     },
+    // Shipper and delivery fields
+    shipper: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    assignedAt: {
+      type: Date,
+    },
+    autoCompleteDueAt: {
+      type: Date,
+    },
+    completedAt: {
+      type: Date,
+    },
+    customerConfirmedAt: {
+      type: Date,
+    },
     // paymentDetails: {
     //   cardNumber: {
     //     type: String,
@@ -283,6 +303,7 @@ const orderSchema = new mongoose.Schema(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
+    versionKey: false, // Disable optimistic locking to prevent version conflicts
   }
 );
 
@@ -343,28 +364,64 @@ orderSchema.pre('save', async function (next) {
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
       const day = date.getDate().toString().padStart(2, '0');
 
-      // Get count of orders for today
-      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const endOfDay = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-        23,
-        59,
-        59,
-        999
-      );
+      // Generate unique order number with retry logic
+      let attempts = 0;
+      const maxAttempts = 5;
+      let orderNumber;
 
-      const count = await this.constructor.countDocuments({
-        createdAt: {
-          $gte: startOfDay,
-          $lte: endOfDay,
-        },
-      });
+      while (attempts < maxAttempts) {
+        try {
+          // Get count of orders for today
+          const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+          const endOfDay = new Date(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate(),
+            23,
+            59,
+            59,
+            999
+          );
 
-      // Generate order number format: YYMMDD-XXXX
-      const sequence = (count + 1).toString().padStart(4, '0');
-      this.orderNumber = `${year}${month}${day}-${sequence}`;
+          const count = await this.constructor.countDocuments({
+            createdAt: {
+              $gte: startOfDay,
+              $lte: endOfDay,
+            },
+          });
+
+          // Generate order number with random suffix to avoid conflicts
+          const sequence = (count + 1).toString().padStart(4, '0');
+          const randomSuffix = Math.floor(Math.random() * 1000)
+            .toString()
+            .padStart(3, '0');
+          orderNumber = `${year}${month}${day}-${sequence}-${randomSuffix}`;
+
+          // Check if this orderNumber already exists
+          const existingOrder = await this.constructor.findOne({
+            orderNumber: orderNumber,
+          });
+
+          if (!existingOrder) {
+            this.orderNumber = orderNumber;
+            break; // Success, exit loop
+          }
+
+          // If orderNumber exists, try again
+          attempts++;
+        } catch (error) {
+          // If any error occurs, use timestamp-based fallback
+          const timestamp = Date.now().toString().slice(-6);
+          this.orderNumber = `${year}${month}${day}-${timestamp}`;
+          break;
+        }
+      }
+
+      // Final fallback if all attempts fail
+      if (!this.orderNumber) {
+        const timestamp = Date.now().toString().slice(-6);
+        this.orderNumber = `${year}${month}${day}-${timestamp}`;
+      }
     } catch (error) {
       return next(error);
     }

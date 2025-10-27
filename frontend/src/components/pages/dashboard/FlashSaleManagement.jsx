@@ -1,53 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import './FlashSaleManagement.css';
 import {
-  Card,
-  Table,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  ExclamationCircleOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  ShoppingOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
+import {
+  Badge,
   Button,
-  Space,
-  Tag,
-  Modal,
+  Card,
+  Col,
+  DatePicker,
   Form,
   Input,
-  DatePicker,
-  Select,
   InputNumber,
   message,
+  Modal,
   Popconfirm,
   Row,
-  Col,
+  Select,
+  Space,
   Statistic,
-  Alert,
-  Spin,
-  Divider,
+  Table,
+  Tag,
   Tooltip,
-  Badge,
 } from 'antd';
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  EyeOutlined,
-  ThunderboltOutlined,
-  ClockCircleOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  ExclamationCircleOutlined,
-  DollarOutlined,
-  ShoppingOutlined,
-} from '@ant-design/icons';
 import moment from 'moment';
+import React, { useEffect, useState } from 'react';
 import {
-  getFlashSales,
   createFlashSale,
-  updateFlashSale,
   deleteFlashSale,
-  updateFlashSaleStatus,
+  getCategories,
+  getFlashSales,
   getFlashSaleStats,
   getProductsForFlashSale,
-  getCategories,
+  updateFlashSale,
+  updateFlashSaleStatus,
 } from '../../../services/flashSaleService';
-import axiosInstance from '../../../services/axiosInstance';
+import './FlashSaleManagement.css';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -292,8 +287,10 @@ export default function FlashSaleManagement() {
                     render: productId => {
                       const image =
                         productId?.mainImage ||
-                        (productId?.images && productId.images.length > 0
-                          ? productId.images[0]
+                        (productId?.colorOptions &&
+                        productId.colorOptions.length > 0 &&
+                        productId.colorOptions[0].images.length > 0
+                          ? productId.colorOptions[0].images[0]
                           : null);
                       return image ? (
                         <div style={{ position: 'relative' }}>

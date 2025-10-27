@@ -1,0 +1,40 @@
+.shipper-applications-container {
+  padding: 24px;
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.shipper-applications-container h2 {
+  color: #2c3e50;
+}
+
+.shipper-applications-container .ant-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.shipper-applications-container .ant-table {
+  background: white;
+  border-radius: 8px;
+}
+
+.shipper-applications-container .ant-statistic-title {
+  font-size: 14px;
+  color: #666;
+}
+
+.shipper-applications-container .ant-statistic-content {
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.shipper-applications-container .ant-btn-link {
+  padding: 0;
+  height: auto;
+}
+
+.shipper-applications-container .ant-descriptions-item-label {
+  font-weight: 600;
+  background: #fafafa;
+}
+

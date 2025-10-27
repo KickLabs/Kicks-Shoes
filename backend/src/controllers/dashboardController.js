@@ -283,6 +283,14 @@ export const saveVoucher = asyncHandler(async (req, res) => {
     });
   }
 
+  // ❌ Prevent saving reward_points discounts
+  if (discount.source === 'reward_points') {
+    return res.status(400).json({
+      success: false,
+      message: 'Cannot save reward points discount. Please use the code directly when checking out.',
+    });
+  }
+
   // Check if user already has this discount saved
   const existingUserDiscount = await UserDiscount.findOne({
     user: userId,
