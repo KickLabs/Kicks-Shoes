@@ -16,6 +16,7 @@ process.env.NODE_OPTIONS = '--experimental-vm-modules';
 // Individual tests can set their own timeout if needed
 
 // Import models to ensure they are registered with mongoose
+import '../src/models/Category.js';
 import '../src/models/LiveStream.js';
 import '../src/models/PotentialOrder.js';
 import '../src/models/Product.js';
