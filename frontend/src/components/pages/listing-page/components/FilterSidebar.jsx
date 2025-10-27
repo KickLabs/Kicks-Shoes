@@ -52,7 +52,7 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
   const [selectedColor, setSelectedColor] = useState(null);
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedPrice, setSelectedPrice] = useState([0, 1000]);
+  const [selectedPrice, setSelectedPrice] = useState([0, 3000]);
   const [selectedSaleType, setSelectedSaleType] = useState(null);
 
   // Get filter config for current product type
@@ -68,7 +68,7 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
     selectedColor,
     selectedBrand,
     selectedCategory,
-    selectedPrice[0] > 0 || selectedPrice[1] < 1000,
+    selectedPrice[0] > 0 || selectedPrice[1] < 3000,
     selectedSaleType,
   ].filter(Boolean).length;
 
@@ -79,8 +79,9 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
       color: selectedColor,
       brand: selectedBrand,
       category: selectedCategory,
-      minPrice: selectedPrice[0],
-      maxPrice: selectedPrice[1],
+      // Convert thousands to actual VND (multiply by 1000)
+      minPrice: selectedPrice[0] * 1000,
+      maxPrice: selectedPrice[1] * 1000,
       saleType: selectedSaleType,
     });
   }, [
@@ -103,7 +104,7 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
     setSelectedColor(null);
     setSelectedBrand(null);
     setSelectedCategory(null);
-    setSelectedPrice([0, 1000]);
+    setSelectedPrice([0, 3000]);
     setSelectedSaleType(null);
   };
 

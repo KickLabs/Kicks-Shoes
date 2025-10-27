@@ -163,22 +163,24 @@ const VoucherTab = () => {
         </div>
 
         <div className="voucher-item-actions">
-          <Button
-            icon={<CopyOutlined />}
-            onClick={() => copyToClipboard(voucher.code)}
-            disabled={copiedVoucher === voucher.code}
-            className="voucher-action-btn"
-          >
-            {copiedVoucher === voucher.code ? 'Đã copy' : 'Copy'}
-          </Button>
           {actualStatus === 'saved' && (
-            <Button
-              type="primary"
-              onClick={() => handleUseVoucher(voucher)}
-              className="voucher-action-btn primary"
-            >
-              Use
-            </Button>
+            <>
+              <Button
+                icon={<CopyOutlined />}
+                onClick={() => copyToClipboard(voucher.code)}
+                disabled={copiedVoucher === voucher.code}
+                className="voucher-action-btn"
+              >
+                {copiedVoucher === voucher.code ? 'Đã copy' : 'Copy'}
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => handleUseVoucher(voucher)}
+                className="voucher-action-btn primary"
+              >
+                Use
+              </Button>
+            </>
           )}
         </div>
       </div>

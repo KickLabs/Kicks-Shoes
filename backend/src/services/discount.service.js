@@ -1,5 +1,6 @@
 import Discount from '../models/Discount.js';
 import Order from '../models/Order.js';
+import UserDiscount from '../models/UserDiscount.js';
 
 /**
  * Validate discount code for a user
@@ -28,6 +29,36 @@ export const validateDiscountCode = async (code, userId, cartTotal, cartItems = 
       };
     }
 
+    // ✅ Check if user has collected this discount and its status
+    const userDiscount = await UserDiscount.findOne({
+      user: userId,
+      discount: discount._id,
+    });
+
+    if (userDiscount) {
+      // If user has this discount, it must be 'saved' (not 'used' or 'expired')
+      if (userDiscount.status === 'used') {
+        return {
+          isValid: false,
+          message: 'You have already used this voucher',
+        };
+      }
+
+      if (userDiscount.status === 'expired') {
+        return {
+          isValid: false,
+          message: 'This voucher has expired',
+        };
+      }
+
+      if (userDiscount.status !== 'saved') {
+        return {
+          isValid: false,
+          message: 'This voucher is not available',
+        };
+      }
+    }
+
     // Check minimum purchase amount
     if (cartTotal < discount.minPurchase) {
       return {
@@ -36,7 +67,7 @@ export const validateDiscountCode = async (code, userId, cartTotal, cartItems = 
       };
     }
 
-    // Check if user has already used this discount
+    // Check if user has already used this discount in completed orders
     const userUsageCount = await Order.countDocuments({
       user: userId,
       discountCode: discount.code,

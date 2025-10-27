@@ -96,7 +96,10 @@ export const collectDiscount = asyncHandler(async (req, res) => {
 
   // ❌ Prevent collecting reward_points discounts
   if (discount.source === 'reward_points') {
-    throw new ErrorResponse('Cannot collect reward points discount. Please use the code directly.', 400);
+    throw new ErrorResponse(
+      'Cannot collect reward points discount. Please use the code directly.',
+      400
+    );
   }
 
   // Check if discount is still valid
@@ -216,18 +219,27 @@ export const getAvailableDiscounts = asyncHandler(async (req, res) => {
   // Transform data for frontend
   const discounts = availableDiscounts.map(discount => ({
     id: discount._id,
+    _id: discount._id,
     code: discount.code,
     title: discount.description || `Discount ${discount.code}`,
     description:
       discount.description ||
       `Get ${discount.type === 'percentage' ? discount.value + '%' : discount.value + ' VND'} off`,
+    type: discount.type,
     discountType: discount.type,
+    value: discount.value,
     discountValue: discount.value,
+    minPurchase: discount.minPurchase,
     minOrderAmount: discount.minPurchase,
+    maxDiscount: discount.maxDiscount,
     maxDiscountAmount: discount.maxDiscount,
+    startDate: discount.startDate,
     validFrom: discount.startDate,
+    endDate: discount.endDate,
     validTo: discount.endDate,
+    status: discount.status,
     usageLimit: discount.usageLimit,
+    usedCount: discount.usedCount || 0,
     perUserLimit: discount.perUserLimit,
     source: discount.source,
   }));

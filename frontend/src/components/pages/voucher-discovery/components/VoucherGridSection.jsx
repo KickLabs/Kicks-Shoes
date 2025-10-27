@@ -9,7 +9,7 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
-import { getShopDiscounts, saveVoucher } from '../../../../services/dashboardService';
+import { saveVoucher } from '../../../../services/dashboardService';
 import axiosInstance from '../../../../services/axiosInstance';
 import { useAuth } from '../../../../contexts/AuthContext';
 import './VoucherGridSection.css';
@@ -67,41 +67,20 @@ export const VoucherGridSection = () => {
     loadSavedVouchers();
   }, [user?._id]); // ✅ Reload when user changes (login/logout/switch account)
 
-  // Load shop owner discounts from API
+  // Load available discounts from API
   useEffect(() => {
     const fetchShopDiscounts = async () => {
       try {
         setLoading(true);
-        console.log('Fetching shop discounts...');
-        // Fetch shop owner discounts instead of user discounts
-        const response = await getShopDiscounts();
-        console.log('API Response:', response);
+        console.log('Fetching available discounts...');
+        // Fetch available discounts for customers
+        const response = await axiosInstance.get('/user-discounts/available');
+        console.log('API Response:', response.data);
 
-        // Transform API response to match component expectations
-        if (response.success && response.data) {
-          // Filter only active discounts and transform discount data to match voucher format
-          const transformedVouchers = response.data
-            .filter(discount => discount.status === 'active')
-            .map(discount => ({
-              id: discount._id,
-              code: discount.code,
-              title: discount.description || `Discount ${discount.code}`,
-              description:
-                discount.description ||
-                `Get ${discount.type === 'percentage' ? discount.value + '%' : discount.value + ' VND'} off`,
-              discountType: discount.type,
-              discountValue: discount.value,
-              minOrderAmount: discount.minPurchase || 0,
-              maxDiscountAmount: discount.maxDiscount,
-              validFrom: discount.startDate,
-              validTo: discount.endDate,
-              status: discount.status,
-              usageLimit: discount.usageLimit || 1,
-              usedCount: discount.usedCount || 0,
-              source: discount.source,
-            }));
-          console.log('Transformed vouchers:', transformedVouchers);
-          setVouchers(transformedVouchers);
+        // API already returns data in the correct format
+        if (response.data.success && response.data.data) {
+          console.log('Available vouchers:', response.data.data);
+          setVouchers(response.data.data);
         } else {
           console.log('No data received');
           setVouchers([]);
@@ -349,18 +328,6 @@ export const VoucherGridSection = () => {
         <h2>SHOP VOUCHERS</h2>
         <p>Discover attractive vouchers from shop owners to save maximum when shopping</p>
       </div>
-
-      {/* ✅ Show alert if user already has a saved voucher */}
-      {savedVouchers.size > 0 && (
-        <Alert
-          message="You can only save one voucher at a time"
-          description="You already have a saved voucher. Please use or remove it from your account before saving a new one."
-          type="warning"
-          showIcon
-          closable
-          style={{ marginBottom: 16 }}
-        />
-      )}
 
       <Row gutter={[16, 16]}>
         {vouchers.length === 0 ? (

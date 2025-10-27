@@ -15,7 +15,8 @@ import {
 } from 'antd';
 import { useState, useEffect } from 'react';
 import { formatPrice } from '../../../../utils/StringFormat';
-import { validateDiscountCode, getActiveDiscounts } from '../../../../services/discountService';
+import { validateDiscountCode } from '../../../../services/discountService';
+import userDiscountService from '../../../../services/userDiscount.service';
 import { PlusOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import './OrderSummary.css';
 import VoucherPicker from './VoucherPicker';
@@ -38,7 +39,7 @@ export default function OrderSummary({
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [loadingDiscounts, setLoadingDiscounts] = useState(false);
 
-  // Load available discounts on component mount
+  // Load user's saved vouchers on component mount
   useEffect(() => {
     loadAvailableDiscounts();
   }, []);
@@ -46,14 +47,17 @@ export default function OrderSummary({
   const loadAvailableDiscounts = async () => {
     setLoadingDiscounts(true);
     try {
-      const response = await getActiveDiscounts();
-      // Filter out reward_points discounts (should already be filtered by backend, but double-check)
+      // Load only vouchers user has saved (collected)
+      const response = await userDiscountService.getUserDiscounts();
+      // Filter to show only 'saved' status vouchers that haven't been used
       const filteredDiscounts = (response.data || []).filter(
-        discount => discount.source !== 'reward_points'
+        discount => discount.status === 'saved'
       );
       setAvailableDiscounts(filteredDiscounts);
     } catch (error) {
-      console.error('Error loading discounts:', error);
+      console.error('Error loading user vouchers:', error);
+      // User might not be logged in or no saved vouchers
+      setAvailableDiscounts([]);
     } finally {
       setLoadingDiscounts(false);
     }
@@ -100,7 +104,12 @@ export default function OrderSummary({
       }
     } catch (error) {
       console.error('Error applying coupon:', error);
-      message.error('Error applying coupon. Please try again.');
+      // ✅ Hiển thị error message từ backend
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        'Error applying coupon. Please try again.';
+      message.error(errorMsg);
     } finally {
       setApplying(false);
     }
@@ -120,15 +129,16 @@ export default function OrderSummary({
   const handleSelectDiscount = async discount => {
     setApplying(true);
     try {
-      const response = await validateDiscountCode(discount.code, subtotal, cartItems);
+      // Use userDiscountService to validate since it's a saved voucher
+      const response = await userDiscountService.validateDiscount(discount.code, subtotal);
 
-      if (response.data.isValid) {
+      if (response.success && response.data.isValid) {
         const newDiscount = {
           code: discount.code,
           discountAmount: response.data.discountAmount,
-          type: discount.type,
-          value: discount.value,
-          description: discount.description,
+          type: discount.discountType,
+          value: discount.discountValue,
+          description: discount.description || discount.title,
         };
 
         // ✅ Chỉ giữ 1 voucher duy nhất
@@ -141,11 +151,15 @@ export default function OrderSummary({
         message.success('Coupon applied successfully!');
         setShowDiscountModal(false);
       } else {
-        message.error(response.data.message || 'Invalid coupon code');
+        message.error(response.data?.message || 'Invalid coupon code');
       }
     } catch (error) {
       console.error('Error applying coupon:', error);
-      message.error('Error applying coupon. Please try again.');
+      const errorMsg =
+        error.response?.data?.message ||
+        error.message ||
+        'Error applying coupon. Please try again.';
+      message.error(errorMsg);
     } finally {
       setApplying(false);
     }
@@ -300,7 +314,7 @@ export default function OrderSummary({
         </Col>
       </Row>
 
-      {/* Available Coupons Modal */}
+      {/* Available Coupons Modal - Shows only user's saved vouchers */}
       <Modal
         title="Available Coupons"
         open={showDiscountModal}
@@ -308,51 +322,60 @@ export default function OrderSummary({
         footer={null}
         width={600}
       >
-        <List
-          loading={loadingDiscounts}
-          dataSource={availableDiscounts}
-          renderItem={discount => (
-            <List.Item
-              actions={[
-                <Button
-                  type="primary"
-                  size="small"
-                  onClick={() => handleSelectDiscount(discount)}
-                  loading={applying}
-                  disabled={appliedDiscounts.some(d => d.code === discount.code)}
-                >
-                  {appliedDiscounts.some(d => d.code === discount.code) ? 'Applied' : 'Apply'}
-                </Button>,
-              ]}
-            >
-              <List.Item.Meta
-                title={
-                  <Space>
-                    <Text strong>{discount.code}</Text>
-                    {appliedDiscounts.some(d => d.code === discount.code) && (
-                      <Badge status="success" text="Applied" />
-                    )}
-                  </Space>
-                }
-                description={
-                  <div>
-                    <div>{discount.description}</div>
-                    <div style={{ marginTop: 4 }}>
-                      <Tag color="blue">
-                        {discount.type === 'percentage'
-                          ? `${discount.value}% off`
-                          : `${formatPrice(discount.value)} off`}
-                      </Tag>
-                      {discount.minPurchase > 0 && (
-                        <Tag color="orange">Min: {formatPrice(discount.minPurchase)}</Tag>
+        {availableDiscounts.length === 0 && !loadingDiscounts ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <Text type="secondary">
+              You don't have any saved vouchers yet. Please collect vouchers from the Voucher
+              Discovery page.
+            </Text>
+          </div>
+        ) : (
+          <List
+            loading={loadingDiscounts}
+            dataSource={availableDiscounts}
+            renderItem={discount => (
+              <List.Item
+                actions={[
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => handleSelectDiscount(discount)}
+                    loading={applying}
+                    disabled={appliedDiscounts.some(d => d.code === discount.code)}
+                  >
+                    {appliedDiscounts.some(d => d.code === discount.code) ? 'Applied' : 'Apply'}
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={
+                    <Space>
+                      <Text strong>{discount.code}</Text>
+                      {appliedDiscounts.some(d => d.code === discount.code) && (
+                        <Badge status="success" text="Applied" />
                       )}
+                    </Space>
+                  }
+                  description={
+                    <div>
+                      <div>{discount.description || discount.title}</div>
+                      <div style={{ marginTop: 4 }}>
+                        <Tag color="blue">
+                          {discount.discountType === 'percentage'
+                            ? `${discount.discountValue}% off`
+                            : `${formatPrice(discount.discountValue)} off`}
+                        </Tag>
+                        {discount.minOrderAmount > 0 && (
+                          <Tag color="orange">Min: {formatPrice(discount.minOrderAmount)}</Tag>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                }
-              />
-            </List.Item>
-          )}
-        />
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        )}
       </Modal>
     </Card>
   );
