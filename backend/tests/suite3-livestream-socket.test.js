@@ -4,19 +4,19 @@
  */
 
 import { jest } from '@jest/globals';
+import { createServer } from 'http';
 import mongoose from 'mongoose';
 import { Server } from 'socket.io';
-import { createServer } from 'http';
 import ioc from 'socket.io-client';
+import LiveStream from '../src/models/LiveStream.js';
+import LiveStreamChat from '../src/models/LiveStreamChat.js';
+import User from '../src/models/User.js';
+import liveStreamService from '../src/services/livestream.service.js';
 import {
-  setupLiveStreamHandlers,
   broadcastSystemMessage,
   broadcastViewerCount,
+  setupLiveStreamHandlers,
 } from '../src/services/livestreamSocket.service.js';
-import liveStreamService from '../src/services/livestream.service.js';
-import LiveStream from '../src/models/LiveStream.js';
-import User from '../src/models/User.js';
-import LiveStreamChat from '../src/models/LiveStreamChat.js';
 
 // Test timeout
 jest.setTimeout(15000);
@@ -456,11 +456,6 @@ describe('LiveStream Socket Service — Test Suite 4', () => {
           roomId: TEST_ROOM_ID,
         });
       }, 200);
-    });
-
-    test.skip('TC-LI-3013 | Verify pin_message fails for viewer', done => {
-      // Skip: Complex async test with stream state dependencies
-      done();
     });
 
     test('TC-LI-3014 | Verify unpin_message clears pinned message', done => {
