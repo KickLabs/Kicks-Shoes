@@ -32,6 +32,10 @@ export default {
     'src/utils/logger.js', // Logger utility
     '!src/utils/validation.js', // Validation utility
 
+    // Authentication & Authorization Middleware
+    'src/middlewares/auth.middleware.js', // Auth middleware
+    'src/middlewares/role.middleware.js', // Role middleware
+
     // Common files used across multiple suites
     'src/models/LiveStream.js', // LiveStream model
     'src/controllers/livestreamController.js', // Livestream controller
@@ -40,8 +44,8 @@ export default {
     '!src/config/**', // Exclude config files
     '!src/templates/**', // Exclude email templates
     '!src/vnpay/**', // Exclude vnpay
-    '!src/controllers/authController.js', // Exclude auth
-    '!src/controllers/userController.js', // Exclude user
+    'src/controllers/authController.js', // Exclude auth
+    'src/controllers/userController.js', // Exclude user
     '!src/controllers/productController.js', // Exclude product
     '!src/controllers/orderController.js', // Exclude order
     '!src/controllers/cartController.js', // Exclude cart
@@ -58,8 +62,8 @@ export default {
     '!src/controllers/dashboardController.js', // Exclude dashboard
     '!src/controllers/payosController.js', // Exclude payos
     '!src/controllers/vnpayController.js', // Exclude vnpay
-    '!src/services/auth.service.js', // Exclude auth service
-    '!src/services/user.service.js', // Exclude user service
+    'src/services/auth.service.js', // Exclude auth service
+    'src/services/user.service.js', // Exclude user service
     '!src/services/product.service.js', // Exclude product service
     'src/services/order.service.js', // Exclude order service
     '!src/services/cart.service.js', // Exclude cart service
@@ -77,7 +81,7 @@ export default {
     '!src/services/otp.service.js', // Exclude otp service
     '!src/services/payos.service.js', // Exclude payos service
     '!src/services/vnpay.service.js', // Exclude vnpay service
-    '!src/models/User.js', // Exclude user model
+    'src/models/User.js', // User model
     '!src/models/Product.js', // Exclude product model
     '!src/models/Order.js', // Exclude order model
     '!src/models/Cart.js', // Exclude cart model

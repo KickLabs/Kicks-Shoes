@@ -11,7 +11,7 @@ import User from '../models/User.js';
 import TokenBlacklist from '../models/TokenBlacklist.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { validateEmail, validatePhone } from '../validations/validation.js';
+import { validateEmail, validatePhone } from '../utils/validation.js';
 import EmailService from './email.service.js';
 import logger from '../utils/logger.js';
 
