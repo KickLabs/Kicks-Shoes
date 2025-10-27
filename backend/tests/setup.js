@@ -52,6 +52,12 @@ process.env.NODE_OPTIONS = '--experimental-vm-modules';
 // ========================================
 // MOCK SETUP
 // ========================================
+// Import models to ensure they are registered with mongoose
+import '../src/models/Category.js';
+import '../src/models/LiveStream.js';
+import '../src/models/PotentialOrder.js';
+import '../src/models/Product.js';
+import '../src/models/User.js';
 
 // Mock mongoose to prevent database connection attempts
 // This runs before jest is fully initialized, so we use global mocking

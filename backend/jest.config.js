@@ -46,7 +46,7 @@ export default {
     '!src/vnpay/**', // Exclude vnpay
     'src/controllers/authController.js', // Exclude auth
     'src/controllers/userController.js', // Exclude user
-    '!src/controllers/productController.js', // Exclude product
+    'src/controllers/productController.js', // Exclude product
     '!src/controllers/orderController.js', // Exclude order
     '!src/controllers/cartController.js', // Exclude cart
     '!src/controllers/categoryController.js', // Exclude category
@@ -64,7 +64,7 @@ export default {
     '!src/controllers/vnpayController.js', // Exclude vnpay
     'src/services/auth.service.js', // Exclude auth service
     'src/services/user.service.js', // Exclude user service
-    '!src/services/product.service.js', // Exclude product service
+    'src/services/product.service.js', // Exclude product service
     'src/services/order.service.js', // Exclude order service
     '!src/services/cart.service.js', // Exclude cart service
     '!src/services/category.service.js', // Exclude category service
@@ -82,7 +82,7 @@ export default {
     '!src/services/payos.service.js', // Exclude payos service
     '!src/services/vnpay.service.js', // Exclude vnpay service
     'src/models/User.js', // User model
-    '!src/models/Product.js', // Exclude product model
+    'src/models/Product.js', // Exclude product model
     '!src/models/Order.js', // Exclude order model
     '!src/models/Cart.js', // Exclude cart model
     '!src/models/Category.js', // Exclude category model
