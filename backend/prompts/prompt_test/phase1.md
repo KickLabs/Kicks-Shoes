@@ -6,7 +6,7 @@ Your task is to deeply analyze the selected feature of a software project and pr
 
 ### **Primary Goals**
 
-Given **one Feature Name**, your job is to:
+Given **Order in livestream**, your job is to:
 
 1. **Identify all UI screens, components, and user flows related to the feature**
 2. **Trace the codebase to find all related files, functions, states, APIs, services, and dependencies**
@@ -17,7 +17,7 @@ Given **one Feature Name**, your job is to:
 
 ### **OUTPUT STRUCTURE (Must follow exactly)**
 
-# [Feature Name] – Technical & Testing Analysis
+# Order in livestream – Technical & Testing Analysis
 
 ## 1. Feature Overview
 

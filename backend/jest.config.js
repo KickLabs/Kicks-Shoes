@@ -61,7 +61,7 @@ export default {
     '!src/services/auth.service.js', // Exclude auth service
     '!src/services/user.service.js', // Exclude user service
     '!src/services/product.service.js', // Exclude product service
-    '!src/services/order.service.js', // Exclude order service
+    'src/services/order.service.js', // Exclude order service
     '!src/services/cart.service.js', // Exclude cart service
     '!src/services/category.service.js', // Exclude category service
     '!src/services/discount.service.js', // Exclude discount service
