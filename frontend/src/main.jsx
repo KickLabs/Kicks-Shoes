@@ -6,7 +6,6 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { PersistGate } from 'redux-persist/integration/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { CartProvider } from './contexts/CartContext';
 import { VideoCallProvider } from './contexts/VideoCallContext';
 import { persistor, store } from './store/store';
 
@@ -47,6 +46,7 @@ import PaymentSuccess from './components/pages/payment/PaymentSuccess';
 import ProductDetailPage from './components/pages/product/pages/ProductDetailPage';
 import VisualSearch from './components/pages/shop/VisualSearch';
 import VoucherDiscoveryPage from './components/pages/voucher-discovery/VoucherDiscoveryPage';
+import OutfitSuggestionPage from './components/pages/outfit/OutfitSuggestionPage';
 
 // New Role-Based Dashboard Components
 import AdminDashboard from './components/pages/dashboard/AdminDashboard';
@@ -233,6 +233,10 @@ const router = createBrowserRouter([
       {
         path: 'product/:id',
         element: <ProductDetailPage />,
+      },
+      {
+        path: 'outfit-suggestion',
+        element: <OutfitSuggestionPage />,
       },
       {
         path: 'shop/visual-search',
@@ -611,27 +615,25 @@ const Root = () => (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <AuthProvider>
-          <CartProvider>
-            <VideoCallProvider>
-              <ToastContainer
-                position="top-right"
-                autoClose={5000}
-                hideProgressBar={false}
-                newestOnTop
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-              />
-              <GoogleOAuthProvider
-                clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
-              >
-                <RouterProvider router={router} />
-              </GoogleOAuthProvider>
-            </VideoCallProvider>
-          </CartProvider>
+          <VideoCallProvider>
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+            <GoogleOAuthProvider
+              clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
+            >
+              <RouterProvider router={router} />
+            </GoogleOAuthProvider>
+          </VideoCallProvider>
         </AuthProvider>
       </PersistGate>
     </Provider>
