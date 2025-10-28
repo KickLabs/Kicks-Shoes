@@ -54,8 +54,6 @@ export default function OrderSummary({
       setLoadingDiscounts(false);
     }
   };
-  const [appliedDiscount, setAppliedDiscount] = useState(null);
-  const [voucherOpen, setVoucherOpen] = useState(false);
 
   const handleApplyCoupon = async () => {
     if (!coupon.trim()) {
@@ -82,9 +80,8 @@ export default function OrderSummary({
           description: response.data.discount.description,
         };
 
-        // ✅ Thay vì cộng thêm, chỉ giữ 1 voucher
+        // Keep only one voucher at a time
         setAppliedDiscounts([newDiscount]);
-
         if (onApplyCoupon) {
           await onApplyCoupon(coupon.trim(), response.data.discountAmount);
         }
@@ -108,6 +105,10 @@ export default function OrderSummary({
   };
 
   const handleSelectDiscount = async discount => {
+    if (appliedDiscounts.some(d => d.code === discount.code)) {
+      message.warning('This coupon is already applied');
+      return;
+    }
     setApplying(true);
     try {
       const response = await validateDiscountCode(discount.code, subtotal, cartItems);
@@ -121,13 +122,11 @@ export default function OrderSummary({
           description: discount.description,
         };
 
-        // ✅ Chỉ giữ 1 voucher duy nhất
+        // Keep only one voucher
         setAppliedDiscounts([newDiscount]);
-
         if (onApplyCoupon) {
           await onApplyCoupon(discount.code, response.data.discountAmount);
         }
-
         message.success('Coupon applied successfully!');
         setShowDiscountModal(false);
       } else {

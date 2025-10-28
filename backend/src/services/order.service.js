@@ -11,6 +11,7 @@ import FlashSale from '../models/FlashSale.js';
 import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
 import Product from '../models/Product.js';
+import FlashSale from '../models/FlashSale.js';
 import logger from '../utils/logger.js';
 import { validateDiscountCode } from './discount.service.js';
 
@@ -463,7 +464,6 @@ export class OrderService {
     }
   }
 
-  // ... (các hàm còn lại giữ nguyên)
   /**
    * Get all orders with pagination
    * @param {Object} options - Pagination and filter options

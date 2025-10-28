@@ -184,16 +184,20 @@ export const useWebRTC = (roomId, role, userId) => {
         const pc = peersRef.current.get(data.viewerId);
         if (pc && data.candidate) {
           try {
+            console.log('📡 Host adding ICE candidate:', data.candidate.type);
             await pc.addIceCandidate(data.candidate);
           } catch (error) {
-            console.error('Error adding ICE candidate:', error);
+            console.error('❌ Host error adding ICE candidate:', error);
+            // Don't fail the connection for ICE candidate errors
           }
         }
       } else if (role === 'viewer' && peerConnectionRef.current && data.candidate) {
         try {
+          console.log('📡 Viewer adding ICE candidate:', data.candidate.type);
           await peerConnectionRef.current.addIceCandidate(data.candidate);
         } catch (error) {
-          console.error('Error adding ICE candidate:', error);
+          console.error('❌ Viewer error adding ICE candidate:', error);
+          // Don't fail the connection for ICE candidate errors
         }
       }
     },
@@ -211,6 +215,7 @@ export const useWebRTC = (roomId, role, userId) => {
 
     pc.onicecandidate = event => {
       if (event.candidate && socketRef.current) {
+        console.log('📡 Sending ICE candidate:', event.candidate.type);
         socketRef.current.emit('webrtc_ice', {
           viewerId,
           candidate: event.candidate,
@@ -218,7 +223,21 @@ export const useWebRTC = (roomId, role, userId) => {
       }
     };
 
+    pc.onicegatheringstatechange = () => {
+      console.log('📡 ICE gathering state:', pc.iceGatheringState);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log('📡 ICE connection state:', pc.iceConnectionState);
+      if (pc.iceConnectionState === 'failed') {
+        console.warn('⚠️ ICE connection failed, attempting restart...');
+        // Try to restart ICE
+        pc.restartIce();
+      }
+    };
+
     pc.onconnectionstatechange = () => {
+      console.log('📡 Connection state:', pc.connectionState);
       if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
         peersRef.current.delete(viewerId);
       }
@@ -260,6 +279,7 @@ export const useWebRTC = (roomId, role, userId) => {
     async offerData => {
       if (role !== 'viewer') return;
 
+      console.log('📡 Creating peer connection for viewer');
       const pc = new RTCPeerConnection(PEER_CONNECTION_CONFIG);
       peerConnectionRef.current = pc;
 
@@ -311,6 +331,7 @@ export const useWebRTC = (roomId, role, userId) => {
 
       pc.onicecandidate = event => {
         if (event.candidate && socketRef.current) {
+          console.log('📡 Sending ICE candidate from viewer:', event.candidate.type);
           socketRef.current.emit('webrtc_ice', {
             viewerId: offerData.viewerId,
             candidate: event.candidate,
@@ -318,18 +339,40 @@ export const useWebRTC = (roomId, role, userId) => {
         }
       };
 
+      pc.onicegatheringstatechange = () => {
+        console.log('📡 Viewer ICE gathering state:', pc.iceGatheringState);
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log('📡 Viewer ICE connection state:', pc.iceConnectionState);
+        if (pc.iceConnectionState === 'failed') {
+          console.warn('⚠️ Viewer ICE connection failed, attempting restart...');
+          pc.restartIce();
+        }
+      };
+
       pc.onconnectionstatechange = () => {
+        console.log('📡 Viewer connection state:', pc.connectionState);
         setConnectionState(pc.connectionState);
       };
 
-      await pc.setRemoteDescription({ type: 'offer', sdp: offerData.sdp });
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
+      try {
+        console.log('📡 Setting remote description');
+        await pc.setRemoteDescription({ type: 'offer', sdp: offerData.sdp });
 
-      socketRef.current?.emit('webrtc_answer', {
-        viewerId: offerData.viewerId,
-        sdp: answer.sdp,
-      });
+        console.log('📡 Creating answer');
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        console.log('📡 Sending answer to host');
+        socketRef.current?.emit('webrtc_answer', {
+          viewerId: offerData.viewerId,
+          sdp: answer.sdp,
+        });
+      } catch (error) {
+        console.error('❌ Error creating answer:', error);
+        setError(`Failed to create WebRTC answer: ${error.message}`);
+      }
     },
     [role]
   );
@@ -389,6 +432,36 @@ export const useWebRTC = (roomId, role, userId) => {
     [role]
   );
 
+  // Connection retry mechanism for cross-network issues
+  const retryConnection = useCallback(() => {
+    if (role === 'viewer' && peerConnectionRef.current) {
+      console.log('🔄 Retrying WebRTC connection...');
+      const pc = peerConnectionRef.current;
+
+      // Try to restart ICE
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        try {
+          pc.restartIce();
+          console.log('🔄 ICE restart initiated');
+        } catch (error) {
+          console.error('❌ Failed to restart ICE:', error);
+        }
+      }
+    }
+  }, [role]);
+
+  // Auto-retry connection on failure
+  useEffect(() => {
+    if (connectionState === 'failed' || connectionState === 'disconnected') {
+      const retryTimeout = setTimeout(() => {
+        console.log('🔄 Auto-retrying connection...');
+        retryConnection();
+      }, 5000); // Retry after 5 seconds
+
+      return () => clearTimeout(retryTimeout);
+    }
+  }, [connectionState, retryConnection]);
+
   // Cleanup
   useEffect(() => {
     return () => {
@@ -420,6 +493,7 @@ export const useWebRTC = (roomId, role, userId) => {
     stopCamera,
     sendChatMessage,
     featureProduct,
+    retryConnection,
 
     // Stream objects (for advanced usage)
     localStream: localStreamRef.current,

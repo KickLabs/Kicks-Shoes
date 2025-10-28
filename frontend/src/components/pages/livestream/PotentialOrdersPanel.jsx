@@ -310,7 +310,17 @@ const PotentialOrdersPanel = ({ streamId, socket }) => {
                       <PhoneOutlined />
                       <span>{formatPhone(order.customerInfo.phoneNumber)}</span>
                     </div>
-                    <div className="message-info">{order.productInfo.originalMessage}</div>
+                    <div
+                      className="message-info"
+                      style={{
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        maxWidth: '100%',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {order.productInfo.originalMessage}
+                    </div>
                     <div className="time-info">{new Date(order.createdAt).toLocaleString()}</div>
                   </div>
 
@@ -396,8 +406,23 @@ const PotentialOrdersPanel = ({ streamId, socket }) => {
             <Card size="small" title="Product Information">
               <Space direction="vertical">
                 <Text>
-                  <strong>Message:</strong> {selectedOrder.productInfo.originalMessage}
+                  <strong>Message:</strong>
                 </Text>
+                <div
+                  style={{
+                    wordWrap: 'break-word',
+                    overflowWrap: 'break-word',
+                    maxWidth: '100%',
+                    whiteSpace: 'pre-wrap',
+                    marginTop: '4px',
+                    padding: '8px',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: '4px',
+                    border: '1px solid #e0e0e0',
+                  }}
+                >
+                  {selectedOrder.productInfo.originalMessage}
+                </div>
                 {selectedOrder.productInfo.extractedSize && (
                   <Text>
                     <strong>Size:</strong> {selectedOrder.productInfo.extractedSize}

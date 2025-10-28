@@ -57,6 +57,7 @@ const LiveStreamViewer = () => {
     messages,
     sendChatMessage,
     remoteStream,
+    retryConnection,
   } = useWebRTC(roomId, 'viewer', user?.id);
 
   // Load stream data
@@ -345,7 +346,19 @@ const LiveStreamViewer = () => {
           {error && (
             <Alert
               message="Connection Error"
-              description={error}
+              description={
+                <div>
+                  <p>{error}</p>
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={retryConnection}
+                    style={{ marginTop: '8px' }}
+                  >
+                    Retry Connection
+                  </Button>
+                </div>
+              }
               type="error"
               className="viewer-error-alert"
               closable
