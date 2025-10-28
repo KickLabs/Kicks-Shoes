@@ -22,7 +22,16 @@ describe('Users — Unit Tests - User Model', () => {
 
   // Cleanup: Clear database before each test
   beforeEach(async () => {
+    // Clear all collections to avoid unique constraint conflicts
+    await mongoose.connection.db.collection('users').deleteMany({});
     await User.deleteMany({});
+
+    // Ensure indexes are properly created after cleanup
+    try {
+      await User.createIndexes();
+    } catch (error) {
+      // Ignore if indexes already exist
+    }
   });
 
   // Teardown: Close database connection
@@ -79,9 +88,9 @@ describe('Users — Unit Tests - User Model', () => {
   test('UM-002 | Password hashing on save', async () => {
     // Given: User document with plain password
     const user = new User({
-      fullName: 'Test User',
-      username: 'testuser',
-      email: 'test@example.com',
+      fullName: 'Test User 2',
+      username: 'testuser2',
+      email: 'test2@example.com',
       password: 'password123',
       phone: '1234567890',
       address: '123 Test St',
@@ -103,9 +112,9 @@ describe('Users — Unit Tests - User Model', () => {
   test('UM-003 | Password not hashed when not modified', async () => {
     // Given: Existing user in database
     const user = new User({
-      fullName: 'Test User',
-      username: 'testuser',
-      email: 'test@example.com',
+      fullName: 'Test User 3',
+      username: 'testuser3',
+      email: 'test3@example.com',
       password: 'password123',
       phone: '1234567890',
       address: '123 Test St',
@@ -129,9 +138,9 @@ describe('Users — Unit Tests - User Model', () => {
   test('UM-004 | matchPassword returns true for correct password', async () => {
     // Given: User exists with hashed password
     const user = new User({
-      fullName: 'Test User',
-      username: 'testuser',
-      email: 'test@example.com',
+      fullName: 'Test User 4',
+      username: 'testuser4',
+      email: 'test4@example.com',
       password: 'password123',
       phone: '1234567890',
       address: '123 Test St',
@@ -148,9 +157,9 @@ describe('Users — Unit Tests - User Model', () => {
   test('UM-005 | matchPassword returns false for incorrect password', async () => {
     // Given: User exists with hashed password
     const user = new User({
-      fullName: 'Test User',
-      username: 'testuser',
-      email: 'test@example.com',
+      fullName: 'Test User 5',
+      username: 'testuser5',
+      email: 'test5@example.com',
       password: 'password123',
       phone: '1234567890',
       address: '123 Test St',
@@ -167,9 +176,9 @@ describe('Users — Unit Tests - User Model', () => {
   test('UM-006 | matchPassword handles empty password', async () => {
     // Given: User exists with hashed password
     const user = new User({
-      fullName: 'Test User',
-      username: 'testuser',
-      email: 'test@example.com',
+      fullName: 'Test User 6',
+      username: 'testuser6',
+      email: 'test6@example.com',
       password: 'password123',
       phone: '1234567890',
       address: '123 Test St',
@@ -432,29 +441,50 @@ describe('Users — Unit Tests - User Model', () => {
   // ===================================================================
 
   test('UM-020 | Duplicate email rejected', async () => {
+    const timestamp = Date.now();
+    const testId = process.env.JEST_WORKER_ID || '0';
+
     // Given: First user with email exists
     const firstUser = new User({
       fullName: 'First User',
-      username: 'firstuser',
-      email: 'test@example.com',
+      username: `firstuser20_${timestamp}_${testId}`,
+      email: `test20_${timestamp}_${testId}@example.com`,
       password: 'password123',
       phone: '1234567890',
       address: '123 Test St',
     });
     await firstUser.save();
 
+    // Verify first user was saved
+    expect(firstUser._id).toBeDefined();
+
     // When: Second user with same email is created
     const secondUser = new User({
       fullName: 'Second User',
-      username: 'seconduser',
-      email: 'test@example.com',
+      username: `seconduser20_${timestamp}_${testId}`,
+      email: `test20_${timestamp}_${testId}@example.com`, // Same email as first user
       password: 'password456',
       phone: '0987654321',
       address: '456 Oak Ave',
     });
 
-    // Then: MongoError E11000 thrown (duplicate key error)
-    await expect(secondUser.save()).rejects.toThrow(/E11000/);
-    await expect(secondUser.save()).rejects.toThrow(/duplicate key/);
+    // Then: Should throw duplicate key error
+    try {
+      await secondUser.save();
+      // If we get here, the test should fail
+      expect(true).toBe(false); // Force test failure
+    } catch (error) {
+      // Check if it's a duplicate key error (MongoDB error structure)
+      const isDuplicateKey = Boolean(
+        error.code === 11000 ||
+          error.name === 'MongoServerError' ||
+          error.name === 'MongoError' ||
+          (error.message && error.message.includes('duplicate key')) ||
+          (error.errmsg && error.errmsg.includes('duplicate key'))
+      );
+
+      expect(isDuplicateKey).toBe(true);
+      expect(error.message).toContain('duplicate key');
+    }
   });
 });
