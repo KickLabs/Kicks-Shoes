@@ -1,7 +1,8 @@
 /**
- * @fileoverview Integration Tests for Feedback Controller Email Logic
- * @description Tests to cover uncovered lines 316-357 and 395-481 in feedbackController.js
+ * @fileoverview Integration Tests for Feedback Controller (Email Functionality Removed)
+ * @description Tests to cover feedback controller API endpoints without email sending
  * @created 2025-10-28
+ * @updated 2025-10-28 - Removed email functionality as requested
  */
 
 import { jest } from '@jest/globals';
@@ -22,7 +23,7 @@ jest.mock('../../src/utils/sendEmail.js', () => ({
 
 const { sendTemplatedEmail } = await import('../../src/utils/sendEmail.js');
 
-describe('Feedback Controller Integration Tests - Email Logic Coverage', () => {
+describe('Feedback Controller Integration Tests - Basic Functionality', () => {
   let testUser, testShop, adminUser, testProduct, testOrder;
   let userToken, shopToken, adminToken;
 
@@ -287,8 +288,8 @@ describe('Feedback Controller Integration Tests - Email Logic Coverage', () => {
     });
   });
 
-  describe('reportFeedback - Email Logic Coverage', () => {
-    test('Should send emails to shop and reporter successfully', async () => {
+  describe('reportFeedback - Basic Functionality Coverage', () => {
+    test('Should create report successfully without emails', async () => {
       const freshOrder = await Order.create({
         user: testUser._id,
         items: [testProduct._id],
@@ -337,7 +338,7 @@ describe('Feedback Controller Integration Tests - Email Logic Coverage', () => {
     });
   });
 
-  describe('adminApproveFeedback - Email Logic Coverage', () => {
+  describe('adminApproveFeedback - Basic Functionality Coverage', () => {
     test('Should handle PUT (Approve) request successfully', async () => {
       const freshOrder = await Order.create({
         user: testUser._id,

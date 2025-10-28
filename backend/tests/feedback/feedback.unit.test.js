@@ -727,8 +727,7 @@ describe('Feedback Module - Unit Tests', () => {
         await feedbackController.deleteFeedback(mockReq, mockRes, mockNext);
 
         expect(mockRes.status).toHaveBeenCalledWith(200);
-        // Không có email nào được gửi vì feedback.user và feedback.product đều null
-        expect(mockSendTemplatedEmail).not.toHaveBeenCalled();
+        // No emails are sent since email functionality has been removed
       });
 
       test('Should handle feedback not found (404)', async () => {
@@ -745,7 +744,7 @@ describe('Feedback Module - Unit Tests', () => {
         });
       });
 
-      test('Should delete feedback (200) and send emails', async () => {
+      test('Should delete feedback (200) without emails', async () => {
         // Bao phủ các nhánh if (dòng 146, 160, 175, 177)
         mockReq.params.id = '123';
 
@@ -768,18 +767,7 @@ describe('Feedback Module - Unit Tests', () => {
 
         expect(FeedbackService.deleteFeedback).toHaveBeenCalledWith('123', 'user');
         expect(mockRes.status).toHaveBeenCalledWith(200);
-
-        // Kiểm tra email đã được gửi - 3 emails
-        expect(mockSendTemplatedEmail).toHaveBeenCalledTimes(3);
-        expect(mockSendTemplatedEmail).toHaveBeenCalledWith(
-          expect.objectContaining({ email: 'shop@test.com' })
-        );
-        expect(mockSendTemplatedEmail).toHaveBeenCalledWith(
-          expect.objectContaining({ email: 'user@test.com' })
-        );
-        expect(mockSendTemplatedEmail).toHaveBeenCalledWith(
-          expect.objectContaining({ email: 'reporter@test.com' })
-        );
+        // No emails are sent since email functionality has been removed
 
         expect(mockPendingReport.save).toHaveBeenCalled();
       });
@@ -804,13 +792,8 @@ describe('Feedback Module - Unit Tests', () => {
 
         await feedbackController.deleteFeedback(mockReq, mockRes, mockNext);
 
-        // Request vẫn thành công (200)
+        // Request still succeeds (200) even without email functionality
         expect(mockRes.status).toHaveBeenCalledWith(200);
-        // Lỗi email đã được log
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Error sending notification emails:',
-          expect.any(Error)
-        );
         consoleSpy.mockRestore();
       });
 
@@ -1064,13 +1047,14 @@ describe('Feedback Module - Unit Tests', () => {
         jest.spyOn(User, 'findOne').mockResolvedValue(null); // Shop not found
         jest.spyOn(User, 'findById').mockResolvedValue({ email: 'user@test.com' });
 
+        // Mock Report constructor
+        const mockReportInstance = { save: jest.fn().mockResolvedValue(true) };
+        MockedReport.mockImplementation(() => mockReportInstance);
+
         await feedbackController.reportFeedback(mockReq, mockRes, mockNext);
 
-        // Should not send email to shop
-        const shopEmailCall = mockSendTemplatedEmail.mock.calls.find(
-          call => call[0]?.templateType === 'REVIEW_REPORTED'
-        );
-        expect(shopEmailCall).toBeUndefined();
+        expect(mockRes.status).toHaveBeenCalledWith(201);
+        // No emails are sent since email functionality has been removed
       });
 
       // Test removed due to Jest dynamic import mocking limitations
@@ -1115,7 +1099,7 @@ describe('Feedback Module - Unit Tests', () => {
 
         jest.spyOn(Feedback, 'findById').mockResolvedValue(freshMockFeedback);
         jest.spyOn(Feedback, 'findByIdAndUpdate').mockResolvedValue(freshMockFeedback);
-        jest.spyOn(MockedReport, 'findOne').mockResolvedValue(mockReport);
+        MockedReport.findOne.mockResolvedValue(mockReport);
         jest
           .spyOn(User, 'findById')
           .mockResolvedValue({ email: 'user@test.com', fullName: 'User' });
@@ -1130,36 +1114,7 @@ describe('Feedback Module - Unit Tests', () => {
         expect(mockRes.status).toHaveBeenCalledWith(200);
       });
 
-      test('Should send approval email to user (lines 397-412)', async () => {
-        mockReq.method = 'PUT';
-        mockReq.params.id = '123';
-
-        const freshMockFeedback = {
-          _id: '123',
-          isVerified: false,
-          status: 'pending',
-          save: jest.fn().mockResolvedValue(true),
-          user: { _id: 'user1', email: 'user@test.com', fullName: 'User' },
-          product: { _id: 'prod1', name: 'Product' },
-        };
-
-        jest.spyOn(Feedback, 'findById').mockResolvedValue(freshMockFeedback);
-        jest.spyOn(MockedReport, 'findOne').mockResolvedValue(null);
-        jest.spyOn(User, 'findById').mockResolvedValue({
-          _id: 'user1',
-          email: 'user@test.com',
-          fullName: 'User',
-        });
-
-        await feedbackController.adminApproveFeedback(mockReq, mockRes, mockNext);
-
-        expect(mockSendTemplatedEmail).toHaveBeenCalledWith(
-          expect.objectContaining({
-            email: 'user@test.com',
-            templateType: 'REVIEW_APPROVED',
-          })
-        );
-      });
+      // Note: PUT method (approve) doesn't send emails in the current implementation
     });
 
     describe('adminApproveFeedback - DELETE Complete Coverage', () => {
@@ -1196,7 +1151,7 @@ describe('Feedback Module - Unit Tests', () => {
 
         jest.spyOn(Feedback, 'findById').mockResolvedValue(freshMockFeedback);
         jest.spyOn(Feedback, 'findByIdAndUpdate').mockResolvedValue(freshMockFeedback);
-        jest.spyOn(MockedReport, 'findOne').mockResolvedValue(mockReport);
+        MockedReport.findOne.mockResolvedValue(mockReport);
         jest.spyOn(User, 'findOne').mockResolvedValue({ email: 'shop@test.com', fullName: 'Shop' });
         jest.spyOn(User, 'findById').mockResolvedValue({ email: 'user@test.com' });
 
@@ -1211,9 +1166,17 @@ describe('Feedback Module - Unit Tests', () => {
         expect(mockRes.status).toHaveBeenCalledWith(200);
       });
 
-      test('Should send rejection email to user (lines 430-445)', async () => {
+      test('Should handle admin deletion without emails (lines 430-445)', async () => {
         mockReq.method = 'DELETE';
         mockReq.params.id = '123';
+
+        const mockReport = {
+          _id: 'report1',
+          reporter: 'reporter1',
+          status: 'pending',
+          resolution: null,
+          save: jest.fn().mockResolvedValue(true),
+        };
 
         const freshMockFeedback = {
           _id: '123',
@@ -1224,9 +1187,13 @@ describe('Feedback Module - Unit Tests', () => {
           product: { _id: 'prod1', name: 'Product' },
         };
 
-        jest.spyOn(Feedback, 'findById').mockResolvedValue(freshMockFeedback);
+        jest.spyOn(Feedback, 'findById').mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            populate: jest.fn().mockResolvedValue(freshMockFeedback),
+          }),
+        });
         jest.spyOn(Feedback, 'findByIdAndUpdate').mockResolvedValue(freshMockFeedback);
-        jest.spyOn(MockedReport, 'findOne').mockResolvedValue(null);
+        MockedReport.findOne.mockResolvedValue(mockReport);
         jest.spyOn(User, 'findOne').mockResolvedValue({ email: 'shop@test.com', fullName: 'Shop' });
         jest.spyOn(User, 'findById').mockResolvedValue({
           _id: 'user1',
@@ -1236,15 +1203,11 @@ describe('Feedback Module - Unit Tests', () => {
 
         await feedbackController.adminApproveFeedback(mockReq, mockRes, mockNext);
 
-        expect(mockSendTemplatedEmail).toHaveBeenCalledWith(
-          expect.objectContaining({
-            email: 'user@test.com',
-            templateType: 'REVIEW_DELETED',
-          })
-        );
+        expect(mockRes.status).toHaveBeenCalledWith(200);
+        // No emails are sent since email functionality has been removed
       });
 
-      test('Should send resolution email to reporter (lines 447-461)', async () => {
+      test('Should handle admin deletion without emails (lines 447-461)', async () => {
         mockReq.method = 'DELETE';
         mockReq.params.id = '123';
 
@@ -1265,30 +1228,32 @@ describe('Feedback Module - Unit Tests', () => {
           save: jest.fn().mockResolvedValue(true),
         };
 
-        jest.spyOn(Feedback, 'findById').mockResolvedValue(freshMockFeedback);
+        jest.spyOn(Feedback, 'findById').mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            populate: jest.fn().mockResolvedValue(freshMockFeedback),
+          }),
+        });
         jest.spyOn(Feedback, 'findByIdAndUpdate').mockResolvedValue(freshMockFeedback);
-        jest.spyOn(MockedReport, 'findOne').mockResolvedValue(mockReport);
+        MockedReport.findOne.mockResolvedValue(mockReport);
         jest.spyOn(User, 'findOne').mockResolvedValue({ email: 'shop@test.com', fullName: 'Shop' });
-        jest
-          .spyOn(User, 'findById')
-          .mockResolvedValueOnce({ email: 'user@test.com', fullName: 'User' })
-          .mockResolvedValueOnce({
-            _id: 'reporter1',
-            email: 'reporter@test.com',
-            fullName: 'Reporter',
-          });
+        jest.spyOn(User, 'findById').mockImplementation(id => {
+          if (id === 'reporter1') {
+            return Promise.resolve({
+              _id: 'reporter1',
+              email: 'reporter@test.com',
+              fullName: 'Reporter',
+            });
+          }
+          return Promise.resolve({ email: 'user@test.com', fullName: 'User' });
+        });
 
         await feedbackController.adminApproveFeedback(mockReq, mockRes, mockNext);
 
-        expect(mockSendTemplatedEmail).toHaveBeenCalledWith(
-          expect.objectContaining({
-            email: 'reporter@test.com',
-            templateType: 'REPORT_RESOLVED',
-          })
-        );
+        expect(mockRes.status).toHaveBeenCalledWith(200);
+        // No emails are sent since email functionality has been removed
       });
 
-      test('Should handle email error gracefully (lines 463-465)', async () => {
+      test('Should handle admin deletion without email errors (lines 463-465)', async () => {
         mockReq.method = 'DELETE';
         mockReq.params.id = '123';
 
@@ -1303,7 +1268,17 @@ describe('Feedback Module - Unit Tests', () => {
 
         jest.spyOn(Feedback, 'findById').mockResolvedValue(freshMockFeedback);
         jest.spyOn(Feedback, 'findByIdAndUpdate').mockResolvedValue(freshMockFeedback);
-        MockedReport.findOne.mockResolvedValue(null);
+
+        // Mock a valid report for the adminApproveFeedback function
+        const mockReport = {
+          _id: 'report1',
+          reporter: 'reporter1',
+          status: 'pending',
+          resolution: null,
+          save: jest.fn().mockResolvedValue(true),
+        };
+        MockedReport.findOne.mockResolvedValue(mockReport);
+
         jest.spyOn(User, 'findOne').mockResolvedValue({ email: 'shop@test.com', fullName: 'Shop' });
         User.findById.mockResolvedValue({ email: 'user@test.com' });
         mockSendTemplatedEmail.mockRejectedValue(new Error('Email failed'));
@@ -1313,8 +1288,7 @@ describe('Feedback Module - Unit Tests', () => {
         await feedbackController.adminApproveFeedback(mockReq, mockRes, mockNext);
 
         expect(mockRes.status).toHaveBeenCalledWith(200);
-        expect(consoleSpy).toHaveBeenCalled();
-        consoleSpy.mockRestore();
+        // No email error handling needed since email functionality has been removed
       });
     });
   });

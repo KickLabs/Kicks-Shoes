@@ -1,7 +1,8 @@
 /**
- * @fileoverview Email Logic Coverage Tests for Feedback Controller
- * @description Tests to cover uncovered lines 316-357, 395-481 in feedbackController.js
+ * @fileoverview Feedback Controller Coverage Tests (Email Functionality Removed)
+ * @description Tests to cover feedback controller functionality without email sending
  * @created 2025-10-28
+ * @updated 2025-10-28 - Removed email functionality as requested
  */
 
 import { jest } from '@jest/globals';
@@ -39,7 +40,7 @@ const Report = (await import('../../src/models/Report.js')).default;
 const User = (await import('../../src/models/User.js')).default;
 const { sendTemplatedEmail } = await import('../../src/utils/sendEmail.js');
 
-describe('Feedback Controller - Email Logic Coverage', () => {
+describe('Feedback Controller - Coverage Tests (No Email)', () => {
   let mockReq, mockRes, mockNext;
 
   beforeEach(() => {
@@ -58,8 +59,8 @@ describe('Feedback Controller - Email Logic Coverage', () => {
     jest.clearAllMocks();
   });
 
-  describe('reportFeedback - Email Logic Coverage', () => {
-    test('Should send emails successfully', async () => {
+  describe('reportFeedback - Basic Functionality Coverage', () => {
+    test('Should create report successfully without emails', async () => {
       const mockFeedback = {
         _id: '123',
         user: { _id: 'user1', email: 'user@test.com', fullName: 'Test User' },
@@ -89,13 +90,13 @@ describe('Feedback Controller - Email Logic Coverage', () => {
         expect.objectContaining({
           success: true,
           message: 'Feedback reported successfully',
-          // Don't check for data field as it contains the Report instance
         })
       );
+      // No email functionality to test since it has been removed
     });
   });
 
-  test('Should handle email sending error gracefully', async () => {
+  test('Should handle errors gracefully without email functionality', async () => {
     const mockFeedback = {
       _id: '123',
       user: { _id: 'user1', email: 'user@test.com' },
@@ -118,6 +119,7 @@ describe('Feedback Controller - Email Logic Coverage', () => {
     await feedbackController.reportFeedback(mockReq, mockRes, mockNext);
 
     expect(mockRes.status).toHaveBeenCalledWith(201);
+    // No email error handling needed since email functionality has been removed
 
     consoleSpy.mockRestore();
   });
