@@ -185,6 +185,22 @@ const liveStreamChatSchema = new mongoose.Schema(
         default: null,
       },
     },
+
+    // Pin message functionality
+    isPinned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    pinnedAt: {
+      type: Date,
+      default: null,
+    },
+    pinnedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -230,12 +246,23 @@ liveStreamChatSchema.pre('save', function (next) {
 });
 
 // Static methods
-liveStreamChatSchema.statics.getRecentMessages = function (roomId, limit = 50) {
-  return this.find({
+liveStreamChatSchema.statics.getRecentMessages = function (
+  roomId,
+  limit = 50,
+  includePinned = false
+) {
+  const query = {
     roomId,
     'moderation.isDeleted': false,
     'moderation.isHidden': false,
-  })
+  };
+
+  // Exclude pinned messages if not explicitly requested
+  if (!includePinned) {
+    query.isPinned = { $ne: true };
+  }
+
+  return this.find(query)
     .populate('senderId', 'username avatar')
     .populate('replyTo.messageId', 'content senderId')
     .sort({ timestamp: -1 })
@@ -336,6 +363,32 @@ liveStreamChatSchema.methods.markAsAnalyzed = function (detectionResult) {
 liveStreamChatSchema.methods.linkToPotentialOrder = function (potentialOrderId) {
   this.orderDetection.potentialOrderId = potentialOrderId;
   return this.save();
+};
+
+// Pin/Unpin message
+liveStreamChatSchema.methods.togglePin = function (userId) {
+  this.isPinned = !this.isPinned;
+  if (this.isPinned) {
+    this.pinnedAt = new Date();
+    this.pinnedBy = userId;
+  } else {
+    this.pinnedAt = null;
+    this.pinnedBy = null;
+  }
+  return this.save();
+};
+
+// Get pinned message for a stream
+liveStreamChatSchema.statics.getPinnedMessage = function (roomId) {
+  return this.findOne({
+    roomId,
+    isPinned: true,
+    'moderation.isDeleted': false,
+    'moderation.isHidden': false,
+  })
+    .populate('senderId', 'username avatar')
+    .populate('pinnedBy', 'username')
+    .sort({ pinnedAt: -1 });
 };
 
 const LiveStreamChat = mongoose.model('LiveStreamChat', liveStreamChatSchema);

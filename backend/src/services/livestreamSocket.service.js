@@ -172,6 +172,37 @@ export function setupLiveStreamHandlers(io) {
               logger.info(`Potential order notification sent to host in room ${result.roomId}`);
             }
           }
+
+          // If AI answered a question, broadcast bot reply
+          if (result.aiResponse) {
+            // Broadcast bot reply to all clients
+            livestreamNamespace.to(result.roomId).emit('ai_bot_reply', {
+              type: 'ai_bot_reply',
+              originalMessage: result.message,
+              answer: result.aiResponse.answer,
+              confidence: result.aiResponse.confidence,
+              timestamp: result.aiResponse.respondedAt,
+            });
+
+            // Send personal notification to the person who asked
+            if (result.message.senderId) {
+              const socketInfo = Array.from(liveStreamService.socketToRoom.entries()).find(
+                ([sid, info]) => info.userId?.toString() === result.message.senderId._id.toString()
+              );
+
+              if (socketInfo) {
+                livestreamNamespace.to(socketInfo[0]).emit('personal_bot_notification', {
+                  type: 'personal_bot_notification',
+                  question: result.message.content,
+                  answer: result.aiResponse.answer,
+                  timestamp: result.aiResponse.respondedAt,
+                  messageId: result.message._id,
+                });
+              }
+            }
+
+            logger.info(`AI bot reply sent in room ${result.roomId}`);
+          }
         }
       } catch (error) {
         logger.error('Error handling chat message:', error);
@@ -182,52 +213,9 @@ export function setupLiveStreamHandlers(io) {
       }
     });
 
-    // Pin a chat message (Host only)
-    socket.on('pin_message', async data => {
-      try {
-        const { messageId, roomId } = data;
-        const socketInfo = liveStreamService.socketToRoom.get(socket.id);
-        if (!socketInfo || socketInfo.role !== 'host') {
-          throw new Error('Only hosts can pin messages');
-        }
-
-        // Persist pin in room state
-        const room = liveStreamService.rooms.get(roomId || socketInfo.roomId);
-        if (!room) throw new Error('Room not found');
-        room.pinnedMessageId = messageId;
-
-        // Broadcast to all clients in room
-        livestreamNamespace.to(roomId || socketInfo.roomId).emit('message_pinned', {
-          type: 'message_pinned',
-          messageId,
-        });
-      } catch (error) {
-        logger.error('Error pinning message:', error);
-        socket.emit('error', { type: 'pin_error', message: error.message });
-      }
-    });
-
-    // Unpin message (Host only)
-    socket.on('unpin_message', async data => {
-      try {
-        const { roomId } = data;
-        const socketInfo = liveStreamService.socketToRoom.get(socket.id);
-        if (!socketInfo || socketInfo.role !== 'host') {
-          throw new Error('Only hosts can unpin messages');
-        }
-
-        const room = liveStreamService.rooms.get(roomId || socketInfo.roomId);
-        if (!room) throw new Error('Room not found');
-        room.pinnedMessageId = null;
-
-        livestreamNamespace.to(roomId || socketInfo.roomId).emit('message_unpinned', {
-          type: 'message_unpinned',
-        });
-      } catch (error) {
-        logger.error('Error unpinning message:', error);
-        socket.emit('error', { type: 'pin_error', message: error.message });
-      }
-    });
+    // Pin a chat message (Host only) - handled via REST API
+    // This event is kept for backward compatibility but actual pinning
+    // should be done through the REST API endpoint for proper persistence
 
     // Feature product (Host only)
     socket.on('feature_product', async data => {
@@ -341,4 +329,25 @@ export function broadcastViewerCount(io, roomId, count) {
     type: 'viewer_count_update',
     count,
   });
+}
+
+/**
+ * Broadcast pinned message update
+ * @param {SocketIOServer} io - Socket.IO server instance
+ * @param {string} roomId - Room ID
+ * @param {object} message - Pinned message object (with isPinned status)
+ */
+export function broadcastPinnedMessage(io, roomId, message) {
+  const livestreamNamespace = io.of('/livestream');
+  if (message && message.isPinned) {
+    livestreamNamespace.to(roomId).emit('message_pinned', {
+      type: 'message_pinned',
+      message,
+    });
+  } else if (message && !message.isPinned) {
+    livestreamNamespace.to(roomId).emit('message_unpinned', {
+      type: 'message_unpinned',
+      message,
+    });
+  }
 }

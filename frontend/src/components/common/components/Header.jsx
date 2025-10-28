@@ -16,12 +16,14 @@ import {
 import logo from '@assets/Logo.svg';
 import { Avatar, Badge, Button, Dropdown, Input, Layout, Menu, Modal, Upload, message } from 'antd';
 import React, { useEffect, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { getCart } from '../../pages/cart/cartService';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import axiosInstance from '../../../services/axiosInstance';
 import ShipperApplicationModal from './ShipperApplicationModal';
 import shipperApplicationService from '../../../services/shipperApplicationService';
+import { AISearchService } from '../../../services/aiSearchService.js';
 import './Header.css';
 
 const { Header } = Layout;
@@ -30,6 +32,7 @@ const NotificationBadgeOnly = ({ count = 0 }) => <div>{count > 99 ? '99+' : coun
 
 const AppHeader = () => {
   const { logout, user } = useAuth();
+  const dispatch = useDispatch();
   const [isMobile, setIsMobile] = useState(false);
   const [search, setSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -37,6 +40,8 @@ const AppHeader = () => {
   const [showInput, setShowInput] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [aiSearchResults, setAiSearchResults] = useState([]);
+  const [isAiSearching, setIsAiSearching] = useState(false);
   const [showShipperApplicationModal, setShowShipperApplicationModal] = useState(false);
   const [pendingApplication, setPendingApplication] = useState(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
@@ -77,6 +82,14 @@ const AppHeader = () => {
     console.log('Current user:', user); // Debug log
   }, [user]);
 
+  // Load cart when user logs in
+  useEffect(() => {
+    if (user && user._id) {
+      console.log('User logged in, loading cart...');
+      dispatch(getCart());
+    }
+  }, [user, dispatch]);
+
   // Check if user has pending shipper application
   useEffect(() => {
     const checkPendingApplication = async () => {
@@ -111,19 +124,76 @@ const AppHeader = () => {
   useEffect(() => {
     if (search.trim() === '') {
       setFiltered([]);
+      setAiSearchResults([]);
       setShowDropdown(false);
       return;
     }
 
-    const result = allProducts.filter(
-      p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.brand?.toLowerCase().includes(search.toLowerCase()) ||
-        (p.category?.name && p.category.name.toLowerCase().includes(search.toLowerCase()))
-    );
-    setFiltered(result);
-    setShowDropdown(true);
+    // Debounce search to avoid continuous API calls
+    const timeoutId = setTimeout(() => {
+      // Check if it's a contextual query
+      const isContextual = AISearchService.isContextualQuery(search);
+
+      if (isContextual) {
+        // Use AI search for contextual queries
+        handleAISearch(search);
+      } else {
+        // Use regular search for simple queries
+        const result = allProducts.filter(
+          p =>
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            p.brand?.toLowerCase().includes(search.toLowerCase()) ||
+            (p.category?.name && p.category.name.toLowerCase().includes(search.toLowerCase()))
+        );
+        setFiltered(result);
+        setAiSearchResults([]);
+        setShowDropdown(true);
+      }
+    }, 500); // 500ms delay
+
+    // Cleanup timeout on search change
+    return () => clearTimeout(timeoutId);
   }, [search, allProducts]);
+
+  // AI Search handler
+  const handleAISearch = async query => {
+    try {
+      setIsAiSearching(true);
+      const response = await AISearchService.searchWithAI(query, 10);
+
+      if (response.success) {
+        const suggestions = response.data.data?.suggestions || [];
+        setAiSearchResults(suggestions);
+        setFiltered([]);
+        setShowDropdown(true);
+      } else {
+        // Fallback to regular search if AI fails
+        const result = allProducts.filter(
+          p =>
+            p.name.toLowerCase().includes(query.toLowerCase()) ||
+            p.brand?.toLowerCase().includes(query.toLowerCase()) ||
+            (p.category?.name && p.category.name.toLowerCase().includes(query.toLowerCase()))
+        );
+        setFiltered(result);
+        setAiSearchResults([]);
+        setShowDropdown(true);
+      }
+    } catch (error) {
+      console.error('AI Search error:', error);
+      // Fallback to regular search
+      const result = allProducts.filter(
+        p =>
+          p.name.toLowerCase().includes(query.toLowerCase()) ||
+          p.brand?.toLowerCase().includes(query.toLowerCase()) ||
+          (p.category?.name && p.category.name.toLowerCase().includes(query.toLowerCase()))
+      );
+      setFiltered(result);
+      setAiSearchResults([]);
+      setShowDropdown(true);
+    } finally {
+      setIsAiSearching(false);
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -152,7 +222,8 @@ const AppHeader = () => {
   };
 
   const handleProductClick = product => {
-    navigate(`/product/${product._id}`);
+    const productId = product._id || product.id;
+    navigate(`/product/${productId}`);
     setShowDropdown(false);
     setShowInput(false);
     setSearch('');
@@ -443,16 +514,6 @@ const AppHeader = () => {
 
   return (
     <Header className="app-header">
-      {showInput && showDropdown && (
-        <div
-          onClick={() => {
-            setShowDropdown(false);
-            setShowInput(false);
-            setSearch('');
-          }}
-        />
-      )}
-
       <div className="header-left">
         {isMobile ? (
           <Dropdown
@@ -495,14 +556,14 @@ const AppHeader = () => {
                   className="header-icon"
                   onClick={handleVisualSearchClick}
                   style={{ marginLeft: 8, color: '#4A69E2' }}
-                  title="Tìm kiếm bằng hình ảnh"
+                  title="Find by image"
                 />
               </>
             )}
             {showInput && (
               <Input
                 ref={inputRef}
-                placeholder="Search products..."
+                placeholder="Tìm kiếm sản phẩm hoặc mô tả nhu cầu..."
                 prefix={<SearchOutlined />}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -511,17 +572,127 @@ const AppHeader = () => {
                 allowClear
               />
             )}
-            <Badge
-              count={cartItemsCount}
-              size="small"
-              style={{
-                marginRight: 12,
-                cursor: 'pointer',
-              }}
-              onClick={() => navigate('/cart')}
-            >
-              <ShoppingCartOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
-            </Badge>
+            {showInput && showDropdown && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 60,
+                  right: 8,
+                  width: 280,
+                  background: '#fff',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                  borderRadius: 16,
+                  zIndex: 200,
+                  padding: 16,
+                }}
+              >
+                {/* AI Search Results */}
+                {aiSearchResults.length > 0 && (
+                  <>
+                    <div
+                      style={{ fontWeight: 700, fontSize: 16, marginBottom: 12, color: '#1890ff' }}
+                    >
+                      KICKS Suggestions
+                    </div>
+                    {aiSearchResults.slice(0, 2).map((product, index) => (
+                      <div
+                        onClick={() => handleProductClick(product)}
+                        key={product.id || index}
+                        className="header-search-result-item"
+                        style={{ borderLeft: '3px solid #1890ff' }}
+                      >
+                        <img
+                          src={product.image || '/placeholder.svg'}
+                          alt={product.name}
+                          style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 6,
+                            objectFit: 'cover',
+                          }}
+                          onError={e => {
+                            e.target.src = '/placeholder.svg';
+                          }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontWeight: 500, fontSize: 14 }}>{product.name}</span>
+                          <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                            {product.brand} •{' '}
+                            {typeof product.price === 'number'
+                              ? product.price.toLocaleString('vi-VN')
+                              : product.price?.regular?.toLocaleString('vi-VN') || 'N/A'}
+                            đ
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Regular Search Results */}
+                {filtered.length > 0 && (
+                  <>
+                    <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 12 }}>
+                      {aiSearchResults.length > 0 ? 'Other Products' : 'Products'}
+                    </div>
+                    {filtered.slice(0, 2).map(p => (
+                      <div
+                        onClick={() => handleProductClick(p)}
+                        key={p._id}
+                        className="header-search-result-item"
+                      >
+                        <img
+                          src={p.mainImage || p.images?.[0] || '/placeholder.svg'}
+                          alt={p.name}
+                          style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 6,
+                            objectFit: 'cover',
+                          }}
+                          onError={e => {
+                            e.target.src = '/placeholder.svg';
+                          }}
+                        />
+                        <span style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Loading State */}
+                {isAiSearching && (
+                  <div style={{ color: '#1890ff', padding: '12px 0', textAlign: 'center' }}>
+                    🤖 AI đang tìm kiếm...
+                  </div>
+                )}
+
+                {/* No Results */}
+                {!isAiSearching && filtered.length === 0 && aiSearchResults.length === 0 && (
+                  <div style={{ color: '#888', padding: '12px 0' }}>No products found.</div>
+                )}
+                <Button
+                  type="link"
+                  style={{ color: '#2d5bff', fontWeight: 600, padding: 0 }}
+                  onClick={handleSeeAllProducts}
+                >
+                  See all products
+                </Button>
+              </div>
+            )}
+            {isLoggedIn && (
+              <Badge
+                count={cartItemsCount}
+                size="small"
+                style={{
+                  marginRight: 12,
+                  cursor: 'pointer',
+                }}
+                onClick={() => navigate('/cart')}
+              >
+                <ShoppingCartOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
+              </Badge>
+            )}
             {user?.role === 'customer' && (
               <Button
                 type="primary"
@@ -535,7 +706,7 @@ const AppHeader = () => {
                     );
                     return;
                   }
-                  console.log('🚗 Mobile: Become Shipper button clicked!');
+                  console.log(' Mobile: Become Shipper button clicked!');
                   setShowShipperApplicationModal(true);
                 }}
                 style={{
@@ -567,15 +738,15 @@ const AppHeader = () => {
                 <CameraOutlined
                   className="header-icon"
                   onClick={handleVisualSearchClick}
-                  style={{ marginLeft: 8, color: '#4A69E2' }}
-                  title="Tìm kiếm bằng hình ảnh"
+                  style={{ marginLeft: 8, color: '#000' }}
+                  title="Find by image"
                 />
               </>
             )}
             {showInput && (
               <Input
                 ref={inputRef}
-                placeholder="Search products..."
+                placeholder="Tìm kiếm sản phẩm hoặc mô tả nhu cầu..."
                 prefix={<SearchOutlined />}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -594,38 +765,94 @@ const AppHeader = () => {
                   background: '#fff',
                   boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
                   borderRadius: 16,
-                  zIndex: 100,
+                  zIndex: 200,
                   padding: 20,
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 16 }}>Products</div>
-                {loading ? (
-                  <div style={{ color: '#888', padding: '16px 0' }}>Loading...</div>
-                ) : filtered.length === 0 ? (
-                  <div style={{ color: '#888', padding: '16px 0' }}>No products found.</div>
-                ) : (
-                  filtered.slice(0, 3).map(p => (
+                {/* AI Search Results */}
+                {aiSearchResults.length > 0 && (
+                  <>
                     <div
-                      onClick={() => handleProductClick(p)}
-                      key={p._id}
-                      className="header-search-result-item"
+                      style={{ fontWeight: 700, fontSize: 20, marginBottom: 16, color: '#1890ff' }}
                     >
-                      <img
-                        src={p.mainImage || p.images?.[0] || '/placeholder.svg'}
-                        alt={p.name}
-                        style={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: 8,
-                          objectFit: 'cover',
-                        }}
-                        onError={e => {
-                          e.target.src = '/placeholder.svg';
-                        }}
-                      />
-                      <span style={{ fontWeight: 500, fontSize: 18 }}>{p.name}</span>
+                      KICKS Suggestions
                     </div>
-                  ))
+                    {aiSearchResults.slice(0, 3).map((product, index) => (
+                      <div
+                        onClick={() => handleProductClick(product)}
+                        key={product.id || index}
+                        className="header-search-result-item"
+                        style={{ borderLeft: '3px solid #1890ff' }}
+                      >
+                        <img
+                          src={product.image || '/placeholder.svg'}
+                          alt={product.name}
+                          style={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 8,
+                            objectFit: 'cover',
+                          }}
+                          onError={e => {
+                            e.target.src = '/placeholder.svg';
+                          }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontWeight: 500, fontSize: 18 }}>{product.name}</span>
+                          <div style={{ fontSize: 14, color: '#666', marginTop: 4 }}>
+                            {product.brand} •{' '}
+                            {typeof product.price === 'number'
+                              ? product.price.toLocaleString('vi-VN')
+                              : product.price?.regular?.toLocaleString('vi-VN') || 'N/A'}
+                            đ
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Regular Search Results */}
+                {filtered.length > 0 && (
+                  <>
+                    <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 16 }}>
+                      {aiSearchResults.length > 0 ? 'Other Products' : 'Products'}
+                    </div>
+                    {filtered.slice(0, 3).map(p => (
+                      <div
+                        onClick={() => handleProductClick(p)}
+                        key={p._id}
+                        className="header-search-result-item"
+                      >
+                        <img
+                          src={p.mainImage || p.images?.[0] || '/placeholder.svg'}
+                          alt={p.name}
+                          style={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 8,
+                            objectFit: 'cover',
+                          }}
+                          onError={e => {
+                            e.target.src = '/placeholder.svg';
+                          }}
+                        />
+                        <span style={{ fontWeight: 500, fontSize: 18 }}>{p.name}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Loading State */}
+                {isAiSearching && (
+                  <div style={{ color: '#1890ff', padding: '16px 0', textAlign: 'center' }}>
+                    🤖 AI đang tìm kiếm...
+                  </div>
+                )}
+
+                {/* No Results */}
+                {!isAiSearching && filtered.length === 0 && aiSearchResults.length === 0 && (
+                  <div style={{ color: '#888', padding: '16px 0' }}>No products found.</div>
                 )}
                 <Button
                   type="link"
@@ -638,7 +865,7 @@ const AppHeader = () => {
             )}
             {isLoggedIn ? (
               <>
-                {user?.role === 'customer' && (
+                {/* {user?.role === 'customer' && (
                   <Button
                     type="primary"
                     icon={<CarOutlined />}
@@ -651,7 +878,7 @@ const AppHeader = () => {
                         );
                         return;
                       }
-                      console.log('🚗 Desktop: Become Shipper button clicked!');
+                      console.log('Desktop: Become Shipper button clicked!');
                       setShowShipperApplicationModal(true);
                     }}
                     style={{
@@ -661,9 +888,9 @@ const AppHeader = () => {
                       borderColor: pendingApplication ? '#faad14' : '#52c41a',
                     }}
                   >
-                    {pendingApplication ? '📋 Application Pending' : 'Become a Shipper'}
+                    {pendingApplication ? ' Application Pending' : 'Become a Shipper'}
                   </Button>
-                )}
+                )} */}
                 <Dropdown
                   menu={{
                     items: avatarMenuItems,
@@ -679,30 +906,32 @@ const AppHeader = () => {
                 <UserOutlined style={{ fontSize: 20, cursor: 'pointer' }} />
               </div>
             )}
-            <Badge
-              count={cartItemsCount}
-              size="small"
-              style={{
-                marginLeft: 12,
-                cursor: 'pointer',
-              }}
-              onClick={() => navigate('/cart')}
-            >
-              <div
+            {isLoggedIn && (
+              <Badge
+                count={cartItemsCount}
+                size="small"
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  fontSize: 20,
+                  marginLeft: 12,
                   cursor: 'pointer',
                 }}
+                onClick={() => navigate('/cart')}
               >
-                <ShoppingCartOutlined />
-              </div>
-            </Badge>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    fontSize: 20,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <ShoppingCartOutlined />
+                </div>
+              </Badge>
+            )}
           </>
         )}
       </div>
@@ -726,12 +955,12 @@ const AppHeader = () => {
       />
       {/* Visual Search Modal */}
       <Modal
-        title="Tìm Kiếm Bằng Hình Ảnh"
+        title="Find by image"
         open={isVisualSearchModalVisible}
         onCancel={handleVisualSearchCancel}
         footer={[
           <Button key="cancel" onClick={handleVisualSearchCancel}>
-            Hủy
+            Cancel
           </Button>,
           <Button
             key="search"
@@ -740,7 +969,7 @@ const AppHeader = () => {
             onClick={handleVisualSearch}
             disabled={!visualSearchFile}
           >
-            {visualSearchLoading ? 'Đang phân tích...' : 'Tìm Kiếm'}
+            {visualSearchLoading ? 'Analyzing...' : 'Search'}
           </Button>,
         ]}
       >
@@ -781,16 +1010,16 @@ const AppHeader = () => {
               <p className="ant-upload-drag-icon">
                 <CameraOutlined style={{ fontSize: 48, color: '#4A69E2' }} />
               </p>
-              <p className="ant-upload-text">Nhấn hoặc kéo thả file vào đây</p>
+              <p className="ant-upload-text">Press or drag and drop the image here</p>
               <p className="ant-upload-hint">
-                Tìm kiếm sản phẩm từ hình ảnh. Hỗ trợ PNG, JPG, WEBP (Tối đa 5MB).
+                Search for products from an image. Supported formats: PNG, JPG, WEBP (Maximum 5MB).
               </p>
             </>
           )}
         </Upload.Dragger>
         {visualSearchFile && (
           <div style={{ marginTop: 8, color: '#666', fontSize: 12 }}>
-            Tệp đã chọn: {visualSearchFile.name}
+            Selected file: {visualSearchFile.name}
           </div>
         )}
       </Modal>
