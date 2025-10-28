@@ -96,9 +96,38 @@ class LiveStreamService {
     return response.data;
   }
 
+  // Toggle pin product
+  async togglePinProduct(roomId, productId) {
+    const response = await axiosInstance.put(`${API_BASE_URL}/${roomId}/pin-product/${productId}`);
+    return response.data;
+  }
+
   // Get livestream analytics
   async getLiveStreamAnalytics(roomId) {
     const response = await axiosInstance.get(`${API_BASE_URL}/${roomId}/analytics`);
+    return response.data;
+  }
+
+  // Get store products (all products)
+  async getStoreProducts() {
+    const response = await axiosInstance.get('/products', {
+      params: {
+        limit: 100, // Get more products
+        page: 1,
+      },
+    });
+    return response.data;
+  }
+
+  // Pin/Unpin chat message
+  async togglePinMessage(roomId, messageId) {
+    const response = await axiosInstance.put(`${API_BASE_URL}/${roomId}/chat/${messageId}/pin`);
+    return response.data;
+  }
+
+  // Get pinned message
+  async getPinnedMessage(roomId) {
+    const response = await axiosInstance.get(`${API_BASE_URL}/${roomId}/chat/pinned`);
     return response.data;
   }
 }

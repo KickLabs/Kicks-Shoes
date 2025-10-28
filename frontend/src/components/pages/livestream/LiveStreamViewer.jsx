@@ -21,6 +21,7 @@ import {
   Spin,
   Empty,
   Divider,
+  Modal,
 } from 'antd';
 import {
   EyeOutlined,
@@ -29,10 +30,18 @@ import {
   ShopOutlined,
   HeartOutlined,
   ShareAltOutlined,
+  AppstoreOutlined,
+  ShoppingCartOutlined,
+  PlusOutlined,
+  MinusOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useWebRTC } from '../../../hooks/useWebRTC';
 import livestreamService from '../../../services/livestreamService';
+import axiosInstance from '../../../services/axiosInstance';
+import { message as antMessage } from 'antd';
+import BotMessage from './BotMessage';
+import PersonalNotification from './PersonalNotification';
 import './LiveStreamViewer.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -47,6 +56,13 @@ const LiveStreamViewer = () => {
   const [isLive, setIsLive] = useState(false);
   const [hostLeft, setHostLeft] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
+  const [showAllProductsModal, setShowAllProductsModal] = useState(false);
+  const [showAddToCartModal, setShowAddToCartModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   const {
     isConnected,
@@ -55,8 +71,13 @@ const LiveStreamViewer = () => {
     remoteVideoRef,
     viewerCount,
     messages,
+    pinnedMessage,
+    botReplies,
+    personalNotification,
     sendChatMessage,
     remoteStream,
+    retryConnection,
+    dismissNotification,
   } = useWebRTC(roomId, 'viewer', user?.id);
 
   // Load stream data
@@ -181,6 +202,68 @@ const LiveStreamViewer = () => {
   const handleVisitStore = () => {
     // Navigate to main products page since there's only one shop
     navigate('/listing-page');
+  };
+
+  // Handle product click - open add to cart modal
+  const handleProductClick = async product => {
+    if (!user) {
+      antMessage.warning('Please login to add products to cart');
+      navigate('/login');
+      return;
+    }
+
+    // Fetch full product details to get variants
+    try {
+      const response = await axiosInstance.get(`/products/public/${product._id}`);
+      const fullProduct = response.data.data;
+      console.log('Full product data:', fullProduct);
+      setSelectedProduct(fullProduct);
+      setSelectedSize(null);
+      setSelectedColor(null);
+      setQuantity(1);
+      setShowAddToCartModal(true);
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      antMessage.error('Failed to load product details');
+    }
+  };
+
+  // Handle add to cart
+  const handleAddToCart = async () => {
+    if (!selectedProduct) return;
+    if (!selectedSize) {
+      antMessage.error('Please select a size');
+      return;
+    }
+    if (!selectedColor) {
+      antMessage.error('Please select a color');
+      return;
+    }
+
+    try {
+      setAddingToCart(true);
+      const price =
+        selectedProduct.price && typeof selectedProduct.price === 'object'
+          ? selectedProduct.price.regular
+          : selectedProduct.price || 0;
+
+      const cartItem = {
+        product: selectedProduct._id,
+        quantity: quantity,
+        size: selectedSize,
+        color: selectedColor,
+        price: price,
+      };
+
+      await axiosInstance.post('/cart', cartItem);
+      antMessage.success('Added to cart successfully!');
+      setShowAddToCartModal(false);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      antMessage.error(error.response?.data?.message || 'Failed to add to cart');
+    } finally {
+      setAddingToCart(false);
+    }
   };
 
   if (loading) {
@@ -345,7 +428,19 @@ const LiveStreamViewer = () => {
           {error && (
             <Alert
               message="Connection Error"
-              description={error}
+              description={
+                <div>
+                  <p>{error}</p>
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={retryConnection}
+                    style={{ marginTop: '8px' }}
+                  >
+                    Retry Connection
+                  </Button>
+                </div>
+              }
               type="error"
               className="viewer-error-alert"
               closable
@@ -386,7 +481,7 @@ const LiveStreamViewer = () => {
 
         {/* Sidebar */}
         <div className="viewer-sidebar">
-          {/* Shop Information */}
+          {/* Shop Information
           <div className="viewer-shop-card">
             <div className="viewer-shop-header">
               <Avatar src="images/logoavt.png" size="large" />
@@ -398,56 +493,106 @@ const LiveStreamViewer = () => {
             <Button type="default" onClick={handleVisitStore} className="viewer-shop-btn">
               Shop Now
             </Button>
-          </div>
+          </div> */}
 
           {/* Featured Products */}
           <div className="viewer-products-card">
             <div className="viewer-products-header">
               <span>Featured Products</span>
-              <Button
-                size="small"
-                onClick={() => {
-                  const loadStreamData = async () => {
-                    try {
-                      const response = await livestreamService.getLiveStream(roomId);
-                      setStreamData(response.data.liveStream);
-                      console.log(
-                        'Refreshed featured products:',
-                        response.data.liveStream?.featuredProducts
-                      );
-                    } catch (error) {
-                      console.error('Error refreshing:', error);
-                    }
-                  };
-                  loadStreamData();
-                }}
-              >
-                Refresh
-              </Button>
+              <Space size="small">
+                <Button
+                  size="small"
+                  icon={<AppstoreOutlined />}
+                  onClick={() => setShowAllProductsModal(true)}
+                >
+                  View All
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    const loadStreamData = async () => {
+                      try {
+                        const response = await livestreamService.getLiveStream(roomId);
+                        setStreamData(response.data.liveStream);
+                        console.log(
+                          'Refreshed featured products:',
+                          response.data.liveStream?.featuredProducts
+                        );
+                      } catch (error) {
+                        console.error('Error refreshing:', error);
+                      }
+                    };
+                    loadStreamData();
+                  }}
+                >
+                  Refresh
+                </Button>
+              </Space>
             </div>
             <div className="viewer-products-list">
               {streamData?.featuredProducts && streamData.featuredProducts.length > 0 ? (
-                streamData.featuredProducts.map(item => (
-                  <div key={item._id} className="viewer-product-item">
-                    <div className="viewer-product-content">
-                      {item.productId?.images?.[0] && (
-                        <img
-                          src={item.productId.images[0]}
-                          alt={item.productId.name}
-                          className="viewer-product-image"
-                        />
-                      )}
-                      <div className="viewer-product-details">
-                        <div className="viewer-product-name">
-                          {item.productId?.name || 'Product'}
-                        </div>
-                        <div className="viewer-product-price">
-                          ${item.productId?.price || 'N/A'}
+                streamData.featuredProducts
+                  .reduce((acc, item) => {
+                    const productId = item.productId?._id;
+                    if (!productId) return acc;
+
+                    // Check if this product already exists
+                    const existingIndex = acc.findIndex(i => i.productId?._id === productId);
+
+                    if (existingIndex === -1) {
+                      // New product, add it
+                      acc.push(item);
+                    } else {
+                      // Product exists, keep the pinned one if available
+                      if (item.isPinned && !acc[existingIndex].isPinned) {
+                        acc[existingIndex] = item;
+                      }
+                    }
+
+                    return acc;
+                  }, [])
+                  .sort((a, b) => {
+                    // Pinned items first: true = 1, false/undefined = 0
+                    const aPinned = a.isPinned ? 1 : 0;
+                    const bPinned = b.isPinned ? 1 : 0;
+                    return bPinned - aPinned;
+                  })
+                  .map(item => (
+                    <div key={item._id} className="viewer-product-item">
+                      <div className="viewer-product-content">
+                        {item.productId?.images?.[0] && (
+                          <img
+                            src={item.productId.images[0]}
+                            alt={item.productId.name}
+                            className="viewer-product-image"
+                          />
+                        )}
+                        <div className="viewer-product-details">
+                          <div className="viewer-product-name">
+                            {item.productId?.name || 'Product'}
+                            {item.isPinned && (
+                              <Tag
+                                color="gold"
+                                style={{ marginLeft: '6px', fontSize: '10px', padding: '0 4px' }}
+                              >
+                                Pinned
+                              </Tag>
+                            )}
+                          </div>
+                          <div className="viewer-product-price">
+                            {item.productId?.price
+                              ? typeof item.productId.price === 'object' &&
+                                item.productId.price.regular
+                                ? `${item.productId.price.regular.toLocaleString('en-US')}đ`
+                                : typeof item.productId.price === 'number'
+                                  ? `${item.productId.price.toLocaleString('en-US')}đ`
+                                  : 'N/A'
+                              : 'N/A'}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  ))
               ) : (
                 <div className="viewer-empty-products">
                   <span>No featured products yet</span>
@@ -462,29 +607,69 @@ const LiveStreamViewer = () => {
           {/* Live Chat */}
           <div className="viewer-chat-section">
             <div className="viewer-chat-header">Live Chat</div>
+
+            {/* Pinned Message */}
+            {pinnedMessage && (
+              <div
+                style={{
+                  background: '#fffbf0',
+                  border: '1px solid #ffd666',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  margin: '8px 12px',
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}
+                >
+                  <Tag color="gold" style={{ margin: 0, fontSize: '11px' }}>
+                    📌 Pinned
+                  </Tag>
+                </div>
+                <div style={{ fontSize: '12px', color: '#595959' }}>
+                  <strong>{pinnedMessage.senderId?.username || 'Anonymous'}</strong>:{' '}
+                  {pinnedMessage.content}
+                </div>
+              </div>
+            )}
+
             <div className="viewer-chat-messages">
-              {messages.length === 0 ? (
+              {messages.length === 0 && botReplies.length === 0 ? (
                 <div className="viewer-empty-chat">No messages yet</div>
               ) : (
-                messages.map((message, index) => (
-                  <div key={index} className="viewer-chat-message">
-                    <div className="viewer-chat-user">
-                      <div className="viewer-chat-user-left">
-                        <strong>{message.senderId?.username || 'Anonymous'}</strong>
-                        {message.senderRole === 'host' && (
-                          <span className="viewer-role-tag viewer-role-host">Host</span>
-                        )}
+                <>
+                  {/* Regular messages */}
+                  {messages.map((message, index) => (
+                    <div key={`msg-${index}`} className="viewer-chat-message">
+                      <div className="viewer-chat-user">
+                        <div className="viewer-chat-user-left">
+                          <strong>{message.senderId?.username || 'Anonymous'}</strong>
+                          {message.senderRole === 'host' && (
+                            <span className="viewer-role-tag viewer-role-host">Host</span>
+                          )}
+                        </div>
+                        <span className="viewer-chat-time">
+                          {new Date(message.timestamp).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
                       </div>
-                      <span className="viewer-chat-time">
-                        {new Date(message.timestamp).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
+                      <div className="viewer-chat-text">{message.content}</div>
                     </div>
-                    <div className="viewer-chat-text">{message.content}</div>
-                  </div>
-                ))
+                  ))}
+
+                  {/* Bot replies */}
+                  {botReplies.map((botReply, index) => (
+                    <BotMessage
+                      key={`bot-${index}`}
+                      originalMessage={botReply.originalMessage}
+                      answer={botReply.answer}
+                      timestamp={botReply.timestamp}
+                    />
+                  ))}
+                </>
               )}
             </div>
             <div className="viewer-chat-input-section">
@@ -513,6 +698,371 @@ const LiveStreamViewer = () => {
           )}
         </div>
       </div>
+
+      {/* Personal Bot Notification */}
+      {personalNotification && (
+        <PersonalNotification
+          question={personalNotification.question}
+          answer={personalNotification.answer}
+          onDismiss={dismissNotification}
+          onViewInChat={() => {
+            // Scroll to chat section
+            document.querySelector('.viewer-chat-messages')?.scrollTo({
+              top: document.querySelector('.viewer-chat-messages').scrollHeight,
+              behavior: 'smooth',
+            });
+            dismissNotification();
+          }}
+        />
+      )}
+
+      {/* All Featured Products Modal */}
+      <Modal
+        title={`All Featured Products (${
+          streamData?.featuredProducts
+            ? streamData.featuredProducts.reduce((acc, item) => {
+                const productId = item.productId?._id;
+                if (!productId) return acc;
+                const existingIndex = acc.findIndex(i => i.productId?._id === productId);
+                if (existingIndex === -1) {
+                  acc.push(item);
+                } else if (item.isPinned && !acc[existingIndex].isPinned) {
+                  acc[existingIndex] = item;
+                }
+                return acc;
+              }, []).length
+            : 0
+        })`}
+        open={showAllProductsModal}
+        onCancel={() => setShowAllProductsModal(false)}
+        footer={null}
+        width={900}
+      >
+        <div style={{ padding: '10px 0' }}>
+          {streamData?.featuredProducts && streamData.featuredProducts.length > 0 ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+                gap: '16px',
+                maxHeight: '600px',
+                overflowY: 'auto',
+                paddingRight: '8px',
+              }}
+            >
+              {streamData.featuredProducts
+                .reduce((acc, item) => {
+                  const productId = item.productId?._id;
+                  if (!productId) return acc;
+
+                  // Check if this product already exists
+                  const existingIndex = acc.findIndex(i => i.productId?._id === productId);
+
+                  if (existingIndex === -1) {
+                    // New product, add it
+                    acc.push(item);
+                  } else {
+                    // Product exists, keep the pinned one if available
+                    if (item.isPinned && !acc[existingIndex].isPinned) {
+                      acc[existingIndex] = item;
+                    }
+                  }
+
+                  return acc;
+                }, [])
+                .sort((a, b) => {
+                  // Pinned items first: true = 1, false/undefined = 0
+                  const aPinned = a.isPinned ? 1 : 0;
+                  const bPinned = b.isPinned ? 1 : 0;
+                  return bPinned - aPinned;
+                })
+                .map(item => {
+                  const product = item.productId;
+                  if (!product) return null;
+
+                  // Get product image - try multiple sources
+                  const getProductImage = () => {
+                    console.log('Product image sources:', {
+                      name: product.name,
+                      mainImage: product.mainImage,
+                      colorVariants: product.colorVariants,
+                      inventory: product.inventory,
+                      images: product.images,
+                    });
+
+                    // Try mainImage first
+                    if (product.mainImage) return product.mainImage;
+
+                    // Try colorVariants
+                    if (product.colorVariants && product.colorVariants.length > 0) {
+                      const firstVariant = product.colorVariants[0];
+                      if (firstVariant.colorMainImage) return firstVariant.colorMainImage;
+                      if (firstVariant.images && firstVariant.images.length > 0) {
+                        return firstVariant.images[0];
+                      }
+                    }
+
+                    // Try inventory
+                    if (product.inventory && product.inventory.length > 0) {
+                      const firstInventory = product.inventory[0];
+                      if (firstInventory.images && firstInventory.images.length > 0) {
+                        return firstInventory.images[0];
+                      }
+                    }
+
+                    // Try images array (legacy)
+                    if (product.images && product.images.length > 0) {
+                      return product.images[0];
+                    }
+
+                    return null;
+                  };
+
+                  const imageUrl = getProductImage();
+
+                  return (
+                    <div
+                      key={item._id}
+                      style={{
+                        border: '1px solid #e8e8e8',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        background: '#fff',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                      }}
+                      onClick={() => handleProductClick(product)}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = '#1890ff';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(24,144,255,0.2)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = '#e8e8e8';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '180px',
+                          background: '#f5f5f5',
+                          borderRadius: '6px',
+                          marginBottom: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                          position: 'relative',
+                        }}
+                      >
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={product.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                            onError={e => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <ShopOutlined style={{ fontSize: '48px', color: '#d9d9d9' }} />
+                        )}
+                        {!imageUrl && (
+                          <ShopOutlined
+                            style={{
+                              fontSize: '48px',
+                              color: '#d9d9d9',
+                              position: 'absolute',
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: '15px',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <span>{product.name}</span>
+                        {item.isPinned && (
+                          <Tag color="gold" style={{ margin: 0, fontSize: '11px' }}>
+                            Pinned
+                          </Tag>
+                        )}
+                      </div>
+                      {product.description && (
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            color: '#666',
+                            marginBottom: '12px',
+                            height: '40px',
+                            overflow: 'hidden',
+                            lineHeight: '20px',
+                          }}
+                        >
+                          {product.description.substring(0, 80)}
+                          {product.description.length > 80 ? '...' : ''}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontSize: '18px',
+                          fontWeight: 700,
+                          color: '#1890ff',
+                        }}
+                      >
+                        {product.price
+                          ? typeof product.price === 'object' && product.price.regular
+                            ? `${product.price.regular.toLocaleString('en-US')}đ`
+                            : typeof product.price === 'number'
+                              ? `${product.price.toLocaleString('en-US')}đ`
+                              : 'N/A'
+                          : 'N/A'}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                color: '#999',
+              }}
+            >
+              <ShopOutlined style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }} />
+              <div>No featured products yet</div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Add to Cart Modal */}
+      <Modal
+        title="Add to Cart"
+        open={showAddToCartModal}
+        onCancel={() => setShowAddToCartModal(false)}
+        onOk={handleAddToCart}
+        okText="Add to Cart"
+        cancelText="Cancel"
+        confirmLoading={addingToCart}
+        width={600}
+      >
+        {selectedProduct && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Product Info */}
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <img
+                src={
+                  selectedProduct.mainImage ||
+                  selectedProduct.colorVariants?.[0]?.images?.[0] ||
+                  selectedProduct.inventory?.[0]?.images?.[0] ||
+                  selectedProduct.images?.[0]
+                }
+                alt={selectedProduct.name}
+                style={{
+                  width: '120px',
+                  height: '120px',
+                  objectFit: 'cover',
+                  borderRadius: '8px',
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 8px 0' }}>{selectedProduct.name}</h3>
+                <p style={{ color: '#1890ff', fontSize: '18px', fontWeight: 600, margin: 0 }}>
+                  {typeof selectedProduct.price === 'object' && selectedProduct.price.regular
+                    ? `${selectedProduct.price.regular.toLocaleString('en-US')}đ`
+                    : typeof selectedProduct.price === 'number'
+                      ? `${selectedProduct.price.toLocaleString('en-US')}đ`
+                      : 'N/A'}
+                </p>
+              </div>
+            </div>
+
+            {/* Size Selection */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                Select Size: <span style={{ color: 'red' }}>*</span>
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {selectedProduct.variants?.sizes && selectedProduct.variants.sizes.length > 0 ? (
+                  selectedProduct.variants.sizes.map(size => (
+                    <Button
+                      key={size}
+                      type={selectedSize === size ? 'primary' : 'default'}
+                      onClick={() => setSelectedSize(size)}
+                    >
+                      {size}
+                    </Button>
+                  ))
+                ) : (
+                  <span style={{ color: '#999' }}>No sizes available</span>
+                )}
+              </div>
+            </div>
+
+            {/* Color Selection */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                Select Color: <span style={{ color: 'red' }}>*</span>
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {selectedProduct.variants?.colors && selectedProduct.variants.colors.length > 0 ? (
+                  selectedProduct.variants.colors.map(color => (
+                    <Button
+                      key={color}
+                      type={selectedColor === color ? 'primary' : 'default'}
+                      onClick={() => setSelectedColor(color)}
+                      style={{
+                        borderColor: selectedColor === color ? '#1890ff' : '#d9d9d9',
+                      }}
+                    >
+                      {color}
+                    </Button>
+                  ))
+                ) : (
+                  <span style={{ color: '#999' }}>No colors available</span>
+                )}
+              </div>
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>
+                Quantity:
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Button
+                  icon={<MinusOutlined />}
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={quantity <= 1}
+                />
+                <span
+                  style={{
+                    fontSize: '16px',
+                    fontWeight: 500,
+                    minWidth: '40px',
+                    textAlign: 'center',
+                  }}
+                >
+                  {quantity}
+                </span>
+                <Button icon={<PlusOutlined />} onClick={() => setQuantity(quantity + 1)} />
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

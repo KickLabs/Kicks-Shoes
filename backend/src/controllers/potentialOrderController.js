@@ -41,13 +41,15 @@ export const getPotentialOrdersForStream = asyncHandler(async (req, res) => {
     // Try direct database query instead of service
     const orders = await PotentialOrder.find({
       streamId: stream._id, // Use the actual stream ObjectId
-      status: { $in: ['pending', 'contacted'] },
+      // Don't filter by status - show all orders
     })
       .populate('customerInfo.userId', 'username avatar')
       .populate('chatMessageId', 'content timestamp')
       .sort({ priority: -1, createdAt: -1 })
       .limit(50)
       .lean(); // Use lean() for better performance
+
+    console.log(`Found ${orders.length} potential orders for stream ${streamId}`);
 
     res.status(200).json({
       success: true,
