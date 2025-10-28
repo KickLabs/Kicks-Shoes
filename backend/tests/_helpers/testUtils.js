@@ -188,6 +188,70 @@ function createMockModelInstance(data = {}) {
   };
 }
 
+/**
+ * Factory to generate a mock product object (POJO)
+ * @param {Object} overrides - Custom values to override defaults
+ * @returns {Object} Mock product data object
+ */
+function generateMockProduct(overrides = {}) {
+  const defaultProduct = {
+    _id: generateObjectId(),
+    name: 'Nike Air Max 90',
+    summary: 'Classic running shoes',
+    description: 'Comfortable and stylish running shoes',
+    brand: 'Nike',
+    category: generateObjectId(),
+    productType: 'shoes',
+    sku: 'NK-ARM-901',
+    status: true,
+    price: {
+      regular: 2500000,
+      discountPercent: 0,
+      isOnSale: false,
+    },
+    finalPrice: 2500000,
+    stock: 50,
+    sales: 0,
+    variants: {
+      sizes: ['40', '41', '42', '43', '44'],
+      colors: ['Black', 'White', 'Red'],
+    },
+    inventory: [
+      { size: 40, color: 'Black', quantity: 10, isAvailable: true },
+      { size: 41, color: 'Black', quantity: 15, isAvailable: true },
+      { size: 42, color: 'Black', quantity: 20, isAvailable: true },
+    ],
+    mainImage: 'https://example.com/images/air-max-90.jpg',
+    images: ['https://example.com/images/air-max-90-1.jpg'],
+    rating: 4.5,
+    isNew: false,
+    attributes: {
+      gender: 'unisex',
+      material: 'Synthetic leather',
+      season: 'All seasons',
+      style: 'Casual',
+      care: 'Machine washable',
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    // Instance methods (mocked)
+    save: jest.fn(async function () {
+      return this;
+    }),
+    toObject: jest.fn(function () {
+      const obj = { ...this };
+      delete obj.save;
+      delete obj.toObject;
+      return obj;
+    }),
+  };
+
+  return {
+    ...defaultProduct,
+    ...overrides,
+  };
+}
+
 export {
   getMockReqRes,
   generateMockUser,
@@ -197,4 +261,5 @@ export {
   expectErrorResponse,
   generateObjectId,
   createMockModelInstance,
+  generateMockProduct,
 };

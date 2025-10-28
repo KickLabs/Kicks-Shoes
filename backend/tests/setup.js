@@ -16,8 +16,9 @@ process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret-for-testing';
 process.env.JWT_REFRESH_EXPIRES_IN = '7d';
 process.env.JWT_VERIFY_EXPIRES_IN = '1h';
 
-// Database Configuration
-process.env.MONGODB_URI = 'mongodb://localhost:27017/kicks-shoes-test';
+// Database Configuration - Use unique database per test file
+const testId = process.env.JEST_WORKER_ID || '0';
+process.env.MONGODB_URI = `mongodb://localhost:27017/kicks-shoes-test-${testId}`;
 
 // Frontend URL (for email verification, password reset)
 process.env.FRONTEND_URL = 'http://localhost:3000';

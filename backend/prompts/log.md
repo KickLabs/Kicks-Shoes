@@ -1195,3 +1195,30 @@ npm test tests/authen/ -- --coverage --collectCoverageFrom="src/controllers/auth
 ✅ **Production-ready test suite**
 
 The authentication system is now well-tested and ready for production deployment!
+
+---
+
+## 📝 **Entry: 2025-01-21 - Favourites Feature Tests**
+
+**Date:** 2025-01-21  
+**Feature:** Favourites / Wishlist  
+**Generated for:** Test Suite 2 & 3 (Add to Favourites)  
+**Test Cases:** 8 (TC-FAV-004, TC-FAV-007, TC-FAV-008, TC-FAV-009, TC-FAV-011, TC-FAV-022, TC-FAV-023, TC-FAV-013)
+
+**Files Generated:**
+
+1. `tests/favourite/add-to-favourites.test.js` - Unit tests for addToFavourites controller
+2. `tests/mocks/models/Favourite.mock.js` - Mock for Favourite model
+3. `tests/mocks/models/Product.mock.js` - Mock for Product model
+4. Updated `tests/_helpers/testUtils.js` - Added generateMockProduct helper
+
+**Test Coverage:**
+
+- Happy Path: Adding new product to favourites
+- Negative: Duplicate prevention
+- Negative: Non-existent product handling
+- Negative: Invalid/missing productId
+- Edge Cases: Malformed JSON, empty strings, max items
+- Error Handling: Database errors
+
+**Status:** ✅ Ready for execution with `npm test`
