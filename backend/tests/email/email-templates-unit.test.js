@@ -788,5 +788,239 @@ describe('Email Templates Unit Tests', () => {
       });
       expect(html).toContain('Test User');
     });
+
+    test('LIVESTREAM_ORDER_SUCCESS - without paymentMethod (default)', () => {
+      const html = emailTemplates.LIVESTREAM_ORDER_SUCCESS.getContent({
+        name: 'Test User',
+        orderNumber: 'ORD-123',
+      });
+      expect(html).toContain('Cash on Delivery (COD)'); // default value
+    });
+
+    test('LIVESTREAM_OUT_OF_STOCK - without size and color', () => {
+      const html = emailTemplates.LIVESTREAM_OUT_OF_STOCK.getContent({
+        name: 'Test User',
+        productName: 'Nike Shoes',
+      });
+      expect(html).toContain('Nike Shoes');
+      // Template has "size/color" in the generic message, so we check that specific size/color values are not shown
+      expect(html).not.toContain('size <b>');
+      expect(html).not.toContain('color <b>');
+    });
+
+    test('LIVESTREAM_OUT_OF_STOCK - with size but no color', () => {
+      const html = emailTemplates.LIVESTREAM_OUT_OF_STOCK.getContent({
+        name: 'Test User',
+        productName: 'Nike Shoes',
+        size: '42',
+      });
+      expect(html).toContain('Nike Shoes');
+      expect(html).toContain('size');
+      expect(html).toContain('42');
+    });
+
+    test('LIVESTREAM_OUT_OF_STOCK - with color but no size', () => {
+      const html = emailTemplates.LIVESTREAM_OUT_OF_STOCK.getContent({
+        name: 'Test User',
+        productName: 'Nike Shoes',
+        color: 'Red',
+      });
+      expect(html).toContain('Nike Shoes');
+      expect(html).toContain('color');
+      expect(html).toContain('Red');
+    });
+
+    test('LIVESTREAM_OUT_OF_STOCK - without productName (fallback)', () => {
+      const html = emailTemplates.LIVESTREAM_OUT_OF_STOCK.getContent({
+        name: 'Test User',
+      });
+      expect(html).toContain('Selected product'); // fallback text
+    });
+
+    test('ORDER_PROCESSING - without estimatedDelivery', () => {
+      const html = emailTemplates.ORDER_PROCESSING.getContent({
+        name: 'Test User',
+        orderNumber: 'ORD-123',
+      });
+      expect(html).toContain('ORD-123');
+      expect(html).not.toContain('Estimated Delivery');
+    });
+
+    test('ORDER_DELIVERED - without deliveryDate', () => {
+      const html = emailTemplates.ORDER_DELIVERED.getContent({
+        name: 'Test User',
+        orderNumber: 'ORD-123',
+      });
+      expect(html).toContain('ORD-123');
+      expect(html).not.toContain('Delivery Date');
+    });
+
+    test('ORDER_REFUNDED - without refundReason', () => {
+      const html = emailTemplates.ORDER_REFUNDED.getContent({
+        name: 'Test User',
+        orderNumber: 'ORD-123',
+        refundAmount: 500000,
+      });
+      expect(html).toContain('ORD-123');
+      expect(html).toContain('500.000');
+      expect(html).not.toContain('Reason:');
+    });
+
+    test('ORDER_REFUNDED - without refundDate', () => {
+      const html = emailTemplates.ORDER_REFUNDED.getContent({
+        name: 'Test User',
+        orderNumber: 'ORD-123',
+        refundAmount: 500000,
+        refundReason: 'Defective',
+      });
+      expect(html).toContain('Defective');
+      expect(html).not.toContain('Refund Date:');
+    });
+
+    test('ORDER_CANCELLED - without refundAmount', () => {
+      const html = emailTemplates.ORDER_CANCELLED.getContent({
+        name: 'Test User',
+        orderNumber: 'ORD-123',
+        cancellationReason: 'Changed mind',
+      });
+      expect(html).toContain('Changed mind');
+      expect(html).not.toContain('Refund Amount:');
+    });
+
+    test('ORDER_CANCELLED - without both optional fields', () => {
+      const html = emailTemplates.ORDER_CANCELLED.getContent({
+        name: 'Test User',
+        orderNumber: 'ORD-123',
+      });
+      expect(html).toContain('ORD-123');
+      expect(html).not.toContain('Reason:');
+      expect(html).not.toContain('Refund Amount:');
+    });
+
+    test('REPORT_RESOLVED - without productName (user report)', () => {
+      const html = emailTemplates.REPORT_RESOLVED.getContent({
+        userName: 'Test User',
+        targetName: 'Reported User',
+        adminNote: 'Action taken',
+        resolution: 'Resolved',
+        reportReason: 'Spam',
+        reportDescription: 'Spam content',
+      });
+      expect(html).toContain('user');
+      expect(html).toContain('Reported User');
+    });
+
+    test('REPORT_RESOLVED - without adminNote', () => {
+      const html = emailTemplates.REPORT_RESOLVED.getContent({
+        userName: 'Test User',
+        productName: 'Test Product',
+        resolution: 'Resolved',
+        reportReason: 'Spam',
+        reportDescription: 'Spam content',
+      });
+      expect(html).toContain('No additional notes');
+    });
+
+    test('PRODUCT_WARNING - without shopName (fallback)', () => {
+      const html = emailTemplates.PRODUCT_WARNING.getContent({
+        productName: 'Test Product',
+        resolution: 'Warning',
+      });
+      expect(html).toContain('Shop'); // fallback
+    });
+
+    test('PRODUCT_DELETED - without shopName (fallback)', () => {
+      const html = emailTemplates.PRODUCT_DELETED.getContent({
+        productName: 'Test Product',
+        resolution: 'Deleted',
+      });
+      expect(html).toContain('Shop'); // fallback
+    });
+
+    test('USER_DELETED - without shopName (fallback)', () => {
+      const html = emailTemplates.USER_DELETED.getContent({
+        userName: 'Test User',
+        resolution: 'Deleted',
+      });
+      expect(html).toContain('Shop'); // fallback
+    });
+
+    test('REVIEW_DELETED - without userName (fallback)', () => {
+      const html = emailTemplates.REVIEW_DELETED.getContent({
+        productName: 'Test Product',
+        resolution: 'Deleted',
+      });
+      expect(html).toContain('User'); // fallback
+    });
+
+    test('REVIEW_DELETED_SHOP - without shopName (fallback)', () => {
+      const html = emailTemplates.REVIEW_DELETED_SHOP.getContent({
+        productName: 'Test Product',
+        userName: 'Test User',
+        resolution: 'Deleted',
+      });
+      expect(html).toContain('Shop'); // fallback
+    });
+
+    test('REVIEW_WARNING - without userName (fallback)', () => {
+      const html = emailTemplates.REVIEW_WARNING.getContent({
+        productName: 'Test Product',
+        resolution: 'Warning',
+      });
+      expect(html).toContain('User'); // fallback
+    });
+
+    test('USER_BANNED - without userName (fallback)', () => {
+      const html = emailTemplates.USER_BANNED.getContent({
+        adminNote: 'Banned',
+      });
+      expect(html).toContain('User'); // fallback
+    });
+
+    test('USER_UNBANNED - without userName (fallback)', () => {
+      const html = emailTemplates.USER_UNBANNED.getContent({
+        adminNote: 'Unbanned',
+      });
+      expect(html).toContain('User'); // fallback
+    });
+
+    test('PRODUCT_REPORTED - without shopName (fallback)', () => {
+      const html = emailTemplates.PRODUCT_REPORTED.getContent({
+        productName: 'Test Product',
+        reporterName: 'Reporter',
+        reason: 'Spam',
+        description: 'Spam',
+      });
+      expect(html).toContain('Shop'); // fallback
+    });
+
+    test('REPORT_SUBMITTED - without userName (fallback)', () => {
+      const html = emailTemplates.REPORT_SUBMITTED.getContent({
+        productName: 'Test Product',
+        reason: 'Spam',
+        description: 'Spam',
+      });
+      expect(html).toContain('User'); // fallback
+    });
+
+    test('REVIEW_REPORTED - without shopName (fallback)', () => {
+      const html = emailTemplates.REVIEW_REPORTED.getContent({
+        productName: 'Test Product',
+        userName: 'Test User',
+        reporterName: 'Reporter',
+        reason: 'Spam',
+        description: 'Spam',
+      });
+      expect(html).toContain('Shop'); // fallback
+    });
+
+    test('REVIEW_REPORT_SUBMITTED - without userName (fallback)', () => {
+      const html = emailTemplates.REVIEW_REPORT_SUBMITTED.getContent({
+        productName: 'Test Product',
+        reason: 'Spam',
+        description: 'Spam',
+      });
+      expect(html).toContain('User'); // fallback
+    });
   });
 });

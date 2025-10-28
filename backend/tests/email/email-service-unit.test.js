@@ -1019,5 +1019,143 @@ describe('EmailService Unit Tests', () => {
       expect(html).toContain('Quantity: 2');
       expect(html).toContain('Quantity: 1');
     });
+
+    test('Should populate order when items are string IDs', async () => {
+      // Given: Order with items as string IDs (not populated)
+      const productId = new mongoose.Types.ObjectId();
+      const populatedOrder = {
+        _id: new mongoose.Types.ObjectId(),
+        items: [
+          {
+            _id: new mongoose.Types.ObjectId(),
+            product: {
+              _id: productId,
+              name: 'Populated Product',
+              mainImage: 'image.jpg',
+              price: 500000,
+            },
+            quantity: 1,
+            price: 500000,
+          },
+        ],
+        subtotal: 500000,
+        shippingCost: 0,
+        tax: 0,
+        discount: 0,
+        totalPrice: 500000,
+        shippingAddress: '123 Test St',
+        paymentMethod: 'COD',
+        status: 'pending',
+      };
+
+      const order = {
+        _id: populatedOrder._id,
+        items: [productId.toString()], // String ID - needs population
+        subtotal: 500000,
+        shippingCost: 0,
+        tax: 0,
+        discount: 0,
+        totalPrice: 500000,
+        shippingAddress: '123 Test St',
+        paymentMethod: 'COD',
+        status: 'pending',
+        populate: jest.fn().mockResolvedValue(populatedOrder),
+      };
+
+      // When: Generate order details
+      const html = await EmailService.generateOrderDetails(order);
+
+      // Then: Should call populate
+      expect(order.populate).toHaveBeenCalledWith({
+        path: 'items',
+        populate: {
+          path: 'product',
+          select: 'name mainImage price',
+        },
+      });
+      expect(mockLogger.info).toHaveBeenCalledWith('Populating order items for email');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Order populated successfully',
+        expect.objectContaining({
+          itemsCount: 1,
+        })
+      );
+      expect(html).toContain('Populated Product');
+    });
+
+    test('Should handle order with empty items array and show fallback', async () => {
+      // Given: Order with empty items array
+      const order = {
+        _id: new mongoose.Types.ObjectId(),
+        items: [],
+        subtotal: 0,
+        shippingCost: 0,
+        tax: 0,
+        discount: 0,
+        totalPrice: 0,
+        shippingAddress: '123 Test St',
+        paymentMethod: 'COD',
+        status: 'pending',
+        populate: jest.fn().mockResolvedValue({
+          _id: new mongoose.Types.ObjectId(),
+          items: [], // Still empty after populate
+          subtotal: 0,
+          shippingCost: 0,
+          tax: 0,
+          discount: 0,
+          totalPrice: 0,
+          shippingAddress: '123 Test St',
+          paymentMethod: 'COD',
+          status: 'pending',
+        }),
+      };
+
+      // When: Generate order details
+      const html = await EmailService.generateOrderDetails(order);
+
+      // Then: Should show fallback message
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'No items HTML generated, showing fallback message'
+      );
+      expect(html).toContain('Order items are being processed...');
+    });
+
+    test('Should handle undefined items and show fallback', async () => {
+      // Given: Order with undefined items
+      const order = {
+        _id: new mongoose.Types.ObjectId(),
+        items: undefined,
+        subtotal: 0,
+        shippingCost: 0,
+        tax: 0,
+        discount: 0,
+        totalPrice: 0,
+        shippingAddress: '123 Test St',
+        paymentMethod: 'COD',
+        status: 'pending',
+        populate: jest.fn().mockResolvedValue({
+          _id: new mongoose.Types.ObjectId(),
+          items: [],
+          subtotal: 0,
+          shippingCost: 0,
+          tax: 0,
+          discount: 0,
+          totalPrice: 0,
+          shippingAddress: '123 Test St',
+          paymentMethod: 'COD',
+          status: 'pending',
+        }),
+      };
+
+      // When: Generate order details
+      const html = await EmailService.generateOrderDetails(order);
+
+      // Then: Should populate and show fallback if still empty
+      expect(order.populate).toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'No items HTML generated, showing fallback message'
+      );
+      expect(html).toContain('Order items are being processed...');
+    });
   });
 });
