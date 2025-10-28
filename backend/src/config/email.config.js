@@ -37,12 +37,13 @@ export const emailConfig = {
   defaultTimezone: process.env.EMAIL_DEFAULT_TIMEZONE || 'UTC',
 };
 
-// Validate required configuration
+// Validate required configuration (skip in test environment)
 if (
-  !emailConfig.googleMailerClientId ||
-  !emailConfig.googleMailerClientSecret ||
-  !emailConfig.googleMailerRefreshToken ||
-  !emailConfig.adminEmailAddress
+  process.env.NODE_ENV !== 'test' &&
+  (!emailConfig.googleMailerClientId ||
+    !emailConfig.googleMailerClientSecret ||
+    !emailConfig.googleMailerRefreshToken ||
+    !emailConfig.adminEmailAddress)
 ) {
   throw new Error('Missing required email configuration');
 }

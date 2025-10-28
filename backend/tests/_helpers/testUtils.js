@@ -252,14 +252,98 @@ function generateMockProduct(overrides = {}) {
   };
 }
 
+/**
+ * Factory to create mock PotentialOrder objects
+ * @param {Object} overrides - Custom values to override defaults
+ * @returns {Object} Mock PotentialOrder object
+ */
+function makePotentialOrder(overrides = {}) {
+  const defaultPotentialOrder = {
+    _id: generateObjectId(),
+    user: generateObjectId(),
+    product: generateObjectId(),
+    quantity: 1,
+    color: 'red',
+    size: 'M',
+    message: 'I want to buy this product',
+    status: 'pending',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    save: jest.fn().mockResolvedValue(true),
+    toObject: jest.fn(function () {
+      const obj = { ...this };
+      delete obj.save;
+      delete obj.toObject;
+      return obj;
+    }),
+  };
+
+  return {
+    ...defaultPotentialOrder,
+    ...overrides,
+  };
+}
+
+/**
+ * Factory to create mock Order objects
+ * @param {Object} overrides - Custom values to override defaults
+ * @returns {Object} Mock Order object
+ */
+function makeOrder(overrides = {}) {
+  const defaultOrder = {
+    _id: generateObjectId(),
+    user: generateObjectId(),
+    items: [
+      {
+        product: generateObjectId(),
+        quantity: 1,
+        price: 100000,
+      },
+    ],
+    totalAmount: 100000,
+    status: 'pending',
+    paymentMethod: 'cod',
+    shippingAddress: {
+      fullName: 'Test User',
+      phone: '0123456789',
+      address: '123 Test Street',
+      city: 'Ho Chi Minh',
+      district: 'District 1',
+      ward: 'Ward 1',
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    save: jest.fn().mockResolvedValue(true),
+    toObject: jest.fn(function () {
+      const obj = { ...this };
+      delete obj.save;
+      delete obj.toObject;
+      return obj;
+    }),
+  };
+
+  return {
+    ...defaultOrder,
+    ...overrides,
+  };
+}
+
+// Alias for compatibility
+const makeProduct = generateMockProduct;
+const makeUser = generateMockUser;
+
 export {
-  getMockReqRes,
-  generateMockUser,
-  generateVietnameseUsers,
-  generateMockToken,
   createMockErrorResponse,
-  expectErrorResponse,
-  generateObjectId,
   createMockModelInstance,
+  expectErrorResponse,
   generateMockProduct,
+  generateMockToken,
+  generateMockUser,
+  generateObjectId,
+  generateVietnameseUsers,
+  getMockReqRes,
+  makeOrder,
+  makePotentialOrder,
+  makeProduct,
+  makeUser,
 };

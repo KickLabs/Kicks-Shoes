@@ -1,8 +1,7 @@
-import { validationResult } from 'express-validator';
-import { FeedbackService } from '../services/feedback.service.js';
-import logger from '../utils/logger.js';
 import Feedback from '../models/Feedback.js';
 import Report from '../models/Report.js';
+import { FeedbackService } from '../services/feedback.service.js';
+import logger from '../utils/logger.js';
 /**
  * Create a new feedback
  * @route POST /api/feedback
@@ -393,7 +392,7 @@ export const adminApproveFeedback = async (req, res, next) => {
     }
 
     if (req.method === 'PUT') {
-      feedback.status = 'approved';
+      feedback.status = true;
       feedback.isVerified = true;
       await feedback.save();
 
@@ -415,7 +414,7 @@ export const adminApproveFeedback = async (req, res, next) => {
       await Feedback.findByIdAndUpdate(feedbackId, { status: false, deletedBy: 'admin' });
 
       report.status = 'resolved';
-      report.resolution = 'ban';
+      report.resolution = 'delete_comment';
       report.resolvedBy = req.user.id;
       report.resolvedAt = new Date();
       await report.save();
