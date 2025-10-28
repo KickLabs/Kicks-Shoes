@@ -15,6 +15,8 @@ export const useWebRTC = (roomId, role, userId) => {
   const [viewerCount, setViewerCount] = useState(0);
   const [messages, setMessages] = useState([]);
   const [pinnedMessage, setPinnedMessage] = useState(null);
+  const [botReplies, setBotReplies] = useState([]);
+  const [personalNotification, setPersonalNotification] = useState(null);
   const [connectionState, setConnectionState] = useState('disconnected');
   const [error, setError] = useState(null);
 
@@ -102,6 +104,8 @@ export const useWebRTC = (roomId, role, userId) => {
     socket.on('chat_message', handleChatMessage);
     socket.on('message_pinned', handleMessagePinned);
     socket.on('message_unpinned', handleMessageUnpinned);
+    socket.on('ai_bot_reply', handleBotReply);
+    socket.on('personal_bot_notification', handlePersonalNotification);
 
     return () => {
       socket.disconnect();
@@ -278,6 +282,32 @@ export const useWebRTC = (roomId, role, userId) => {
         );
       });
     }
+  }, []);
+
+  // Handle bot reply
+  const handleBotReply = useCallback(data => {
+    console.log('Bot reply received:', data);
+    setBotReplies(prev => [
+      ...prev,
+      {
+        id: `bot_${Date.now()}`,
+        originalMessage: data.originalMessage,
+        answer: data.answer,
+        confidence: data.confidence,
+        timestamp: data.timestamp,
+      },
+    ]);
+  }, []);
+
+  // Handle personal bot notification
+  const handlePersonalNotification = useCallback(data => {
+    console.log('Personal notification received:', data);
+    setPersonalNotification({
+      question: data.question,
+      answer: data.answer,
+      timestamp: data.timestamp,
+      messageId: data.messageId,
+    });
   }, []);
 
   // Create peer connection
@@ -559,6 +589,8 @@ export const useWebRTC = (roomId, role, userId) => {
     viewerCount,
     messages,
     pinnedMessage,
+    botReplies,
+    personalNotification,
 
     // Actions
     startCamera,
@@ -566,6 +598,7 @@ export const useWebRTC = (roomId, role, userId) => {
     sendChatMessage,
     featureProduct,
     retryConnection,
+    dismissNotification: () => setPersonalNotification(null),
 
     // Stream objects (for advanced usage)
     localStream: localStreamRef.current,

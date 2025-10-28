@@ -40,6 +40,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useWebRTC } from '../../../hooks/useWebRTC';
 import PotentialOrdersPanel from './PotentialOrdersPanel';
 import livestreamService from '../../../services/livestreamService';
+import BotMessage from './BotMessage';
 import './LiveStreamHost.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -66,6 +67,7 @@ const LiveStreamHost = () => {
     viewerCount,
     messages,
     pinnedMessage,
+    botReplies,
     startCamera,
     stopCamera,
     sendChatMessage,
@@ -435,40 +437,53 @@ const LiveStreamHost = () => {
             )}
 
             <div className="chat-messages">
-              {messages.length === 0 ? (
+              {messages.length === 0 && botReplies.length === 0 ? (
                 <div className="empty-chat">No messages yet</div>
               ) : (
-                messages.map((messageItem, index) => (
-                  <div key={index} className="chat-message-item">
-                    <div className="chat-user">
-                      <div className="chat-user-left">
-                        <strong>{messageItem.senderId?.username || 'Anonymous'}</strong>
-                        {messageItem.senderRole === 'host' && (
-                          <span className="chat-role-tag chat-role-host">Host</span>
-                        )}
+                <>
+                  {/* Regular messages */}
+                  {messages.map((messageItem, index) => (
+                    <div key={`msg-${index}`} className="chat-message-item">
+                      <div className="chat-user">
+                        <div className="chat-user-left">
+                          <strong>{messageItem.senderId?.username || 'Anonymous'}</strong>
+                          {messageItem.senderRole === 'host' && (
+                            <span className="chat-role-tag chat-role-host">Host</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="chat-time">
+                            {new Date(messageItem.timestamp).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                          {messageItem.senderRole !== 'system' && (
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<PushpinOutlined />}
+                              onClick={() => handlePinMessage(messageItem)}
+                              style={{ padding: '0 4px', fontSize: '12px' }}
+                              title="Pin this message"
+                            />
+                          )}
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="chat-time">
-                          {new Date(messageItem.timestamp).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                        {messageItem.senderRole !== 'system' && (
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<PushpinOutlined />}
-                            onClick={() => handlePinMessage(messageItem)}
-                            style={{ padding: '0 4px', fontSize: '12px' }}
-                            title="Pin this message"
-                          />
-                        )}
-                      </div>
+                      <div className="chat-text">{messageItem.content}</div>
                     </div>
-                    <div className="chat-text">{messageItem.content}</div>
-                  </div>
-                ))
+                  ))}
+
+                  {/* Bot replies */}
+                  {botReplies.map((botReply, index) => (
+                    <BotMessage
+                      key={`bot-${index}`}
+                      originalMessage={botReply.originalMessage}
+                      answer={botReply.answer}
+                      timestamp={botReply.timestamp}
+                    />
+                  ))}
+                </>
               )}
             </div>
             <div className="chat-input-section">

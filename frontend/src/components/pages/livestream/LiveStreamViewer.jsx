@@ -40,6 +40,8 @@ import { useWebRTC } from '../../../hooks/useWebRTC';
 import livestreamService from '../../../services/livestreamService';
 import axiosInstance from '../../../services/axiosInstance';
 import { message as antMessage } from 'antd';
+import BotMessage from './BotMessage';
+import PersonalNotification from './PersonalNotification';
 import './LiveStreamViewer.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -70,9 +72,12 @@ const LiveStreamViewer = () => {
     viewerCount,
     messages,
     pinnedMessage,
+    botReplies,
+    personalNotification,
     sendChatMessage,
     remoteStream,
     retryConnection,
+    dismissNotification,
   } = useWebRTC(roomId, 'viewer', user?.id);
 
   // Load stream data
@@ -630,28 +635,41 @@ const LiveStreamViewer = () => {
             )}
 
             <div className="viewer-chat-messages">
-              {messages.length === 0 ? (
+              {messages.length === 0 && botReplies.length === 0 ? (
                 <div className="viewer-empty-chat">No messages yet</div>
               ) : (
-                messages.map((message, index) => (
-                  <div key={index} className="viewer-chat-message">
-                    <div className="viewer-chat-user">
-                      <div className="viewer-chat-user-left">
-                        <strong>{message.senderId?.username || 'Anonymous'}</strong>
-                        {message.senderRole === 'host' && (
-                          <span className="viewer-role-tag viewer-role-host">Host</span>
-                        )}
+                <>
+                  {/* Regular messages */}
+                  {messages.map((message, index) => (
+                    <div key={`msg-${index}`} className="viewer-chat-message">
+                      <div className="viewer-chat-user">
+                        <div className="viewer-chat-user-left">
+                          <strong>{message.senderId?.username || 'Anonymous'}</strong>
+                          {message.senderRole === 'host' && (
+                            <span className="viewer-role-tag viewer-role-host">Host</span>
+                          )}
+                        </div>
+                        <span className="viewer-chat-time">
+                          {new Date(message.timestamp).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
                       </div>
-                      <span className="viewer-chat-time">
-                        {new Date(message.timestamp).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
+                      <div className="viewer-chat-text">{message.content}</div>
                     </div>
-                    <div className="viewer-chat-text">{message.content}</div>
-                  </div>
-                ))
+                  ))}
+
+                  {/* Bot replies */}
+                  {botReplies.map((botReply, index) => (
+                    <BotMessage
+                      key={`bot-${index}`}
+                      originalMessage={botReply.originalMessage}
+                      answer={botReply.answer}
+                      timestamp={botReply.timestamp}
+                    />
+                  ))}
+                </>
               )}
             </div>
             <div className="viewer-chat-input-section">
@@ -680,6 +698,23 @@ const LiveStreamViewer = () => {
           )}
         </div>
       </div>
+
+      {/* Personal Bot Notification */}
+      {personalNotification && (
+        <PersonalNotification
+          question={personalNotification.question}
+          answer={personalNotification.answer}
+          onDismiss={dismissNotification}
+          onViewInChat={() => {
+            // Scroll to chat section
+            document.querySelector('.viewer-chat-messages')?.scrollTo({
+              top: document.querySelector('.viewer-chat-messages').scrollHeight,
+              behavior: 'smooth',
+            });
+            dismissNotification();
+          }}
+        />
+      )}
 
       {/* All Featured Products Modal */}
       <Modal

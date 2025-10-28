@@ -10,6 +10,7 @@ import LiveStream from '../models/LiveStream.js';
 import LiveStreamChat from '../models/LiveStreamChat.js';
 import User from '../models/User.js';
 import orderDetectionService from './orderDetection.service.js';
+import aiQAService from './aiQA.service.js';
 import logger from '../utils/logger.js';
 
 class LiveStreamService {
@@ -291,12 +292,41 @@ class LiveStreamService {
         }
       }
 
+      // AI Q&A: Check if message is a question and generate answer
+      let aiResponse = null;
+      if (socketInfo.role === 'viewer' && messageData.type !== 'system') {
+        try {
+          // Populate stream data for AI context
+          await room.streamData.populate('featuredProducts.productId');
+
+          const aiContext = {
+            streamTitle: room.streamData.title,
+            streamDescription: room.streamData.description,
+            featuredProducts: room.streamData.featuredProducts,
+            hostName: room.streamData.hostId?.username || 'Shop',
+          };
+
+          aiResponse = await aiQAService.processMessage(chatMessage.content, aiContext);
+
+          if (aiResponse) {
+            logger.info(`AI Q&A answered question in room ${socketInfo.roomId}:`, {
+              question: aiResponse.question.substring(0, 50),
+              answerLength: aiResponse.answer.length,
+            });
+          }
+        } catch (aiError) {
+          // Don't fail the chat message if AI Q&A fails
+          logger.error('Error in AI Q&A:', aiError);
+        }
+      }
+
       logger.info(`Chat message saved for room ${socketInfo.roomId}`);
 
       return {
         roomId: socketInfo.roomId,
         message: chatMessage,
         potentialOrder, // Include potential order in response
+        aiResponse, // Include AI answer if available
       };
     } catch (error) {
       logger.error('Error handling chat message:', error);

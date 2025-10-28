@@ -172,6 +172,37 @@ export function setupLiveStreamHandlers(io) {
               logger.info(`Potential order notification sent to host in room ${result.roomId}`);
             }
           }
+
+          // If AI answered a question, broadcast bot reply
+          if (result.aiResponse) {
+            // Broadcast bot reply to all clients
+            livestreamNamespace.to(result.roomId).emit('ai_bot_reply', {
+              type: 'ai_bot_reply',
+              originalMessage: result.message,
+              answer: result.aiResponse.answer,
+              confidence: result.aiResponse.confidence,
+              timestamp: result.aiResponse.respondedAt,
+            });
+
+            // Send personal notification to the person who asked
+            if (result.message.senderId) {
+              const socketInfo = Array.from(liveStreamService.socketToRoom.entries()).find(
+                ([sid, info]) => info.userId?.toString() === result.message.senderId._id.toString()
+              );
+
+              if (socketInfo) {
+                livestreamNamespace.to(socketInfo[0]).emit('personal_bot_notification', {
+                  type: 'personal_bot_notification',
+                  question: result.message.content,
+                  answer: result.aiResponse.answer,
+                  timestamp: result.aiResponse.respondedAt,
+                  messageId: result.message._id,
+                });
+              }
+            }
+
+            logger.info(`AI bot reply sent in room ${result.roomId}`);
+          }
         }
       } catch (error) {
         logger.error('Error handling chat message:', error);
