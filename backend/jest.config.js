@@ -38,19 +38,19 @@ export default {
     '!src/app.js', // Exclude main app file
     '!src/socket.js', // Exclude socket file
     '!src/config/**', // Exclude config files
-    '!src/templates/**', // Exclude email templates
+    'src/templates/**', // Exclude email templates
     '!src/vnpay/**', // Exclude vnpay
     '!src/controllers/authController.js', // Exclude auth
     '!src/controllers/userController.js', // Exclude user
     'src/controllers/productController.js', // Exclude product
     '!src/controllers/orderController.js', // Exclude order
-    '!src/controllers/cartController.js', // Exclude cart
+    'src/controllers/cartController.js', // Exclude cart
     '!src/controllers/categoryController.js', // Exclude category
     '!src/controllers/discountController.js', // Exclude discount
     '!src/controllers/flashSaleController.js', // Exclude flash sale
     '!src/controllers/favouriteController.js', // Exclude favourite
     '!src/controllers/feedbackController.js', // Exclude feedback
-    '!src/controllers/rewardPointController.js', // Exclude reward point
+    'src/controllers/rewardPointController.js', // Exclude reward point
     '!src/controllers/storeController.js', // Exclude store
     '!src/controllers/blogController.js', // Exclude blog
     '!src/controllers/blogCommentController.js', // Exclude blog comment
@@ -62,31 +62,31 @@ export default {
     '!src/services/user.service.js', // Exclude user service
     'src/services/product.service.js', // Exclude product service
     'src/services/order.service.js', // Exclude order service
-    '!src/services/cart.service.js', // Exclude cart service
+    'src/services/cart.service.js', // Exclude cart service
     '!src/services/category.service.js', // Exclude category service
     '!src/services/discount.service.js', // Exclude discount service
     '!src/services/flashSale.service.js', // Exclude flash sale service
     '!src/services/favourite.service.js', // Exclude favourite service
     '!src/services/feedback.service.js', // Exclude feedback service
-    '!src/services/rewardPoint.service.js', // Exclude reward point service
+    'src/services/rewardPoint.service.js', // Exclude reward point service
     '!src/services/store.service.js', // Exclude store service
     '!src/services/blog.service.js', // Exclude blog service
     '!src/services/blogComment.service.js', // Exclude blog comment service
     '!src/services/chat.service.js', // Exclude chat service
-    '!src/services/email.service.js', // Exclude email service
+    'src/services/email.service.js', // Exclude email service
     '!src/services/otp.service.js', // Exclude otp service
     '!src/services/payos.service.js', // Exclude payos service
     '!src/services/vnpay.service.js', // Exclude vnpay service
     '!src/models/User.js', // Exclude user model
     'src/models/Product.js', // Exclude product model
     '!src/models/Order.js', // Exclude order model
-    '!src/models/Cart.js', // Exclude cart model
+    'src/models/Cart.js', // Exclude npm run test:coverage model
     '!src/models/Category.js', // Exclude category model
     '!src/models/Discount.js', // Exclude discount model
     '!src/models/FlashSale.js', // Exclude flash sale model
     '!src/models/Favourite.js', // Exclude favourite model
     '!src/models/Feedback.js', // Exclude feedback model
-    '!src/models/RewardPoint.js', // Exclude reward point model
+    'src/models/RewardPoint.js', // Exclude reward point model
     '!src/models/Store.js', // Exclude store model
     '!src/models/Blog.js', // Exclude blog model
     '!src/models/BlogComment.js', // Exclude blog comment model
