@@ -68,7 +68,7 @@ export default {
     '!src/services/flashSale.service.js', // Exclude flash sale service
     '!src/services/favourite.service.js', // Exclude favourite service
     '!src/services/feedback.service.js', // Exclude feedback service
-    'src/services/rewardPoint.service.js', // Reward point service
+    'src/services/rewardPoint.service.js', // Reward point serv ice
     '!src/services/store.service.js', // Exclude store service
     '!src/services/blog.service.js', // Exclude blog service
     '!src/services/blogComment.service.js', // Exclude blog comment service
@@ -98,7 +98,7 @@ export default {
     '!src/models/OrderItem.js', // Exclude order item model
     '!src/utils/errorResponse.js', // Exclude error response utility
     '!src/utils/helpers.js', // Exclude helpers utility
-    '!src/utils/upload.js', // Exclude upload utility
+    'src/utils/upload.js', // Exclude upload utility
 
     // Uploads & Media module
     'src/middlewares/upload.middleware.js', // Upload middleware
