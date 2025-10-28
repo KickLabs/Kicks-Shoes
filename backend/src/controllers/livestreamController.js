@@ -12,6 +12,8 @@ import liveStreamService from '../services/livestream.service.js';
 import { asyncHandler } from '../middlewares/async.middleware.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
+import { getSocketIO } from '../utils/socketIO.js';
+import { broadcastPinnedMessage } from '../services/livestreamSocket.service.js';
 
 /**
  * @desc    Create a new livestream
@@ -92,7 +94,10 @@ export const getLiveStream = asyncHandler(async (req, res) => {
 
   const liveStream = await LiveStream.findOne({ roomId })
     .populate('hostId', 'username avatar')
-    .populate('featuredProducts.productId', 'name price images');
+    .populate(
+      'featuredProducts.productId',
+      'name price images mainImage colorVariants inventory variants description'
+    );
 
   if (!liveStream) {
     throw new ErrorResponse('Livestream not found', 404);
@@ -499,6 +504,42 @@ export const removeFeaturedProduct = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Pin/Unpin featured product
+ * @route   PUT /api/livestream/:roomId/pin-product/:productId
+ * @access  Private (Host only)
+ */
+export const togglePinProduct = asyncHandler(async (req, res) => {
+  const { roomId, productId } = req.params;
+  const hostId = req.user.id;
+
+  const liveStream = await LiveStream.findOne({ roomId });
+
+  if (!liveStream) {
+    throw new ErrorResponse('Livestream not found', 404);
+  }
+
+  if (liveStream.hostId.toString() !== hostId) {
+    throw new ErrorResponse('Not authorized to manage products in this livestream', 403);
+  }
+
+  await liveStream.togglePinProduct(productId);
+
+  // Get updated stream with populated products
+  const updatedStream = await LiveStream.findOne({ roomId }).populate(
+    'featuredProducts.productId',
+    'name price images mainImage colorVariants inventory variants description'
+  );
+
+  res.json({
+    success: true,
+    message: 'Product pin status updated',
+    data: {
+      featuredProducts: updatedStream.featuredProducts,
+    },
+  });
+});
+
+/**
  * @desc    Get livestream analytics
  * @route   GET /api/livestream/:roomId/analytics
  * @access  Private (Host only)
@@ -563,5 +604,87 @@ export const getLiveStreamAnalytics = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: analytics,
+  });
+});
+
+/**
+ * @desc    Pin/Unpin a chat message
+ * @route   PUT /api/livestream/:roomId/chat/:messageId/pin
+ * @access  Private (Host only)
+ */
+export const togglePinMessage = asyncHandler(async (req, res) => {
+  const { roomId, messageId } = req.params;
+  const hostId = req.user.id;
+
+  const liveStream = await LiveStream.findOne({ roomId });
+
+  if (!liveStream) {
+    throw new ErrorResponse('Livestream not found', 404);
+  }
+
+  if (liveStream.hostId.toString() !== hostId) {
+    throw new ErrorResponse('Not authorized to pin messages in this livestream', 403);
+  }
+
+  const message = await LiveStreamChat.findById(messageId);
+
+  if (!message) {
+    throw new ErrorResponse('Message not found', 404);
+  }
+
+  if (message.roomId !== roomId) {
+    throw new ErrorResponse('Message does not belong to this livestream', 400);
+  }
+
+  // If pinning a new message, unpin all other messages first
+  if (!message.isPinned) {
+    await LiveStreamChat.updateMany(
+      { roomId, isPinned: true },
+      { $set: { isPinned: false, pinnedAt: null, pinnedBy: null } }
+    );
+  }
+
+  await message.togglePin(hostId);
+
+  // Populate sender info for response
+  await message.populate('senderId', 'username avatar');
+  await message.populate('pinnedBy', 'username');
+
+  // Broadcast pinned message update via Socket.IO
+  const io = getSocketIO();
+  if (io) {
+    // Always send the message object, the broadcast function checks isPinned status
+    broadcastPinnedMessage(io, roomId, message);
+  }
+
+  res.json({
+    success: true,
+    message: message.isPinned ? 'Message pinned successfully' : 'Message unpinned successfully',
+    data: {
+      message,
+      isPinned: message.isPinned,
+    },
+  });
+});
+
+/**
+ * @desc    Get pinned message for a livestream
+ * @route   GET /api/livestream/:roomId/chat/pinned
+ * @access  Public
+ */
+export const getPinnedMessage = asyncHandler(async (req, res) => {
+  const { roomId } = req.params;
+
+  const liveStream = await LiveStream.findOne({ roomId });
+
+  if (!liveStream) {
+    throw new ErrorResponse('Livestream not found', 404);
+  }
+
+  const pinnedMessage = await LiveStreamChat.getPinnedMessage(roomId);
+
+  res.json({
+    success: true,
+    data: pinnedMessage,
   });
 });

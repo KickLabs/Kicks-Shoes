@@ -58,22 +58,32 @@ const PotentialOrdersPanel = ({ streamId, socket }) => {
   // Listen for new potential orders via socket
   useEffect(() => {
     if (socket) {
+      console.log('Setting up socket listener for potential_order_detected');
+      console.log('Socket connected:', socket.connected);
+
       socket.on('potential_order_detected', handleNewOrder);
 
       return () => {
+        console.log('Cleaning up socket listener');
         socket.off('potential_order_detected', handleNewOrder);
       };
+    } else {
+      console.log('Socket not available in PotentialOrdersPanel');
     }
   }, [socket]);
 
   const loadOrders = async () => {
     try {
       setLoading(true);
+      console.log('Loading potential orders for streamId:', streamId);
       const response = await axios.get(`/potential-orders/stream/${streamId}`);
+      console.log('Potential orders response:', response.data);
       setOrders(response.data.data || []);
+      console.log('Orders loaded:', response.data.data?.length || 0);
     } catch (error) {
       console.error('Error loading potential orders:', error);
-      message.error('Failed to load potential orders');
+      console.error('Error details:', error.response?.data);
+      message.error(error.response?.data?.message || 'Failed to load potential orders');
     } finally {
       setLoading(false);
     }
@@ -122,12 +132,25 @@ const PotentialOrdersPanel = ({ streamId, socket }) => {
   };
 
   const handleNewOrder = data => {
-    if (data.type === 'potential_order' && data.roomId === streamId) {
-      // Add new order to the beginning of the list
-      setOrders(prev => [data.order, ...prev]);
+    console.log('Received potential order event:', data);
+    console.log('Current streamId:', streamId);
 
-      // Show notification
-      message.success(`New potential order detected from ${data.order.customerInfo.customerName}!`);
+    if (data.type === 'potential_order') {
+      // Only add if not spam/confirmed/converted
+      if (!['spam', 'confirmed', 'converted'].includes(data.order.status)) {
+        // Add new order to the beginning of the list
+        setOrders(prev => [data.order, ...prev]);
+
+        // Show notification
+        message.success(
+          `New potential order detected from ${data.order.customerInfo.customerName}!`,
+          5
+        );
+
+        // Play notification sound (optional)
+        const audio = new Audio('/notification.mp3');
+        audio.play().catch(e => console.log('Could not play notification sound'));
+      }
     }
   };
 
@@ -148,7 +171,17 @@ const PotentialOrdersPanel = ({ streamId, socket }) => {
         )
       );
 
-      message.success('Order status updated successfully');
+      // Show appropriate message based on status
+      if (status === 'spam') {
+        message.success('Order marked as spam');
+      } else if (status === 'confirmed') {
+        message.success('Order confirmed! It will be converted to a real order.');
+      } else if (status === 'converted') {
+        message.success('Order converted successfully');
+      } else {
+        message.success('Order status updated successfully');
+      }
+
       setModalVisible(false);
       setNoteModalVisible(false);
     } catch (error) {
@@ -254,6 +287,11 @@ const PotentialOrdersPanel = ({ streamId, socket }) => {
     );
   }
 
+  // Filter out spam, confirmed, and converted orders
+  const visibleOrders = orders.filter(
+    order => !['spam', 'confirmed', 'converted'].includes(order.status)
+  );
+
   return (
     <>
       <div className="potential-orders-card">
@@ -261,7 +299,7 @@ const PotentialOrdersPanel = ({ streamId, socket }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className="potential-orders-title">Potential Orders</span>
             <Badge
-              count={orders.filter(o => o.status === 'pending').length}
+              count={visibleOrders.filter(o => o.status === 'pending').length}
               style={{ backgroundColor: '#1890ff' }}
             />
           </div>
@@ -275,7 +313,7 @@ const PotentialOrdersPanel = ({ streamId, socket }) => {
           </div>
         </div>
         <div className="potential-orders-body">
-          {orders.length === 0 ? (
+          {visibleOrders.length === 0 ? (
             <div style={{ padding: '40px', textAlign: 'center' }}>
               <Empty
                 description="No potential orders detected yet"
@@ -284,7 +322,7 @@ const PotentialOrdersPanel = ({ streamId, socket }) => {
             </div>
           ) : (
             <div style={{ padding: '12px', overflow: 'auto', flex: 1 }}>
-              {orders.map(order => (
+              {visibleOrders.map(order => (
                 <div key={order._id} className="order-item">
                   <div className="order-header">
                     <div className="customer-info">

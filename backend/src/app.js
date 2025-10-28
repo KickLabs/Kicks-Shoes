@@ -258,7 +258,13 @@ const io = new SocketIOServer(server, {
 });
 
 import setupSocketHandlers from './socket.js';
+import { setSocketIO } from './utils/socketIO.js';
+
+// Setup socket handlers
 setupSocketHandlers(io);
+
+// Make io instance globally accessible for controllers
+setSocketIO(io);
 
 server.listen(PORT, HOST, () => {
   logger.info(`Server is running on port ${PORT}`);

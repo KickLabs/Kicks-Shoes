@@ -11,7 +11,7 @@ import FlashSale from '../models/FlashSale.js';
 import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
 import Product from '../models/Product.js';
-import FlashSale from '../models/FlashSale.js';
+// Removed duplicate import of FlashSale
 import logger from '../utils/logger.js';
 import { validateDiscountCode } from './discount.service.js';
 
