@@ -51,15 +51,17 @@ import potentialOrderRoutes from './routes/potentialOrderRoutes.js'; // Added Po
 import flashSaleRoutes from './routes/flashSaleRoutes.js'; // Added Flash Sale routes
 import userDiscountRoutes from './routes/userDiscountRoutes.js'; // Added UserDiscount routes
 import aiRoutes from './routes/aiRoutes.js';
+import aiSearchRoutes from './routes/aiSearchRoutes.js'; // Added AI Search routes
+import outfitSuggestionRoutes from './routes/outfitSuggestionRoutes.js'; // Added Outfit Suggestion routes
 import shipperRoutes from './routes/shipperRoutes.js'; // Added Shipper routes
 import deliveryReportRoutes from './routes/deliveryReportRoutes.js'; // Added Delivery Report routes
 import shipperApplicationRoutes from './routes/shipperApplicationRoutes.js'; // Added Shipper Application routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
-import { 
-  startDiscountStatusUpdateCron, 
+import {
+  startDiscountStatusUpdateCron,
   startFlashSaleStatusUpdateCron,
-  startAutoCompleteOrdersCron 
+  startAutoCompleteOrdersCron,
 } from './utils/cronJobs.js';
 
 // Load environment variables
@@ -200,7 +202,9 @@ app.use('/api/potential-orders', potentialOrderRoutes); // Added Potential Order
 app.use('/api/tryon', tryonRoutes);
 app.use('/api/flash-sales', flashSaleRoutes); // Added Flash Sale routes
 app.use('/api/user-discounts', userDiscountRoutes); // Added UserDiscount routes
-app.use('/api/ai', aiRoutes); // AI proxy routes
+app.use('/api/ai', aiRoutes);
+app.use('/api/ai', outfitSuggestionRoutes); // AI proxy routes
+app.use('/api/ai', aiSearchRoutes); // AI Search routes
 app.use('/api/shipper', shipperRoutes); // Added Shipper routes
 app.use('/api/delivery-reports', deliveryReportRoutes); // Added Delivery Report routes
 app.use('/api/shipper-applications', shipperApplicationRoutes); // Added Shipper Application routes

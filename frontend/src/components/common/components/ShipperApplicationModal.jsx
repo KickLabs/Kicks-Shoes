@@ -26,7 +26,7 @@ const ShipperApplicationModal = ({ visible, onClose, onSuccess }) => {
     }
   }, [visible, user, form]);
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async values => {
     try {
       setLoading(true);
       await shipperApplicationService.createApplication(values);
@@ -59,17 +59,14 @@ const ShipperApplicationModal = ({ visible, onClose, onSuccess }) => {
       onCancel={handleCancel}
       footer={null}
       width={600}
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ marginBottom: 16, color: '#666', fontSize: 14 }}>
-        Fill out the form below to apply to become a shipper. We've pre-filled your information from your profile. Please review and update if needed.
+        Fill out the form below to apply to become a shipper. We've pre-filled your information from
+        your profile. Please review and update if needed.
       </div>
-      
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-      >
+
+      <Form form={form} layout="vertical" onFinish={handleSubmit}>
         <Form.Item
           label="Full Name"
           name="fullName"
@@ -111,12 +108,7 @@ const ShipperApplicationModal = ({ visible, onClose, onSuccess }) => {
             { min: 10, message: 'Address must be at least 10 characters' },
           ]}
         >
-          <TextArea
-            placeholder="Enter your full address"
-            rows={2}
-            maxLength={200}
-            showCount
-          />
+          <TextArea placeholder="Enter your full address" rows={2} maxLength={200} showCount />
         </Form.Item>
 
         <Form.Item
@@ -143,17 +135,11 @@ const ShipperApplicationModal = ({ visible, onClose, onSuccess }) => {
           </Select>
         </Form.Item>
 
-        <Form.Item
-          label="Vehicle Plate Number (Optional)"
-          name="vehiclePlate"
-        >
+        <Form.Item label="Vehicle Plate Number (Optional)" name="vehiclePlate">
           <Input placeholder="Enter vehicle plate number" />
         </Form.Item>
 
-        <Form.Item
-          label="Delivery Experience (Optional)"
-          name="experience"
-        >
+        <Form.Item label="Delivery Experience (Optional)" name="experience">
           <TextArea
             placeholder="Describe your delivery experience (if any)"
             rows={3}
@@ -180,9 +166,7 @@ const ShipperApplicationModal = ({ visible, onClose, onSuccess }) => {
 
         <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-            <Button onClick={handleCancel}>
-              Cancel
-            </Button>
+            <Button onClick={handleCancel}>Cancel</Button>
             <Button
               type="primary"
               htmlType="submit"
@@ -203,4 +187,3 @@ const ShipperApplicationModal = ({ visible, onClose, onSuccess }) => {
 };
 
 export default ShipperApplicationModal;
-
