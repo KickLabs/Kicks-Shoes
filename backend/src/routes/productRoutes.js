@@ -21,6 +21,7 @@ import {
   updateProduct,
   addStockToVariant,
   visualSearch,
+  generateAIDescription,
 } from '../controllers/productController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
@@ -36,6 +37,9 @@ const upload = multer({
 
 // Visual search route
 router.post('/visual-search', upload.single('image'), visualSearch);
+
+// AI description generator route
+router.post('/generate-description', protect, requireRoles('admin', 'shop'), generateAIDescription);
 
 // Public routes
 router.get('/', getAllProducts);
