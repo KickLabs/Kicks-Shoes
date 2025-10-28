@@ -49,7 +49,7 @@ export default {
     '!src/controllers/discountController.js', // Exclude discount
     '!src/controllers/flashSaleController.js', // Exclude flash sale
     '!src/controllers/favouriteController.js', // Exclude favourite
-    '!src/controllers/feedbackController.js', // Exclude feedback
+    'src/controllers/feedbackController.js', // Exclude feedback
     '!src/controllers/rewardPointController.js', // Exclude reward point
     '!src/controllers/storeController.js', // Exclude store
     '!src/controllers/blogController.js', // Exclude blog
@@ -67,7 +67,7 @@ export default {
     '!src/services/discount.service.js', // Exclude discount service
     '!src/services/flashSale.service.js', // Exclude flash sale service
     '!src/services/favourite.service.js', // Exclude favourite service
-    '!src/services/feedback.service.js', // Exclude feedback service
+    'src/services/feedback.service.js', // Exclude feedback service
     '!src/services/rewardPoint.service.js', // Exclude reward point service
     '!src/services/store.service.js', // Exclude store service
     '!src/services/blog.service.js', // Exclude blog service
@@ -85,7 +85,7 @@ export default {
     '!src/models/Discount.js', // Exclude discount model
     '!src/models/FlashSale.js', // Exclude flash sale model
     '!src/models/Favourite.js', // Exclude favourite model
-    '!src/models/Feedback.js', // Exclude feedback model
+    'src/models/Feedback.js', // Exclude feedback model
     '!src/models/RewardPoint.js', // Exclude reward point model
     '!src/models/Store.js', // Exclude store model
     '!src/models/Blog.js', // Exclude blog model
