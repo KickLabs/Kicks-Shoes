@@ -13,6 +13,7 @@ import {
   StarOutlined,
   TagsOutlined,
   WarningOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import {
   Alert,
@@ -130,7 +131,7 @@ const VALIDATION_RULES = {
   description: {
     required: true,
     minLength: 20,
-    maxLength: 1000,
+    maxLength: 10000,
   },
   productType: {
     required: true,
@@ -372,6 +373,7 @@ export default function ProductDetails() {
   const [pageLoading, setPageLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
   const [inventoryForm] = Form.useForm();
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   const handleChange = (field, value) => {
     if (field === 'productType') {
@@ -1273,17 +1275,72 @@ export default function ProductDetails() {
                   )}
                 </Col>
                 <Col span={24} data-field="description">
-                  <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    <span style={{ color: 'red' }}>*</span> Product Description
-                  </label>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <label style={{ fontWeight: 600, margin: 0 }}>
+                      <span style={{ color: 'red' }}>*</span> Product Description
+                    </label>
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<ThunderboltOutlined />}
+                      loading={aiGenerating}
+                      onClick={async () => {
+                        if (!product.name || !product.name.trim()) {
+                          message.warning('Please enter product name first');
+                          return;
+                        }
+
+                        setAiGenerating(true);
+                        try {
+                          const response = await axiosInstance.post(
+                            '/products/generate-description',
+                            {
+                              name: product.name,
+                              brand: product.brand,
+                              productType: product.productType,
+                              category: product.category,
+                              price: product.price?.regular,
+                              colors: product.variants?.colors || [],
+                              sizes: product.variants?.sizes || [],
+                            }
+                          );
+
+                          if (response.data.success) {
+                            const { summary, description } = response.data.data;
+                            handleChange('summary', summary);
+                            handleChange('description', description);
+                            message.success('AI generated description successfully!');
+                          }
+                        } catch (error) {
+                          console.error('AI generation error:', error);
+                          message.error('Failed to generate description');
+                        } finally {
+                          setAiGenerating(false);
+                        }
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                      }}
+                    >
+                      AI Generate
+                    </Button>
+                  </div>
                   <TextArea
-                    placeholder="Detailed product description (20-1000 characters)"
+                    placeholder="Detailed product description (20-10000 characters)"
                     value={product.description}
                     onChange={e => handleChange('description', e.target.value)}
                     rows={4}
                     style={{ resize: 'none' }}
                     status={validationErrors.description ? 'error' : ''}
-                    maxLength={1000}
+                    maxLength={10000}
                     showCount
                   />
                   {validationErrors.description && (

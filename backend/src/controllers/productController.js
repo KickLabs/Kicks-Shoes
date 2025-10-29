@@ -4,6 +4,7 @@ import { analyzeProductImage } from '../services/gemini.service.js';
 import { ProductService } from '../services/product.service.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
+import AIDescriptionService from '../services/aiDescription.service.js';
 
 /**
  * Create a new product
@@ -493,6 +494,51 @@ export const visualSearch = async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Internal server error during visual search.',
+    });
+  }
+};
+
+/**
+ * Generate AI product description
+ * @route POST /api/products/generate-description
+ * @desc Generate product description and summary using AI
+ * @access Private/Admin
+ */
+export const generateAIDescription = async (req, res, next) => {
+  try {
+    const { name, brand, productType, category, price, colors, sizes } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product name is required',
+      });
+    }
+
+    logger.info(`Generating AI description for: ${name}`);
+
+    const productInfo = {
+      name,
+      brand,
+      productType: productType || 'shoes',
+      category,
+      price,
+      colors: colors || [],
+      sizes: sizes || [],
+    };
+
+    const result = await AIDescriptionService.generateDescription(productInfo);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    logger.error('Error generating AI description:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate description',
+      error: error.message,
     });
   }
 };

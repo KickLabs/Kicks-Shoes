@@ -56,6 +56,7 @@ import outfitSuggestionRoutes from './routes/outfitSuggestionRoutes.js'; // Adde
 import shipperRoutes from './routes/shipperRoutes.js'; // Added Shipper routes
 import deliveryReportRoutes from './routes/deliveryReportRoutes.js'; // Added Delivery Report routes
 import shipperApplicationRoutes from './routes/shipperApplicationRoutes.js'; // Added Shipper Application routes
+import aiInventoryRoutes from './routes/aiInventoryRoutes.js'; // AI Inventory Intelligence
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import {
@@ -63,6 +64,7 @@ import {
   startFlashSaleStatusUpdateCron,
   startAutoCompleteOrdersCron,
 } from './utils/cronJobs.js';
+import inventoryScheduler from './services/inventoryScheduler.service.js'; // AI Inventory Scheduler
 
 // Load environment variables
 dotenv.config();
@@ -208,11 +210,16 @@ app.use('/api/ai', aiSearchRoutes); // AI Search routes
 app.use('/api/shipper', shipperRoutes); // Added Shipper routes
 app.use('/api/delivery-reports', deliveryReportRoutes); // Added Delivery Report routes
 app.use('/api/shipper-applications', shipperApplicationRoutes); // Added Shipper Application routes
+app.use('/api/ai/inventory', aiInventoryRoutes); // AI Inventory Intelligence
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
 startFlashSaleStatusUpdateCron();
 startAutoCompleteOrdersCron();
+
+// Start AI Inventory Scheduler (runs daily at 8:00 AM)
+inventoryScheduler.start();
+logger.info('AI Inventory Intelligence started - Daily analysis at 8:00 AM');
 
 // Error handler
 app.use(errorHandler);

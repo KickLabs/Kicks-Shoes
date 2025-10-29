@@ -515,31 +515,92 @@ Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan
     };
 
     const handleWebRTCOffer = async data => {
-      if (peerConnectionRef.current) {
+      console.log('📞 Received WebRTC offer from:', data.from);
+      try {
+        if (!peerConnectionRef.current) {
+          console.error('❌ Peer connection not initialized when receiving offer');
+          return;
+        }
+
+        // Set remote description from offer
         await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+        console.log('✅ Remote description set from offer');
+
+        // Create and set local description (answer)
         const answer = await peerConnectionRef.current.createAnswer();
         await peerConnectionRef.current.setLocalDescription(answer);
+        console.log('✅ Local description set (answer created)');
 
+        // Send answer back
         socketRef.current.emit('video_call_answer', {
           from: userId || user?._id,
           to: data.from,
           answer: answer,
           conversationId: selectedChat?._id,
         });
+        console.log('📤 Sent WebRTC answer to:', data.from);
+      } catch (error) {
+        console.error('❌ Error handling WebRTC offer:', error);
+        toast.error('Failed to process video call offer', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
       }
     };
 
     const handleWebRTCAnswer = async data => {
-      if (peerConnectionRef.current) {
+      console.log('📞 Received WebRTC answer from:', data.from);
+      try {
+        if (!peerConnectionRef.current) {
+          console.error('❌ Peer connection not initialized when receiving answer');
+          return;
+        }
+
+        // Check if we already have a remote description
+        if (peerConnectionRef.current.currentRemoteDescription) {
+          console.warn('⚠️ Remote description already set, skipping');
+          return;
+        }
+
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.answer)
         );
+        console.log('✅ Remote description set from answer');
+      } catch (error) {
+        console.error('❌ Error handling WebRTC answer:', error);
+        toast.error('Failed to process video call answer', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
       }
     };
 
     const handleWebRTCIceCandidate = async data => {
-      if (peerConnectionRef.current) {
+      console.log('🧊 Received ICE candidate from:', data.from);
+      try {
+        if (!peerConnectionRef.current) {
+          console.warn('⚠️ Peer connection not initialized, ICE candidate queued');
+          return;
+        }
+
+        // Check if remote description is set before adding ICE candidates
+        if (!peerConnectionRef.current.currentRemoteDescription) {
+          console.warn('⚠️ Remote description not set yet, waiting...');
+          // Wait a bit and try again
+          setTimeout(async () => {
+            if (peerConnectionRef.current && peerConnectionRef.current.currentRemoteDescription) {
+              await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+              console.log('✅ ICE candidate added (delayed)');
+            }
+          }, 500);
+          return;
+        }
+
         await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+        console.log('✅ ICE candidate added:', data.candidate.type);
+      } catch (error) {
+        console.error('❌ Error adding ICE candidate:', error);
+        // Don't show toast for ICE candidate errors as they are common
       }
     };
 
@@ -871,22 +932,64 @@ Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan
       }
     };
 
-    // Enhanced connection state monitoring
+    // Enhanced connection state monitoring with auto-retry
     pc.onconnectionstatechange = () => {
       console.log('🔗 Peer connection state changed:', pc.connectionState);
       setConnectionStatus(pc.connectionState);
+
       if (pc.connectionState === 'failed') {
         console.error('❌ Peer connection failed, attempting to restart ICE');
-        pc.restartIce();
+        toast.warning('Connection failed, retrying...', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+
+        // Auto-retry after 2 seconds
+        setTimeout(() => {
+          if (pc.connectionState === 'failed') {
+            try {
+              pc.restartIce();
+              console.log('🔄 ICE restart initiated');
+            } catch (error) {
+              console.error('❌ Failed to restart ICE:', error);
+            }
+          }
+        }, 2000);
+      } else if (pc.connectionState === 'connected') {
+        console.log('✅ Peer connection established successfully');
+        toast.success('Video call connected!', {
+          position: 'top-right',
+          autoClose: 2000,
+        });
+      } else if (pc.connectionState === 'disconnected') {
+        console.warn('⚠️ Peer connection disconnected');
+        toast.info('Connection interrupted, reconnecting...', {
+          position: 'top-right',
+          autoClose: 2000,
+        });
       }
     };
 
     pc.oniceconnectionstatechange = () => {
       console.log('🧊 ICE connection state:', pc.iceConnectionState);
       setIceConnectionState(pc.iceConnectionState);
+
       if (pc.iceConnectionState === 'failed') {
         console.error('❌ ICE connection failed, attempting to restart ICE');
-        pc.restartIce();
+
+        // Auto-retry after 2 seconds
+        setTimeout(() => {
+          if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+            try {
+              pc.restartIce();
+              console.log('🔄 ICE restart initiated due to failed state');
+            } catch (error) {
+              console.error('❌ Failed to restart ICE:', error);
+            }
+          }
+        }, 2000);
+      } else if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        console.log('✅ ICE connection established');
       }
     };
 
@@ -1364,7 +1467,7 @@ Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan
                   )}
                 </div>
               </div>
-              <div className="chat-messages" ref={messagesEndRef}>
+              <div style={{ maxHeight: 'none' }} className="chat-messages" ref={messagesEndRef}>
                 {isLoading && messages.length === 0 && (
                   <div className="loading-messages">
                     <Text>Loading messages...</Text>
@@ -1910,13 +2013,70 @@ Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan
                   transform: 'translate(-50%, -50%)',
                   color: 'white',
                   textAlign: 'center',
+                  width: '80%',
                 }}
               >
-                <VideoCameraOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
-                <div>Đang chờ kết nối...</div>
-                <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
-                  Connection: {connectionStatus} | ICE: {iceConnectionState}
+                <VideoCameraOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+                <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '12px' }}>
+                  {connectionStatus === 'connecting' || iceConnectionState === 'checking'
+                    ? '⏳ Connecting...'
+                    : connectionStatus === 'connected'
+                      ? '✅ Connected'
+                      : connectionStatus === 'failed' || iceConnectionState === 'failed'
+                        ? '❌ Connection Failed'
+                        : connectionStatus === 'disconnected'
+                          ? '⚠️ Disconnected'
+                          : '📞 Waiting for connection...'}
                 </div>
+
+                {/* Detailed connection status */}
+                <div
+                  style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8, lineHeight: '1.6' }}
+                >
+                  <div>
+                    🔗 Connection: <strong>{connectionStatus || 'initializing'}</strong>
+                  </div>
+                  <div>
+                    🧊 ICE State: <strong>{iceConnectionState || 'new'}</strong>
+                  </div>
+                </div>
+
+                {/* Show retry button if connection failed */}
+                {(connectionStatus === 'failed' || iceConnectionState === 'failed') && (
+                  <div style={{ marginTop: '16px' }}>
+                    <Button
+                      type="primary"
+                      size="small"
+                      onClick={() => {
+                        console.log('🔄 Retrying connection...');
+                        if (peerConnectionRef.current) {
+                          try {
+                            peerConnectionRef.current.restartIce();
+                            toast.info('Retrying connection...', {
+                              position: 'top-right',
+                              autoClose: 2000,
+                            });
+                          } catch (error) {
+                            console.error('❌ Failed to restart ICE:', error);
+                            toast.error('Failed to retry. Please end call and try again.', {
+                              position: 'top-right',
+                              autoClose: 3000,
+                            });
+                          }
+                        }
+                      }}
+                    >
+                      🔄 Retry Connection
+                    </Button>
+                  </div>
+                )}
+
+                {/* Show helpful message for long wait */}
+                {connectionStatus === 'new' && (
+                  <div style={{ fontSize: '11px', marginTop: '16px', opacity: 0.6 }}>
+                    💡 Tip: Make sure both parties have accepted the call
+                  </div>
+                )}
               </div>
             )}
           </div>
