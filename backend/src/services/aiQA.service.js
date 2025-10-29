@@ -172,7 +172,7 @@ class AIQAService {
    */
   async generateAnswer(question, context = {}) {
     if (!this.model) {
-      return null;
+      return this.generateRuleBasedAnswer(question, context);
     }
 
     try {
@@ -456,7 +456,28 @@ Remember: Always match the user's language and format responses clearly!
 
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
-      const answer = response.text().trim();
+      let answer = '';
+      try {
+        if (typeof response.text === 'function') {
+          answer = response.text().trim();
+        }
+      } catch (_) {
+        // ignore and try alternative extraction
+      }
+
+      // Fallback extraction for SDK variants that return candidates array
+      if (!answer && response?.candidates?.length) {
+        const parts = response.candidates[0]?.content?.parts || [];
+        const textPart = parts.find(p => typeof p.text === 'string');
+        if (textPart?.text) {
+          answer = String(textPart.text).trim();
+        }
+      }
+
+      // If still empty, use rule-based fallback
+      if (!answer) {
+        answer = this.generateRuleBasedAnswer(question, context);
+      }
 
       logger.info('AI Q&A generated answer:', {
         question: question.substring(0, 50),
@@ -466,8 +487,64 @@ Remember: Always match the user's language and format responses clearly!
       return answer;
     } catch (error) {
       logger.error('Error generating AI answer:', error);
-      return null;
+      return this.generateRuleBasedAnswer(question, context);
     }
+  }
+
+  /**
+   * Deterministic fallback answer when AI model is unavailable
+   */
+  generateRuleBasedAnswer(question, context = {}) {
+    const q = (question || '').toLowerCase();
+
+    // Order format guidance (VN and EN keywords)
+    if (
+      /(cách|làm sao|đặt|chốt).*\b(hàng|order|mua|chốt)\b/.test(q) ||
+      /how.*(order|buy)/.test(q) ||
+      q.includes('cách chốt')
+    ) {
+      return (
+        '📝 Cách đặt hàng trên livestream:\n' +
+        '**Format:** chốt [số_lượng] [SKU] màu [màu] size [size] [SĐT]\n' +
+        'Ví dụ:\n' +
+        '• chốt 2 đôi HJ6777 màu black size 41 0386188917\n' +
+        '• chốt 1 NK-AM-999 màu trắng size 42 0909123456\n' +
+        'Bạn cho mình biết size và màu bạn muốn nhé!'
+      );
+    }
+
+    // Shipping/COD
+    if (/cod|ship|giao hàng|vận chuyển/.test(q)) {
+      return '✅ Shop hỗ trợ COD toàn quốc. Phí ship 30k cho toàn quốc. Bạn muốn chốt sản phẩm nào ạ?';
+    }
+
+    // Size/stock
+    if (/size|cỡ|kích thước/.test(q)) {
+      return '🔎 Size còn hàng tùy màu/sản phẩm. Bạn cho mình biết mẫu và size bạn cần để mình kiểm tra nhanh nhé!';
+    }
+
+    // Pinned product quick intro if we have details
+    if (context?.detailedProduct) {
+      const p = context.detailedProduct;
+      const price = p.price?.sale || p.price?.regular || p.price || 'N/A';
+      const sizes = Array.isArray(p.variants?.sizes)
+        ? p.variants.sizes.join(', ')
+        : 'Đang cập nhật';
+      const colors = Array.isArray(p.variants?.colors)
+        ? p.variants.colors.join(', ')
+        : 'Đang cập nhật';
+      return (
+        `👟 ${p.name} — Giới thiệu nhanh\n` +
+        `• Giá: ${typeof price === 'number' ? price.toLocaleString('vi-VN') + 'đ' : price}\n` +
+        `• Size: ${sizes}\n` +
+        `• Màu: ${colors}\n` +
+        `Bạn muốn mình tư vấn size/màu phù hợp không?`
+      );
+    }
+
+    // Generic fallback
+    const host = context.hostName || 'Shop';
+    return `👋 ${host} sẵn sàng hỗ trợ! Bạn muốn hỏi về sản phẩm, size, màu, giá hay cách đặt hàng?`;
   }
 
   /**
@@ -529,11 +606,11 @@ Remember: Always match the user's language and format responses clearly!
       }
 
       // Generate answer
-      const answer = await this.generateAnswer(messageContent, enhancedContext);
+      let answer = await this.generateAnswer(messageContent, enhancedContext);
 
-      if (!answer) {
-        logger.warn('AIQA skipped: no answer generated');
-        return null;
+      // Ensure we always have a non-empty answer
+      if (!answer || (typeof answer === 'string' && !answer.trim())) {
+        answer = this.generateRuleBasedAnswer(messageContent, enhancedContext);
       }
 
       return {
