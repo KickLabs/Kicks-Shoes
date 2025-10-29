@@ -1,8 +1,6 @@
-import { validationResult } from 'express-validator';
+import Feedback from '../models/Feedback.js';
 import { FeedbackService } from '../services/feedback.service.js';
 import logger from '../utils/logger.js';
-import Feedback from '../models/Feedback.js';
-import Report from '../models/Report.js';
 /**
  * Create a new feedback
  * @route POST /api/feedback
@@ -124,16 +122,8 @@ export const deleteFeedback = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Feedback not found' });
     }
 
-    // Send notification emails
+    // Update report status if there's a pending report
     try {
-      const User = (await import('../models/User.js')).default;
-      const { sendTemplatedEmail } = await import('../utils/sendEmail.js');
-
-      // Populate the feedback with user and product details
-      const feedback = await Feedback.findById(feedbackId).populate('user').populate('product');
-      const shopUser = await User.findOne({ role: 'shop' });
-
-      // Check if there's a pending report for this feedback
       const Report = (await import('../models/Report.js')).default;
       const pendingReport = await Report.findOne({
         targetType: 'review',
@@ -141,53 +131,7 @@ export const deleteFeedback = async (req, res, next) => {
         status: 'pending',
       });
 
-      // Email to shop about review deletion
-      if (shopUser && shopUser.email && feedback?.product) {
-        await sendTemplatedEmail({
-          email: shopUser.email,
-          templateType: 'REVIEW_DELETED_SHOP',
-          templateData: {
-            shopName: shopUser.fullName || 'Shop',
-            productName: feedback.product.name,
-            userName: feedback.user?.fullName || feedback.user?.email || 'User',
-            adminNote: 'Review deleted by user',
-            resolution: 'Review Deleted',
-          },
-        });
-      }
-
-      // Email to user about their review deletion
-      if (feedback?.user?.email) {
-        await sendTemplatedEmail({
-          email: feedback.user.email,
-          templateType: 'REVIEW_DELETED',
-          templateData: {
-            userName: feedback.user.fullName || feedback.user.email,
-            productName: feedback.product?.name || 'Product',
-            adminNote: 'Review deleted by user',
-            resolution: 'Review Deleted',
-          },
-        });
-      }
-
-      // Email to reporter if there's a pending report
       if (pendingReport) {
-        const reporterUser = await User.findById(pendingReport.reporter);
-        if (reporterUser && reporterUser.email) {
-          await sendTemplatedEmail({
-            email: reporterUser.email,
-            templateType: 'REPORT_RESOLVED',
-            templateData: {
-              userName: reporterUser.fullName || reporterUser.email,
-              targetName: feedback?.product?.name || 'Product Review',
-              adminNote: 'Review deleted by user',
-              resolution: 'Review Deleted',
-              reportReason: pendingReport.reason,
-              reportDescription: pendingReport.description,
-            },
-          });
-        }
-
         // Update report status
         pendingReport.status = 'resolved';
         pendingReport.resolution = 'delete_comment';
@@ -195,9 +139,9 @@ export const deleteFeedback = async (req, res, next) => {
         pendingReport.resolvedAt = new Date();
         await pendingReport.save();
       }
-    } catch (emailError) {
-      console.error('Error sending notification emails:', emailError);
-      // Don't fail the request if email fails
+    } catch (error) {
+      console.error('Error updating report status:', error);
+      // Don't fail the request if report update fails
     }
 
     res.status(200).json({
@@ -301,6 +245,7 @@ export const reportFeedback = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Feedback not found' });
     }
 
+    const Report = (await import('../models/Report.js')).default;
     const report = new Report({
       reporter: req.user.id,
       targetType: 'review',
@@ -311,48 +256,6 @@ export const reportFeedback = async (req, res, next) => {
     });
 
     await report.save();
-
-    // Send notification emails
-    try {
-      const User = (await import('../models/User.js')).default;
-      const { sendTemplatedEmail } = await import('../utils/sendEmail.js');
-
-      const shopUser = await User.findOne({ role: 'shop' });
-      const reporterUser = await User.findById(req.user.id);
-
-      // Email to shop about review report
-      if (shopUser && shopUser.email && feedback.product) {
-        await sendTemplatedEmail({
-          email: shopUser.email,
-          templateType: 'REVIEW_REPORTED',
-          templateData: {
-            shopName: shopUser.fullName || 'Shop',
-            productName: feedback.product.name,
-            userName: feedback.user?.fullName || feedback.user?.email || 'User',
-            reporterName: reporterUser?.fullName || reporterUser?.email || 'User',
-            reason,
-            description,
-          },
-        });
-      }
-
-      // Email to reporter confirming report
-      if (reporterUser && reporterUser.email && feedback.product) {
-        await sendTemplatedEmail({
-          email: reporterUser.email,
-          templateType: 'REVIEW_REPORT_SUBMITTED',
-          templateData: {
-            userName: reporterUser.fullName || reporterUser.email,
-            productName: feedback.product.name,
-            reason,
-            description,
-          },
-        });
-      }
-    } catch (emailError) {
-      console.error('Error sending notification emails:', emailError);
-      // Don't fail the request if email fails
-    }
 
     res.status(201).json({
       success: true,
@@ -380,6 +283,7 @@ export const adminApproveFeedback = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Feedback not found' });
     }
 
+    const Report = (await import('../models/Report.js')).default;
     const report = await Report.findOne({
       targetId: feedbackId,
       targetType: 'review',
@@ -391,9 +295,8 @@ export const adminApproveFeedback = async (req, res, next) => {
         .status(400)
         .json({ success: false, message: 'No pending report found for this feedback' });
     }
-
     if (req.method === 'PUT') {
-      feedback.status = 'approved';
+      feedback.status = true;
       feedback.isVerified = true;
       await feedback.save();
 
@@ -415,68 +318,10 @@ export const adminApproveFeedback = async (req, res, next) => {
       await Feedback.findByIdAndUpdate(feedbackId, { status: false, deletedBy: 'admin' });
 
       report.status = 'resolved';
-      report.resolution = 'ban';
+      report.resolution = 'delete_comment';
       report.resolvedBy = req.user.id;
       report.resolvedAt = new Date();
       await report.save();
-
-      // Send notification emails
-      try {
-        const User = (await import('../models/User.js')).default;
-        const { sendTemplatedEmail } = await import('../utils/sendEmail.js');
-
-        const feedback = await Feedback.findById(feedbackId).populate('user').populate('product');
-        const shopUser = await User.findOne({ role: 'shop' });
-
-        // Email to review author about deletion
-        if (feedback?.user?.email) {
-          await sendTemplatedEmail({
-            email: feedback.user.email,
-            templateType: 'REVIEW_DELETED',
-            templateData: {
-              userName: feedback.user.fullName || feedback.user.email,
-              productName: feedback.product?.name || 'Product',
-              adminNote: 'Review deleted by admin due to policy violation',
-              resolution: 'Review Deleted',
-            },
-          });
-        }
-
-        // Email to shop about review deletion
-        if (shopUser && shopUser.email && feedback?.product) {
-          await sendTemplatedEmail({
-            email: shopUser.email,
-            templateType: 'REVIEW_DELETED_SHOP',
-            templateData: {
-              shopName: shopUser.fullName || 'Shop',
-              productName: feedback.product.name,
-              userName: feedback.user?.fullName || feedback.user?.email || 'User',
-              adminNote: 'Review deleted by admin due to policy violation',
-              resolution: 'Review Deleted',
-            },
-          });
-        }
-
-        // Email to reporter about report resolution
-        const reporterUser = await User.findById(report.reporter);
-        if (reporterUser && reporterUser.email) {
-          await sendTemplatedEmail({
-            email: reporterUser.email,
-            templateType: 'REPORT_RESOLVED',
-            templateData: {
-              userName: reporterUser.fullName || reporterUser.email,
-              targetName: feedback?.product?.name || 'Product Review',
-              adminNote: 'Review deleted by admin due to policy violation',
-              resolution: 'Review Deleted',
-              reportReason: report.reason,
-              reportDescription: report.description,
-            },
-          });
-        }
-      } catch (emailError) {
-        console.error('Error sending notification emails:', emailError);
-        // Don't fail the request if email fails
-      }
 
       return res.status(200).json({
         success: true,
