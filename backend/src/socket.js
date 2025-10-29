@@ -1,6 +1,7 @@
 import logger from './utils/logger.js';
 import { saveMessage } from './services/chat.service.js';
 import { setupLiveStreamHandlers } from './services/livestreamSocket.service.js';
+import liveStreamService from './services/livestream.service.js';
 
 export default function setupSocketHandlers(io) {
   // Setup LiveStream handlers
@@ -11,6 +12,81 @@ export default function setupSocketHandlers(io) {
 
   io.on('connection', socket => {
     logger.info(`Socket connected: ${socket.id}`);
+    // Fallback handlers on default namespace to support clients not using /livestream
+    socket.on('join_as_viewer', async data => {
+      try {
+        const { roomId, userId } = data || {};
+        const result = await liveStreamService.joinAsViewer(socket.id, roomId, userId);
+        socket.join(roomId);
+        socket.emit('joined', {
+          type: 'joined',
+          role: 'viewer',
+          clientId: socket.id,
+          viewerId: result.viewerId,
+          streamData: result.streamData,
+        });
+        logger.info(`(default ns) Viewer ${userId || 'anonymous'} joined room ${roomId}`);
+      } catch (error) {
+        logger.error('(default ns) Error joining as viewer:', error);
+        socket.emit('error', { type: 'join_error', message: error.message });
+      }
+    });
+
+    socket.on('join_as_host', async data => {
+      try {
+        const { roomId, userId } = data || {};
+        await liveStreamService.joinAsHost(socket.id, roomId, userId);
+        socket.join(roomId);
+        socket.emit('joined', { type: 'joined', role: 'host', clientId: socket.id });
+        logger.info(`(default ns) Host ${userId} joined room ${roomId}`);
+      } catch (error) {
+        logger.error('(default ns) Error joining as host:', error);
+        socket.emit('error', { type: 'join_error', message: error.message });
+      }
+    });
+
+    socket.on('chat_message', async data => {
+      try {
+        const result = await liveStreamService.handleChatMessage(socket.id, data || {});
+        if (result) {
+          // Broadcast to both namespaces for safety
+          io.to(result.roomId).emit('chat_message', {
+            type: 'chat',
+            message: result.message,
+            from: result.message.senderRole,
+            clientId: socket.id,
+            timestamp: result.message.timestamp,
+          });
+          io.of('/livestream').to(result.roomId).emit('chat_message', {
+            type: 'chat',
+            message: result.message,
+            from: result.message.senderRole,
+            clientId: socket.id,
+            timestamp: result.message.timestamp,
+          });
+
+          if (result.aiResponse) {
+            io.to(result.roomId).emit('ai_bot_reply', {
+              type: 'ai_bot_reply',
+              originalMessage: result.message,
+              answer: result.aiResponse.answer,
+              confidence: result.aiResponse.confidence,
+              timestamp: result.aiResponse.respondedAt,
+            });
+            io.of('/livestream').to(result.roomId).emit('ai_bot_reply', {
+              type: 'ai_bot_reply',
+              originalMessage: result.message,
+              answer: result.aiResponse.answer,
+              confidence: result.aiResponse.confidence,
+              timestamp: result.aiResponse.respondedAt,
+            });
+          }
+        }
+      } catch (error) {
+        logger.error('(default ns) Error handling chat_message:', error);
+        socket.emit('error', { type: 'chat_error', message: error.message });
+      }
+    });
 
     // Join user-specific room for video call notifications
     socket.on('join_user_room', userId => {
