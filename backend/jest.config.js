@@ -32,6 +32,9 @@ export default {
     'src/utils/logger.js', // Logger utility
     '!src/utils/validation.js', // Validation utility
 
+    // AI & Try-on Feature (Integration test - no service layer)
+    'src/routes/tryonRoutes.js', // Try-on routes with Gemini AI integration
+
     // Common files used across multiple suites
     'src/models/LiveStream.js', // LiveStream model
     'src/controllers/livestreamController.js', // Livestream controller
@@ -45,7 +48,7 @@ export default {
     'src/controllers/productController.js', // Exclude product
     '!src/controllers/orderController.js', // Exclude order
     '!src/controllers/cartController.js', // Exclude cart
-    '!src/controllers/categoryController.js', // Exclude category
+    'src/controllers/categoryController.js', // Exclude category
     '!src/controllers/discountController.js', // Exclude discount
     '!src/controllers/flashSaleController.js', // Exclude flash sale
     '!src/controllers/favouriteController.js', // Exclude favourite
@@ -61,9 +64,9 @@ export default {
     '!src/services/auth.service.js', // Exclude auth service
     '!src/services/user.service.js', // Exclude user service
     'src/services/product.service.js', // Exclude product service
-    'src/services/order.service.js', // Exclude order service
+    '!src/services/order.service.js', // Exclude order service
     '!src/services/cart.service.js', // Exclude cart service
-    '!src/services/category.service.js', // Exclude category service
+    'src/services/category.service.js', // Exclude category service
     '!src/services/discount.service.js', // Exclude discount service
     '!src/services/flashSale.service.js', // Exclude flash sale service
     '!src/services/favourite.service.js', // Exclude favourite service
@@ -81,7 +84,7 @@ export default {
     'src/models/Product.js', // Exclude product model
     '!src/models/Order.js', // Exclude order model
     '!src/models/Cart.js', // Exclude cart model
-    '!src/models/Category.js', // Exclude category model
+    'src/models/Category.js', // Exclude category model
     '!src/models/Discount.js', // Exclude discount model
     '!src/models/FlashSale.js', // Exclude flash sale model
     '!src/models/Favourite.js', // Exclude favourite model
