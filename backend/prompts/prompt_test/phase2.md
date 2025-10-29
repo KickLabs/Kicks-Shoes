@@ -1,6 +1,9 @@
 Prompt 2: Generate Test Cases
+"Generate a comprehensive **Test Cases Matrix** (Markdown) for the feature **Blog & Comments**, based on `feature-analysis-blog-comments.md`.
 "Generate a comprehensive _Test Cases Matrix_ (Markdown) for the feature _Order in Livestream_, based on feature-analysis-order-in-livestream.md.
 
+**Feature Summary**
+The system manages blog posts with CRUD operations, content publishing, user commenting, and engagement features like likes and views.
 _Feature Summary_
 The system detects orders from livestream chat messages, creates _Potential Orders_, and automatically converts them into _Orders_.
 

@@ -50,7 +50,7 @@ export default {
     '!src/controllers/orderController.js', // Exclude order
     '!src/controllers/cartController.js', // Exclude cart
     '!src/controllers/categoryController.js', // Exclude category
-    '!src/controllers/discountController.js', // Exclude discount
+    'src/controllers/discountController.js', // Exclude discount
     '!src/controllers/flashSaleController.js', // Exclude flash sale
     'src/controllers/favouriteController.js', // Include favourite controller
     'src/routes/favouriteRoutes.js', // Include favourite routes
@@ -69,7 +69,7 @@ export default {
     'src/services/order.service.js', // Exclude order service
     '!src/services/cart.service.js', // Exclude cart service
     '!src/services/category.service.js', // Exclude category service
-    '!src/services/discount.service.js', // Exclude discount service
+    'src/services/discount.service.js', // Exclude discount service
     '!src/services/flashSale.service.js', // Exclude flash sale service
     'src/services/favourite.service.js', // Exclude favourite service
     'src/services/feedback.service.js', // Exclude feedback service
@@ -87,7 +87,7 @@ export default {
     '!src/models/Order.js', // Exclude order model
     '!src/models/Cart.js', // Exclude cart model
     '!src/models/Category.js', // Exclude category model
-    '!src/models/Discount.js', // Exclude discount model
+    'src/models/Discount.js', // Exclude discount model
     '!src/models/FlashSale.js', // Exclude flash sale model
     'src/models/Favourite.js', // Exclude favourite model
     'src/models/Feedback.js', // Exclude feedback model
