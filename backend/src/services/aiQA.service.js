@@ -468,9 +468,15 @@ Remember: Always match the user's language and format responses clearly!
   async processMessage(message, context = {}) {
     try {
       const messageContent = message.content || message.text || message;
+      logger.info('AIQA processMessage called', {
+        length: typeof messageContent === 'string' ? messageContent.length : 0,
+        preview: typeof messageContent === 'string' ? messageContent.slice(0, 60) : '',
+      });
 
       // Check if it's a question
-      if (!this.isQuestion(messageContent)) {
+      const isQuestion = this.isQuestion(messageContent);
+      if (!isQuestion) {
+        logger.info('AIQA skipped: not a question');
         return null;
       }
 
@@ -518,6 +524,7 @@ Remember: Always match the user's language and format responses clearly!
       const answer = await this.generateAnswer(messageContent, enhancedContext);
 
       if (!answer) {
+        logger.warn('AIQA skipped: no answer generated');
         return null;
       }
 
