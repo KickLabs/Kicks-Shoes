@@ -38,25 +38,15 @@ class AIInventoryService {
 
       let GoogleGenerativeAIClass = null;
       try {
-        // Try the primary SDK name
-        ({ GoogleGenerativeAI: GoogleGenerativeAIClass } = await import('@google/generative-ai'));
-      } catch (e1) {
-        try {
-          // Fallback to alternate package name
-          ({ GoogleGenerativeAI: GoogleGenerativeAIClass } = await import('@google/genai'));
-        } catch (e2) {
-          logger.warn('Google GenAI SDK not available. Skipping AI initialization.');
-          return;
-        }
-      }
+        // Import @google/generative-ai
+        const { GoogleGenerativeAI } = await import('@google/generative-ai');
 
-      let instance;
-      try {
-        instance = new GoogleGenerativeAIClass({ apiKey });
-      } catch (_) {
-        instance = new GoogleGenerativeAIClass(apiKey);
+        // Initialize with API key (string parameter)
+        this.genAI = new GoogleGenerativeAI(apiKey);
+      } catch (error) {
+        logger.warn('Google GenAI SDK not available. Skipping AI initialization.', error.message);
+        return;
       }
-      this.genAI = instance;
       this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
       logger.info('AI Inventory Service initialized');
     } catch (error) {

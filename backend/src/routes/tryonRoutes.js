@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 dotenv.config();
 
@@ -13,7 +13,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 if (!GEMINI_API_KEY) {
   console.error('Missing GEMINI_API_KEY environment variable.');
 }
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const ai = new GoogleGenerativeAI(GEMINI_API_KEY);
 const MODEL_ID = process.env.GEMINI_MODEL_ID || 'gemini-2.0-flash-exp-image-generation';
 
 router.post(

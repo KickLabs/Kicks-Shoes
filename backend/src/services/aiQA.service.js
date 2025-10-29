@@ -42,42 +42,25 @@ class AIQAService {
 
       logger.info('✅ API Key found! Attempting to initialize Gemini SDK...');
 
-      let GoogleGenerativeAIClass = null;
+      // Import @google/generative-ai (standard package)
+      let GoogleGenerativeAI;
       try {
-        ({ GoogleGenerativeAI: GoogleGenerativeAIClass } = await import('@google/generative-ai'));
+        ({ GoogleGenerativeAI } = await import('@google/generative-ai'));
         logger.info('✅ Successfully imported @google/generative-ai SDK');
-      } catch (e1) {
-        logger.warn('⚠️ @google/generative-ai not found, trying @google/genai...');
-        try {
-          ({ GoogleGenerativeAI: GoogleGenerativeAIClass } = await import('@google/genai'));
-          logger.info('✅ Successfully imported @google/genai SDK');
-        } catch (e2) {
-          logger.error(
-            '❌ CRITICAL: Google GenAI SDK not available!\n' +
-              '   Tried: @google/generative-ai and @google/genai\n' +
-              '   Please install: npm install @google/generative-ai\n' +
-              '   Error details:',
-            { e1: e1.message, e2: e2.message }
-          );
-          this.model = null;
-          return; // Không khởi tạo Gemini, sẽ dùng NLP Fallback
-        }
+      } catch (error) {
+        logger.error(
+          '❌ CRITICAL: @google/generative-ai SDK not available!\n' +
+            '   Please install: npm install @google/generative-ai\n' +
+            '   Error details:',
+          error.message
+        );
+        this.model = null;
+        return; // Không khởi tạo Gemini, sẽ dùng NLP Fallback
       }
 
-      let instance;
-      try {
-        // @google/genai (v1+) expects an options object
-        logger.info('Attempting to create Gemini instance with options object...');
-        instance = new GoogleGenerativeAIClass({ apiKey });
-        logger.info('✅ Gemini instance created with options object');
-      } catch (err) {
-        // Older @google/generative-ai accepts raw string
-        logger.warn('⚠️ Options object failed, trying with raw API key string...');
-        instance = new GoogleGenerativeAIClass(apiKey);
-        logger.info('✅ Gemini instance created with raw API key');
-      }
-
-      this.genAI = instance;
+      // Initialize Gemini with API key
+      logger.info('Creating Gemini instance...');
+      this.genAI = new GoogleGenerativeAI(apiKey);
       const modelName = 'gemini-2.0-flash-exp';
       logger.info(`Initializing Gemini model: ${modelName}`);
       this.model = this.genAI.getGenerativeModel({ model: modelName });
