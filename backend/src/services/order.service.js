@@ -578,6 +578,8 @@ export class OrderService {
       } finally {
         await session.endSession();
       }
+
+      return order;
     } catch (error) {
       logger.error('Error in getOrderByOrderId:', {
         error: error.message,
