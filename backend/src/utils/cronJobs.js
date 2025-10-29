@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import Discount from '../models/Discount.js';
+import UserDiscount from '../models/UserDiscount.js';
 import Order from '../models/Order.js';
 import { updateFlashSaleStatuses } from '../services/flashSale.service.js';
 import EmailService from '../services/email.service.js';
@@ -77,6 +78,40 @@ export const startAutoCompleteOrdersCron = () => {
       logger.info(`Auto-complete orders cron job completed: ${completedCount} orders completed`);
     } catch (error) {
       logger.error('Error in auto-complete orders cron job:', error);
+    }
+  });
+};
+
+// ✅ Run every hour to update expired user discounts
+export const startUserDiscountExpireCheckCron = () => {
+  cron.schedule('0 * * * *', async () => {
+    try {
+      logger.info('Running user discount expire check cron job...');
+      const now = new Date();
+      
+      // Find all saved user discounts with expired discount dates
+      const expiredUserDiscounts = await UserDiscount.find({
+        status: 'saved',
+      }).populate('discount');
+
+      let expiredCount = 0;
+
+      for (const userDiscount of expiredUserDiscounts) {
+        // Skip if discount is not populated or already expired
+        if (!userDiscount.discount) continue;
+
+        // Check if discount has expired
+        if (userDiscount.discount.endDate < now) {
+          userDiscount.status = 'expired';
+          await userDiscount.save();
+          expiredCount++;
+          logger.info(`UserDiscount ${userDiscount._id} marked as expired (code: ${userDiscount.discount.code})`);
+        }
+      }
+
+      logger.info(`User discount expire check completed: ${expiredCount} vouchers expired`);
+    } catch (error) {
+      logger.error('Error in user discount expire check cron job:', error);
     }
   });
 };

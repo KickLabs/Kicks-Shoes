@@ -9,13 +9,13 @@ import {
   getActiveDiscounts,
   validateDiscountCode,
 } from '../controllers/discountController.js';
-import { protect, requireAdmin } from '../middlewares/auth.middleware.js';
+import { protect, requireAdmin, optionalAuth } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
 // Public routes
 router.get('/active', getActiveDiscounts);
-router.post('/validate', validateDiscountCode);
+router.post('/validate', optionalAuth, validateDiscountCode);
 
 // Protected routes (Admin only)
 router.use(protect, requireAdmin);

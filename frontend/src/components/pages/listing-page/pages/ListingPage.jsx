@@ -59,7 +59,7 @@ const ListingPage = () => {
       if (newFilters.category) params.category = newFilters.category;
       if (newFilters.minPrice !== undefined && newFilters.minPrice > 0)
         params.minPrice = newFilters.minPrice;
-      if (newFilters.maxPrice !== undefined && newFilters.maxPrice < 1000)
+      if (newFilters.maxPrice !== undefined && newFilters.maxPrice < 3000000)
         params.maxPrice = newFilters.maxPrice;
       if (newFilters.saleType) params.saleType = newFilters.saleType;
       if (isNewParam) params.isNew = true;

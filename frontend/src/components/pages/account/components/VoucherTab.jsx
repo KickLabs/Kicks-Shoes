@@ -84,81 +84,108 @@ const VoucherTab = () => {
     }
   };
 
-  // Filter vouchers by status
+  // Filter vouchers by status with additional date check
   const getVouchersByStatus = status => {
-    return vouchers.filter(voucher => voucher.status === status);
+    const now = new Date();
+
+    return vouchers.filter(voucher => {
+      // ✅ Double-check: If backend says 'saved' but expired, treat as expired
+      if (voucher.status === 'saved' && voucher.validTo) {
+        const endDate = new Date(voucher.validTo);
+        if (endDate < now) {
+          // Voucher is expired but backend hasn't updated yet
+          return status === 'expired';
+        }
+      }
+
+      return voucher.status === status;
+    });
   };
 
   // Render voucher item
-  const renderVoucherItem = voucher => (
-    <div key={voucher.id} className="voucher-item">
-      <div className="voucher-item-header">
-        <div className="voucher-code">
-          <h4>{voucher.code}</h4>
-          <Tag color={getStatusColor(voucher.status)}>{getStatusText(voucher.status)}</Tag>
-        </div>
-        <div className="voucher-discount">
-          {voucher.discountType === 'percentage'
-            ? `${voucher.discountValue}%`
-            : formatCurrency(voucher.discountValue)}
-        </div>
-      </div>
+  const renderVoucherItem = voucher => {
+    // ✅ Check if voucher is expired
+    const now = new Date();
+    let actualStatus = voucher.status;
+    if (voucher.status === 'saved' && voucher.validTo) {
+      const endDate = new Date(voucher.validTo);
+      if (endDate < now) {
+        actualStatus = 'expired';
+      }
+    }
 
-      <div className="voucher-item-content">
-        <h5>{voucher.title}</h5>
-        <p>{voucher.description}</p>
-
-        <div className="voucher-details">
-          <div className="detail-item">
-            <CalendarOutlined />
-            <span>
-              {formatDate(voucher.validFrom)} - {formatDate(voucher.validTo)}
-            </span>
+    return (
+      <div key={voucher.id} className="voucher-item">
+        <div className="voucher-item-header">
+          <div className="voucher-code">
+            <h4>{voucher.code}</h4>
+            <Tag color={getStatusColor(actualStatus)}>{getStatusText(actualStatus)}</Tag>
           </div>
-          <div className="detail-item">
-            <DollarOutlined />
-            <span>Minimum order: {formatCurrency(voucher.minOrderAmount)}</span>
+          <div className="voucher-discount">
+            {voucher.discountType === 'percentage'
+              ? `${voucher.discountValue}%`
+              : formatCurrency(voucher.discountValue)}
           </div>
-          {voucher.discountType === 'percentage' && voucher.maxDiscountAmount && (
+        </div>
+
+        <div className="voucher-item-content">
+          <h5>{voucher.title}</h5>
+          <p>{voucher.description}</p>
+
+          <div className="voucher-details">
             <div className="detail-item">
-              <span>Maximum discount: {formatCurrency(voucher.maxDiscountAmount)}</span>
+              <CalendarOutlined />
+              <span>
+                {formatDate(voucher.validFrom)} - {formatDate(voucher.validTo)}
+              </span>
             </div>
-          )}
-          {voucher.status === 'used' && voucher.usedAt && (
             <div className="detail-item">
-              <CheckCircleOutlined />
-              <span>Used at: {formatDate(voucher.usedAt)}</span>
+              <DollarOutlined />
+              <span>Minimum order: {formatCurrency(voucher.minOrderAmount)}</span>
             </div>
-          )}
-          {voucher.status === 'used' && voucher.discountAmount && (
-            <div className="detail-item">
-              <span>Economical saving: {formatCurrency(voucher.discountAmount)}</span>
-            </div>
+            {voucher.discountType === 'percentage' && voucher.maxDiscountAmount && (
+              <div className="detail-item">
+                <span>Maximum discount: {formatCurrency(voucher.maxDiscountAmount)}</span>
+              </div>
+            )}
+            {voucher.status === 'used' && voucher.usedAt && (
+              <div className="detail-item">
+                <CheckCircleOutlined />
+                <span>Used at: {formatDate(voucher.usedAt)}</span>
+              </div>
+            )}
+            {voucher.status === 'used' && voucher.discountAmount && (
+              <div className="detail-item">
+                <span>Economical saving: {formatCurrency(voucher.discountAmount)}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="voucher-item-actions">
+          {actualStatus === 'saved' && (
+            <>
+              <Button
+                icon={<CopyOutlined />}
+                onClick={() => copyToClipboard(voucher.code)}
+                disabled={copiedVoucher === voucher.code}
+                className="voucher-action-btn"
+              >
+                {copiedVoucher === voucher.code ? 'Đã copy' : 'Copy'}
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => handleUseVoucher(voucher)}
+                className="voucher-action-btn primary"
+              >
+                Use
+              </Button>
+            </>
           )}
         </div>
       </div>
-
-      <div className="voucher-item-actions">
-        <Button
-          icon={<CopyOutlined />}
-          onClick={() => copyToClipboard(voucher.code)}
-          disabled={copiedVoucher === voucher.code}
-          className="voucher-action-btn"
-        >
-          {copiedVoucher === voucher.code ? 'Đã copy' : 'Copy'}
-        </Button>
-        {voucher.status === 'saved' && (
-          <Button
-            type="primary"
-            onClick={() => handleUseVoucher(voucher)}
-            className="voucher-action-btn primary"
-          >
-            Use
-          </Button>
-        )}
-      </div>
-    </div>
-  );
+    );
+  };
 
   const copyToClipboard = code => {
     navigator.clipboard.writeText(code).then(() => {

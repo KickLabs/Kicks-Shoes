@@ -24,33 +24,47 @@ export const getUserDiscounts = asyncHandler(async (req, res) => {
     .populate('order', 'orderNumber totalPrice')
     .sort({ createdAt: -1 });
 
-  // Transform data for frontend
-  const discounts = userDiscounts.map(ud => ({
-    id: ud._id,
-    code: ud.discount.code,
-    title: ud.discount.description || `Discount ${ud.discount.code}`,
-    description:
-      ud.discount.description ||
-      `Get ${ud.discount.type === 'percentage' ? ud.discount.value + '%' : ud.discount.value + ' VND'} off`,
-    discountType: ud.discount.type,
-    discountValue: ud.discount.value,
-    minOrderAmount: ud.discount.minPurchase,
-    maxDiscountAmount: ud.discount.maxDiscount,
-    validFrom: ud.discount.startDate,
-    validTo: ud.discount.endDate,
-    status: ud.status,
-    isUsed: ud.status === 'used',
-    usedAt: ud.usedAt,
-    discountAmount: ud.discountAmount,
-    orderAmount: ud.orderAmount,
-    order: ud.order,
-    usageCount: ud.usageCount,
-    collectedAt: ud.collectedAt,
-    // Additional fields from discount
-    usageLimit: ud.discount.usageLimit,
-    perUserLimit: ud.discount.perUserLimit,
-    source: ud.discount.source,
-  }));
+  const now = new Date();
+
+  // Auto-update expired status and filter out reward_points discounts
+  const discounts = await Promise.all(
+    userDiscounts
+      .filter(ud => ud.discount && ud.discount.source !== 'reward_points') // ❌ Loại bỏ reward_points
+      .map(async ud => {
+        // ✅ Auto-check and update expired status
+        if (ud.status === 'saved' && ud.discount.endDate < now) {
+          ud.status = 'expired';
+          await ud.save();
+        }
+
+        return {
+          id: ud._id,
+          code: ud.discount.code,
+          title: ud.discount.description || `Discount ${ud.discount.code}`,
+          description:
+            ud.discount.description ||
+            `Get ${ud.discount.type === 'percentage' ? ud.discount.value + '%' : ud.discount.value + ' VND'} off`,
+          discountType: ud.discount.type,
+          discountValue: ud.discount.value,
+          minOrderAmount: ud.discount.minPurchase,
+          maxDiscountAmount: ud.discount.maxDiscount,
+          validFrom: ud.discount.startDate,
+          validTo: ud.discount.endDate,
+          status: ud.status, // Status đã được update nếu expired
+          isUsed: ud.status === 'used',
+          usedAt: ud.usedAt,
+          discountAmount: ud.discountAmount,
+          orderAmount: ud.orderAmount,
+          order: ud.order,
+          usageCount: ud.usageCount,
+          collectedAt: ud.collectedAt,
+          // Additional fields from discount
+          usageLimit: ud.discount.usageLimit,
+          perUserLimit: ud.discount.perUserLimit,
+          source: ud.discount.source,
+        };
+      })
+  );
 
   res.status(200).json({
     success: true,
@@ -78,6 +92,14 @@ export const collectDiscount = asyncHandler(async (req, res) => {
 
   if (!discount) {
     throw new ErrorResponse('Discount not found or not active', 404);
+  }
+
+  // ❌ Prevent collecting reward_points discounts
+  if (discount.source === 'reward_points') {
+    throw new ErrorResponse(
+      'Cannot collect reward points discount. Please use the code directly.',
+      400
+    );
   }
 
   // Check if discount is still valid
@@ -175,12 +197,13 @@ export const useDiscount = asyncHandler(async (req, res) => {
 export const getAvailableDiscounts = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  // Get all active discounts
+  // Get all active discounts (exclude reward_points)
   const activeDiscounts = await Discount.find({
     status: 'active',
     startDate: { $lte: new Date() },
     endDate: { $gte: new Date() },
     $expr: { $lt: ['$usedCount', '$usageLimit'] },
+    source: { $ne: 'reward_points' }, // ❌ Loại bỏ discount từ reward points
   }).sort({ createdAt: -1 });
 
   // Get user's collected discount IDs
@@ -196,18 +219,27 @@ export const getAvailableDiscounts = asyncHandler(async (req, res) => {
   // Transform data for frontend
   const discounts = availableDiscounts.map(discount => ({
     id: discount._id,
+    _id: discount._id,
     code: discount.code,
     title: discount.description || `Discount ${discount.code}`,
     description:
       discount.description ||
       `Get ${discount.type === 'percentage' ? discount.value + '%' : discount.value + ' VND'} off`,
+    type: discount.type,
     discountType: discount.type,
+    value: discount.value,
     discountValue: discount.value,
+    minPurchase: discount.minPurchase,
     minOrderAmount: discount.minPurchase,
+    maxDiscount: discount.maxDiscount,
     maxDiscountAmount: discount.maxDiscount,
+    startDate: discount.startDate,
     validFrom: discount.startDate,
+    endDate: discount.endDate,
     validTo: discount.endDate,
+    status: discount.status,
     usageLimit: discount.usageLimit,
+    usedCount: discount.usedCount || 0,
     perUserLimit: discount.perUserLimit,
     source: discount.source,
   }));

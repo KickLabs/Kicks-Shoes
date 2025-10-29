@@ -11,7 +11,7 @@ import FlashSale from '../models/FlashSale.js';
 import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
 import Product from '../models/Product.js';
-// Removed duplicate import of FlashSale
+import UserDiscount from '../models/UserDiscount.js';
 import logger from '../utils/logger.js';
 import { validateDiscountCode } from './discount.service.js';
 
@@ -352,6 +352,28 @@ export class OrderService {
       order.subtotal = itemsSubtotalAccurate;
       order.totalPrice = itemsSubtotalAccurate + order.shippingCost + order.tax - order.discount;
       await order.save({ session });
+
+      // Mark UserDiscount as used if applicable
+      if (finalDiscountCode) {
+        const Discount = (await import('../models/Discount.js')).default;
+        const discountDoc = await Discount.findOne({ code: finalDiscountCode });
+        if (discountDoc) {
+          const userDiscount = await UserDiscount.findOne({
+            user: user,
+            discount: discountDoc._id,
+            status: 'saved',
+          }).session(session);
+
+          if (userDiscount) {
+            await userDiscount.useDiscount(order._id, finalDiscount, order.subtotal);
+            logger.info('UserDiscount marked as used', {
+              userId: user,
+              discountId: discountDoc._id,
+              orderId: order._id,
+            });
+          }
+        }
+      }
 
       await session.commitTransaction();
 
@@ -734,6 +756,54 @@ export class OrderService {
         }
       }
 
+      // ✅ Giải phóng voucher nếu đã sử dụng
+      if (order.discountCode) {
+        logger.info('🔄 Releasing voucher for cancelled order', {
+          orderId,
+          discountCode: order.discountCode,
+        });
+
+        const UserDiscount = (await import('../models/UserDiscount.js')).default;
+        const userDiscount = await UserDiscount.findOne({
+          order: orderId,
+          status: 'used',
+        }).session(session);
+
+        if (userDiscount) {
+          logger.info('✅ Found used voucher, resetting to saved', {
+            userDiscountId: userDiscount._id,
+            code: order.discountCode,
+          });
+
+          // Reset voucher về trạng thái saved
+          userDiscount.status = 'saved';
+          userDiscount.usedAt = null;
+          userDiscount.order = null;
+          userDiscount.discountAmount = null;
+          userDiscount.orderAmount = null;
+          userDiscount.usageCount = Math.max(0, userDiscount.usageCount - 1);
+
+          await userDiscount.save({ session });
+
+          // Giảm usedCount của Discount
+          const Discount = (await import('../models/Discount.js')).default;
+          await Discount.findOneAndUpdate(
+            { code: order.discountCode },
+            { $inc: { usedCount: -1 } },
+            { session }
+          );
+
+          logger.info('✅ Voucher released successfully', {
+            code: order.discountCode,
+          });
+        } else {
+          logger.warn('⚠️ No used voucher found for this order', {
+            orderId,
+            discountCode: order.discountCode,
+          });
+        }
+      }
+
       const updateData = {
         status: 'cancelled',
         cancelledAt: new Date(),
@@ -749,6 +819,7 @@ export class OrderService {
       );
 
       await session.commitTransaction();
+      logger.info('✅ Order cancelled successfully with voucher released');
       return cancelledOrder;
     } catch (error) {
       await session.abortTransaction();
@@ -766,6 +837,8 @@ export class OrderService {
    * @returns {Promise<Order>} The refunded order
    */
   static async refundOrder(orderId, refundData) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       logger.info('Refunding order:', { orderId, refundData });
       if (!orderId) {
@@ -798,20 +871,73 @@ export class OrderService {
       const order = await Order.findByIdAndUpdate(
         orderId,
         { $set: updateData },
-        { new: true, runValidators: true }
+        { new: true, runValidators: true, session }
       );
 
       if (!order) {
         throw new Error('Order not found');
       }
 
+      // ✅ Giải phóng voucher nếu đã sử dụng (tương tự cancel order)
+      if (order.discountCode) {
+        logger.info('🔄 Releasing voucher for refunded order', {
+          orderId,
+          discountCode: order.discountCode,
+        });
+
+        const UserDiscount = (await import('../models/UserDiscount.js')).default;
+        const userDiscount = await UserDiscount.findOne({
+          order: orderId,
+          status: 'used',
+        }).session(session);
+
+        if (userDiscount) {
+          logger.info('✅ Found used voucher, resetting to saved', {
+            userDiscountId: userDiscount._id,
+            code: order.discountCode,
+          });
+
+          // Reset voucher về trạng thái saved
+          userDiscount.status = 'saved';
+          userDiscount.usedAt = null;
+          userDiscount.order = null;
+          userDiscount.discountAmount = null;
+          userDiscount.orderAmount = null;
+          userDiscount.usageCount = Math.max(0, userDiscount.usageCount - 1);
+
+          await userDiscount.save({ session });
+
+          // Giảm usedCount của Discount
+          const Discount = (await import('../models/Discount.js')).default;
+          await Discount.findOneAndUpdate(
+            { code: order.discountCode },
+            { $inc: { usedCount: -1 } },
+            { session }
+          );
+
+          logger.info('✅ Voucher released successfully for refund', {
+            code: order.discountCode,
+          });
+        } else {
+          logger.warn('⚠️ No used voucher found for this refunded order', {
+            orderId,
+            discountCode: order.discountCode,
+          });
+        }
+      }
+
+      await session.commitTransaction();
+      logger.info('✅ Order refunded successfully with voucher released');
       return order;
     } catch (error) {
+      await session.abortTransaction();
       logger.error('Error refunding order:', {
         error: error.message,
         stack: error.stack,
       });
       throw new Error(`Failed to refund order: ${error.message}`);
+    } finally {
+      session.endSession();
     }
   }
 }

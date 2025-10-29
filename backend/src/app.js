@@ -63,6 +63,7 @@ import {
   startDiscountStatusUpdateCron,
   startFlashSaleStatusUpdateCron,
   startAutoCompleteOrdersCron,
+  startUserDiscountExpireCheckCron,
 } from './utils/cronJobs.js';
 import inventoryScheduler from './services/inventoryScheduler.service.js'; // AI Inventory Scheduler
 
@@ -216,6 +217,7 @@ app.use('/api/ai/inventory', aiInventoryRoutes); // AI Inventory Intelligence
 startDiscountStatusUpdateCron();
 startFlashSaleStatusUpdateCron();
 startAutoCompleteOrdersCron();
+startUserDiscountExpireCheckCron(); // ✅ Auto-update expired user discounts
 
 // Start AI Inventory Scheduler (runs daily at 8:00 AM)
 inventoryScheduler.start();

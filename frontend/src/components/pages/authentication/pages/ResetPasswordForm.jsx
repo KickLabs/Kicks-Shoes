@@ -44,6 +44,12 @@ const ResetPasswordForm = () => {
     try {
       setLoading(true);
       await resetPassword(token, values.password);
+
+      // Clear all authentication data to ensure user needs to login with new password
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userInfo');
+
       message.success('Password has been reset successfully!');
       navigate('/login');
     } catch (error) {

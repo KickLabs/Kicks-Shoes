@@ -68,6 +68,40 @@
   background: linear-gradient(90deg, #4a69e2 0%, #232321 100%);
 }
 
+/* Fix loading state - ensure text and spinner are visible */
+.review-button.ant-btn-loading {
+  color: #fff !important;
+  background: linear-gradient(90deg, #232321 60%, #4a69e2 100%) !important;
+  opacity: 0.8;
+}
+
+.review-button.ant-btn-loading span {
+  color: #fff !important;
+}
+
+/* Ensure spinner is visible */
+.review-button .ant-btn-loading-icon {
+  color: #fff !important;
+}
+
+.review-button .ant-btn-loading-icon .anticon-loading {
+  color: #fff !important;
+}
+
+/* Disabled state */
+.review-button:disabled,
+.review-button.ant-btn-disabled {
+  color: #fff !important;
+  background: linear-gradient(90deg, #232321 60%, #4a69e2 100%) !important;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.review-button:disabled span,
+.review-button.ant-btn-disabled span {
+  color: #fff !important;
+}
+
 .delivery-updates-text-paragraph {
   margin-bottom: 0;
   color: var(--Dark-Gray, #232321);
