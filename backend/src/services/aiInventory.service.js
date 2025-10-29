@@ -50,7 +50,13 @@ class AIInventoryService {
         }
       }
 
-      this.genAI = new GoogleGenerativeAIClass(apiKey);
+      let instance;
+      try {
+        instance = new GoogleGenerativeAIClass({ apiKey });
+      } catch (_) {
+        instance = new GoogleGenerativeAIClass(apiKey);
+      }
+      this.genAI = instance;
       this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
       logger.info('AI Inventory Service initialized');
     } catch (error) {

@@ -36,7 +36,15 @@ class AIQAService {
         }
       }
 
-      this.genAI = new GoogleGenerativeAIClass(apiKey);
+      let instance;
+      try {
+        // @google/genai (v1+) expects an options object
+        instance = new GoogleGenerativeAIClass({ apiKey });
+      } catch (_) {
+        // Older @google/generative-ai accepts raw string
+        instance = new GoogleGenerativeAIClass(apiKey);
+      }
+      this.genAI = instance;
       this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
       logger.info('AI Q&A Service initialized successfully');
     } catch (error) {
