@@ -55,7 +55,7 @@ export default {
     '!src/controllers/blogController.js', // Exclude blog
     '!src/controllers/blogCommentController.js', // Exclude blog comment
     '!src/controllers/chatController.js', // Exclude chat
-    '!src/controllers/dashboardController.js', // Exclude dashboard
+    'src/controllers/dashboardController.js', // Dashboard controller
     '!src/controllers/payosController.js', // Exclude payos
     '!src/controllers/vnpayController.js', // Exclude vnpay
     '!src/services/auth.service.js', // Exclude auth service
@@ -93,7 +93,7 @@ export default {
     '!src/models/Message.js', // Exclude message model
     '!src/models/Conversation.js', // Exclude conversation model
     '!src/models/Refund.js', // Exclude refund model
-    '!src/models/Report.js', // Exclude report model
+    'src/models/Report.js', // Report model
     '!src/models/TokenBlacklist.js', // Exclude token blacklist model
     '!src/models/OrderItem.js', // Exclude order item model
     '!src/utils/errorResponse.js', // Exclude error response utility
