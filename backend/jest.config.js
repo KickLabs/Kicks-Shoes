@@ -30,7 +30,7 @@ export default {
     // Suite 6: Edge Cases & Error Handling
     'src/middlewares/error.middleware.js', // Error middleware
     'src/utils/logger.js', // Logger utility
-    '!src/utils/validation.js', // Validation utility
+    'src/utils/validation.js', // Validation utility
 
     // Authentication & Authorization Middleware
     'src/middlewares/auth.middleware.js', // Auth middleware
@@ -101,7 +101,7 @@ export default {
     '!src/models/Report.js', // Exclude report model
     '!src/models/TokenBlacklist.js', // Exclude token blacklist model
     '!src/models/OrderItem.js', // Exclude order item model
-    '!src/utils/errorResponse.js', // Exclude error response utility
+    'src/utils/errorResponse.js', // Exclude error response utility
     '!src/utils/helpers.js', // Exclude helpers utility
     '!src/utils/upload.js', // Exclude upload utility
   ],
