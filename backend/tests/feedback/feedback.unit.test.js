@@ -190,6 +190,7 @@ describe('Feedback Module - Unit Tests', () => {
     });
 
     test('Should enforce unique index (user, order, product)', async () => {
+      await Feedback.createIndexes();
       const validData = getValidData();
 
       // Clear any existing feedbacks first
