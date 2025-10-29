@@ -25,6 +25,13 @@ export default function setupSocketHandlers(io) {
       logger.info(`Socket ${socket.id} joined conversation ${conversationId}`);
     });
 
+    // Join admin room for AI Inventory alerts
+    socket.on('join_admin_room', () => {
+      socket.join('admin-room');
+      socket.join('shop-dashboard');
+      logger.info(`Socket ${socket.id} joined admin room for inventory alerts`);
+    });
+
     // Nhận và phát tin nhắn mới
     socket.on('send_message', async message => {
       // message: { conversationId, sender, receiver, content }

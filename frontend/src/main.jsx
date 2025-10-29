@@ -86,6 +86,9 @@ import BlogFeedPage from './components/pages/blog/BlogFeedPage';
 // Shipper
 import ShipperDashboard from './components/pages/shipper/ShipperDashboard';
 
+// AI Inventory
+import AIInventoryDashboard from './components/pages/dashboard/AIInventoryDashboard';
+
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
 
@@ -467,6 +470,14 @@ const router = createBrowserRouter([
             element: (
               <ShopOwnerProtectedRoute>
                 <ShipperApplications />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'inventory-ai',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <AIInventoryDashboard />
               </ShopOwnerProtectedRoute>
             ),
           },
