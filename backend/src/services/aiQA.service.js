@@ -74,7 +74,8 @@ class AIQAService {
       // Order placement questions
       /(cách|làm sao|how to).*(đặt hàng|order|mua|chốt)/i, // How to order
       /^(đặt hàng|order|mua|chốt).*(thế nào|như thế nào|how)/i, // Order how
-      /(format|form|cú pháp|syntax).*(đặt hàng|order|chốt)/i, // Order format
+      /(format|form|cú pháp|cấu trúc|template|mẫu|syntax).*(đặt hàng|đặt sản phẩm|order|chốt)/i, // Order format (expanded)
+      /^(cho|xin)\s*(tôi|mình|giúp)?.*(cấu trúc|mẫu|template|format).*(đặt hàng|đặt sản phẩm|order|chốt)/i, // Vietnamese imperative request for format
       /(viết|tạo|generate|gen).*(đơn|order|form).*(đặt hàng|order)/i, // Generate order
       /^(viết|tạo|gen).*(cho|giúp|dùm).*(đơn|form|đặt)/i, // Help write order
 
@@ -558,11 +559,10 @@ Remember: Always match the user's language and format responses clearly!
         preview: typeof messageContent === 'string' ? messageContent.slice(0, 60) : '',
       });
 
-      // Check if it's a question
+      // Prefer AI even if message doesn't strictly match a question pattern
       const isQuestion = this.isQuestion(messageContent);
       if (!isQuestion) {
-        logger.info('AIQA skipped: not a question');
-        return null;
+        logger.info('AIQA: not a classic question, attempting AI anyway');
       }
 
       // Enhanced context for pinned product
