@@ -29,7 +29,8 @@ class AIInventoryService {
 
   async initialize() {
     try {
-      const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_API_KEY;
+      const apiKey =
+        process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
       if (!apiKey) {
         logger.warn('Google AI API key not configured. AI Inventory will be disabled.');
         return;
