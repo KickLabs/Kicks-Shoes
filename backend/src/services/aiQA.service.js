@@ -4,7 +4,7 @@
  * @description Detects questions in chat and generates AI answers using Gemini
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// Dynamic import of Google GenAI SDK to support both package names
 import logger from '../utils/logger.js';
 import Product from '../models/Product.js';
 
@@ -15,14 +15,27 @@ class AIQAService {
     this.initialize();
   }
 
-  initialize() {
+  async initialize() {
     try {
-      if (!process.env.GOOGLE_AI_API_KEY) {
+      const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_API_KEY;
+      if (!apiKey) {
         logger.warn('Google AI API key not configured. AI Q&A will be disabled.');
         return;
       }
 
-      this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+      let GoogleGenerativeAIClass = null;
+      try {
+        ({ GoogleGenerativeAI: GoogleGenerativeAIClass } = await import('@google/generative-ai'));
+      } catch (e1) {
+        try {
+          ({ GoogleGenerativeAI: GoogleGenerativeAIClass } = await import('@google/genai'));
+        } catch (e2) {
+          logger.warn('Google GenAI SDK not available. Skipping AI Q&A initialization.');
+          return;
+        }
+      }
+
+      this.genAI = new GoogleGenerativeAIClass(apiKey);
       this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
       logger.info('AI Q&A Service initialized successfully');
     } catch (error) {
