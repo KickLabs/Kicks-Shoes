@@ -66,11 +66,15 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_ABB59C856ED54947B8A15256E63B7375 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_94E00768217342F1BC3F78314371C518 }}
 
+      - name: Ensure Web App is running
+        run: |
+          az webapp start --name kicks-shoes-backend --resource-group kicks-shoes-rg || true
+
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'kicks-shoes-backend'
-          slot-name: 'Production'
+          slot-name: 'production'
           package: .
           startup-command: 'npm start'
