@@ -72,14 +72,38 @@ export const updateComment = async (req, res) => {
     // Sanitize comment content
     if (updates.content) updates.content = sanitizeText(updates.content);
 
+    // Bỏ qua các trường không được phép cập nhật trực tiếp (ví dụ: user, blog)
+    delete updates.user;
+    delete updates.blog;
+    delete updates.createdAt;
+    delete updates.updatedAt;
+
     const comment = await BlogComment.findByIdAndUpdate(id, updates, {
       new: true,
-      runValidators: true,
+      runValidators: true, // Quan trọng: Bật validation khi update
     });
-    if (!comment) return res.status(404).json({ success: false, message: 'Comment not found' });
+
+    if (!comment) {
+      return res.status(404).json({ success: false, message: 'Comment not found' });
+    }
     res.json({ success: true, data: comment });
   } catch (error) {
-    logger.error('Error updating comment', { error: error.message });
+    logger.error('Error updating comment', {
+      id: req.params.id,
+      updates: req.body,
+      error: error.message,
+    }); // Log chi tiết hơn
+
+    // FIX: THÊM KIỂM TRA VALIDATIONERROR
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        // Optional: Gửi chi tiết lỗi validation nếu cần
+        errors: Object.values(error.errors).map(e => ({ field: e.path, message: e.message })),
+      });
+    }
+    // Lỗi khác thì trả về 500
     res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };

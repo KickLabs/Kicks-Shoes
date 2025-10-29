@@ -57,8 +57,8 @@ export default {
     'src/controllers/feedbackController.js', // Exclude feedback
     '!src/controllers/rewardPointController.js', // Exclude reward point
     '!src/controllers/storeController.js', // Exclude store
-    '!src/controllers/blogController.js', // Exclude blog
-    '!src/controllers/blogCommentController.js', // Exclude blog comment
+    'src/controllers/blogController.js', // Exclude blog
+    'src/controllers/blogCommentController.js', // Exclude blog comment
     '!src/controllers/chatController.js', // Exclude chat
     '!src/controllers/dashboardController.js', // Exclude dashboard
     '!src/controllers/payosController.js', // Exclude payos
@@ -75,8 +75,8 @@ export default {
     'src/services/feedback.service.js', // Exclude feedback service
     '!src/services/rewardPoint.service.js', // Exclude reward point service
     '!src/services/store.service.js', // Exclude store service
-    '!src/services/blog.service.js', // Exclude blog service
-    '!src/services/blogComment.service.js', // Exclude blog comment service
+    'src/services/blog.service.js', // Exclude blog service
+    'src/services/blogComment.service.js', // Exclude blog comment service
     '!src/services/chat.service.js', // Exclude chat service
     '!src/services/email.service.js', // Exclude email service
     '!src/services/otp.service.js', // Exclude otp service
@@ -93,8 +93,8 @@ export default {
     'src/models/Feedback.js', // Exclude feedback model
     '!src/models/RewardPoint.js', // Exclude reward point model
     '!src/models/Store.js', // Exclude store model
-    '!src/models/Blog.js', // Exclude blog model
-    '!src/models/BlogComment.js', // Exclude blog comment model
+    'src/models/Blog.js', // Exclude blog model
+    'src/models/BlogComment.js', // Exclude blog comment model
     '!src/models/Message.js', // Exclude message model
     '!src/models/Conversation.js', // Exclude conversation model
     '!src/models/Refund.js', // Exclude refund model
