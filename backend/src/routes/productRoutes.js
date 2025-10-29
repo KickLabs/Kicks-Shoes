@@ -19,7 +19,9 @@ import {
   recalculateFinalPrice,
   reportProduct,
   updateProduct,
+  addStockToVariant,
   visualSearch,
+  generateAIDescription,
 } from '../controllers/productController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
@@ -36,6 +38,9 @@ const upload = multer({
 // Visual search route
 router.post('/visual-search', upload.single('image'), visualSearch);
 
+// AI description generator route
+router.post('/generate-description', protect, requireRoles('admin', 'shop'), generateAIDescription);
+
 // Public routes
 router.get('/', getAllProducts);
 router.get('/new-drops', getNewDrops);
@@ -48,6 +53,12 @@ router.post('/create', protect, requireRoles('admin', 'shop'), createManyProduct
 router.post('/bulk', protect, requireRoles('admin', 'shop'), createManyProducts);
 router.put('/:id', protect, requireRoles('admin', 'shop'), updateProduct);
 router.delete('/:id/delete', protect, requireRoles('admin', 'shop'), deleteProduct);
+
+/**
+ * THÊM MỚI: Route để "upsert" (thêm hoặc cập nhật) số lượng tồn kho
+ * cho một variant cụ thể.
+ */
+router.post('/:id/inventory/add-stock', protect, requireRoles('admin', 'shop'), addStockToVariant);
 
 // NEW: Route to manually recalculate final price
 router.post(

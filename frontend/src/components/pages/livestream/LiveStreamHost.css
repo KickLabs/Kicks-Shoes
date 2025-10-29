@@ -75,7 +75,6 @@
   grid-template-columns: 1fr 380px;
   gap: 24px;
   padding: 24px;
-  height: calc(100vh - 80px);
   overflow: hidden;
 }
 
@@ -93,7 +92,7 @@
   border-radius: 8px;
   overflow: hidden;
   aspect-ratio: 16/9;
-  min-height: 400px;
+  min-height: 600px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
@@ -199,7 +198,6 @@
   flex-direction: column;
   gap: 16px;
   overflow: hidden;
-  height: calc(100vh - 140px);
 }
 
 /* Potential Orders Panel */
@@ -208,7 +206,7 @@
   border-radius: 8px;
   border: 1px solid #e8e8e8;
   overflow: hidden;
-  height: 55%;
+  height: 50vh;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -371,7 +369,7 @@
   background: #fff;
   border-radius: 8px;
   border: 1px solid #e8e8e8;
-  height: 43%;
+  height: 50vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;

@@ -8,11 +8,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { ICE_SERVERS, PEER_CONNECTION_CONFIG, SOCKET_CONFIG } from '../config/webrtc.config';
+import axiosInstance from '../services/axiosInstance';
 
 export const useWebRTC = (roomId, role, userId) => {
   const [isConnected, setIsConnected] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
   const [messages, setMessages] = useState([]);
+  const [pinnedMessage, setPinnedMessage] = useState(null);
+  const [botReplies, setBotReplies] = useState([]);
+  const [personalNotification, setPersonalNotification] = useState(null);
   const [connectionState, setConnectionState] = useState('disconnected');
   const [error, setError] = useState(null);
 
@@ -98,11 +102,49 @@ export const useWebRTC = (roomId, role, userId) => {
 
     // Chat events
     socket.on('chat_message', handleChatMessage);
+    socket.on('message_pinned', handleMessagePinned);
+    socket.on('message_unpinned', handleMessageUnpinned);
+    socket.on('ai_bot_reply', handleBotReply);
+    socket.on('personal_bot_notification', handlePersonalNotification);
 
     return () => {
       socket.disconnect();
     };
   }, [roomId, role, userId]);
+
+  // Load initial chat data (history and pinned message)
+  useEffect(() => {
+    const loadInitialChatData = async () => {
+      if (!roomId || !isConnected) return;
+
+      try {
+        console.log('Loading initial chat data for room:', roomId);
+
+        // Load chat history
+        const chatResponse = await axiosInstance.get(`/livestream/${roomId}/chat`, {
+          params: { limit: 50, page: 1 },
+        });
+
+        if (chatResponse.data.success && chatResponse.data.data) {
+          console.log('Loaded chat history:', chatResponse.data.data.length, 'messages');
+          setMessages(chatResponse.data.data);
+        }
+
+        // Load pinned message
+        const pinnedResponse = await axiosInstance.get(`/livestream/${roomId}/chat/pinned`);
+
+        if (pinnedResponse.data.success && pinnedResponse.data.data) {
+          console.log('Loaded pinned message:', pinnedResponse.data.data);
+          setPinnedMessage(pinnedResponse.data.data);
+        }
+      } catch (error) {
+        console.error('Error loading initial chat data:', error);
+        // Don't throw error, just log it
+      }
+    };
+
+    loadInitialChatData();
+  }, [roomId, isConnected]);
 
   // Handle joined confirmation
   const handleJoined = useCallback(
@@ -206,7 +248,66 @@ export const useWebRTC = (roomId, role, userId) => {
 
   // Handle chat message
   const handleChatMessage = useCallback(data => {
-    setMessages(prev => [...prev, data.message]);
+    setMessages(prev => {
+      // Check if message already exists to avoid duplicates
+      const exists = prev.some(msg => msg._id === data.message._id);
+      if (exists) return prev;
+      return [...prev, data.message];
+    });
+  }, []);
+
+  // Handle message pinned
+  const handleMessagePinned = useCallback(data => {
+    console.log('Message pinned:', data);
+    setPinnedMessage(data.message);
+
+    // Remove the pinned message from regular messages list to avoid duplication
+    setMessages(prev => prev.filter(msg => msg._id !== data.message._id));
+  }, []);
+
+  // Handle message unpinned
+  const handleMessageUnpinned = useCallback(data => {
+    console.log('Message unpinned', data);
+    setPinnedMessage(null);
+
+    // Add the unpinned message back to messages list
+    if (data.message) {
+      setMessages(prev => {
+        // Check if already exists
+        const exists = prev.some(msg => msg._id === data.message._id);
+        if (exists) return prev;
+        // Add it back in chronological order
+        return [...prev, data.message].sort(
+          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        );
+      });
+    }
+  }, []);
+
+  // Handle bot reply
+  const handleBotReply = useCallback(data => {
+    console.log('Bot reply received:', data);
+    setBotReplies(prev => [
+      ...prev,
+      {
+        id: `bot_${Date.now()}`,
+        originalMessage: data.originalMessage,
+        answer: data.answer,
+        confidence: data.confidence,
+        timestamp: data.timestamp,
+      },
+    ]);
+  }, []);
+
+  // Handle personal bot notification
+  const handlePersonalNotification = useCallback(data => {
+    console.log('Personal notification received:', data);
+    setPersonalNotification({
+      question: data.question,
+      answer: data.answer,
+      timestamp: data.timestamp,
+      messageId: data.messageId,
+    });
   }, []);
 
   // Create peer connection
@@ -487,6 +588,9 @@ export const useWebRTC = (roomId, role, userId) => {
     // Data
     viewerCount,
     messages,
+    pinnedMessage,
+    botReplies,
+    personalNotification,
 
     // Actions
     startCamera,
@@ -494,9 +598,13 @@ export const useWebRTC = (roomId, role, userId) => {
     sendChatMessage,
     featureProduct,
     retryConnection,
+    dismissNotification: () => setPersonalNotification(null),
 
     // Stream objects (for advanced usage)
     localStream: localStreamRef.current,
     remoteStream: remoteStreamRef.current,
+
+    // Socket instance (for custom event listeners)
+    socket: socketRef.current,
   };
 };

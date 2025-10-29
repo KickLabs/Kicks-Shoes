@@ -7,10 +7,11 @@
  */
 
 import mongoose from 'mongoose';
+import FlashSale from '../models/FlashSale.js';
 import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
 import Product from '../models/Product.js';
-import FlashSale from '../models/FlashSale.js';
+// Removed duplicate import of FlashSale
 import logger from '../utils/logger.js';
 import { validateDiscountCode } from './discount.service.js';
 
@@ -93,12 +94,31 @@ export class OrderService {
    * @param {Object} orderData - Order data
    * @returns {Promise<Order>} The created order
    */
-  static async createOrder(orderData) {
+  static async createOrder(orderData, retryCount = 0) {
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-      logger.info('Creating order:', { orderData });
+      logger.info('Creating order:', { orderData, retryCount });
+
+      // Check for duplicate orders within last 5 minutes
+      const duplicateOrder = await Order.findOne({
+        user: orderData.user,
+        status: 'pending',
+        paymentStatus: 'pending',
+        createdAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) }, // 5 minutes ago
+      }).session(session);
+
+      if (duplicateOrder) {
+        logger.warn('Duplicate order attempt detected', {
+          userId: orderData.user,
+          existingOrderId: duplicateOrder._id,
+          timestamp: new Date(),
+        });
+        await session.abortTransaction();
+        return duplicateOrder; // Return existing order instead of creating new one
+      }
+
       const {
         user,
         products,
@@ -254,6 +274,18 @@ export class OrderService {
         throw new Error('Total price does not match sum of items');
       }
 
+      // Ensure COD orders always have pending payment status
+      let finalPaymentStatus = orderData.paymentStatus || 'pending';
+      if (paymentMethod === 'cash_on_delivery') {
+        finalPaymentStatus = 'pending';
+        logger.info('COD order created with pending payment status', {
+          orderId: 'creating',
+          paymentMethod,
+          originalPaymentStatus: orderData.paymentStatus,
+          finalPaymentStatus,
+        });
+      }
+
       const order = new Order({
         user,
         items: [],
@@ -268,7 +300,7 @@ export class OrderService {
         discountCode: finalDiscountCode,
         notes,
         status: orderData.status || 'pending',
-        paymentStatus: orderData.paymentStatus || 'pending',
+        paymentStatus: finalPaymentStatus,
         paymentDate: orderData.paymentDate,
         transactionId: orderData.transactionId,
         vnpResponseCode: orderData.vnpResponseCode,
@@ -278,6 +310,7 @@ export class OrderService {
         vnpPayDate: orderData.vnpPayDate,
       });
 
+      // Save with session to ensure consistency
       await order.save({ session });
 
       let itemsSubtotalAccurate = 0;
@@ -339,6 +372,92 @@ export class OrderService {
         error: error.message,
         stack: error.stack,
       });
+
+      // Check if it's a version conflict error (duplicate order)
+      if (
+        error.message.includes('No matching document found') &&
+        error.message.includes('version')
+      ) {
+        logger.warn('Version conflict detected, checking for existing order', {
+          userId: orderData.user,
+          errorMessage: error.message,
+          retryCount,
+        });
+
+        try {
+          // Try to find existing order with more flexible criteria
+          const existingOrder = await Order.findOne({
+            user: orderData.user,
+            status: { $in: ['pending', 'processing'] },
+            paymentStatus: { $in: ['pending', 'paid'] },
+            createdAt: { $gte: new Date(Date.now() - 15 * 60 * 1000) }, // 15 minutes ago
+          }).populate('items');
+
+          if (existingOrder) {
+            logger.info('Found existing order, returning it instead', {
+              orderId: existingOrder._id,
+              orderNumber: existingOrder.orderNumber,
+              userId: orderData.user,
+              status: existingOrder.status,
+              paymentStatus: existingOrder.paymentStatus,
+            });
+            return existingOrder;
+          } else {
+            logger.warn('No existing order found despite version conflict', {
+              userId: orderData.user,
+              searchCriteria: {
+                user: orderData.user,
+                status: { $in: ['pending', 'processing'] },
+                paymentStatus: { $in: ['pending', 'paid'] },
+                createdAt: { $gte: new Date(Date.now() - 15 * 60 * 1000) },
+              },
+            });
+
+            // If no existing order found and retry count is low, try again
+            if (retryCount < 2) {
+              logger.info('Retrying order creation after version conflict', {
+                userId: orderData.user,
+                retryCount: retryCount + 1,
+              });
+
+              // Wait a bit before retry
+              await new Promise(resolve => setTimeout(resolve, 100 * (retryCount + 1)));
+
+              // Retry the order creation
+              return await this.createOrder(orderData, retryCount + 1);
+            }
+          }
+        } catch (searchError) {
+          logger.error('Error searching for existing order', {
+            error: searchError.message,
+            userId: orderData.user,
+          });
+        }
+      }
+
+      // Check if it's a duplicate key error (orderNumber conflict)
+      if (error.message.includes('E11000') && error.message.includes('orderNumber')) {
+        logger.warn('Duplicate orderNumber detected, checking for existing order');
+
+        // Try to find existing order with similar data
+        const existingOrder = await Order.findOne({
+          user: orderData.user,
+          status: 'pending',
+          paymentStatus: 'pending',
+          createdAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) }, // 10 minutes ago
+        });
+
+        if (existingOrder) {
+          logger.info('Found existing order with duplicate orderNumber, returning it instead', {
+            orderId: existingOrder._id,
+            orderNumber: existingOrder.orderNumber,
+            userId: orderData.user,
+          });
+          return existingOrder;
+        }
+      }
+
+      // Re-throw the error to be handled by the controller
       throw new Error(`Failed to create order: ${error.message}`);
     } finally {
       session.endSession();
@@ -422,30 +541,49 @@ export class OrderService {
         throw new Error('Invalid order ID');
       }
 
-      const order = await Order.findById(orderId)
-        .populate({
-          path: 'user',
-          select: 'fullName email phone avatar',
-        })
-        .populate({
-          path: 'items',
-          populate: {
-            path: 'product',
-            select: 'name mainImage price inventory',
-          },
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        const order = await Order.findById(orderId)
+          .populate({
+            path: 'user',
+            select: 'fullName email phone avatar',
+          })
+          .populate({
+            path: 'items',
+            populate: {
+              path: 'product',
+              select: 'name mainImage price inventory',
+            },
+          })
+          .populate({
+            path: 'shipper',
+            select: 'fullName email phone avatar vehicleType currentDeliveryCount',
+          });
+
+        if (!order) {
+          throw new Error('Order not found');
+        }
+
+        await session.commitTransaction();
+        return order;
+      } catch (error) {
+        await session.abortTransaction();
+        logger.error('Error getting order by order ID:', {
+          error: error.message,
+          stack: error.stack,
         });
-
-      if (!order) {
-        throw new Error('Order not found');
+        throw new Error(`Failed to get order by order ID: ${error.message}`);
+      } finally {
+        await session.endSession();
       }
-
-      return order;
     } catch (error) {
-      logger.error('Error getting order by order ID:', {
+      logger.error('Error in getOrderByOrderId:', {
         error: error.message,
         stack: error.stack,
       });
-      throw new Error(`Failed to get order by order ID: ${error.message}`);
+      throw error;
     }
   }
 

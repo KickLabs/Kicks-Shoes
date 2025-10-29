@@ -1,17 +1,22 @@
-import { useState, useEffect } from 'react';
-import { Button, Typography, Modal, message, Upload, Spin } from 'antd';
-import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
+import axiosInstance from '@/services/axiosInstance';
+import {
+  DownloadOutlined,
+  ExclamationCircleOutlined,
+  HeartFilled,
+  HeartOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons';
+import { Button, message, Modal, Spin, Typography } from 'antd';
+import { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { useFlashSales } from '../../../../hooks/useFlashSales';
 import { formatPrice } from '../../../../utils/StringFormat';
+import CountdownTimer from '../../../common/components/CountdownTimer';
+import { addOrUpdateCartItem } from '../../cart/cartService';
 import './ProductInfoSection.css';
 import SizePanel from './SizePanel';
-import { HeartOutlined, HeartFilled, ExclamationCircleOutlined } from '@ant-design/icons';
-import { useSelector, useDispatch } from 'react-redux';
-import { addOrUpdateCartItem } from '../../cart/cartService';
-import { useAuth } from '../../../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import axiosInstance from '@/services/axiosInstance';
-import { useFlashSales } from '../../../../hooks/useFlashSales';
-import CountdownTimer from '../../../common/components/CountdownTimer';
 // Using Next.js route /api/tryon directly; remove legacy tryonService usage
 
 const { Paragraph } = Typography;
@@ -233,26 +238,11 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
     }
   };
 
-  // Fallback cho product.variants
-  const safeVariants =
-    product.variants &&
-    Array.isArray(product.variants.colors) &&
-    Array.isArray(product.variants.sizes)
-      ? product.variants
-      : { colors: [], sizes: [] };
+  const allDefinedColors = Array.isArray(product.colorOptions)
+    ? product.colorOptions.map(opt => opt.color)
+    : [];
+  const noColorDefined = allDefinedColors.length === 0;
 
-  // Nếu không có inventory hoặc inventory rỗng, render toàn bộ màu/size từ variants
-  const hasInventory = Array.isArray(product.inventory) && product.inventory.length > 0;
-
-  // Lọc danh sách màu chỉ lấy màu có tồn kho nếu có inventory, ngược lại lấy toàn bộ từ variants
-  const availableColors = hasInventory
-    ? (safeVariants.colors || []).filter(color =>
-        product.inventory.some(item => item.color === color && item.quantity > 0)
-      )
-    : safeVariants.colors || [];
-  const noColorAvailable = availableColors.length === 0;
-
-  // HEX mã màu
   const colorHexMap = {
     Black: '#000000',
     White: '#FFFFFF',
@@ -266,13 +256,13 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
     Pink: '#FFC0CB',
   };
 
-  // Màu từ availableColors
-  const colorOptions = availableColors.map(color => ({
+  const colorSwatchOptions = allDefinedColors.map(color => ({
     value: color,
     hex: colorHexMap[color] || '#CCCCCC',
   }));
 
-  // Get size options based on product type
+  const hasInventory = Array.isArray(product.inventory) && product.inventory.length > 0;
+
   const getSizeOptions = () => {
     switch (product.productType) {
       case 'shoes':
@@ -284,93 +274,66 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
       case 'other':
         return ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', 'OneSize'];
       default:
-        return [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
+        return [];
     }
   };
 
-  // Inventory theo màu đang chọn
-  const colorInventory = hasInventory
-    ? product.inventory.filter(item => item.color === selectedColor)
-    : [];
+  const colorInventory =
+    hasInventory && selectedColor
+      ? product.inventory.filter(item => item.color === selectedColor)
+      : [];
 
-  // Get available sizes from inventory based on product type
-  const getAvailableSizesFromInventory = () => {
-    if (!hasInventory) return safeVariants.sizes || [];
+  const getAvailableSizesForSelectedColor = () => {
+    if (!hasInventory || !selectedColor) return [];
 
-    const availableSizes = [];
+    const availableSizes = new Set();
     colorInventory.forEach(item => {
       if (item.quantity > 0) {
-        // For shoes, use numeric size
-        if (product.productType === 'shoes' && item.size) {
-          availableSizes.push(item.size);
-        }
-        // For clothing, use clothingSize
-        else if (product.productType === 'clothing' && item.clothingSize) {
-          availableSizes.push(item.clothingSize);
-        }
-        // For accessories, use isOneSize
-        else if (product.productType === 'accessory' && item.isOneSize) {
-          availableSizes.push('OneSize');
-        }
-        // For other, check all size types
-        else if (product.productType === 'other') {
-          if (item.size) availableSizes.push(item.size);
-          if (item.clothingSize) availableSizes.push(item.clothingSize);
-          if (item.isOneSize) availableSizes.push('OneSize');
-        }
+        if (product.productType === 'shoes' && item.size != null)
+          availableSizes.add(String(item.size));
+        else if (product.productType === 'clothing' && item.clothingSize)
+          availableSizes.add(item.clothingSize);
+        else if (product.productType === 'accessory' && item.isOneSize)
+          availableSizes.add('OneSize');
       }
     });
-    return Array.from(new Set(availableSizes));
+    const sizesArray = Array.from(availableSizes);
+    if (product.productType === 'shoes') {
+      return sizesArray.sort((a, b) => Number(a) - Number(b));
+    }
+    return sizesArray;
   };
+  const availableSizesForSelectedColor = getAvailableSizesForSelectedColor();
 
-  const availableSizes = getAvailableSizesFromInventory();
+  const allPossibleSizes = getSizeOptions();
 
-  // Get all possible sizes for this product type
-  const allSizes = hasInventory ? getSizeOptions() : safeVariants.sizes || [];
+  const sizeData = allPossibleSizes.map(sizeValue => {
+    let inventoryEntry = null;
+    if (product.productType === 'shoes') {
+      inventoryEntry = colorInventory.find(item => String(item.size) === String(sizeValue));
+    } else if (product.productType === 'clothing') {
+      inventoryEntry = colorInventory.find(item => item.clothingSize === sizeValue);
+    } else if (product.productType === 'accessory' && sizeValue === 'OneSize') {
+      inventoryEntry = colorInventory.find(item => item.isOneSize === true);
+    }
 
-  // Create size data for SizePanel
-  const sizeData = hasInventory
-    ? allSizes.map(size => {
-        let inventoryEntry = null;
+    return {
+      value: sizeValue,
+      disabled: !inventoryEntry || inventoryEntry.quantity === 0,
+    };
+  });
 
-        // Find inventory entry based on product type
-        if (product.productType === 'shoes') {
-          inventoryEntry = colorInventory.find(item => item.size === size);
-        } else if (product.productType === 'clothing') {
-          inventoryEntry = colorInventory.find(item => item.clothingSize === size);
-        } else if (product.productType === 'accessory') {
-          inventoryEntry = colorInventory.find(item => item.isOneSize === true);
-        } else if (product.productType === 'other') {
-          inventoryEntry = colorInventory.find(
-            item =>
-              item.size === size ||
-              item.clothingSize === size ||
-              (size === 'OneSize' && item.isOneSize)
-          );
-        }
+  const noSizeAvailableForSelectedColor = !sizeData.some(sizeInfo => !sizeInfo.disabled);
 
-        return {
-          value: size,
-          disabled: !inventoryEntry || inventoryEntry.quantity === 0,
-        };
-      })
-    : allSizes.map(size => ({ value: size, disabled: false }));
-
-  // Check if no sizes are available
-  const noSizeAvailable = availableSizes.length === 0;
-
-  // Log dữ liệu đầu vào để debug
-  console.log('product.variants:', product.variants);
-
-  // Nếu selectedColor không hợp lệ, tự động set lại
   useEffect(() => {
     if (
-      (!selectedColor || !availableColors.includes(selectedColor)) &&
-      availableColors.length > 0
+      (!selectedColor || !allDefinedColors.includes(selectedColor)) &&
+      allDefinedColors.length > 0
     ) {
-      setSelectedColor(availableColors[0]);
+      setSelectedColor(allDefinedColors[0]);
+      setSelectedSize(null);
     }
-  }, [availableColors, selectedColor, setSelectedColor]);
+  }, [allDefinedColors, selectedColor, setSelectedColor]);
 
   return (
     <div className="product-info">
@@ -508,14 +471,13 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
         )}
       </h2>
 
-      {/* Color Selector */}
       <div className="variant-block">
         <h3 className="variant-label">Color</h3>
         <div className="color-options">
-          {noColorAvailable ? (
-            <span style={{ color: 'red' }}>No color available</span>
+          {noColorDefined ? (
+            <span style={{ color: 'red' }}>No color options defined</span>
           ) : (
-            colorOptions.map(color => (
+            colorSwatchOptions.map(color => (
               <div
                 key={color.value}
                 className={`color-swatch ${selectedColor === color.value ? 'active' : ''}`}
@@ -523,7 +485,7 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
                 title={color.value}
                 onClick={() => {
                   setSelectedColor(color.value);
-                  setSelectedSize(null); // reset size khi đổi màu
+                  setSelectedSize(null);
                 }}
               />
             ))
@@ -531,7 +493,6 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
         </div>
       </div>
 
-      {/* Size Selector */}
       <div className="variant-block">
         <div className="size-header">
           <h3 className="variant-label">
@@ -563,8 +524,10 @@ const ProductInfoSection = ({ product, selectedColor, setSelectedColor }) => {
             Size Chart
           </h4>
         </div>
-        {noSizeAvailable ? (
-          <span style={{ color: 'red' }}>No size available for this color</span>
+        {!selectedColor && !noColorDefined ? (
+          <span style={{ color: '#888' }}>Select a color to see available sizes</span>
+        ) : noColorDefined ? (
+          <span style={{ color: 'red' }}>No sizes defined</span>
         ) : (
           <SizePanel sizes={sizeData} selectedSize={selectedSize} onSizeSelect={setSelectedSize} />
         )}

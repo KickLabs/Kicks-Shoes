@@ -21,6 +21,7 @@ const BlogSchema = new Schema(
     isFeatured: { type: Boolean, default: false, index: true },
     views: { type: Number, default: 0, min: [0, 'Views cannot be negative'] },
     likes: { type: Number, default: 0, min: [0, 'Likes cannot be negative'] },
+    likedBy: [{ type: Schema.Types.ObjectId, ref: 'User', index: true }],
     commentsCount: { type: Number, default: 0, min: [0, 'Comments count cannot be negative'] },
     publishedAt: { type: Date, default: null, index: true },
   },

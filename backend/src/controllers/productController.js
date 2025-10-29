@@ -4,6 +4,7 @@ import { analyzeProductImage } from '../services/gemini.service.js';
 import { ProductService } from '../services/product.service.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
+import AIDescriptionService from '../services/aiDescription.service.js';
 
 /**
  * Create a new product
@@ -97,6 +98,7 @@ export const updateProduct = async (req, res, next) => {
       product.description = req.body.description?.trim() || '';
     if (req.body.brand) product.brand = req.body.brand;
     if (req.body.category) product.category = req.body.category;
+    if (req.body.productType) product.productType = req.body.productType; // <-- THÊM DÒNG NÀY
 
     // IMPORTANT: Update price fields to trigger finalPrice recalculation
     if (req.body.price) {
@@ -119,13 +121,18 @@ export const updateProduct = async (req, res, next) => {
       product.inventory = Array.isArray(req.body.inventory) ? req.body.inventory : [];
     }
 
-    if (req.body.images !== undefined) {
-      product.images = Array.isArray(req.body.images) ? req.body.images : [];
+    // --- THAY ĐỔI LOGIC ẢNH ---
+    if (req.body.colorOptions !== undefined) {
+      product.colorOptions = Array.isArray(req.body.colorOptions) ? req.body.colorOptions : [];
     }
+    // if (req.body.images !== undefined) { // <-- XÓA
+    //   product.images = Array.isArray(req.body.images) ? req.body.images : []; // <-- XÓA
+    // } // <-- XÓA
 
     if (req.body.mainImage !== undefined) {
       product.mainImage = req.body.mainImage || '';
     }
+    // --- KẾT THÚC THAY ĐỔI ---
 
     if (req.body.tags !== undefined) {
       product.tags = Array.isArray(req.body.tags) ? req.body.tags : [];
@@ -145,6 +152,7 @@ export const updateProduct = async (req, res, next) => {
       data: updatedProduct,
     });
   } catch (error) {
+    // ... (phần catch error giữ nguyên)
     console.error('Controller error updating product:', error);
     logger.error('Error updating product', {
       error: error.message,
@@ -486,6 +494,113 @@ export const visualSearch = async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Internal server error during visual search.',
+    });
+  }
+};
+
+/**
+ * Generate AI product description
+ * @route POST /api/products/generate-description
+ * @desc Generate product description and summary using AI
+ * @access Private/Admin
+ */
+export const generateAIDescription = async (req, res, next) => {
+  try {
+    const { name, brand, productType, category, price, colors, sizes } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product name is required',
+      });
+    }
+
+    logger.info(`Generating AI description for: ${name}`);
+
+    const productInfo = {
+      name,
+      brand,
+      productType: productType || 'shoes',
+      category,
+      price,
+      colors: colors || [],
+      sizes: sizes || [],
+    };
+
+    const result = await AIDescriptionService.generateDescription(productInfo);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    logger.error('Error generating AI description:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate description',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * THÊM MỚI: Add (upsert) stock to a specific product variant
+ * @route POST /api/products/:id/inventory/add-stock
+ * @access Private/Admin
+ */
+export const addStockToVariant = async (req, res, next) => {
+  try {
+    const productId = req.params.id;
+    // Lấy size, clothingSize, color và số lượng muốn thêm
+    const { color, size, clothingSize, quantityToAdd } = req.body;
+
+    // Validate input
+    if (!quantityToAdd || Number(quantityToAdd) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'quantityToAdd là bắt buộc và phải lớn hơn 0',
+      });
+    }
+
+    // Tìm sản phẩm
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy sản phẩm',
+      });
+    }
+
+    // Dữ liệu variant (chỉ truyền các trường liên quan)
+    const variantData = {
+      color,
+      size, // (e.g., 42) - sẽ là undefined nếu là quần áo/phụ kiện
+      clothingSize, // (e.g., "M") - sẽ là undefined nếu là giày/phụ kiện
+      isOneSize: product.productType === 'accessory',
+    };
+
+    // Gọi phương thức thông minh 'addStockToVariant' đã thêm vào Model
+    const updatedProduct = await product.addStockToVariant(variantData, Number(quantityToAdd));
+
+    logger.info('Stock added to variant successfully', {
+      productId,
+      variantData,
+      quantityAdded: quantityToAdd,
+    });
+    res.status(200).json({
+      success: true,
+      message: 'Cập nhật tồn kho thành công',
+      data: updatedProduct,
+    });
+  } catch (error) {
+    console.error('Controller error adding stock to variant:', error);
+    logger.error('Error adding stock to variant', {
+      error: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Lỗi máy chủ nội bộ',
     });
   }
 };

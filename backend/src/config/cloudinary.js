@@ -29,6 +29,26 @@ const storage = new CloudinaryStorage({
   },
 });
 
+// Configure storage for delivery proof images
+const deliveryProofStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "kicks-shoes/delivery-proofs",
+    allowed_formats: ["jpg", "jpeg", "png", "gif"],
+    transformation: [{ width: 1200, height: 1200, crop: "limit" }],
+    format: "jpg",
+    resource_type: "auto",
+    use_filename: true,
+    unique_filename: true,
+    overwrite: false,
+    secure: true,
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, "proof-" + uniqueSuffix);
+  },
+});
+
 // Middleware to log upload results
 const handleUpload = (req, res, next) => {
   if (!req.file) {
@@ -49,4 +69,4 @@ const handleUpload = (req, res, next) => {
   next();
 };
 
-export { cloudinary, storage, handleUpload };
+export { cloudinary, storage, deliveryProofStorage, handleUpload };

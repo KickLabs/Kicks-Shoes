@@ -20,7 +20,10 @@ import {
   getChatMessages,
   addFeaturedProduct,
   removeFeaturedProduct,
+  togglePinProduct,
   getLiveStreamAnalytics,
+  togglePinMessage,
+  getPinnedMessage,
 } from '../controllers/livestreamController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { requireRoles } from '../middlewares/role.middleware.js';
@@ -119,6 +122,25 @@ router.delete(
   removeFeaturedProduct
 );
 
+// Pin/Unpin product
+router.put(
+  '/:roomId/pin-product/:productId',
+  protect,
+  requireRoles('shop', 'admin'),
+  togglePinProduct
+);
+
 router.get('/:roomId/analytics', protect, requireRoles('shop', 'admin'), getLiveStreamAnalytics);
+
+// Pin/Unpin chat message
+router.put(
+  '/:roomId/chat/:messageId/pin',
+  protect,
+  requireRoles('shop', 'admin'),
+  togglePinMessage
+);
+
+// Get pinned message
+router.get('/:roomId/chat/pinned', getPinnedMessage);
 
 export default router;

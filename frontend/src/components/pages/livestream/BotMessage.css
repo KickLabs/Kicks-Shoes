@@ -1,0 +1,239 @@
+/* Bot Message Container */
+.bot-message-container {
+  margin: 16px 0;
+  animation: slideInRight 0.3s ease;
+}
+
+/* Replied Message (Original Question) */
+.replied-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 12px;
+  border-radius: 8px 8px 0 0;
+  font-size: 12px;
+  opacity: 0.85;
+  border-left: 3px solid #9333ea;
+}
+
+.replied-username {
+  font-weight: 600;
+  color: #a855f7;
+}
+
+.replied-content {
+  color: #cbd5e1;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Bot Message */
+.bot-message {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 0 0 12px 12px;
+  padding: 16px;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  position: relative;
+  animation: botGlow 2s infinite;
+}
+
+.bot-message::before {
+  content: '🤖';
+  position: absolute;
+  top: 8px;
+  left: 4px;
+  font-size: 24px;
+  background: white;
+  border-radius: 50%;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Bot Header */
+.bot-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.bot-avatar {
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.bot-badge {
+  margin: 0;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  font-weight: 600;
+}
+
+.bot-time {
+  font-size: 11px;
+  opacity: 0.8;
+  margin-left: auto;
+}
+
+/* Bot Content */
+.bot-content {
+  font-size: 14px;
+  line-height: 1.8;
+  color: white;
+  word-wrap: break-word;
+  white-space: pre-wrap; /* Preserve line breaks */
+}
+
+/* Rich Text Formatting */
+.bot-content strong,
+.bot-content b {
+  font-weight: 700;
+  color: #ffd700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.bot-content em,
+.bot-content i {
+  font-style: italic;
+  color: #fde68a;
+}
+
+/* Paragraphs */
+.bot-content p {
+  margin: 8px 0;
+}
+
+.bot-content p:first-child {
+  margin-top: 0;
+}
+
+.bot-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Lists */
+.bot-content ul,
+.bot-content ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.bot-content li {
+  margin: 4px 0;
+  line-height: 1.6;
+}
+
+.bot-content ul li {
+  list-style-type: none;
+  position: relative;
+  padding-left: 20px;
+}
+
+.bot-content ul li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #ffd700;
+  font-weight: bold;
+}
+
+/* Inline code / highlights */
+.bot-content code {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: #fde68a;
+}
+
+/* Blockquote */
+.bot-content blockquote {
+  border-left: 3px solid rgba(255, 255, 255, 0.3);
+  padding-left: 12px;
+  margin: 8px 0;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+/* Links */
+.bot-content a {
+  color: #fde68a;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.bot-content a:hover {
+  color: #ffd700;
+}
+
+/* Horizontal rule */
+.bot-content hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 12px 0;
+}
+
+/* Headers in content */
+.bot-content h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffd700;
+  margin: 12px 0 6px 0;
+}
+
+/* Emojis */
+.bot-content .emoji {
+  font-size: 16px;
+  margin: 0 2px;
+}
+
+/* Animations */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes botGlow {
+  0%,
+  100% {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .bot-message-container {
+    margin: 12px 0;
+  }
+
+  .bot-message {
+    padding: 12px;
+  }
+
+  .bot-content {
+    font-size: 13px;
+  }
+}

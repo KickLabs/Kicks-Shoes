@@ -43,7 +43,7 @@ const ProductDetailPage = () => {
     <div className="product-detail-container">
       <Row gutter={[32, 32]}>
         <Col span={14}>
-          <ProductImageGallery inventory={product.inventory} selectedColor={selectedColor} />
+          <ProductImageGallery colorOptions={product.colorOptions} selectedColor={selectedColor} />
         </Col>
         <Col span={10}>
           <ProductInfoSection
