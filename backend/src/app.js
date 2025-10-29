@@ -83,6 +83,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Apply CORS middleware first - this should handle everything
 app.use(corsMiddleware);
+// Ensure preflight requests are handled explicitly across all routes
+app.options('*', corsMiddleware);
 
 // Enhanced request logging with detailed debug info
 app.use((req, res, next) => {
