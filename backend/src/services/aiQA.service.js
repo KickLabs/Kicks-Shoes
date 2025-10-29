@@ -455,7 +455,26 @@ Remember: Always match the user's language and format responses clearly!
 
       const prompt = `${systemPrompt}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nQUESTION: ${question}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nYOUR RESPONSE (remember to match question language):`;
 
-      const result = await this.model.generateContent(prompt);
+      const modelId = process.env.GEMINI_MODEL_ID || 'gemini-2.0-flash-exp';
+      // Some SDKs require model on instance, others accept in getGenerativeModel
+      if (typeof this.genAI?.getGenerativeModel === 'function') {
+        this.model = this.genAI.getGenerativeModel({ model: modelId });
+      }
+
+      // Timebox AI call to avoid hanging in production
+      const timeoutMs = Number(process.env.AI_QA_TIMEOUT_MS || 8000);
+      const aiCall = this.model.generateContent(prompt);
+      const timed = await Promise.race([
+        aiCall,
+        new Promise(resolve => setTimeout(() => resolve({ __timeout: true }), timeoutMs)),
+      ]);
+
+      if (timed && timed.__timeout) {
+        logger.warn('AIQA generateContent timed out', { timeoutMs });
+        return this.generateRuleBasedAnswer(question, context);
+      }
+
+      const result = timed;
       const response = await result.response;
       let answer = '';
       try {
