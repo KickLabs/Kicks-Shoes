@@ -1,0 +1,35 @@
+.shipper-dashboard {
+  min-height: 100vh;
+  background: #f0f2f5;
+}
+
+.shipper-dashboard .ant-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.shipper-dashboard .ant-statistic-title {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.shipper-dashboard .ant-statistic-content {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.shipper-dashboard .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.shipper-dashboard .ant-btn-primary {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.shipper-dashboard .ant-btn-primary:hover {
+  background: #40a9ff;
+  border-color: #40a9ff;
+}
+

@@ -9,6 +9,8 @@ import { body, validationResult } from 'express-validator';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
+import Delivery from '../models/Delivery.js';
+import DeliveryReport from '../models/DeliveryReport.js';
 import EmailService from '../services/email.service.js';
 import { OrderService } from '../services/order.service.js';
 import * as RewardPointService from '../services/rewardPoint.service.js';
@@ -17,7 +19,9 @@ import {
   deductRewardPointsForOrder,
   hasOrderEarnedRewardPoints,
 } from '../services/rewardPoint.service.js';
+import RewardPoint from '../models/RewardPoint.js';
 import VNPayService from '../services/vnpay.service.js';
+import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
 
 // Validation rules for order operations
@@ -289,15 +293,180 @@ export const getOrderById = async (req, res, next) => {
       });
     }
 
+    // Get delivery info if exists
+    let delivery = null;
+    if (order.shipper) {
+      delivery = await Delivery.findOne({ order: id })
+        .populate('shipper', 'fullName phone avatar vehicleType')
+        .lean();
+    }
+
     res.status(200).json({
       success: true,
-      data: order,
+      data: {
+        ...order.toObject(),
+        delivery: delivery ? {
+          ...delivery,
+          timeline: getDeliveryTimeline(delivery),
+          statusHistory: delivery.statusHistory,
+        } : null,
+      },
     });
   } catch (error) {
     logger.error('Error getting order by ID:', error);
     next(error);
   }
 };
+
+/**
+ * Get delivery tracking for an order
+ * @route GET /api/orders/:id/tracking
+ * @access Private
+ */
+export const getOrderTracking = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Find order
+    const order = await Order.findById(id)
+      .select('orderNumber status shipper assignedAt')
+      .populate('shipper', 'fullName phone avatar vehicleType');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    // Get delivery info
+    const delivery = await Delivery.findOne({ order: id })
+      .populate('shipper', 'fullName phone avatar vehicleType email')
+      .lean();
+
+    if (!delivery) {
+      return res.status(404).json({
+        success: false,
+        message: 'Delivery information not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        orderNumber: order.orderNumber,
+        orderStatus: order.status,
+        shipper: delivery.shipper,
+        currentStatus: delivery.status,
+        timeline: getDeliveryTimeline(delivery),
+        statusHistory: delivery.statusHistory,
+        location: delivery.location,
+        estimatedDeliveryTime: delivery.estimatedDeliveryTime,
+        actualDeliveryTime: delivery.actualDeliveryTime,
+        proofOfDelivery: delivery.proofOfDelivery,
+        recipientName: delivery.recipientName,
+        deliveryDuration: delivery.deliveredAt && delivery.assignedAt 
+          ? Math.floor((new Date(delivery.deliveredAt) - new Date(delivery.assignedAt)) / 1000 / 60)
+          : null,
+      },
+    });
+  } catch (error) {
+    logger.error('Get order tracking error', {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(error);
+  }
+};
+
+/**
+ * Helper function to generate delivery timeline
+ */
+function getDeliveryTimeline(delivery) {
+  const timeline = [];
+
+  // Always include assigned
+  if (delivery.assignedAt) {
+    timeline.push({
+      status: 'assigned',
+      label: 'Shipper Assigned',
+      timestamp: delivery.assignedAt,
+      completed: true,
+    });
+  }
+
+  // Picked up
+  if (delivery.pickedUpAt) {
+    timeline.push({
+      status: 'picked_up',
+      label: 'Picked Up',
+      timestamp: delivery.pickedUpAt,
+      completed: true,
+    });
+  } else if (delivery.status !== 'assigned') {
+    timeline.push({
+      status: 'picked_up',
+      label: 'Picked Up',
+      timestamp: null,
+      completed: false,
+    });
+  }
+
+  // In transit
+  if (delivery.inTransitAt) {
+    timeline.push({
+      status: 'in_transit',
+      label: 'In Transit',
+      timestamp: delivery.inTransitAt,
+      completed: true,
+    });
+  } else if (
+    delivery.status !== 'assigned' &&
+    delivery.status !== 'picked_up'
+  ) {
+    timeline.push({
+      status: 'in_transit',
+      label: 'In Transit',
+      timestamp: null,
+      completed: false,
+    });
+  }
+
+  // Delivered or Failed
+  if (delivery.deliveredAt) {
+    timeline.push({
+      status: 'delivered',
+      label: 'Delivered',
+      timestamp: delivery.deliveredAt,
+      completed: true,
+      recipientName: delivery.recipientName,
+      proofOfDelivery: delivery.proofOfDelivery,
+    });
+  } else if (delivery.failedAt && delivery.status === 'failed') {
+    // Only show failed status if current status is still failed
+    timeline.push({
+      status: 'failed',
+      label: 'Delivery Failed',
+      timestamp: delivery.failedAt,
+      completed: true,
+      failureReason: delivery.failureReason,
+    });
+  } else if (
+    delivery.status !== 'assigned' &&
+    delivery.status !== 'picked_up' &&
+    delivery.status !== 'in_transit' &&
+    delivery.status !== 'failed'
+  ) {
+    timeline.push({
+      status: 'delivered',
+      label: 'Delivered',
+      timestamp: null,
+      completed: false,
+    });
+  }
+
+  return timeline;
+}
 
 /**
  * Get orders for current user
@@ -530,7 +699,11 @@ export const cancelOrder = async (req, res, next) => {
 export const refundOrder = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { reason, amount } = req.body;
+    let { reason, amount } = req.body;
+    
+    // Ensure amount is always positive
+    amount = Math.abs(parseFloat(amount));
+    
     if (!id?.trim()) {
       return res.status(400).json({
         success: false,
@@ -563,15 +736,16 @@ export const refundOrder = async (req, res, next) => {
       (orderToRefund.paymentMethod === 'vnpay' &&
         orderToRefund.paymentStatus === 'paid' &&
         orderToRefund.status === 'cancelled') ||
-      // Case 2: Delivered orders (within 7 days of delivery)
+      // Case 2: Delivered orders (within 3 days of delivery)
       (orderToRefund.status === 'delivered' &&
-        orderToRefund.updatedAt &&
-        new Date() - new Date(orderToRefund.updatedAt) <= 7 * 24 * 60 * 60 * 1000 &&
+        orderToRefund.deliveredAt &&
+        new Date() - new Date(orderToRefund.deliveredAt) <= 3 * 24 * 60 * 60 * 1000 &&
         orderToRefund.paymentStatus === 'paid') ||
-      // Case 3: COD orders that have been paid and delivered
-      (orderToRefund.paymentMethod === 'cash_on_delivery' &&
-        orderToRefund.paymentStatus === 'paid' &&
-        orderToRefund.status === 'delivered');
+      // Case 3: Completed orders (within 3 days of completion)
+      (orderToRefund.status === 'completed' &&
+        orderToRefund.completedAt &&
+        new Date() - new Date(orderToRefund.completedAt) <= 3 * 24 * 60 * 60 * 1000 &&
+        orderToRefund.paymentStatus === 'paid');
     if (!isEligibleForRefund) {
       logger.warn('Refund attempt for ineligible order', {
         orderId: id,
@@ -626,27 +800,62 @@ export const refundOrder = async (req, res, next) => {
       });
       refundInfo = refundResult.data;
     }
-    // Nếu là COD đã giao hàng và đã thanh toán thì refund bằng điểm thưởng
+    // Nếu là COD hoặc PayOS (không phải VNPay) thì refund bằng điểm thưởng
+    logger.info('Checking COD/PayOS refund eligibility', {
+      paymentMethod: orderToRefund.paymentMethod,
+      paymentStatus: orderToRefund.paymentStatus,
+      status: orderToRefund.status,
+      shouldRefund: orderToRefund.paymentMethod !== 'vnpay' &&
+        orderToRefund.paymentStatus === 'paid' &&
+        (orderToRefund.status === 'delivered' || orderToRefund.status === 'completed')
+    });
+    
     if (
-      orderToRefund.paymentMethod === 'cash_on_delivery' &&
+      orderToRefund.paymentMethod !== 'vnpay' &&
       orderToRefund.paymentStatus === 'paid' &&
-      orderToRefund.status === 'delivered'
+      (orderToRefund.status === 'delivered' || orderToRefund.status === 'completed')
     ) {
+      logger.info('Creating reward points for COD/PayOS refund', { amount });
+      
       // Cộng điểm thưởng tương ứng số tiền refund
-      await RewardPointService.create({
-        user: orderToRefund.user,
-        order: orderToRefund._id,
-        points: amount, // 1 point = 1 VND
-        type: 'refund',
-        description: `Refund for order ${orderToRefund._id}`,
+      // IMPORTANT: 1000 VND = 1 point (divide by 1000)
+      const refundPoints = Math.floor(Math.abs(Number(amount)) / 1000);
+      
+      logger.info('Refund points to be added', {
+        originalAmount: amount,
+        refundPoints: refundPoints,
+        conversionRate: '1000 VND = 1 point'
       });
+      
+      const rewardPoint = await RewardPoint.create({
+        user: orderToRefund.user,
+        points: refundPoints, // 1000 VND = 1 point
+        type: 'adjust', // Use 'adjust' for refund points
+        description: `Refund for order #${orderToRefund.orderNumber || orderToRefund._id}`,
+        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+        status: 'active',
+      });
+      
+      logger.info('Reward points created successfully for refund', {
+        rewardPointId: rewardPoint._id,
+        points: rewardPoint.points,
+        user: orderToRefund.user,
+        orderId: id
+      });
+      
       await OrderService.updateOrder(id, {
         status: 'refunded',
+        paymentStatus: 'refunded',
         refundAmount: amount,
         refundReason: reason,
         refundedAt: new Date(),
       });
-      refundInfo = { pointsRefunded: amount };
+      refundInfo = { 
+        refundAmountVND: amount,
+        pointsRefunded: refundPoints,
+        conversionRate: '1000 VND = 1 point',
+        message: `Refund processed as ${refundPoints} reward points`
+      };
     }
     // Trừ điểm nếu đã từng cộng cho order này
     try {
@@ -692,9 +901,9 @@ export const refundOrder = async (req, res, next) => {
 };
 
 /**
- * Update order status
+ * Update order status (Shop only: pending → processing)
  * @route PATCH /api/orders/:id/status
- * @access Private/Admin
+ * @access Private/Shop
  */
 export const updateOrderStatus = async (req, res, next) => {
   try {
@@ -715,77 +924,28 @@ export const updateOrderStatus = async (req, res, next) => {
       });
     }
 
-    // Validate status
-    const validStatuses = [
-      'pending',
-      'processing',
-      'shipped',
-      'delivered',
-      'cancelled',
-      'refunded',
-    ];
-    if (!validStatuses.includes(status.toLowerCase())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status value',
-      });
-    }
-
-    logger.info('Updating order status', { orderId: id, newStatus: status });
-
-    const order = await OrderService.updateOrder(id, {
-      status: status.toLowerCase(),
-    });
-
-    if (!order) {
+    // Get current order
+    const currentOrder = await Order.findById(id);
+    if (!currentOrder) {
       return res.status(404).json({
         success: false,
         message: 'Order not found',
       });
     }
 
-    // Nếu chuyển sang delivered thì cộng điểm thưởng (nếu chưa cộng)
-    if (status.toLowerCase() === 'delivered') {
-      try {
-        const hasRewardPoints = await hasOrderEarnedRewardPoints(order._id);
-        if (!hasRewardPoints) {
-          // Truy vấn lại order với đầy đủ trường
-          const fullOrder = await Order.findById(order._id)
-            .populate({
-              path: 'items',
-              populate: { path: 'product' },
-            })
-            .lean();
-          // Cộng sales cho từng sản phẩm trong order items
-          if (fullOrder && Array.isArray(fullOrder.items)) {
-            for (const item of fullOrder.items) {
-              if (item.product && item.quantity) {
-                await Product.findByIdAndUpdate(item.product._id || item.product, {
-                  $inc: { sales: item.quantity },
-                });
-              }
-            }
-          }
-          const reward = await createRewardPointsForOrder(fullOrder);
-          if (reward) {
-            console.log(
-              '[REWARD] Cộng điểm thành công cho order:',
-              order._id,
-              'user:',
-              order.user,
-              'points:',
-              reward.points
-            );
-          } else {
-            console.log('[REWARD] Không có điểm để cộng cho order:', order._id);
-          }
-        } else {
-          console.log('[REWARD] Đã từng cộng điểm cho order:', order._id);
-        }
-      } catch (err) {
-        console.error('[REWARD] Lỗi khi cộng điểm cho order:', order._id, err);
-      }
+    // Shop can only transition from pending to processing
+    if (currentOrder.status !== 'pending' || status.toLowerCase() !== 'processing') {
+      return res.status(400).json({
+        success: false,
+        message: 'Shop can only update orders from pending to processing status',
+      });
     }
+
+    logger.info('Updating order status', { orderId: id, newStatus: status });
+
+    const order = await OrderService.updateOrder(id, {
+      status: 'processing',
+    });
 
     // Send email notification for status change
     try {
@@ -793,7 +953,7 @@ export const updateOrderStatus = async (req, res, next) => {
       await EmailService.sendOrderStatusUpdateEmail(
         populatedOrder.user,
         populatedOrder,
-        status.toLowerCase()
+        'processing'
       );
     } catch (emailError) {
       logger.error('Error sending order status update email:', emailError);
@@ -805,10 +965,453 @@ export const updateOrderStatus = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: order,
-      message: 'Order status updated successfully',
+      message: 'Order status updated to processing successfully',
     });
   } catch (error) {
     logger.error('Error updating order status:', error);
+    next(error);
+  }
+};
+
+/**
+ * Assign shipper to order (manual)
+ * @route POST /api/orders/:id/assign-shipper
+ * @access Private/Shop
+ */
+export const assignShipper = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { shipperId } = req.body;
+
+    if (!shipperId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Shipper ID is required',
+      });
+    }
+
+    // Find order
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    // Check if order status is processing
+    if (order.status !== 'processing') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only assign shipper to processing orders',
+      });
+    }
+
+    // Find shipper
+    const shipper = await User.findById(shipperId);
+    if (!shipper || shipper.role !== 'shipper') {
+      return res.status(404).json({
+        success: false,
+        message: 'Shipper not found',
+      });
+    }
+
+    // Check if shipper is active
+    if (!shipper.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Shipper is not active',
+      });
+    }
+
+    // Check if delivery already exists
+    const existingDelivery = await Delivery.findOne({ order: id });
+    if (existingDelivery) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery already assigned to this order',
+      });
+    }
+
+    // Create delivery
+    const delivery = await Delivery.create({
+      order: id,
+      shipper: shipperId,
+      status: 'assigned',
+      assignedAt: new Date(),
+      estimatedDeliveryTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+    });
+
+    // Update order
+    order.shipper = shipperId;
+    order.assignedAt = new Date();
+    await order.save();
+
+    // Increment shipper's current delivery count
+    await User.findByIdAndUpdate(shipperId, {
+      $inc: { currentDeliveryCount: 1 },
+    });
+
+    logger.info('Shipper assigned to order', {
+      orderId: id,
+      shipperId,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        order,
+        delivery,
+      },
+      message: 'Shipper assigned successfully',
+    });
+  } catch (error) {
+    logger.error('Assign shipper error', {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(error);
+  }
+};
+
+/**
+ * Auto-assign shipper to order
+ * @route POST /api/orders/:id/auto-assign-shipper
+ * @access Private/Shop
+ */
+export const autoAssignShipper = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Find order
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found',
+      });
+    }
+
+    // Check if order status is processing
+    if (order.status !== 'processing') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only assign shipper to processing orders',
+      });
+    }
+
+    // Check if delivery already exists
+    const existingDelivery = await Delivery.findOne({ order: id });
+    if (existingDelivery) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery already assigned to this order',
+      });
+    }
+
+    // Find available shipper with minimum current deliveries
+    const shipper = await User.findOne({
+      role: 'shipper',
+      status: true,
+      isVerified: true,
+      $or: [
+        { isActive: true },
+        { isActive: { $exists: false } }
+      ]
+    }).sort({ currentDeliveryCount: 1 });
+
+    if (!shipper) {
+      return res.status(404).json({
+        success: false,
+        message: 'No available shipper found',
+      });
+    }
+
+    // Create delivery
+    const delivery = await Delivery.create({
+      order: id,
+      shipper: shipper._id,
+      status: 'assigned',
+      assignedAt: new Date(),
+      estimatedDeliveryTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+    });
+
+    // Update order
+    order.shipper = shipper._id;
+    order.assignedAt = new Date();
+    await order.save();
+
+    // Increment shipper's current delivery count
+    await User.findByIdAndUpdate(shipper._id, {
+      $inc: { currentDeliveryCount: 1 },
+    });
+
+    logger.info('Shipper auto-assigned to order', {
+      orderId: id,
+      shipperId: shipper._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        order,
+        delivery,
+        shipper: {
+          _id: shipper._id,
+          fullName: shipper.fullName,
+          phone: shipper.phone,
+          vehicleType: shipper.vehicleType,
+        },
+      },
+      message: 'Shipper auto-assigned successfully',
+    });
+  } catch (error) {
+    logger.error('Auto-assign shipper error', {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(error);
+  }
+};
+
+/**
+ * Get available shippers
+ * @route GET /api/orders/shippers/available
+ * @access Private/Shop
+ */
+export const getAvailableShippers = async (req, res, next) => {
+  try {
+    const shippers = await User.find({
+      role: 'shipper',
+      status: true,
+      isVerified: true,
+      $or: [
+        { isActive: true },
+        { isActive: { $exists: false } }
+      ]
+    })
+      .select('fullName email phone avatar vehicleType currentDeliveryCount isActive')
+      .sort({ currentDeliveryCount: 1 });
+
+    logger.info('Available shippers found', {
+      count: shippers.length,
+      shippers: shippers.map(s => ({ id: s._id, name: s.fullName, isActive: s.isActive }))
+    });
+
+    res.status(200).json({
+      success: true,
+      data: shippers,
+      count: shippers.length,
+    });
+  } catch (error) {
+    logger.error('Get available shippers error', {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(error);
+  }
+};
+
+/**
+ * Customer confirms order received
+ * @route POST /api/orders/:id/confirm
+ * @access Private/Customer
+ */
+export const confirmOrderReceived = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return next(new ErrorResponse('Order not found', 404));
+    }
+
+    // Check if order belongs to this user
+    if (order.user.toString() !== userId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'You can only confirm your own orders',
+      });
+    }
+
+    // Check if order is delivered or pending confirmation
+    if (order.status !== 'delivered' && order.status !== 'delivered_pending_confirmation') {
+      return res.status(400).json({
+        success: false,
+        message: 'Order must be delivered before confirmation',
+      });
+    }
+
+    // Update order status to completed
+    order.status = 'completed';
+    order.completedAt = new Date();
+    order.customerConfirmedAt = new Date();
+    await order.save();
+
+    // Award reward points if not already awarded
+    try {
+      const hasRewardPoints = await hasOrderEarnedRewardPoints(order._id);
+      if (!hasRewardPoints) {
+        const fullOrder = await Order.findById(order._id)
+          .populate({
+            path: 'items',
+            populate: { path: 'product' },
+          })
+          .lean();
+        
+        // Increment sales for each product
+        if (fullOrder && Array.isArray(fullOrder.items)) {
+          for (const item of fullOrder.items) {
+            if (item.product && item.quantity) {
+              await Product.findByIdAndUpdate(item.product._id || item.product, {
+                $inc: { sales: item.quantity },
+              });
+            }
+          }
+        }
+        
+        const reward = await createRewardPointsForOrder(fullOrder);
+        if (reward) {
+          logger.info('[REWARD] Points awarded for order:', {
+            orderId: order._id,
+            userId: order.user,
+            points: reward.points,
+          });
+        }
+      }
+    } catch (err) {
+      logger.error('[REWARD] Error awarding points for order:', order._id, err);
+    }
+
+    logger.info('Order confirmed by customer', { orderId: id });
+
+    res.status(200).json({
+      success: true,
+      data: order,
+      message: 'Order confirmed successfully',
+    });
+  } catch (error) {
+    logger.error('Confirm order received error', {
+      error: error.message,
+      stack: error.stack,
+    });
+    next(error);
+  }
+};
+
+/**
+ * @desc    Report delivery issue (customer didn't receive order)
+ * @route   POST /api/orders/:id/report-issue
+ * @access  Private (Customer only)
+ */
+export const reportDeliveryIssue = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { reportType, reason, description, images } = req.body;
+    const userId = req.user._id;
+
+    // Validate report type
+    const validReportTypes = ['not_received', 'damaged', 'wrong_item', 'incomplete', 'other'];
+    if (!validReportTypes.includes(reportType)) {
+      return next(new ErrorResponse('Invalid report type', 400));
+    }
+
+    // Validate reason
+    if (!reason || reason.trim().length === 0) {
+      return next(new ErrorResponse('Reason is required', 400));
+    }
+
+    const order = await Order.findById(id).populate('user', 'email fullName');
+
+    if (!order) {
+      return next(new ErrorResponse('Order not found', 404));
+    }
+
+    // Check if order belongs to this user
+    if (order.user._id.toString() !== userId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'You can only report issues for your own orders',
+      });
+    }
+
+    // Check if order is in delivered_pending_confirmation status
+    if (order.status !== 'delivered_pending_confirmation' && order.status !== 'delivered') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only report issues for delivered orders',
+      });
+    }
+
+    // Check if there's already an active report for this order
+    const existingReport = await DeliveryReport.findOne({
+      order: id,
+      status: { $in: ['pending', 'investigating'] },
+      isActive: true,
+    });
+
+    if (existingReport) {
+      return res.status(400).json({
+        success: false,
+        message: 'There is already an active report for this order',
+      });
+    }
+
+    // Find delivery
+    const delivery = await Delivery.findOne({ order: id });
+
+    // Create delivery report
+    const report = await DeliveryReport.create({
+      order: id,
+      delivery: delivery?._id,
+      customer: userId,
+      shipper: delivery?.shipper,
+      reportType,
+      reason: reason.trim(),
+      description: description?.trim(),
+      images: images || [],
+      status: 'pending',
+      priority: reportType === 'not_received' ? 'high' : 'medium',
+    });
+
+    // Update order status to under_investigation
+    order.status = 'under_investigation';
+    await order.save();
+
+    // Populate report for response
+    await report.populate([
+      { path: 'customer', select: 'fullName email phone' },
+      { path: 'shipper', select: 'fullName email phone' },
+      { path: 'order', select: 'orderNumber status' },
+    ]);
+
+    // Send email notification to admin/shop
+    await EmailService.sendDeliveryIssueReportEmail({
+      customerName: order.user.fullName,
+      orderNumber: order.orderNumber,
+      reportType,
+      reason,
+      description,
+    });
+
+    logger.info('Delivery issue reported', {
+      orderId: id,
+      reportId: report._id,
+      reportType,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: report,
+      message: 'Delivery issue reported successfully. Our team will investigate and contact you soon.',
+    });
+  } catch (error) {
+    logger.error('Report delivery issue error', {
+      error: error.message,
+      stack: error.stack,
+    });
     next(error);
   }
 };
@@ -824,4 +1427,7 @@ export const orderRoutes = {
   refundOrder,
   updateOrderStatus,
   getMyOrders,
+  confirmOrderReceived,
+  reportDeliveryIssue,
+  getOrderTracking,
 };

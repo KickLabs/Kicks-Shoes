@@ -121,6 +121,14 @@ const liveStreamSchema = new mongoose.Schema(
           type: Date,
           default: Date.now,
         },
+        isPinned: {
+          type: Boolean,
+          default: false,
+        },
+        pinnedAt: {
+          type: Date,
+          default: null,
+        },
       },
     ],
 
@@ -241,6 +249,28 @@ liveStreamSchema.methods.addFeaturedProduct = function (productId) {
 
   if (!existingProduct) {
     this.featuredProducts.push({ productId });
+    return this.save();
+  }
+
+  return Promise.resolve(this);
+};
+
+// Pin/Unpin featured product
+liveStreamSchema.methods.togglePinProduct = function (productId) {
+  const product = this.featuredProducts.find(p => p.productId.toString() === productId.toString());
+
+  if (product) {
+    // Unpin all other products first (only one can be pinned at a time)
+    this.featuredProducts.forEach(p => {
+      if (p.productId.toString() !== productId.toString()) {
+        p.isPinned = false;
+        p.pinnedAt = null;
+      }
+    });
+
+    // Toggle pin status
+    product.isPinned = !product.isPinned;
+    product.pinnedAt = product.isPinned ? new Date() : null;
     return this.save();
   }
 

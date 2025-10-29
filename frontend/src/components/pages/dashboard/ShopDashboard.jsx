@@ -690,7 +690,7 @@ export default function ShopDashboard() {
                 <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                   <Statistic
                     title="Average Rating"
-                    value={stats?.averageRating?.value || 0}
+                    value={Number(stats?.averageRating?.value || 0).toFixed(1)}
                     prefix={<StarOutlined style={{ color: '#faad14' }} />}
                     valueStyle={{ color: '#faad14', fontSize: 24, fontWeight: 600 }}
                     suffix="/ 5"

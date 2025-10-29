@@ -2,24 +2,40 @@ import { useState, useEffect } from 'react';
 import { Row, Col, Image } from 'antd';
 import './ProductImageGallery.css';
 
-const ProductImageGallery = ({ inventory, selectedColor }) => {
+const ProductImageGallery = ({ colorOptions, selectedColor }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [filteredImages, setFilteredImages] = useState([]);
 
   useEffect(() => {
-    if (!inventory || !selectedColor) return;
+    if (!colorOptions || !selectedColor) return;
 
-    const match = inventory.find(item => item.color === selectedColor);
+    const match = colorOptions.find(item => item.color === selectedColor);
     if (match && Array.isArray(match.images)) {
       setFilteredImages(match.images);
       setActiveIndex(0);
     } else {
       setFilteredImages([]);
     }
-  }, [inventory, selectedColor]);
+  }, [colorOptions, selectedColor]);
 
   if (!filteredImages || filteredImages.length === 0) {
-    return <div>Không có hình ảnh cho màu "{selectedColor}"</div>;
+    // Tìm mainImage của sản phẩm làm ảnh dự phòng (nếu có)
+    const fallbackImage =
+      colorOptions && colorOptions.length > 0 && colorOptions[0].images.length > 0
+        ? colorOptions[0].images[0]
+        : null;
+
+    if (fallbackImage) {
+      return (
+        <Image
+          src={fallbackImage}
+          width="100%"
+          height={500}
+          style={{ objectFit: 'cover', borderRadius: 16 }}
+        />
+      );
+    }
+    return <div>Không có hình ảnh cho sản phẩm này.</div>;
   }
 
   return (

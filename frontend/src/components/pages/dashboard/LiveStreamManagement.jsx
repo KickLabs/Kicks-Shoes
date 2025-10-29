@@ -33,7 +33,7 @@ import {
 } from '@ant-design/icons';
 import livestreamService from '../../../services/livestreamService';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 const LiveStreamManagement = () => {
   const [streams, setStreams] = useState([]);
@@ -50,7 +50,8 @@ const LiveStreamManagement = () => {
   const fetchStreams = async () => {
     try {
       setLoading(true);
-      const response = await livestreamService.getMyLiveStreams();
+      // Fetch with a high limit to retrieve all streams (API is paginated)
+      const response = await livestreamService.getMyLiveStreams(1, 1000);
       setStreams(response.data.streams || []);
     } catch (error) {
       console.error('Error fetching streams:', error);
@@ -129,14 +130,19 @@ const LiveStreamManagement = () => {
       title: 'Title',
       dataIndex: 'title',
       key: 'title',
+      width: 520,
       render: (text, record) => (
         <div>
           <Text strong>{text}</Text>
           {record.description && (
-            <div>
-              <Text type="secondary" ellipsis style={{ fontSize: '12px' }}>
+            <div style={{ maxWidth: 480 }}>
+              <Paragraph
+                type="secondary"
+                style={{ fontSize: '12px', marginBottom: 0 }}
+                ellipsis={{ rows: 2, tooltip: record.description }}
+              >
                 {record.description}
-              </Text>
+              </Paragraph>
             </div>
           )}
         </div>

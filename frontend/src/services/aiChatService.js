@@ -72,11 +72,12 @@ class AIChatService {
   /**
    * Send a message to the AI and handle streaming response
    * @param {string} message - User message
+   * @param {string} userRole - User role (customer, shop, admin)
    * @param {function} onStream - Callback for streaming chunks
    * @param {function} onComplete - Callback when response is complete
    * @param {function} onError - Callback for errors
    */
-  async sendMessage(message, onStream, onComplete, onError) {
+  async sendMessage(message, userRole = 'customer', onStream, onComplete, onError) {
     try {
       // Check if API base URL is configured
       if (!API_BASE_URL) {
@@ -97,6 +98,7 @@ class AIChatService {
         body: JSON.stringify({
           message: message,
           conversationId: this.conversationId || null,
+          userRole: userRole,
         }),
       });
 
@@ -129,11 +131,13 @@ class AIChatService {
               fullResponse += data.content;
               onStream(data.content);
             } else if (data.type === 'final') {
-              // Handle final response
+              // Handle final response with product suggestions
               const finalResponse = data.content.final_response;
+              const productSuggestions = data.content.product_suggestions || [];
               this.conversationId = data.content.conversation_id || this.conversationId;
               console.log('AI response completed:', finalResponse);
-              onComplete(finalResponse, data.content);
+              console.log('Product suggestions:', productSuggestions);
+              onComplete(finalResponse, { ...data.content, productSuggestions });
               return;
             } else if (data.type === 'error') {
               // Handle error response

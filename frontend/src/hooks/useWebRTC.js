@@ -8,11 +8,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { ICE_SERVERS, PEER_CONNECTION_CONFIG, SOCKET_CONFIG } from '../config/webrtc.config';
+import axiosInstance from '../services/axiosInstance';
 
 export const useWebRTC = (roomId, role, userId) => {
   const [isConnected, setIsConnected] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
   const [messages, setMessages] = useState([]);
+  const [pinnedMessage, setPinnedMessage] = useState(null);
+  const [botReplies, setBotReplies] = useState([]);
+  const [personalNotification, setPersonalNotification] = useState(null);
   const [connectionState, setConnectionState] = useState('disconnected');
   const [error, setError] = useState(null);
 
@@ -98,11 +102,49 @@ export const useWebRTC = (roomId, role, userId) => {
 
     // Chat events
     socket.on('chat_message', handleChatMessage);
+    socket.on('message_pinned', handleMessagePinned);
+    socket.on('message_unpinned', handleMessageUnpinned);
+    socket.on('ai_bot_reply', handleBotReply);
+    socket.on('personal_bot_notification', handlePersonalNotification);
 
     return () => {
       socket.disconnect();
     };
   }, [roomId, role, userId]);
+
+  // Load initial chat data (history and pinned message)
+  useEffect(() => {
+    const loadInitialChatData = async () => {
+      if (!roomId || !isConnected) return;
+
+      try {
+        console.log('Loading initial chat data for room:', roomId);
+
+        // Load chat history
+        const chatResponse = await axiosInstance.get(`/livestream/${roomId}/chat`, {
+          params: { limit: 50, page: 1 },
+        });
+
+        if (chatResponse.data.success && chatResponse.data.data) {
+          console.log('Loaded chat history:', chatResponse.data.data.length, 'messages');
+          setMessages(chatResponse.data.data);
+        }
+
+        // Load pinned message
+        const pinnedResponse = await axiosInstance.get(`/livestream/${roomId}/chat/pinned`);
+
+        if (pinnedResponse.data.success && pinnedResponse.data.data) {
+          console.log('Loaded pinned message:', pinnedResponse.data.data);
+          setPinnedMessage(pinnedResponse.data.data);
+        }
+      } catch (error) {
+        console.error('Error loading initial chat data:', error);
+        // Don't throw error, just log it
+      }
+    };
+
+    loadInitialChatData();
+  }, [roomId, isConnected]);
 
   // Handle joined confirmation
   const handleJoined = useCallback(
@@ -184,16 +226,20 @@ export const useWebRTC = (roomId, role, userId) => {
         const pc = peersRef.current.get(data.viewerId);
         if (pc && data.candidate) {
           try {
+            console.log('📡 Host adding ICE candidate:', data.candidate.type);
             await pc.addIceCandidate(data.candidate);
           } catch (error) {
-            console.error('Error adding ICE candidate:', error);
+            console.error('❌ Host error adding ICE candidate:', error);
+            // Don't fail the connection for ICE candidate errors
           }
         }
       } else if (role === 'viewer' && peerConnectionRef.current && data.candidate) {
         try {
+          console.log('📡 Viewer adding ICE candidate:', data.candidate.type);
           await peerConnectionRef.current.addIceCandidate(data.candidate);
         } catch (error) {
-          console.error('Error adding ICE candidate:', error);
+          console.error('❌ Viewer error adding ICE candidate:', error);
+          // Don't fail the connection for ICE candidate errors
         }
       }
     },
@@ -202,7 +248,66 @@ export const useWebRTC = (roomId, role, userId) => {
 
   // Handle chat message
   const handleChatMessage = useCallback(data => {
-    setMessages(prev => [...prev, data.message]);
+    setMessages(prev => {
+      // Check if message already exists to avoid duplicates
+      const exists = prev.some(msg => msg._id === data.message._id);
+      if (exists) return prev;
+      return [...prev, data.message];
+    });
+  }, []);
+
+  // Handle message pinned
+  const handleMessagePinned = useCallback(data => {
+    console.log('Message pinned:', data);
+    setPinnedMessage(data.message);
+
+    // Remove the pinned message from regular messages list to avoid duplication
+    setMessages(prev => prev.filter(msg => msg._id !== data.message._id));
+  }, []);
+
+  // Handle message unpinned
+  const handleMessageUnpinned = useCallback(data => {
+    console.log('Message unpinned', data);
+    setPinnedMessage(null);
+
+    // Add the unpinned message back to messages list
+    if (data.message) {
+      setMessages(prev => {
+        // Check if already exists
+        const exists = prev.some(msg => msg._id === data.message._id);
+        if (exists) return prev;
+        // Add it back in chronological order
+        return [...prev, data.message].sort(
+          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        );
+      });
+    }
+  }, []);
+
+  // Handle bot reply
+  const handleBotReply = useCallback(data => {
+    console.log('Bot reply received:', data);
+    setBotReplies(prev => [
+      ...prev,
+      {
+        id: `bot_${Date.now()}`,
+        originalMessage: data.originalMessage,
+        answer: data.answer,
+        confidence: data.confidence,
+        timestamp: data.timestamp,
+      },
+    ]);
+  }, []);
+
+  // Handle personal bot notification
+  const handlePersonalNotification = useCallback(data => {
+    console.log('Personal notification received:', data);
+    setPersonalNotification({
+      question: data.question,
+      answer: data.answer,
+      timestamp: data.timestamp,
+      messageId: data.messageId,
+    });
   }, []);
 
   // Create peer connection
@@ -211,6 +316,7 @@ export const useWebRTC = (roomId, role, userId) => {
 
     pc.onicecandidate = event => {
       if (event.candidate && socketRef.current) {
+        console.log('📡 Sending ICE candidate:', event.candidate.type);
         socketRef.current.emit('webrtc_ice', {
           viewerId,
           candidate: event.candidate,
@@ -218,7 +324,21 @@ export const useWebRTC = (roomId, role, userId) => {
       }
     };
 
+    pc.onicegatheringstatechange = () => {
+      console.log('📡 ICE gathering state:', pc.iceGatheringState);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log('📡 ICE connection state:', pc.iceConnectionState);
+      if (pc.iceConnectionState === 'failed') {
+        console.warn('⚠️ ICE connection failed, attempting restart...');
+        // Try to restart ICE
+        pc.restartIce();
+      }
+    };
+
     pc.onconnectionstatechange = () => {
+      console.log('📡 Connection state:', pc.connectionState);
       if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
         peersRef.current.delete(viewerId);
       }
@@ -260,6 +380,7 @@ export const useWebRTC = (roomId, role, userId) => {
     async offerData => {
       if (role !== 'viewer') return;
 
+      console.log('📡 Creating peer connection for viewer');
       const pc = new RTCPeerConnection(PEER_CONNECTION_CONFIG);
       peerConnectionRef.current = pc;
 
@@ -311,6 +432,7 @@ export const useWebRTC = (roomId, role, userId) => {
 
       pc.onicecandidate = event => {
         if (event.candidate && socketRef.current) {
+          console.log('📡 Sending ICE candidate from viewer:', event.candidate.type);
           socketRef.current.emit('webrtc_ice', {
             viewerId: offerData.viewerId,
             candidate: event.candidate,
@@ -318,18 +440,40 @@ export const useWebRTC = (roomId, role, userId) => {
         }
       };
 
+      pc.onicegatheringstatechange = () => {
+        console.log('📡 Viewer ICE gathering state:', pc.iceGatheringState);
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log('📡 Viewer ICE connection state:', pc.iceConnectionState);
+        if (pc.iceConnectionState === 'failed') {
+          console.warn('⚠️ Viewer ICE connection failed, attempting restart...');
+          pc.restartIce();
+        }
+      };
+
       pc.onconnectionstatechange = () => {
+        console.log('📡 Viewer connection state:', pc.connectionState);
         setConnectionState(pc.connectionState);
       };
 
-      await pc.setRemoteDescription({ type: 'offer', sdp: offerData.sdp });
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
+      try {
+        console.log('📡 Setting remote description');
+        await pc.setRemoteDescription({ type: 'offer', sdp: offerData.sdp });
 
-      socketRef.current?.emit('webrtc_answer', {
-        viewerId: offerData.viewerId,
-        sdp: answer.sdp,
-      });
+        console.log('📡 Creating answer');
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        console.log('📡 Sending answer to host');
+        socketRef.current?.emit('webrtc_answer', {
+          viewerId: offerData.viewerId,
+          sdp: answer.sdp,
+        });
+      } catch (error) {
+        console.error('❌ Error creating answer:', error);
+        setError(`Failed to create WebRTC answer: ${error.message}`);
+      }
     },
     [role]
   );
@@ -389,6 +533,36 @@ export const useWebRTC = (roomId, role, userId) => {
     [role]
   );
 
+  // Connection retry mechanism for cross-network issues
+  const retryConnection = useCallback(() => {
+    if (role === 'viewer' && peerConnectionRef.current) {
+      console.log('🔄 Retrying WebRTC connection...');
+      const pc = peerConnectionRef.current;
+
+      // Try to restart ICE
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        try {
+          pc.restartIce();
+          console.log('🔄 ICE restart initiated');
+        } catch (error) {
+          console.error('❌ Failed to restart ICE:', error);
+        }
+      }
+    }
+  }, [role]);
+
+  // Auto-retry connection on failure
+  useEffect(() => {
+    if (connectionState === 'failed' || connectionState === 'disconnected') {
+      const retryTimeout = setTimeout(() => {
+        console.log('🔄 Auto-retrying connection...');
+        retryConnection();
+      }, 5000); // Retry after 5 seconds
+
+      return () => clearTimeout(retryTimeout);
+    }
+  }, [connectionState, retryConnection]);
+
   // Cleanup
   useEffect(() => {
     return () => {
@@ -414,15 +588,23 @@ export const useWebRTC = (roomId, role, userId) => {
     // Data
     viewerCount,
     messages,
+    pinnedMessage,
+    botReplies,
+    personalNotification,
 
     // Actions
     startCamera,
     stopCamera,
     sendChatMessage,
     featureProduct,
+    retryConnection,
+    dismissNotification: () => setPersonalNotification(null),
 
     // Stream objects (for advanced usage)
     localStream: localStreamRef.current,
     remoteStream: remoteStreamRef.current,
+
+    // Socket instance (for custom event listeners)
+    socket: socketRef.current,
   };
 };

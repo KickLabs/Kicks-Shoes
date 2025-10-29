@@ -66,9 +66,6 @@ const InventoryItemSchema = new Schema(
       sparse: true,
     },
 
-    // Optional images for this variant
-    images: [{ type: String, trim: true }],
-
     // Optional extra attributes for specific product types
     attrs: {
       material: { type: String, trim: true },
@@ -160,6 +157,16 @@ const productSchema = new Schema(
 
     /* ------------------------------ Media -------------------------------- */
     mainImage: { type: String, trim: true },
+
+    colorOptions: [
+      {
+        _id: false,
+        color: { type: String, required: true, trim: true },
+        images: [{ type: String, trim: true }],
+        // Tùy chọn: Thêm 1 ảnh đại diện cho riêng màu này
+        colorMainImage: { type: String, trim: true },
+      },
+    ],
 
     /* ------------------------------ Rating -------------------------------- */
     rating: { type: Number, min: 0, max: 5, default: 0 },
@@ -312,6 +319,77 @@ productSchema.methods.calculateFinalPrice = function () {
 productSchema.methods.recalculateStock = function () {
   this.stock = (this.inventory || []).reduce((sum, it) => sum + (it.quantity || 0), 0);
   return this.stock;
+};
+
+/**
+ * THÊM MỚI: Thêm số lượng tồn kho cho một variant cụ thể.
+ * Tự động tạo variant mới nếu chưa tồn tại.
+ * @param {Object} variantData - { size, clothingSize, isOneSize, color }
+ * @param {number} quantityToAdd - Số lượng muốn thêm (phải là số dương)
+ */
+productSchema.methods.addStockToVariant = async function (variantData, quantityToAdd) {
+  if (quantityToAdd <= 0) {
+    throw new Error('Số lượng thêm vào phải lớn hơn 0');
+  }
+
+  const { size, clothingSize, color } = variantData;
+  const productType = this.productType;
+
+  if (!color) throw new Error('Màu sắc là bắt buộc');
+
+  // 1. Định nghĩa hàm tìm kiếm dựa trên productType
+  const match = it => {
+    if (String(it.color).toLowerCase() !== String(color).toLowerCase()) {
+      return false;
+    }
+    if (productType === 'shoes') {
+      // Đảm bảo so sánh chuỗi với chuỗi hoặc số với số
+      return String(it.size) === String(size);
+    }
+    if (productType === 'clothing') {
+      return String(it.clothingSize) === String(clothingSize);
+    }
+    if (productType === 'accessory') {
+      return it.isOneSize === true;
+    }
+    return false; // Không hỗ trợ "other"
+  };
+
+  let inventoryItem = (this.inventory || []).find(match);
+
+  if (inventoryItem) {
+    // 2a. ĐÃ CÓ: Chỉ cần cộng dồn số lượng
+    inventoryItem.quantity += quantityToAdd;
+  } else {
+    // 2b. CHƯA CÓ: Tạo mới inventory item
+    const newItem = {
+      color: color,
+      quantity: quantityToAdd,
+      isAvailable: true, // Mặc định là true vì đang thêm hàng
+    };
+
+    if (productType === 'shoes') {
+      if (!size) throw new Error('Size giày là bắt buộc');
+      newItem.size = Number(size);
+    } else if (productType === 'clothing') {
+      if (!clothingSize) throw new Error('Size quần áo là bắt buộc');
+      newItem.clothingSize = clothingSize;
+    } else if (productType === 'accessory') {
+      newItem.isOneSize = true;
+    } else {
+      throw new Error('Loại sản phẩm không được hỗ trợ');
+    }
+
+    // Thêm variant mới vào mảng inventory
+    this.inventory.push(newItem);
+  }
+
+  // 3. Hook pre('save') sẽ tự động chạy để:
+  // - Cập nhật lại tổng this.stock (qua this.recalculateStock())
+  // - Đồng bộ lại this.variants (qua this.syncVariantsFromInventory())
+  // - Tạo SKU cho variant mới (nếu chưa có)
+
+  return this.save();
 };
 
 /**

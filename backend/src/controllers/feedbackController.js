@@ -518,3 +518,73 @@ export const getFeedbackById = async (req, res, next) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * Summarize reviews for a product using AI
+ * @route GET /api/feedback/product/:productId/summary
+ * @desc Get AI-generated summary of all reviews for a product
+ * @access Public
+ */
+export const summarizeProductReviews = async (req, res, next) => {
+  try {
+    const { productId } = req.params;
+
+    logger.info(`Summarizing reviews for product: ${productId}`);
+
+    // Fetch all active reviews for this product
+    const reviews = await Feedback.find({
+      product: productId,
+      status: true,
+    })
+      .populate('user', 'fullName avatar')
+      .lean();
+
+    logger.info(`Found ${reviews.length} reviews for product ${productId}`);
+
+    if (reviews.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          totalReviews: 0,
+          averageRating: 0,
+          summary: 'Chưa có đánh giá nào cho sản phẩm này.',
+          sentiment: {
+            positive: 0,
+            neutral: 0,
+            negative: 0,
+          },
+          highlights: {
+            pros: [],
+            cons: [],
+          },
+          topicAnalysis: {},
+          ratingDistribution: {
+            5: 0,
+            4: 0,
+            3: 0,
+            2: 0,
+            1: 0,
+          },
+        },
+      });
+    }
+
+    // Import the review summary service
+    const ReviewSummaryService = (await import('../services/reviewSummary.service.js')).default;
+
+    // Generate AI summary
+    const summary = await ReviewSummaryService.summarizeReviews(reviews);
+
+    res.status(200).json({
+      success: true,
+      data: summary,
+    });
+  } catch (error) {
+    logger.error('Error summarizing product reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate review summary',
+      error: error.message,
+    });
+  }
+};

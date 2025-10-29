@@ -77,9 +77,31 @@ function buildIceServers() {
       });
   } else {
     // No TURN servers configured - add working free TURN servers as fallback
+    console.warn('⚠️ No TURN servers configured, using free public TURN/STUN servers');
 
-    // Add Google's public STUN servers for basic connectivity
+    // Add multiple free TURN servers for better connectivity
+    // Metered.ca free TURN server (Works great for cross-network)
+    iceServers.push({
+      urls: [
+        'turn:a.relay.metered.ca:80',
+        'turn:a.relay.metered.ca:80?transport=tcp',
+        'turn:a.relay.metered.ca:443',
+        'turn:a.relay.metered.ca:443?transport=tcp',
+      ],
+      username: 'f4b4035342858393c5678b78',
+      credential: '0OMQNZdwy1K3HjIi',
+    });
+
+    // OpenRelay free TURN server (Backup)
+    iceServers.push({
+      urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443'],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    });
+
+    // Twilio's free STUN servers
     iceServers.push(
+      { urls: 'stun:global.stun.twilio.com:3478' },
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
       { urls: 'stun:stun2.l.google.com:19302' }
@@ -138,6 +160,12 @@ export const PEER_CONNECTION_CONFIG = {
   sdpSemantics: 'unified-plan',
   enableDtlsSrtp: true,
   enableRtpDataChannels: true,
+  // Enhanced ICE gathering for cross-network
+  iceGatheringTimeout: 10000, // 10 seconds
+  // Better connection handling
+  iceConnectionTimeout: 30000, // 30 seconds
+  iceGatheringState: 'gathering',
+  iceConnectionState: 'new',
 };
 
 export const OFFER_OPTIONS = {

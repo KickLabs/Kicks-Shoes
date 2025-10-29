@@ -18,6 +18,7 @@ import { formatPrice } from '../../../../utils/StringFormat';
 import { validateDiscountCode, getActiveDiscounts } from '../../../../services/discountService';
 import { PlusOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import './OrderSummary.css';
+import VoucherPicker from './VoucherPicker';
 
 const { Title, Text } = Typography;
 
@@ -79,10 +80,12 @@ export default function OrderSummary({
           description: response.data.discount.description,
         };
 
-        setAppliedDiscounts(prev => [...prev, newDiscount]);
+        // Keep only one voucher at a time
+        setAppliedDiscounts([newDiscount]);
         if (onApplyCoupon) {
           await onApplyCoupon(coupon.trim(), response.data.discountAmount);
         }
+
         message.success('Coupon applied successfully!');
         setCoupon('');
       } else {
@@ -106,7 +109,6 @@ export default function OrderSummary({
       message.warning('This coupon is already applied');
       return;
     }
-
     setApplying(true);
     try {
       const response = await validateDiscountCode(discount.code, subtotal, cartItems);
@@ -120,7 +122,8 @@ export default function OrderSummary({
           description: discount.description,
         };
 
-        setAppliedDiscounts(prev => [...prev, newDiscount]);
+        // Keep only one voucher
+        setAppliedDiscounts([newDiscount]);
         if (onApplyCoupon) {
           await onApplyCoupon(discount.code, response.data.discountAmount);
         }
@@ -228,7 +231,13 @@ export default function OrderSummary({
             size="large"
             onPressEnter={handleApplyCoupon}
           />
-          <Button type="default" size="large" loading={applying} onClick={handleApplyCoupon}>
+          <Button
+            style={{ marginLeft: 7 }}
+            type="default"
+            size="large"
+            loading={applying}
+            onClick={handleApplyCoupon}
+          >
             Apply
           </Button>
         </Space.Compact>

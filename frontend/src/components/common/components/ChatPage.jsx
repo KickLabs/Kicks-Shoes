@@ -25,7 +25,7 @@ import {
 import TabHeader from './TabHeader';
 import { ActiveTabContext } from './ActiveTabContext';
 import ReactMarkdown from 'react-markdown';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import { useAuth } from '../../../contexts/AuthContext';
 import aiChatService from '../../../services/aiChatService';
@@ -48,6 +48,7 @@ const SOCKET_URL =
 
 const ChatPage = props => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   // Ưu tiên prop, fallback sang context
   const role = props.role || (user?.role === 'shop' ? 'shop' : 'customer');
   const userId = props.userId || user?._id;
@@ -76,6 +77,8 @@ const ChatPage = props => {
   const conversationCreatedRef = useRef(false);
   const [streamingMessage, setStreamingMessage] = useState('');
   const [shopUserId, setShopUserId] = useState(null);
+  const [productSuggestions, setProductSuggestions] = useState([]);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   // Video call states
   const [isVideoCallModalOpen, setIsVideoCallModalOpen] = useState(false);
@@ -284,12 +287,44 @@ const ChatPage = props => {
         setMessages(savedMessages);
       } else {
         // Nếu không có messages, hiển thị welcome message
+        let welcomeContent = 'Hello, I am AI Product Consulting. How can I help you?';
+
+        if (role === 'shop' || role === 'admin') {
+          welcomeContent = `Chào bạn! Tôi là AI trợ lý quản trị cửa hàng giày của bạn, sẵn sàng giúp bạn phân tích các dữ liệu quan trọng để bạn có cái nhìn toàn diện và đưa ra quyết định kinh doanh hiệu quả.
+
+Để tôi có thể thực hiện các phân tích này một cách chính xác và hữu ích, bạn có thể hỏi về:
+
+📊 **Báo cáo Doanh thu:**
+• "Báo cáo doanh thu hôm nay"
+• "Thống kê doanh thu tháng này"
+• "Sản phẩm nào bán chạy nhất?"
+
+📦 **Tình trạng Tồn kho:**
+• "Tình trạng tồn kho"
+• "Sản phẩm nào sắp hết hàng?"
+• "Kiểm tra tồn kho Nike"
+
+👥 **Thông tin Khách hàng:**
+• "Thống kê khách hàng"
+• "Khách hàng VIP"
+• "Phân tích hành vi mua sắm"
+
+📈 **Báo cáo Bán hàng:**
+• "Báo cáo bán hàng tuần này"
+• "Tỷ lệ chuyển đổi"
+• "Hiệu suất nhân viên"
+
+Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan tâm!`;
+        }
+
         setMessages([
           {
-            content: 'Hello, I am AI Product Consulting. How can I help you?',
+            content: welcomeContent,
             sender: 'ai',
             timestamp: new Date(),
             isAI: true,
+            productSuggestions: [],
+            analyticsData: null,
           },
         ]);
       }
@@ -480,31 +515,92 @@ const ChatPage = props => {
     };
 
     const handleWebRTCOffer = async data => {
-      if (peerConnectionRef.current) {
+      console.log('📞 Received WebRTC offer from:', data.from);
+      try {
+        if (!peerConnectionRef.current) {
+          console.error('❌ Peer connection not initialized when receiving offer');
+          return;
+        }
+
+        // Set remote description from offer
         await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(data.offer));
+        console.log('✅ Remote description set from offer');
+
+        // Create and set local description (answer)
         const answer = await peerConnectionRef.current.createAnswer();
         await peerConnectionRef.current.setLocalDescription(answer);
+        console.log('✅ Local description set (answer created)');
 
+        // Send answer back
         socketRef.current.emit('video_call_answer', {
           from: userId || user?._id,
           to: data.from,
           answer: answer,
           conversationId: selectedChat?._id,
         });
+        console.log('📤 Sent WebRTC answer to:', data.from);
+      } catch (error) {
+        console.error('❌ Error handling WebRTC offer:', error);
+        toast.error('Failed to process video call offer', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
       }
     };
 
     const handleWebRTCAnswer = async data => {
-      if (peerConnectionRef.current) {
+      console.log('📞 Received WebRTC answer from:', data.from);
+      try {
+        if (!peerConnectionRef.current) {
+          console.error('❌ Peer connection not initialized when receiving answer');
+          return;
+        }
+
+        // Check if we already have a remote description
+        if (peerConnectionRef.current.currentRemoteDescription) {
+          console.warn('⚠️ Remote description already set, skipping');
+          return;
+        }
+
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.answer)
         );
+        console.log('✅ Remote description set from answer');
+      } catch (error) {
+        console.error('❌ Error handling WebRTC answer:', error);
+        toast.error('Failed to process video call answer', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
       }
     };
 
     const handleWebRTCIceCandidate = async data => {
-      if (peerConnectionRef.current) {
+      console.log('🧊 Received ICE candidate from:', data.from);
+      try {
+        if (!peerConnectionRef.current) {
+          console.warn('⚠️ Peer connection not initialized, ICE candidate queued');
+          return;
+        }
+
+        // Check if remote description is set before adding ICE candidates
+        if (!peerConnectionRef.current.currentRemoteDescription) {
+          console.warn('⚠️ Remote description not set yet, waiting...');
+          // Wait a bit and try again
+          setTimeout(async () => {
+            if (peerConnectionRef.current && peerConnectionRef.current.currentRemoteDescription) {
+              await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+              console.log('✅ ICE candidate added (delayed)');
+            }
+          }, 500);
+          return;
+        }
+
         await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+        console.log('✅ ICE candidate added:', data.candidate.type);
+      } catch (error) {
+        console.error('❌ Error adding ICE candidate:', error);
+        // Don't show toast for ICE candidate errors as they are common
       }
     };
 
@@ -578,10 +674,12 @@ const ChatPage = props => {
       setIsLoading(true);
       setNewMessage('');
       setStreamingMessage('');
+      setIsLoadingAI(true);
 
       try {
         await aiChatService.sendMessage(
           newMessage,
+          role, // Pass user role
           // onStream callback
           chunk => {
             setStreamingMessage(prev => prev + chunk);
@@ -593,10 +691,18 @@ const ChatPage = props => {
               sender: 'ai',
               timestamp: new Date(),
               isAI: true,
+              productSuggestions: fullData.productSuggestions || [],
+              analyticsData: fullData.analytics_data || null,
             };
             const finalMessages = [...updatedMessages, aiMessage];
             setMessages(finalMessages);
             aiChatService.saveMessages(finalMessages); // Lưu vào localStorage
+
+            // Lưu product suggestions
+            if (fullData.productSuggestions && fullData.productSuggestions.length > 0) {
+              setProductSuggestions(fullData.productSuggestions);
+            }
+            setIsLoadingAI(false);
 
             // Cập nhật last message cho AI chat
             setChatList(prev =>
@@ -717,8 +823,15 @@ const ChatPage = props => {
 
   const handleClearChat = () => {
     setMessages([]);
+    setProductSuggestions([]);
     aiChatService.clearMessages();
     aiChatService.resetConversation();
+  };
+
+  // Handle click on product suggestion card
+  const handleProductClick = productId => {
+    console.log('Navigating to product:', productId);
+    navigate(`/product/${productId}`);
   };
 
   // Video call functions - using configuration from webrtc.config.js
@@ -819,22 +932,64 @@ const ChatPage = props => {
       }
     };
 
-    // Enhanced connection state monitoring
+    // Enhanced connection state monitoring with auto-retry
     pc.onconnectionstatechange = () => {
       console.log('🔗 Peer connection state changed:', pc.connectionState);
       setConnectionStatus(pc.connectionState);
+
       if (pc.connectionState === 'failed') {
         console.error('❌ Peer connection failed, attempting to restart ICE');
-        pc.restartIce();
+        toast.warning('Connection failed, retrying...', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+
+        // Auto-retry after 2 seconds
+        setTimeout(() => {
+          if (pc.connectionState === 'failed') {
+            try {
+              pc.restartIce();
+              console.log('🔄 ICE restart initiated');
+            } catch (error) {
+              console.error('❌ Failed to restart ICE:', error);
+            }
+          }
+        }, 2000);
+      } else if (pc.connectionState === 'connected') {
+        console.log('✅ Peer connection established successfully');
+        toast.success('Video call connected!', {
+          position: 'top-right',
+          autoClose: 2000,
+        });
+      } else if (pc.connectionState === 'disconnected') {
+        console.warn('⚠️ Peer connection disconnected');
+        toast.info('Connection interrupted, reconnecting...', {
+          position: 'top-right',
+          autoClose: 2000,
+        });
       }
     };
 
     pc.oniceconnectionstatechange = () => {
       console.log('🧊 ICE connection state:', pc.iceConnectionState);
       setIceConnectionState(pc.iceConnectionState);
+
       if (pc.iceConnectionState === 'failed') {
         console.error('❌ ICE connection failed, attempting to restart ICE');
-        pc.restartIce();
+
+        // Auto-retry after 2 seconds
+        setTimeout(() => {
+          if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+            try {
+              pc.restartIce();
+              console.log('🔄 ICE restart initiated due to failed state');
+            } catch (error) {
+              console.error('❌ Failed to restart ICE:', error);
+            }
+          }
+        }, 2000);
+      } else if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        console.log('✅ ICE connection established');
       }
     };
 
@@ -1312,7 +1467,7 @@ const ChatPage = props => {
                   )}
                 </div>
               </div>
-              <div className="chat-messages" ref={messagesEndRef}>
+              <div style={{ maxHeight: 'none' }} className="chat-messages" ref={messagesEndRef}>
                 {isLoading && messages.length === 0 && (
                   <div className="loading-messages">
                     <Text>Loading messages...</Text>
@@ -1348,10 +1503,72 @@ const ChatPage = props => {
                   </div>
                 )}
                 {console.log('Messages to render:', messages)}
-                {/* Test message để kiểm tra render */}
-                {messages.length === 0 && (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                    <div>No messages yet. Start a conversation!</div>
+                {/* Quick suggestions for admin */}
+                {selectedChat?.isAI &&
+                  (role === 'shop' || role === 'admin') &&
+                  messages.length <= 1 && (
+                    <div className="quick-suggestions">
+                      <div className="suggestions-header">
+                        <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
+                          💡 Quick Questions:
+                        </Text>
+                      </div>
+                      <div className="suggestions-grid">
+                        {[
+                          'Báo cáo doanh thu hôm nay',
+                          'Tình trạng tồn kho',
+                          'Thống kê khách hàng',
+                          'Sản phẩm nào sắp hết hàng?',
+                        ].map((suggestion, index) => (
+                          <div
+                            key={index}
+                            className="suggestion-card"
+                            onClick={() => {
+                              setNewMessage(suggestion);
+                              // Trigger send message after a short delay
+                              setTimeout(() => {
+                                handleSendMessage();
+                              }, 100);
+                            }}
+                          >
+                            <span>{suggestion}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                {/* Product suggestions for customers */}
+                {selectedChat?.isAI && role === 'customer' && messages.length <= 1 && (
+                  <div className="product-suggestions">
+                    <div className="suggestions-header">
+                      <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
+                        🛍️ Gợi ý câu hỏi:
+                      </Text>
+                    </div>
+                    <div className="suggestions-grid">
+                      {[
+                        'Tư vấn chọn giày sneaker phù hợp với phong cách casual',
+                        'So sánh giày Nike và Adidas về chất lượng',
+                        'Cách chọn size giày chính xác',
+                        'Giày nào phù hợp cho chạy bộ?',
+                        'Tư vấn giày công sở nam/nữ',
+                        'Cách bảo quản giày da tốt nhất',
+                      ].map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="suggestion-card"
+                          onClick={() => {
+                            setNewMessage(suggestion);
+                            // Trigger send message after a short delay
+                            setTimeout(() => {
+                              handleSendMessage();
+                            }, 100);
+                          }}
+                        >
+                          <span>{suggestion}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {messages.map((message, index) => {
@@ -1456,6 +1673,148 @@ const ChatPage = props => {
                           ) : (
                             <div>No content available</div>
                           )}
+                          {/* Product Suggestions */}
+                          {message.productSuggestions && message.productSuggestions.length > 0 && (
+                            <div className="product-suggestions">
+                              <div className="suggestions-header">
+                                <Text strong style={{ fontSize: '14px', color: '#1890ff' }}>
+                                  Recommend Products:
+                                </Text>
+                              </div>
+                              <div className="suggestions-grid">
+                                {message.productSuggestions.map((product, productIndex) => (
+                                  <div
+                                    key={productIndex}
+                                    className="product-suggestion-card"
+                                    onClick={() => handleProductClick(product.id)}
+                                  >
+                                    <div className="product-image">
+                                      <img
+                                        src={
+                                          product.image ||
+                                          'https://via.placeholder.com/180x120?text=No+Image'
+                                        }
+                                        alt={product.name}
+                                        onError={e => {
+                                          e.target.src =
+                                            'https://via.placeholder.com/180x120?text=No+Image';
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="product-info">
+                                      <div className="product-name" title={product.name}>
+                                        {product.name}
+                                      </div>
+                                      <div className="product-price">
+                                        <span className="current-price">
+                                          {product.price.toLocaleString('vi-VN')}đ
+                                        </span>
+                                        {product.discount > 0 && (
+                                          <span className="original-price">
+                                            {product.originalPrice.toLocaleString('vi-VN')}đ
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Analytics Data for Admin */}
+                          {message.analyticsData && role === 'shop' && (
+                            <div className="analytics-data">
+                              <div className="analytics-header">
+                                <Text strong style={{ fontSize: '14px', color: '#52c41a' }}>
+                                  Analytics Report:
+                                </Text>
+                              </div>
+                              <div className="analytics-content">
+                                {message.analyticsData.totalRevenue !== undefined && (
+                                  <div className="analytics-section">
+                                    <h4>Revenue</h4>
+                                    <p>
+                                      Total Revenue:{' '}
+                                      <strong>
+                                        {(message.analyticsData.totalRevenue || 0).toLocaleString(
+                                          'vi-VN'
+                                        )}
+                                        đ
+                                      </strong>
+                                    </p>
+                                    <p>
+                                      Total Orders:{' '}
+                                      <strong>{message.analyticsData.totalOrders || 0}</strong>
+                                    </p>
+                                    <p>
+                                      Average Order Value:{' '}
+                                      <strong>
+                                        {(
+                                          message.analyticsData.averageOrderValue || 0
+                                        ).toLocaleString('vi-VN')}
+                                        đ
+                                      </strong>
+                                    </p>
+                                  </div>
+                                )}
+                                {message.analyticsData.totalProducts !== undefined && (
+                                  <div className="analytics-section">
+                                    <h4>Inventory</h4>
+                                    <p>
+                                      Total Products:{' '}
+                                      <strong>{message.analyticsData.totalProducts || 0}</strong>
+                                    </p>
+                                    <p>
+                                      Total Stock:{' '}
+                                      <strong>{message.analyticsData.totalStock || 0}</strong>
+                                    </p>
+                                    <p>
+                                      Total Stock Value:{' '}
+                                      <strong>
+                                        {(message.analyticsData.totalValue || 0).toLocaleString(
+                                          'vi-VN'
+                                        )}
+                                        đ
+                                      </strong>
+                                    </p>
+                                    <p>
+                                      Low Stock Products:{' '}
+                                      <strong style={{ color: '#ff4d4f' }}>
+                                        {(message.analyticsData.lowStockProducts || []).length}
+                                      </strong>
+                                    </p>
+                                    <p>
+                                      Out of Stock Products:{' '}
+                                      <strong style={{ color: '#ff4d4f' }}>
+                                        {(message.analyticsData.outOfStockProducts || []).length}
+                                      </strong>
+                                    </p>
+                                  </div>
+                                )}
+                                {message.analyticsData.totalCustomers !== undefined && (
+                                  <div className="analytics-section">
+                                    <h4>Customers</h4>
+                                    <p>
+                                      Total Customers:{' '}
+                                      <strong>{message.analyticsData.totalCustomers || 0}</strong>
+                                    </p>
+                                    <p>
+                                      Total Orders:{' '}
+                                      <strong>{message.analyticsData.totalOrders || 0}</strong>
+                                    </p>
+                                    <p>
+                                      Average Orders Per Customer:{' '}
+                                      <strong>
+                                        {(
+                                          message.analyticsData.averageOrdersPerCustomer || 0
+                                        ).toFixed(1)}
+                                      </strong>
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="message-time">
                           {message.timestamp
@@ -1480,6 +1839,45 @@ const ChatPage = props => {
                     </div>
                   );
                 })}
+                {/* Loading indicator */}
+                {isLoadingAI && !streamingMessage && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      marginBottom: 16,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 8,
+                        maxWidth: '80%',
+                      }}
+                    >
+                      <Avatar
+                        size={32}
+                        style={{
+                          backgroundColor: '#1890ff',
+                          marginBottom: 4,
+                        }}
+                      >
+                        AI
+                      </Avatar>
+                      <div className="message-content">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>Đang phân tích dữ liệu...</span>
+                          <div className="loading-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* Streaming message display */}
                 {streamingMessage && (
                   <div
@@ -1615,13 +2013,70 @@ const ChatPage = props => {
                   transform: 'translate(-50%, -50%)',
                   color: 'white',
                   textAlign: 'center',
+                  width: '80%',
                 }}
               >
-                <VideoCameraOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
-                <div>Đang chờ kết nối...</div>
-                <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
-                  Connection: {connectionStatus} | ICE: {iceConnectionState}
+                <VideoCameraOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+                <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '12px' }}>
+                  {connectionStatus === 'connecting' || iceConnectionState === 'checking'
+                    ? '⏳ Connecting...'
+                    : connectionStatus === 'connected'
+                      ? '✅ Connected'
+                      : connectionStatus === 'failed' || iceConnectionState === 'failed'
+                        ? '❌ Connection Failed'
+                        : connectionStatus === 'disconnected'
+                          ? '⚠️ Disconnected'
+                          : '📞 Waiting for connection...'}
                 </div>
+
+                {/* Detailed connection status */}
+                <div
+                  style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8, lineHeight: '1.6' }}
+                >
+                  <div>
+                    🔗 Connection: <strong>{connectionStatus || 'initializing'}</strong>
+                  </div>
+                  <div>
+                    🧊 ICE State: <strong>{iceConnectionState || 'new'}</strong>
+                  </div>
+                </div>
+
+                {/* Show retry button if connection failed */}
+                {(connectionStatus === 'failed' || iceConnectionState === 'failed') && (
+                  <div style={{ marginTop: '16px' }}>
+                    <Button
+                      type="primary"
+                      size="small"
+                      onClick={() => {
+                        console.log('🔄 Retrying connection...');
+                        if (peerConnectionRef.current) {
+                          try {
+                            peerConnectionRef.current.restartIce();
+                            toast.info('Retrying connection...', {
+                              position: 'top-right',
+                              autoClose: 2000,
+                            });
+                          } catch (error) {
+                            console.error('❌ Failed to restart ICE:', error);
+                            toast.error('Failed to retry. Please end call and try again.', {
+                              position: 'top-right',
+                              autoClose: 3000,
+                            });
+                          }
+                        }
+                      }}
+                    >
+                      🔄 Retry Connection
+                    </Button>
+                  </div>
+                )}
+
+                {/* Show helpful message for long wait */}
+                {connectionStatus === 'new' && (
+                  <div style={{ fontSize: '11px', marginTop: '16px', opacity: 0.6 }}>
+                    💡 Tip: Make sure both parties have accepted the call
+                  </div>
+                )}
               </div>
             )}
           </div>

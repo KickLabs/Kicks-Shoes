@@ -1,6 +1,8 @@
 import cron from 'node-cron';
 import Discount from '../models/Discount.js';
+import Order from '../models/Order.js';
 import { updateFlashSaleStatuses } from '../services/flashSale.service.js';
+import EmailService from '../services/email.service.js';
 import logger from './logger.js';
 
 // Run every hour
@@ -30,6 +32,51 @@ export const startFlashSaleStatusUpdateCron = () => {
       }
     } catch (error) {
       logger.error('Error updating flash sale statuses:', error);
+    }
+  });
+};
+
+// Run daily at midnight to auto-complete delivered orders
+export const startAutoCompleteOrdersCron = () => {
+  cron.schedule('0 0 * * *', async () => {
+    try {
+      logger.info('Running auto-complete orders cron job...');
+      
+      // Find orders that are delivered_pending_confirmation and past their auto-complete due date
+      const ordersToComplete = await Order.find({
+        status: 'delivered_pending_confirmation',
+        autoCompleteDueAt: { $lte: new Date() },
+        customerConfirmedAt: null,
+      }).populate('user', 'email fullName');
+
+      let completedCount = 0;
+
+      for (const order of ordersToComplete) {
+        try {
+          // Update order status to completed
+          order.status = 'completed';
+          order.completedAt = new Date();
+          await order.save();
+
+          // Send email notification to customer
+          if (order.user && order.user.email) {
+            await EmailService.sendOrderAutoCompletedEmail(order.user.email, {
+              customerName: order.user.fullName,
+              orderNumber: order.orderNumber,
+              completedDate: new Date().toLocaleDateString('vi-VN'),
+            });
+          }
+
+          completedCount++;
+          logger.info(`Order ${order.orderNumber} auto-completed`);
+        } catch (error) {
+          logger.error(`Error auto-completing order ${order._id}:`, error);
+        }
+      }
+
+      logger.info(`Auto-complete orders cron job completed: ${completedCount} orders completed`);
+    } catch (error) {
+      logger.error('Error in auto-complete orders cron job:', error);
     }
   });
 };

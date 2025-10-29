@@ -6,7 +6,6 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { PersistGate } from 'redux-persist/integration/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { CartProvider } from './contexts/CartContext';
 import { VideoCallProvider } from './contexts/VideoCallContext';
 import { persistor, store } from './store/store';
 
@@ -31,6 +30,7 @@ import Account from './components/pages/account/Account';
 import FavouritesTab from './components/pages/account/components/FavouritesTab';
 import ProfileTab from './components/pages/account/components/ProfileTab';
 import RewardPointsDetail from './components/pages/account/components/RewardPointsDetail';
+import VoucherTab from './components/pages/account/components/VoucherTab';
 import CartPage from './components/pages/cart/pages/CartPage';
 import AllCategories from './components/pages/categories/AllCategories';
 import CheckoutPage from './components/pages/checkout/CheckOut';
@@ -45,17 +45,20 @@ import PaymentStatus from './components/pages/payment/PaymentStatus';
 import PaymentSuccess from './components/pages/payment/PaymentSuccess';
 import ProductDetailPage from './components/pages/product/pages/ProductDetailPage';
 import VisualSearch from './components/pages/shop/VisualSearch';
+import VoucherDiscoveryPage from './components/pages/voucher-discovery/VoucherDiscoveryPage';
+import OutfitSuggestionPage from './components/pages/outfit/OutfitSuggestionPage';
 
 // New Role-Based Dashboard Components
 import AdminDashboard from './components/pages/dashboard/AdminDashboard';
 import DashboardLayout from './components/pages/dashboard/DashboardLayout';
-import RoleSwitcher from './components/pages/dashboard/RoleSwitcher';
 import ShopDashboard from './components/pages/dashboard/ShopDashboard';
 
 // Product Management Components
 import AddNewProduct from './components/pages/dashboard/AddNewProduct';
 import EditProduct from './components/pages/dashboard/EditProduct';
 import FlashSaleManagement from './components/pages/dashboard/FlashSaleManagement';
+import DeliveryReports from './components/pages/shop/delivery-reports/DeliveryReports';
+import ShipperApplications from './components/pages/shop/shipper-applications/ShipperApplications';
 
 // Styles
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -79,6 +82,12 @@ import LiveStreamViewer from './components/pages/livestream/LiveStreamViewer';
 import BlogComposerPage from './components/pages/blog/BlogComposerPage';
 import BlogDetailPage from './components/pages/blog/BlogDetailPage';
 import BlogFeedPage from './components/pages/blog/BlogFeedPage';
+
+// Shipper
+import ShipperDashboard from './components/pages/shipper/ShipperDashboard';
+
+// AI Inventory
+import AIInventoryDashboard from './components/pages/dashboard/AIInventoryDashboard';
 
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
@@ -109,6 +118,26 @@ const ShopOwnerProtectedRoute = ({ children }) => {
 
   if (!user || user.role !== 'shop') {
     return <Navigate to="/login-admin" replace />;
+  }
+
+  return children;
+};
+
+const AdminOrShopProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user || (user.role !== 'admin' && user.role !== 'shop')) {
+    return <Navigate to="/login-admin" replace />;
+  }
+
+  return children;
+};
+
+const ShipperProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  if (!user || user.role !== 'shipper') {
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -147,14 +176,6 @@ const router = createBrowserRouter([
       {
         path: 'dashboard',
         element: <DashboardRedirect />,
-      },
-      {
-        path: 'role-switcher',
-        element: <RoleSwitcher />,
-      },
-      {
-        path: 'dashboard-new',
-        element: <RoleSwitcher />,
       },
       {
         path: 'verify-email',
@@ -215,6 +236,10 @@ const router = createBrowserRouter([
       {
         path: 'product/:id',
         element: <ProductDetailPage />,
+      },
+      {
+        path: 'outfit-suggestion',
+        element: <OutfitSuggestionPage />,
       },
       {
         path: 'shop/visual-search',
@@ -432,6 +457,30 @@ const router = createBrowserRouter([
               </ShopOwnerProtectedRoute>
             ),
           },
+          {
+            path: 'delivery-reports',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <DeliveryReports />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'shipper-applications',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <ShipperApplications />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
+          {
+            path: 'inventory-ai',
+            element: (
+              <ShopOwnerProtectedRoute>
+                <AIInventoryDashboard />
+              </ShopOwnerProtectedRoute>
+            ),
+          },
         ],
       },
       {
@@ -459,6 +508,10 @@ const router = createBrowserRouter([
             element: <OrderDetails />,
           },
           {
+            path: 'voucher',
+            element: <VoucherTab />,
+          },
+          {
             path: 'reward-points',
             element: <RewardPointsDetail />,
           },
@@ -479,6 +532,14 @@ const router = createBrowserRouter([
       {
         path: 'categories/:storeId',
         element: <CategoryDetails />,
+      },
+      {
+        path: 'shipper-dashboard',
+        element: (
+          <ShipperProtectedRoute>
+            <ShipperDashboard />
+          </ShipperProtectedRoute>
+        ),
       },
       {
         path: 'forgot-password',
@@ -527,18 +588,22 @@ const router = createBrowserRouter([
       {
         path: 'blog/create',
         element: (
-          <ShopOwnerProtectedRoute>
+          <AdminOrShopProtectedRoute>
             <BlogComposerPage />
-          </ShopOwnerProtectedRoute>
+          </AdminOrShopProtectedRoute>
         ),
       },
       {
         path: 'blog/edit/:id',
         element: (
-          <ShopOwnerProtectedRoute>
+          <AdminOrShopProtectedRoute>
             <BlogComposerPage />
-          </ShopOwnerProtectedRoute>
+          </AdminOrShopProtectedRoute>
         ),
+      },
+      {
+        path: 'voucher-discovery',
+        element: <VoucherDiscoveryPage />,
       },
       {
         path: 'livestream/:roomId',
@@ -561,27 +626,25 @@ const Root = () => (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <AuthProvider>
-          <CartProvider>
-            <VideoCallProvider>
-              <ToastContainer
-                position="top-right"
-                autoClose={5000}
-                hideProgressBar={false}
-                newestOnTop
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="light"
-              />
-              <GoogleOAuthProvider
-                clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
-              >
-                <RouterProvider router={router} />
-              </GoogleOAuthProvider>
-            </VideoCallProvider>
-          </CartProvider>
+          <VideoCallProvider>
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+            <GoogleOAuthProvider
+              clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
+            >
+              <RouterProvider router={router} />
+            </GoogleOAuthProvider>
+          </VideoCallProvider>
         </AuthProvider>
       </PersistGate>
     </Provider>

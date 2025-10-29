@@ -9,6 +9,7 @@ import {
   adminApproveFeedback,
   getFeedback,
   getFeedbackById,
+  summarizeProductReviews,
 } from '../controllers/feedbackController.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { checkFeedbackOwner } from '../middlewares/feedback.middleware.js'; // Middleware để kiểm tra feedback của chính người dùng
@@ -48,6 +49,13 @@ router.delete('/:id', protect, checkFeedbackOwner, deleteFeedback); // Xóa feed
  * @access  Public
  */
 router.get('/', getAllFeedback);
+
+/**
+ * @route   GET /api/feedback/product/:productId/summary
+ * @desc    Get AI-generated summary of all reviews for a product
+ * @access  Public
+ */
+router.get('/product/:productId/summary', summarizeProductReviews);
 
 /**
  * @route   GET /api/feedback/all-including-deleted

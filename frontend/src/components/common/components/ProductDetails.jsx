@@ -9,8 +9,11 @@ import {
   PictureOutlined,
   PlusOutlined,
   ShoppingOutlined,
+  StarFilled,
+  StarOutlined,
   TagsOutlined,
   WarningOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import {
   Alert,
@@ -18,6 +21,7 @@ import {
   Button,
   Card,
   Col,
+  Empty,
   Form,
   Image,
   Input,
@@ -72,7 +76,7 @@ const emptyProduct = {
   },
   inventory: [],
   mainImage: '',
-  images: [],
+  colorOptions: [], // <-- THAY ĐỔI: Quản lý ảnh ở đây
   rating: 0,
   isNew: false,
 };
@@ -127,7 +131,7 @@ const VALIDATION_RULES = {
   description: {
     required: true,
     minLength: 20,
-    maxLength: 1000,
+    maxLength: 10000,
   },
   productType: {
     required: true,
@@ -245,39 +249,43 @@ const validateProduct = (product, isEdit = false, originalProduct = null) => {
     errors.tags = [...(errors.tags || []), 'Duplicate tags are not allowed'];
   }
 
-  if (isEdit) {
-    const hasExistingImages =
-      originalProduct && originalProduct.images && originalProduct.images.length > 0;
-    const hasCurrentImages = product.images && product.images.length > 0;
-  } else {
-    if (!product.images || product.images.length === 0) {
-      errors.images = ['At least one product image is required'];
-    }
+  // --- THAY ĐỔI LOGIC VALIDATE ẢNH ---
+  if (!product.colorOptions || product.colorOptions.length === 0) {
+    errors.colorOptions = ['At least one color with images is required'];
+  } else if (product.colorOptions.some(opt => !opt.images || opt.images.length === 0)) {
+    errors.colorOptions = ['All added colors must have at least one image'];
   }
+
+  if (!product.mainImage) {
+    errors.mainImage = ['A main image must be selected from the color gallery'];
+  }
+  // --- KẾT THÚC THAY ĐỔI ---
 
   if (!product.inventory || product.inventory.length === 0) {
     errors.inventory = ['At least one inventory item is required'];
   }
 
-  if (product.inventory && product.inventory.length > 0) {
-    const combinations = product.inventory.map(item => {
-      const sizeKey =
-        product.productType === 'shoes'
-          ? item.size
-          : product.productType === 'clothing'
-            ? item.clothingSize
-            : product.productType === 'accessory'
-              ? 'OneSize'
-              : item.size || item.clothingSize;
-      return `${sizeKey}-${item.color}`;
-    });
-    if (combinations.length !== new Set(combinations).size) {
-      errors.inventory = [
-        ...(errors.inventory || []),
-        'Duplicate size and color combinations found',
-      ];
-    }
-  }
+  // *** TẠM THỜI TẮT VALIDATE TRÙNG ***
+  // (Vì logic mới sẽ cộng dồn chứ không báo lỗi)
+  // if (product.inventory && product.inventory.length > 0) {
+  //   const combinations = product.inventory.map(item => {
+  //     const sizeKey =
+  //       product.productType === 'shoes'
+  //         ? item.size
+  //         : product.productType === 'clothing'
+  //           ? item.clothingSize
+  //           : product.productType === 'accessory'
+  //             ? 'OneSize'
+  //             : item.size || item.clothingSize;
+  //     return `${sizeKey}-${item.color}`;
+  //   });
+  //   if (combinations.length !== new Set(combinations).size) {
+  //     errors.inventory = [
+  //       ...(errors.inventory || []),
+  //       'Duplicate size and color combinations found',
+  //     ];
+  //   }
+  // }
 
   return errors;
 };
@@ -349,14 +357,23 @@ export default function ProductDetails() {
   const [product, setProduct] = useState(emptyProduct);
   const [originalProduct, setOriginalProduct] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [fileList, setFileList] = useState([]);
-  const [inventoryImageFileList, setInventoryImageFileList] = useState([]);
+
+  // --- THAY ĐỔI STATE QUẢN LÝ ẢNH ---
   const [inventoryModalVisible, setInventoryModalVisible] = useState(false);
   const [editingInventoryItem, setEditingInventoryItem] = useState(null);
+
+  // State mới cho modal quản lý màu sắc
+  const [colorModalVisible, setColorModalVisible] = useState(false);
+  const [editingColorOption, setEditingColorOption] = useState(null); // { color: 'Red', images: [...] }
+  const [colorFileList, setColorFileList] = useState([]); // File list cho modal màu sắc
+  const [colorForm] = Form.useForm();
+  // --- KẾT THÚC THAY ĐỔI STATE ---
+
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
   const [inventoryForm] = Form.useForm();
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   const handleChange = (field, value) => {
     if (field === 'productType') {
@@ -433,7 +450,8 @@ export default function ProductDetails() {
       });
       const url = res.data.url;
       onSuccess(res.data, file);
-      return url;
+      // Trả về URL để component tự quản lý
+      return { ...res.data, url };
     } catch (err) {
       console.error('Upload error:', err);
       message.error('Failed to upload image');
@@ -496,7 +514,7 @@ export default function ProductDetails() {
         const processedProduct = {
           ...productData,
           stock: calculatedStock,
-          images: productData.images && productData.images.length > 0 ? productData.images : [],
+          colorOptions: productData.colorOptions || [], // <-- THAY ĐỔI
           mainImage: productData.mainImage || '',
           variants: productData.variants || { sizes: [], colors: [] },
           price: productData.price || { regular: 0, discountPercent: 0, isOnSale: false },
@@ -508,17 +526,7 @@ export default function ProductDetails() {
         };
 
         setProduct(processedProduct);
-
-        if (productData.images && productData.images.length > 0) {
-          setFileList(
-            productData.images.map((img, idx) => ({
-              uid: String(idx),
-              name: `Product image ${idx + 1}.png`,
-              status: 'done',
-              url: img,
-            }))
-          );
-        }
+        // --- XÓA LOGIC setFileList CŨ ---
       }
     } catch (error) {
       console.error('Error fetching product details:', error);
@@ -534,14 +542,19 @@ export default function ProductDetails() {
       stock: newStock,
       variants: newVariants,
     };
-    setProduct(updatedProduct);
+    // Dùng hàm setProduct để tránh vòng lặp vô hạn
+    setProduct(prev => ({
+      ...prev,
+      stock: newStock,
+      variants: newVariants,
+    }));
 
     if (validationErrors.inventory && product.inventory.length > 0) {
       const newErrors = { ...validationErrors };
       delete newErrors.inventory;
       setValidationErrors(newErrors);
     }
-  }, [product.inventory, product.productType, validationErrors]);
+  }, [product.inventory, product.productType]); // Bỏ 'product' khỏi dependencies
 
   const calculateSalePrice = () => {
     if (product.price.regular && product.price.discountPercent) {
@@ -550,78 +563,16 @@ export default function ProductDetails() {
     return product.price.regular;
   };
 
-  const handleUploadChange = ({ fileList: newFileList }) => {
-    if (newFileList.length > VALIDATION_RULES.images.maxCount) {
-      message.error(`Maximum ${VALIDATION_RULES.images.maxCount} images allowed`);
-      return;
-    }
-
-    setFileList(newFileList);
-
-    const processedImages = [];
-    let mainImageSet = false;
-
-    newFileList.forEach(file => {
-      let imageUrl = null;
-      if (file.url) {
-        imageUrl = file.url;
-      } else if (file.thumbUrl) {
-        imageUrl = file.thumbUrl;
-      } else if (file.originFileObj) {
-        imageUrl = URL.createObjectURL(file.originFileObj);
-      }
-
-      if (imageUrl) {
-        processedImages.push(imageUrl);
-        if (!mainImageSet && (!isEdit || !product.mainImage)) {
-          setProduct(prev => ({ ...prev, mainImage: imageUrl }));
-          mainImageSet = true;
-        }
-      }
-    });
-
-    const updatedProduct = {
-      ...product,
-      images: processedImages,
-      mainImage:
-        processedImages.length > 0
-          ? isEdit && product.mainImage
-            ? product.mainImage
-            : processedImages[0]
-          : isEdit
-            ? product.mainImage
-            : '',
-    };
-    setProduct(updatedProduct);
-
-    if (validationErrors.images) {
-      const hasExistingImages =
-        originalProduct && originalProduct.images && originalProduct.images.length > 0;
-      const hasCurrentImages = processedImages.length > 0;
-
-      if (hasCurrentImages || (isEdit && hasExistingImages)) {
-        const newErrors = { ...validationErrors };
-        delete newErrors.images;
-        setValidationErrors(newErrors);
-      }
-    }
-  };
-
-  const handleInventoryImageUpload = ({ fileList: newFileList }) => {
-    setInventoryImageFileList(newFileList);
-  };
+  // --- XÓA BỎ: handleUploadChange, handleInventoryImageUpload ---
 
   const openInventoryModal = item => {
     setEditingInventoryItem(item || null);
     if (item) {
-      // Set form values based on product type
+      // EDIT MODE
       const formValues = {
         color: item.color,
-        quantity: item.quantity,
-        images: item.images || [],
+        quantity: item.quantity, // Khi Edit, ta set số lượng tuyệt đối
       };
-
-      // Set size field based on product type
       if (product.productType === 'shoes') {
         formValues.size = item.size;
       } else if (product.productType === 'clothing') {
@@ -631,80 +582,53 @@ export default function ProductDetails() {
       } else {
         formValues.size = item.size || item.clothingSize;
       }
-
       inventoryForm.setFieldsValue(formValues);
-
-      if (item.images && item.images.length > 0) {
-        setInventoryImageFileList(
-          item.images.map((img, idx) => ({
-            uid: String(idx),
-            name: `Inventory image ${idx + 1}`,
-            status: 'done',
-            url: img,
-          }))
-        );
-      } else {
-        setInventoryImageFileList([]);
-      }
     } else {
+      // ADD MODE
       inventoryForm.resetFields();
-      setInventoryImageFileList([]);
     }
     setInventoryModalVisible(true);
   };
 
+  // --- HÀM CẬP NHẬT LOGIC "UPSERT" ---
   const handleInventorySubmit = async () => {
     try {
       const values = await inventoryForm.validateFields();
+      const newQuantity = Number(values.quantity);
 
-      if (!values.size || !values.color || values.quantity === undefined) {
+      if (!values.size || !values.color || newQuantity === undefined) {
         message.error('Please fill in all required fields');
         return;
       }
-
-      if (values.quantity < 0) {
+      if (newQuantity < 0) {
         message.error('Quantity cannot be negative');
         return;
       }
 
-      if (values.quantity > 10000) {
-        message.error('Quantity cannot exceed 10,000');
-        return;
-      }
-
-      const processedImages = inventoryImageFileList
-        .map(file => {
-          if (file.url) return file.url;
-          if (file.thumbUrl) return file.thumbUrl;
-          if (file.originFileObj) return URL.createObjectURL(file.originFileObj);
-          return null;
-        })
-        .filter(Boolean);
-
-      // Create inventory item based on product type
-      const newItem = {
+      // Tạo cấu trúc item
+      const itemData = {
         color: values.color,
-        quantity: values.quantity,
-        isAvailable: values.quantity > 0,
-        images: processedImages,
       };
-
-      // Add size field based on product type
       if (product.productType === 'shoes') {
-        newItem.size = values.size;
+        itemData.size = values.size;
       } else if (product.productType === 'clothing') {
-        newItem.clothingSize = values.size;
+        itemData.clothingSize = values.size;
       } else if (product.productType === 'accessory') {
-        newItem.isOneSize = true;
+        itemData.isOneSize = true;
       } else {
-        // For 'other' type, use size field
-        newItem.size = values.size;
+        itemData.size = values.size;
       }
 
       let updatedInventory;
+      let successMessage = '';
+
       if (editingInventoryItem) {
+        // --- EDIT MODE ---
+        // Người dùng đang SỬA 1 item. Số lượng nhập là SỐ LƯỢNG MỚI.
+        itemData.quantity = newQuantity;
+        itemData.isAvailable = newQuantity > 0;
+
         updatedInventory = product.inventory.map(item => {
-          // Compare based on product type
           const isSameSize =
             product.productType === 'shoes'
               ? item.size === editingInventoryItem.size
@@ -714,11 +638,23 @@ export default function ProductDetails() {
                   ? item.isOneSize === editingInventoryItem.isOneSize
                   : item.size === editingInventoryItem.size;
 
-          return isSameSize && item.color === editingInventoryItem.color ? newItem : item;
+          return isSameSize && item.color === editingInventoryItem.color
+            ? { ...item, ...itemData } // Giữ lại SKU và các trường cũ, ghi đè trường mới
+            : item;
         });
+        successMessage = 'Inventory item updated!';
       } else {
+        // --- ADD MODE (LOGIC MỚI) ---
+        // Người dùng đang THÊM MỚI. Số lượng nhập là SỐ LƯỢNG CẦN CỘNG THÊM.
+        const quantityToAdd = newQuantity;
+
+        if (quantityToAdd === 0) {
+          message.info('Quantity to add is 0. No changes made.');
+          setInventoryModalVisible(false);
+          return;
+        }
+
         const existingItem = product.inventory.find(item => {
-          // Compare based on product type
           const isSameSize =
             product.productType === 'shoes'
               ? item.size === values.size
@@ -727,38 +663,50 @@ export default function ProductDetails() {
                 : product.productType === 'accessory'
                   ? item.isOneSize === true
                   : item.size === values.size;
-
           return isSameSize && item.color === values.color;
         });
 
         if (existingItem) {
-          message.error('This size and color combination already exists!');
-          return;
+          // TÌM THẤY: Cộng dồn số lượng
+          const finalQuantity = (existingItem.quantity || 0) + quantityToAdd;
+          updatedInventory = product.inventory.map(item =>
+            item === existingItem
+              ? {
+                  ...item,
+                  quantity: finalQuantity,
+                  isAvailable: finalQuantity > 0,
+                }
+              : item
+          );
+          successMessage = `Added ${quantityToAdd} units to ${values.color}/${values.size}. New total: ${finalQuantity}.`;
+        } else {
+          // KHÔNG TÌM THẤY: Tạo item mới
+          const newItem = {
+            ...itemData,
+            quantity: quantityToAdd,
+            isAvailable: quantityToAdd > 0,
+          };
+          updatedInventory = [...product.inventory, newItem];
+          successMessage = `New item (${values.color}/${values.size}) added with ${quantityToAdd} units.`;
         }
-        updatedInventory = [...product.inventory, newItem];
       }
 
-      const updatedProduct = {
-        ...product,
+      // Cập nhật state (sẽ kích hoạt useEffect để tính lại tổng stock)
+      setProduct(prev => ({
+        ...prev,
         inventory: updatedInventory,
-      };
-      setProduct(updatedProduct);
+      }));
 
       setInventoryModalVisible(false);
       setEditingInventoryItem(null);
-      setInventoryImageFileList([]);
       inventoryForm.resetFields();
-
-      message.success(
-        editingInventoryItem
-          ? 'Inventory item updated! Variants auto-updated.'
-          : 'Inventory item added! Variants auto-updated.'
-      );
+      message.success(successMessage);
     } catch (error) {
       console.error('Validation failed:', error);
       message.error('Please check all required fields');
     }
   };
+  // --- KẾT THÚC HÀM CẬP NHẬT ---
 
   const deleteInventoryItem = (size, color) => {
     const updatedInventory = product.inventory.filter(item => {
@@ -780,6 +728,129 @@ export default function ProductDetails() {
     };
     setProduct(updatedProduct);
     message.success('Inventory item deleted! Variants auto-updated.');
+  };
+
+  // --- HÀM MỚI: Xử lý Color Option Modal ---
+  const openColorModal = colorOption => {
+    if (colorOption) {
+      // Edit
+      setEditingColorOption(colorOption);
+      colorForm.setFieldsValue({
+        color: colorOption.color,
+      });
+      // Hiển thị ảnh cũ
+      setColorFileList(
+        colorOption.images.map((img, idx) => ({
+          uid: `${colorOption.color}-${idx}`,
+          name: `Image ${idx + 1}.png`,
+          status: 'done',
+          url: img,
+        }))
+      );
+    } else {
+      // Add new
+      setEditingColorOption(null);
+      colorForm.resetFields();
+      setColorFileList([]);
+    }
+    setColorModalVisible(true);
+  };
+
+  const handleColorModalSubmit = async () => {
+    try {
+      const values = await colorForm.validateFields();
+      const color = values.color;
+
+      if (!editingColorOption && product.colorOptions.find(opt => opt.color === color)) {
+        message.error('This color has already been added. Please edit the existing one.');
+        return;
+      }
+
+      if (colorFileList.length === 0) {
+        message.error('You must upload at least one image for this color.');
+        return;
+      }
+
+      const uploadedImages = colorFileList
+        .map(file => file.url || file.response.url)
+        .filter(Boolean);
+
+      const newColorOption = {
+        color: color,
+        images: uploadedImages,
+        colorMainImage: uploadedImages[0], // Tự động đặt ảnh đầu tiên làm ảnh đại diện màu
+      };
+
+      let updatedColorOptions;
+      if (editingColorOption) {
+        // Update
+        updatedColorOptions = product.colorOptions.map(opt =>
+          opt.color === editingColorOption.color ? newColorOption : opt
+        );
+      } else {
+        // Add new
+        updatedColorOptions = [...product.colorOptions, newColorOption];
+      }
+
+      // Tự động set mainImage cho toàn bộ sản phẩm nếu chưa có
+      let newMainImage = product.mainImage;
+      if (
+        !newMainImage &&
+        updatedColorOptions.length > 0 &&
+        updatedColorOptions[0].images.length > 0
+      ) {
+        newMainImage = updatedColorOptions[0].images[0];
+      }
+
+      setProduct(prev => ({
+        ...prev,
+        colorOptions: updatedColorOptions,
+        mainImage: newMainImage,
+      }));
+
+      setColorModalVisible(false);
+      message.success(editingColorOption ? 'Color option updated!' : 'Color option added!');
+    } catch (error) {
+      console.error('Color modal validation failed:', error);
+      message.error('Please check all required fields.');
+    }
+  };
+
+  const deleteColorOption = color => {
+    Modal.confirm({
+      title: 'Delete this color gallery?',
+      content: `Are you sure you want to delete all images for the color "${color}"?`,
+      okText: 'Yes, Delete',
+      okType: 'danger',
+      onOk: () => {
+        const updatedColorOptions = product.colorOptions.filter(opt => opt.color !== color);
+        let newMainImage = product.mainImage;
+
+        // Nếu ảnh chính thuộc về màu bị xóa, hãy chọn 1 ảnh khác
+        if (newMainImage && !updatedColorOptions.some(opt => opt.images.includes(newMainImage))) {
+          newMainImage =
+            updatedColorOptions.length > 0 && updatedColorOptions[0].images.length > 0
+              ? updatedColorOptions[0].images[0]
+              : '';
+        }
+
+        setProduct(prev => ({
+          ...prev,
+          colorOptions: updatedColorOptions,
+          mainImage: newMainImage,
+        }));
+        message.success(`Color "${color}" and its images have been deleted.`);
+      },
+    });
+  };
+
+  // --- HÀM MỚI: Set Main Image ---
+  const setAsMainImage = imageUrl => {
+    setProduct(prev => ({
+      ...prev,
+      mainImage: imageUrl,
+    }));
+    message.success('Main image updated!');
   };
 
   const getStockStatus = () => {
@@ -844,7 +915,7 @@ export default function ProductDetails() {
           colors: product.variants.colors || [],
         },
         inventory: product.inventory || [],
-        images: product.images || [],
+        colorOptions: product.colorOptions || [], // <-- THAY ĐỔI
         mainImage: product.mainImage || '',
         tags: product.tags || [],
         status: product.status,
@@ -907,8 +978,8 @@ export default function ProductDetails() {
           colors: product.variants.colors || [],
         },
         inventory: product.inventory || [],
-        images: product.images || originalProduct.images || [],
-        mainImage: product.mainImage || originalProduct.mainImage || '',
+        colorOptions: product.colorOptions || [], // <-- THAY ĐỔI
+        mainImage: product.mainImage || '',
         tags: product.tags || [],
         status: product.status,
         stock: product.stock || 0,
@@ -971,18 +1042,11 @@ export default function ProductDetails() {
       dataIndex: 'size',
       key: 'size',
       render: (size, record) => {
-        // Display size based on product type
         let displaySize = '';
-        if (product.productType === 'shoes') {
-          displaySize = record.size || size;
-        } else if (product.productType === 'clothing') {
-          displaySize = record.clothingSize || 'N/A';
-        } else if (product.productType === 'accessory') {
-          displaySize = 'OneSize';
-        } else {
-          displaySize = record.size || record.clothingSize || size || 'N/A';
-        }
-
+        if (product.productType === 'shoes') displaySize = record.size;
+        else if (product.productType === 'clothing') displaySize = record.clothingSize;
+        else if (product.productType === 'accessory') displaySize = 'OneSize';
+        else displaySize = record.size || record.clothingSize || 'N/A';
         return (
           <Tag color="blue" style={{ fontSize: '12px', fontWeight: 'bold' }}>
             {displaySize}
@@ -995,7 +1059,7 @@ export default function ProductDetails() {
       dataIndex: 'color',
       key: 'color',
       render: color => {
-        const colorOption = colorOptions.find(opt => opt.value === color);
+        const colorOption = colorOptions.find(opt => opt.value === color); // Use static list for hex
         return (
           <Space>
             <div
@@ -1043,20 +1107,18 @@ export default function ProductDetails() {
       key: 'isAvailable',
       render: (isAvailable, record) => {
         const quantity = record.quantity;
-        if (quantity === 0) {
+        if (quantity === 0)
           return (
             <Tag color="red" icon={<ExclamationCircleOutlined />}>
               Out of Stock
             </Tag>
           );
-        }
-        if (quantity <= STOCK_THRESHOLDS.ITEM_LOW_STOCK) {
+        if (quantity <= STOCK_THRESHOLDS.ITEM_LOW_STOCK)
           return (
             <Tag color="orange" icon={<WarningOutlined />}>
               Low Stock
             </Tag>
           );
-        }
         return (
           <Tag color="green" icon={<CheckCircleOutlined />}>
             In Stock
@@ -1071,47 +1133,30 @@ export default function ProductDetails() {
       render: sku => <Text type="secondary">{sku || 'Auto-generated'}</Text>,
     },
     {
-      title: 'Images',
-      dataIndex: 'images',
-      key: 'images',
-      render: images => (
-        <Space>
-          {images &&
-            images
-              .slice(0, 2)
-              .map((img, idx) => (
-                <Image
-                  key={idx}
-                  width={35}
-                  height={35}
-                  src={img || '/placeholder.svg'}
-                  style={{ borderRadius: 6, border: '1px solid #d9d9d9' }}
-                  fallback="/placeholder.svg?height=35&width=35"
-                />
-              ))}
-          {images && images.length > 2 && <Tag color="blue">+{images.length - 2}</Tag>}
-        </Space>
-      ),
-    },
-    {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
         <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => openInventoryModal(record)}
-            style={{ color: '#1890ff' }}
-          />
+          <Tooltip title="Edit Quantity/Details">
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={() => openInventoryModal(record)}
+              style={{ color: '#1890ff' }}
+            />
+          </Tooltip>
           <Popconfirm
-            title="Delete inventory item"
-            description="Are you sure you want to delete this inventory item?"
-            onConfirm={() => deleteInventoryItem(record.size, record.color)}
+            title="Delete inventory item?"
+            description="Are you sure? This action cannot be undone."
+            onConfirm={() =>
+              deleteInventoryItem(record.size || record.clothingSize || 'OneSize', record.color)
+            }
             okText="Yes"
             cancelText="No"
           >
-            <Button type="link" danger icon={<DeleteOutlined />} />
+            <Tooltip title="Delete Item">
+              <Button type="link" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -1230,17 +1275,72 @@ export default function ProductDetails() {
                   )}
                 </Col>
                 <Col span={24} data-field="description">
-                  <label style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
-                    <span style={{ color: 'red' }}>*</span> Product Description
-                  </label>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <label style={{ fontWeight: 600, margin: 0 }}>
+                      <span style={{ color: 'red' }}>*</span> Product Description
+                    </label>
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<ThunderboltOutlined />}
+                      loading={aiGenerating}
+                      onClick={async () => {
+                        if (!product.name || !product.name.trim()) {
+                          message.warning('Please enter product name first');
+                          return;
+                        }
+
+                        setAiGenerating(true);
+                        try {
+                          const response = await axiosInstance.post(
+                            '/products/generate-description',
+                            {
+                              name: product.name,
+                              brand: product.brand,
+                              productType: product.productType,
+                              category: product.category,
+                              price: product.price?.regular,
+                              colors: product.variants?.colors || [],
+                              sizes: product.variants?.sizes || [],
+                            }
+                          );
+
+                          if (response.data.success) {
+                            const { summary, description } = response.data.data;
+                            handleChange('summary', summary);
+                            handleChange('description', description);
+                            message.success('AI generated description successfully!');
+                          }
+                        } catch (error) {
+                          console.error('AI generation error:', error);
+                          message.error('Failed to generate description');
+                        } finally {
+                          setAiGenerating(false);
+                        }
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                      }}
+                    >
+                      AI Generate
+                    </Button>
+                  </div>
                   <TextArea
-                    placeholder="Detailed product description (20-1000 characters)"
+                    placeholder="Detailed product description (20-10000 characters)"
                     value={product.description}
                     onChange={e => handleChange('description', e.target.value)}
                     rows={4}
                     style={{ resize: 'none' }}
                     status={validationErrors.description ? 'error' : ''}
-                    maxLength={1000}
+                    maxLength={10000}
                     showCount
                   />
                   {validationErrors.description && (
@@ -1370,6 +1470,163 @@ export default function ProductDetails() {
                   </div>
                 </Col>
               </Row>
+            </Card>
+
+            {/* --- CARD MỚI: COLOR & IMAGE GALLERY --- */}
+            <Card
+              title={
+                <Space>
+                  <PictureOutlined />
+                  <span>Color & Image Gallery</span>
+                  <Badge
+                    count={product.colorOptions.length}
+                    style={{ backgroundColor: '#1890ff' }}
+                  />
+                </Space>
+              }
+              extra={
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => openColorModal(null)}>
+                  Add Color
+                </Button>
+              }
+              variant="borderless"
+              style={{
+                borderRadius: 12,
+                marginBottom: 24,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+              data-field="colorOptions"
+            >
+              {validationErrors.colorOptions && (
+                <Alert
+                  message="Image Gallery Error"
+                  description={validationErrors.colorOptions.join(', ')}
+                  type="error"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+              )}
+              {validationErrors.mainImage && (
+                <Alert
+                  message="Main Image Error"
+                  description={validationErrors.mainImage.join(', ')}
+                  type="error"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+              )}
+
+              {product.colorOptions.length === 0 ? (
+                <Empty
+                  description={
+                    <span>
+                      No colors added yet.
+                      <br />
+                      Click "Add Color" to upload images for each product color.
+                    </span>
+                  }
+                />
+              ) : (
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  {product.colorOptions.map(opt => {
+                    const colorHex = colorOptions.find(c => c.value === opt.color)?.hex || '#ccc';
+                    return (
+                      <Card
+                        key={opt.color}
+                        size="small"
+                        style={{ background: '#fafafa', borderRadius: 8 }}
+                      >
+                        <Row align="middle" gutter={16}>
+                          <Col flex="auto">
+                            <Space>
+                              <div
+                                style={{
+                                  width: 20,
+                                  height: 20,
+                                  backgroundColor: colorHex,
+                                  border: '1px solid #d9d9d9',
+                                  borderRadius: 4,
+                                }}
+                              />
+                              <Text strong style={{ fontSize: 16 }}>
+                                {opt.color}
+                              </Text>
+                              <Badge
+                                count={`${opt.images.length} images`}
+                                style={{ backgroundColor: '#52c41a' }}
+                              />
+                            </Space>
+                          </Col>
+                          <Col flex="none">
+                            <Space>
+                              <Button icon={<EditOutlined />} onClick={() => openColorModal(opt)}>
+                                Edit
+                              </Button>
+                              <Button
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => deleteColorOption(opt.color)}
+                              >
+                                Delete
+                              </Button>
+                            </Space>
+                          </Col>
+                        </Row>
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 12,
+                            marginTop: 16,
+                            paddingTop: 16,
+                            borderTop: '1px solid #f0f0f0',
+                          }}
+                        >
+                          {opt.images.map(img => (
+                            <div
+                              key={img}
+                              style={{ position: 'relative', cursor: 'pointer' }}
+                              onClick={() => setAsMainImage(img)}
+                            >
+                              <Image
+                                width={100}
+                                height={100}
+                                src={img}
+                                fallback={DEFAULT_IMAGE_PATH}
+                                style={{
+                                  borderRadius: 8,
+                                  border:
+                                    product.mainImage === img
+                                      ? '4px solid #1890ff'
+                                      : '4px solid transparent',
+                                  objectFit: 'cover',
+                                }}
+                                preview={false}
+                              />
+                              {product.mainImage === img && (
+                                <Tooltip title="Main Image">
+                                  <StarFilled
+                                    style={{
+                                      position: 'absolute',
+                                      top: 8,
+                                      right: 8,
+                                      fontSize: 20,
+                                      color: '#1890ff',
+                                      background: 'white',
+                                      borderRadius: '50%',
+                                      padding: 4,
+                                    }}
+                                  />
+                                </Tooltip>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </Space>
+              )}
             </Card>
 
             {/* Pricing */}
@@ -1597,10 +1854,10 @@ export default function ProductDetails() {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => openInventoryModal()}
+                  onClick={() => openInventoryModal(null)} // Luôn mở ở chế độ "Add" (null)
                   size="large"
                 >
-                  Add Inventory Item
+                  Add Stock
                 </Button>
               }
               variant="borderless"
@@ -1684,8 +1941,7 @@ export default function ProductDetails() {
                 pagination={false}
                 scroll={{ x: 800 }}
                 locale={{
-                  emptyText:
-                    "No inventory items added yet. Click 'Add Inventory Item' to get started.",
+                  emptyText: "No inventory items added yet. Click 'Add Stock' to get started.",
                 }}
                 size="middle"
                 rowClassName={record => {
@@ -1766,115 +2022,36 @@ export default function ProductDetails() {
 
           {/* Sidebar */}
           <Col xs={24} lg={8}>
+            {/* --- CARD MỚI: HIỂN THỊ MAIN IMAGE --- */}
             <Card
               title={
                 <Space>
-                  <PictureOutlined />
-                  <span>Product Gallery</span>
-                  <Badge count={fileList.length} style={{ backgroundColor: '#1890ff' }} />
+                  <StarOutlined />
+                  <span>Main Product Image</span>
                 </Space>
               }
               variant="borderless"
               style={{
                 borderRadius: 12,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                marginBottom: 24,
               }}
+              data-field="mainImage"
             >
-              {product.mainImage && (
-                <div style={{ marginBottom: 16 }}>
-                  <img
-                    style={{
-                      width: '100%',
-                      borderRadius: '12px',
-                      maxHeight: '200px',
-                      objectFit: 'cover',
-                    }}
-                    src={product.mainImage || '/placeholder.svg'}
-                    alt="Main Product Image"
-                  />
-                  <Text
-                    type="secondary"
-                    style={{
-                      fontSize: '12px',
-                      display: 'block',
-                      textAlign: 'center',
-                      marginTop: 4,
-                    }}
-                  >
-                    Main Image
-                  </Text>
-                </div>
-              )}
-              <Upload.Dragger
-                fileList={fileList}
-                customRequest={async options => {
-                  const url = await uploadToCloud(options);
-                  if (url) {
-                    setFileList(prev => [
-                      ...prev,
-                      { uid: options.file.uid, name: options.file.name, status: 'done', url },
-                    ]);
-                    setProduct(prev => ({
-                      ...prev,
-                      mainImage: url,
-                      images: [...prev.images, url],
-                    }));
-                  }
-                }}
-                onRemove={file => {
-                  setFileList(prev => prev.filter(f => f.uid !== file.uid));
-                  setProduct(prev => ({
-                    ...prev,
-                    images: prev.images.filter(img => img !== file.url),
-                    mainImage:
-                      prev.mainImage === file.url
-                        ? prev.images.filter(img => img !== file.url)[0] || ''
-                        : prev.mainImage,
-                  }));
-                }}
-                listType="picture"
-                accept=".png,.jpg,.jpeg,.webp"
-                multiple
-                beforeUpload={file => {
-                  const errors = validateFile(file);
-                  if (errors.length > 0) {
-                    message.error(errors.join(', '));
-                    return false;
-                  }
-                  return true;
-                }}
-                style={{
-                  borderRadius: 8,
-                  border: '2px dashed #d9d9d9',
-                  background: '#fafafa',
-                }}
+              <Image
+                width="100%"
+                src={product.mainImage || DEFAULT_IMAGE_PATH}
+                fallback={DEFAULT_IMAGE_PATH}
+                style={{ borderRadius: 8 }}
+              />
+              <Text
+                type="secondary"
+                style={{ textAlign: 'center', display: 'block', marginTop: 8 }}
               >
-                <p className="ant-upload-drag-icon">
-                  <PlusOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                </p>
-                <p className="ant-upload-text" style={{ fontSize: 16, margin: '8px 0' }}>
-                  <strong>Drop multiple images here</strong> or click to browse
-                </p>
-                <p className="ant-upload-hint" style={{ color: '#999', fontSize: 14 }}>
-                  Support: JPG, PNG, WEBP (Max 5MB each, Max 10 images). First image becomes main
-                  image.
-                  {isEdit && (
-                    <>
-                      <br />
-                      <strong>Note:</strong> For updates, you can keep existing images without
-                      uploading new ones.
-                    </>
-                  )}
-                </p>
-              </Upload.Dragger>
-              {validationErrors.images && (
-                <div style={{ marginTop: 8 }}>
-                  <Text type="danger" style={{ fontSize: '12px', display: 'block' }}>
-                    {validationErrors.images.join(', ')}
-                  </Text>
-                </div>
-              )}
+                Select an image from the "Color & Image Gallery" to set it as the main image.
+              </Text>
             </Card>
+            {/* --- XÓA BỎ CARD: PRODUCT GALLERY CŨ --- */}
           </Col>
         </Row>
 
@@ -1961,12 +2138,13 @@ export default function ProductDetails() {
           )}
         </Card>
 
-        {/* Inventory Modal */}
+        {/* --- MODAL INVENTORY (CẬP NHẬT GIAO DIỆN) --- */}
         <Modal
           title={
             <Space>
               <ShoppingOutlined />
-              {editingInventoryItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
+              {/* Thay đổi tiêu đề dựa trên chế độ */}
+              {editingInventoryItem ? 'Edit Inventory Item' : 'Add Stock to Inventory'}
             </Space>
           }
           open={inventoryModalVisible}
@@ -1974,11 +2152,10 @@ export default function ProductDetails() {
           onCancel={() => {
             setInventoryModalVisible(false);
             setEditingInventoryItem(null);
-            setInventoryImageFileList([]);
             inventoryForm.resetFields();
           }}
           width={600}
-          okText={editingInventoryItem ? 'Update Item' : 'Add Item'}
+          okText={editingInventoryItem ? 'Update Item' : 'Add Stock'}
         >
           <Form form={inventoryForm} layout="vertical">
             <Row gutter={16}>
@@ -1988,7 +2165,11 @@ export default function ProductDetails() {
                   label="Size"
                   rules={[{ required: true, message: 'Please select a size!' }]}
                 >
-                  <Select placeholder="Select size" size="large">
+                  <Select
+                    placeholder="Select size"
+                    size="large"
+                    disabled={!!editingInventoryItem} // Không cho sửa Size/Color khi Edit
+                  >
                     {getSizeOptions(product.productType).map(size => (
                       <Option key={size} value={size}>
                         {product.productType === 'shoes' ? `Size ${size}` : size}
@@ -2003,43 +2184,64 @@ export default function ProductDetails() {
                   label="Color"
                   rules={[{ required: true, message: 'Please select a color!' }]}
                 >
-                  <Select placeholder="Select color" size="large">
-                    {colorOptions.map(color => (
-                      <Option key={color.value} value={color.value}>
-                        <Space>
-                          <div
-                            style={{
-                              width: 20,
-                              height: 20,
-                              backgroundColor: color.hex,
-                              border: '1px solid #d9d9d9',
-                              borderRadius: 4,
-                            }}
-                          />
-                          {color.label}
-                        </Space>
-                      </Option>
-                    ))}
+                  {/* --- UPDATED: Dynamic Color Options --- */}
+                  <Select
+                    placeholder="Select color from gallery" // Updated placeholder
+                    size="large"
+                    disabled={!!editingInventoryItem} // Keep disabled logic for edit mode
+                  >
+                    {/* Map through colors defined in the product's gallery */}
+                    {product.colorOptions.map(opt => {
+                      // Find the static color info (like hex) for display
+                      const staticColorInfo = colorOptions.find(c => c.value === opt.color);
+                      return (
+                        <Option key={opt.color} value={opt.color}>
+                          <Space>
+                            <div
+                              style={{
+                                width: 20,
+                                height: 20,
+                                backgroundColor: staticColorInfo?.hex || '#ccc', // Use hex from static list
+                                border: '1px solid #d9d9d9',
+                                borderRadius: 4,
+                              }}
+                            />
+                            {opt.color} {/* Display the color name */}
+                          </Space>
+                        </Option>
+                      );
+                    })}
                   </Select>
+                  {/* --- END OF UPDATE --- */}
                 </Form.Item>
               </Col>
             </Row>
+
+            {/* --- CẬP NHẬT TRƯỜNG QUANTITY --- */}
             <Form.Item
               name="quantity"
-              label="Quantity"
+              label={editingInventoryItem ? 'Set New Total Quantity' : 'Quantity to Add'}
               rules={[
                 { required: true, message: 'Please enter quantity!' },
                 {
                   type: 'number',
-                  min: 0,
+                  min: editingInventoryItem ? 0 : 1, // Khi edit cho phép set = 0, khi add phải > 0
                   max: 10000,
-                  message: 'Quantity must be between 0 and 10,000',
+                  message: editingInventoryItem
+                    ? 'Quantity must be between 0 and 10,000'
+                    : 'Quantity to add must be between 1 and 10,000',
                 },
               ]}
-              extra={`This will be added to the total stock automatically. Low stock threshold: ≤${STOCK_THRESHOLDS.ITEM_LOW_STOCK} units`}
+              extra={
+                editingInventoryItem
+                  ? `Set the new TOTAL stock for this item (e.g., set to ${STOCK_THRESHOLDS.LOW_STOCK} units).`
+                  : `This will be ADDED to existing stock (e.g., add ${STOCK_THRESHOLDS.MEDIUM_STOCK} units).`
+              }
             >
               <InputNumber
-                placeholder="Enter quantity"
+                placeholder={
+                  editingInventoryItem ? 'Enter new total quantity' : 'Enter quantity to add'
+                }
                 min={0}
                 max={10000}
                 style={{ width: '100%' }}
@@ -2048,58 +2250,109 @@ export default function ProductDetails() {
                 parser={value => value.replace(' units', '')}
               />
             </Form.Item>
+            {/* --- KẾT THÚC CẬP NHẬT --- */}
+          </Form>
+        </Modal>
+
+        {/* --- MODAL MỚI: QUẢN LÝ MÀU SẮC & ẢNH --- */}
+        <Modal
+          title={
+            <Space>
+              <PictureOutlined />
+              {editingColorOption ? 'Edit Color Gallery' : 'Add New Color Gallery'}
+            </Space>
+          }
+          open={colorModalVisible}
+          onOk={handleColorModalSubmit}
+          onCancel={() => setColorModalVisible(false)}
+          width={700}
+          okText={editingColorOption ? 'Update Color' : 'Add Color'}
+        >
+          <Form form={colorForm} layout="vertical">
+            <Form.Item
+              name="color"
+              label="Color"
+              rules={[{ required: true, message: 'Please select a color!' }]}
+            >
+              <Select
+                placeholder="Select color"
+                size="large"
+                disabled={!!editingColorOption} // Không cho sửa màu (chỉ cho sửa ảnh)
+              >
+                {colorOptions.map(color => (
+                  <Option key={color.value} value={color.value}>
+                    <Space>
+                      <div
+                        style={{
+                          width: 20,
+                          height: 20,
+                          backgroundColor: color.hex,
+                          border: '1px solid #d9d9d9',
+                          borderRadius: 4,
+                        }}
+                      />
+                      {color.label}
+                    </Space>
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
             <Form.Item
               name="images"
-              label="Images (Optional)"
-              extra="Upload multiple images for this specific inventory item"
+              label="Images for this Color"
+              extra={`Upload multiple images for this specific color. The first image will be the default. (Max ${VALIDATION_RULES.images.maxCount} images)`}
+              rules={[
+                {
+                  validator: () =>
+                    colorFileList.length > 0
+                      ? Promise.resolve()
+                      : Promise.reject(new Error('Please upload at least one image!')),
+                },
+              ]}
             >
               <Upload.Dragger
-                fileList={inventoryImageFileList}
+                fileList={colorFileList}
                 customRequest={async options => {
-                  const url = await uploadToCloud(options);
-                  if (url) {
-                    setInventoryImageFileList(prev => [
-                      ...prev,
-                      { uid: options.file.uid, name: options.file.name, status: 'done', url },
+                  const { file, onSuccess, onError, onProgress } = options;
+                  const res = await uploadToCloud({ file, onSuccess, onError, onProgress });
+                  if (res && res.url) {
+                    // Cập nhật fileList state của modal
+                    setColorFileList(prevList => [
+                      ...prevList,
+                      {
+                        uid: file.uid,
+                        name: file.name,
+                        status: 'done',
+                        url: res.url,
+                        response: { url: res.url }, // Lưu url trong response
+                      },
                     ]);
-                    const prevImgs = inventoryForm.getFieldValue('images') || [];
-                    inventoryForm.setFieldsValue({ images: [...prevImgs, url] });
                   }
                 }}
                 onRemove={file => {
-                  setInventoryImageFileList(prev => prev.filter(f => f.uid !== file.uid));
-                  const prevImgs = inventoryForm.getFieldValue('images') || [];
-                  inventoryForm.setFieldsValue({
-                    images: prevImgs.filter(img => img !== file.url),
-                  });
+                  setColorFileList(prev => prev.filter(f => f.uid !== file.uid));
+                  return true;
                 }}
-                listType="picture"
+                listType="picture-card"
                 accept=".png,.jpg,.jpeg,.webp"
                 multiple
                 beforeUpload={file => {
                   const errors = validateFile(file);
                   if (errors.length > 0) {
                     message.error(errors.join(', '));
-                    return false;
+                    return Upload.LIST_IGNORE;
+                  }
+                  if (colorFileList.length >= VALIDATION_RULES.images.maxCount) {
+                    message.error(`Maximum ${VALIDATION_RULES.images.maxCount} images allowed.`);
+                    return Upload.LIST_IGNORE;
                   }
                   return true;
                 }}
-                style={{
-                  borderRadius: 8,
-                  border: '2px dashed #d9d9d9',
-                  background: '#fafafa',
-                  padding: '20px',
-                }}
               >
-                <p className="ant-upload-drag-icon">
-                  <PictureOutlined style={{ fontSize: 20, color: '#1890ff' }} />
-                </p>
-                <p className="ant-upload-text" style={{ fontSize: 14, margin: '8px 0' }}>
-                  <strong>Drop multiple images here</strong> or click to browse
-                </p>
-                <p className="ant-upload-hint" style={{ color: '#999', fontSize: 12 }}>
-                  Support: JPG, PNG, WEBP (Max 5MB each)
-                </p>
+                <div>
+                  <PlusOutlined />
+                  <div style={{ marginTop: 8 }}>Upload</div>
+                </div>
               </Upload.Dragger>
             </Form.Item>
           </Form>

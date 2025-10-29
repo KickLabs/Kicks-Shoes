@@ -51,6 +51,8 @@
   padding: 12px;
   height: 0; /* Force flex child to respect parent height */
   min-height: 0; /* Allow shrinking */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .empty-chat {
@@ -86,6 +88,10 @@
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .user-message:hover {
@@ -173,7 +179,11 @@
 .message-content {
   margin-left: 28px;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
   line-height: 1.4;
+  max-width: 100%;
+  white-space: pre-wrap;
 }
 
 .product-ref {
