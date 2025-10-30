@@ -30,13 +30,19 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
-      # Comment out artifact upload to save storage quota
-      # We will use direct checkout in deploy job instead
-      # - name: Upload artifact for deployment job
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: node-app
-      #     path: backend
+      - name: Create deployment package
+        run: |
+          cd backend
+          # Remove node_modules to save space
+          rm -rf node_modules
+          # Create zip package
+          zip -r ../backend-deploy.zip . -x "*.git*" "node_modules/*" "*.log"
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-app
+          path: backend-deploy.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -46,25 +52,16 @@ jobs:
       contents: read #This is required for actions/checkout
 
     steps:
-      # Checkout code instead of downloading artifact
-      - uses: actions/checkout@v4
-
-      # Comment out artifact download since we're not using it anymore
-      # - name: Download artifact from build job
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: node-app
-
-      - name: Set up Node.js version for deployment
-        uses: actions/setup-node@v3
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
         with:
-          node-version: '20.x'
+          name: node-app
 
-      - name: Install production dependencies
+      - name: Unzip deployment package
         run: |
-          cd backend
-          npm ci --only=production
-          npm run postinstall --if-present
+          unzip backend-deploy.zip -d backend-app
+          cd backend-app
+          ls -la
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -79,5 +76,4 @@ jobs:
         with:
           app-name: 'kicks-shoes-backend'
           slot-name: 'Production'
-          package: ./backend
-          startup-command: 'npm start'
+          package: backend-deploy.zip
