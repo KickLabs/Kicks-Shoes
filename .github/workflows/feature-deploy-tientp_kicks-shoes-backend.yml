@@ -10,9 +10,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write #This is required for requesting the JWT
       contents: read #This is required for actions/checkout
 
     steps:
@@ -30,38 +31,11 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
-      - name: Create deployment package
+      - name: Install production dependencies only
         run: |
           cd backend
-          # Remove node_modules to save space
           rm -rf node_modules
-          # Create zip package
-          zip -r ../backend-deploy.zip . -x "*.git*" "node_modules/*" "*.log"
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-app
-          path: backend-deploy.zip
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: node-app
-
-      - name: Unzip deployment package
-        run: |
-          unzip backend-deploy.zip -d backend-app
-          cd backend-app
-          ls -la
+          npm ci --only=production
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -76,4 +50,4 @@ jobs:
         with:
           app-name: 'kicks-shoes-backend'
           slot-name: 'Production'
-          package: backend-deploy.zip
+          package: ./backend
