@@ -41,7 +41,9 @@ export default {
     'src/controllers/livestreamController.js', // Livestream controller
     '!src/app.js', // Exclude main app file
     '!src/socket.js', // Exclude socket file
-    '!src/config/**', // Exclude config files
+    'src/config/**', // Exclude config files
+    '!src/config/cloudinary.js',
+    '!src/config/vnpay.config.js',
     '!src/templates/**', // Exclude email templates
     '!src/vnpay/**', // Exclude vnpay
     'src/controllers/authController.js', // Exclude auth
