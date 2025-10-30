@@ -584,6 +584,35 @@ await createOrder(product, customer, { size: '42', color: 'Black' });
 
 ---
 
+## 2025-01-25 14:30 | Generated tests for "Backend API Tests - AI & Try-on" (22 cases)
+
+**Feature:** AI & Try-on (Virtual Try-on)  
+**Test Suite:** Backend API Tests  
+**Test Cases:** TC-TRYON-001 to TC-TRYON-022  
+**Files Generated:**
+
+- `backend/tests/ai-try-on/backend-api-tests.test.js` (22 test cases)
+- `backend/tests/ai-try-on/mocks/gemini.mock.js` (Gemini API mock)
+- `backend/tests/ai-try-on/_helpers/testUtils.js` (Test utilities)
+- `backend/tests/ai-try-on/README.md` (Documentation)
+
+**Coverage Areas:**
+
+- File upload validation (4 tests)
+- Image format support: JPEG, PNG, WebP (4 tests)
+- Gemini API integration (6 tests)
+- Error handling (6 tests)
+- Base64 encoding (2 tests)
+- Response formatting (2 tests)
+
+**Priority Distribution:**
+
+- HIGH: 15 tests (critical functionality)
+- MEDIUM: 6 tests (important features)
+- LOW: 1 test (edge cases)
+
+**Test Status:** Ready to run with `npm test -- ai-try-on`
+
 ## Test Generation Log — Users Feature
 
 **Date:** 2025-10-27 07:01  
