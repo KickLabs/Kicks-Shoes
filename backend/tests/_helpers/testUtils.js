@@ -113,6 +113,28 @@ function generateVietnameseUsers(count = 5) {
   });
 }
 
+// ============================================================================
+// Category Testing Helpers
+// ============================================================================
+
+/**
+ * Create mock category data
+ * @param {Object} overrides - Override default values
+ * @returns {Object} Mock category object
+ */
+export function makeCategory(overrides = {}) {
+  return {
+    _id: new mongoose.Types.ObjectId(),
+    name: 'Running',
+    slug: 'running',
+    description: 'Running shoes and gear',
+    status: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
 /**
  * Generate a mock JWT token (for testing purposes - NOT cryptographically secure)
  * @param {Object} payload - Token payload
@@ -253,7 +275,57 @@ function generateMockProduct(overrides = {}) {
 }
 
 /**
- * Factory to create mock PotentialOrder objects
+ * Create multiple mock categories
+ * @param {number} count - Number of categories to create
+ * @returns {Array<Object>} Array of mock categories
+ */
+export function makeCategories(count = 5) {
+  const names = ['Running', 'Basketball', 'Casual Shoes', 'Golf', 'Hiking', 'Sneaker', 'Tennis'];
+  return Array.from({ length: count }, (_, i) => {
+    const name = names[i] || `Category ${i + 1}`;
+    return makeCategory({
+      name,
+      slug: name.toLowerCase().replace(/\s+/g, '-'),
+    });
+  });
+}
+
+/**
+ * Create mock category input data for validation testing
+ * @param {boolean} valid - Whether to create valid or invalid data
+ * @returns {Object} Category input data
+ */
+export function makeCategoryInput(valid = true) {
+  if (valid) {
+    return {
+      name: 'Golf Shoes',
+      description: 'Professional golf footwear',
+      status: true,
+    };
+  }
+  // Invalid: missing required name
+  return {
+    description: 'Missing name field',
+  };
+}
+
+/**
+ * Create mock admin user for category operations
+ * @param {Object} overrides - Override default values
+ * @returns {Object} Mock admin user
+ */
+export function makeAdminUser(overrides = {}) {
+  return {
+    _id: new mongoose.Types.ObjectId(),
+    email: 'admin@kicks.com',
+    fullName: 'Admin User',
+    role: 'admin',
+    status: true,
+    ...overrides,
+  };
+}
+
+/** Factory to create mock PotentialOrder objects
  * @param {Object} overrides - Custom values to override defaults
  * @returns {Object} Mock PotentialOrder object
  */
@@ -285,7 +357,32 @@ function makePotentialOrder(overrides = {}) {
 }
 
 /**
- * Factory to create mock Order objects
+ * Create mock JWT token for admin
+ * @returns {string} Mock JWT token
+ */
+export function makeAdminToken() {
+  return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.admin.token';
+}
+
+/**
+ * Create mock request with auth headers for category operations
+ * @param {Object} options - Request options
+ * @returns {Object} Mock authenticated request
+ */
+export function makeAuthRequest(options = {}) {
+  return {
+    params: {},
+    body: {},
+    query: {},
+    headers: {
+      authorization: `Bearer ${makeAdminToken()}`,
+    },
+    user: makeAdminUser(),
+    ...options,
+  };
+}
+
+/* Factory to create mock Order objects
  * @param {Object} overrides - Custom values to override defaults
  * @returns {Object} Mock Order object
  */
