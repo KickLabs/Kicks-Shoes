@@ -1,0 +1,478 @@
+/* Weather Recommendation Modal */
+.weather-recommendation-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.weather-recommendation-modal__content {
+  background: white;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 1000px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.weather-recommendation-modal__header {
+  padding: 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: var(--Blue, #4a69e2);
+  border-radius: 24px 24px 0 0;
+  color: white;
+}
+
+.weather-recommendation-modal__header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.weather-recommendation-modal__title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  color: white;
+}
+
+.weather-recommendation-modal__close-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.weather-recommendation-modal__close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.weather-recommendation-modal__close-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Weather Info */
+.weather-recommendation-modal__weather {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.weather-recommendation-modal__weather-icon img {
+  width: 80px;
+  height: 80px;
+}
+
+.weather-recommendation-modal__weather-info {
+  flex: 1;
+}
+
+.weather-recommendation-modal__weather-temp {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.weather-recommendation-modal__weather-location {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  opacity: 0.95;
+}
+
+.weather-recommendation-modal__weather-description {
+  font-size: 14px;
+  opacity: 0.8;
+  text-transform: capitalize;
+}
+
+.weather-recommendation-modal__weather-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weather-recommendation-modal__weather-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.weather-recommendation-modal__weather-detail-label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.weather-recommendation-modal__weather-detail-value {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Gender Filter */
+.weather-recommendation-modal__filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.weather-recommendation-modal__filter-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.weather-recommendation-modal__filter-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.weather-recommendation-modal__filter-btn {
+  padding: 8px 20px;
+  border-radius: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.weather-recommendation-modal__filter-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.weather-recommendation-modal__filter-btn--active {
+  background: white;
+  color: #667eea;
+  border-color: white;
+}
+
+/* Body */
+.weather-recommendation-modal__body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Loading */
+.weather-recommendation-modal__loading {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.weather-recommendation-modal__spinner {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 20px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.weather-recommendation-modal__loading p {
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* Error */
+.weather-recommendation-modal__error {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.weather-recommendation-modal__error-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 20px;
+  color: #ef4444;
+}
+
+.weather-recommendation-modal__error p {
+  color: #6b7280;
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.weather-recommendation-modal__retry-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 32px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.weather-recommendation-modal__retry-btn:hover {
+  background: #5568d3;
+  transform: scale(1.05);
+}
+
+/* AI Advice */
+.weather-recommendation-modal__advice {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-left: 4px solid #0ea5e9;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  align-items: start;
+}
+
+.weather-recommendation-modal__advice-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.weather-recommendation-modal__advice-text {
+  color: #0c4a6e;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Products Grid */
+.weather-recommendation-modal__products {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.weather-recommendation-modal__product-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.weather-recommendation-modal__product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  border-color: #667eea;
+}
+
+.weather-recommendation-modal__product-image {
+  position: relative;
+  width: 100%;
+  padding-top: 100%;
+  background: #f9fafb;
+  overflow: hidden;
+}
+
+.weather-recommendation-modal__product-image img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.weather-recommendation-modal__product-card:hover .weather-recommendation-modal__product-image img {
+  transform: scale(1.1);
+}
+
+.weather-recommendation-modal__product-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #ef4444;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 1;
+}
+
+.weather-recommendation-modal__product-info {
+  padding: 16px;
+}
+
+.weather-recommendation-modal__product-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 8px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.weather-recommendation-modal__product-reason {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 12px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.weather-recommendation-modal__product-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.weather-recommendation-modal__product-price {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.weather-recommendation-modal__product-price-old {
+  font-size: 12px;
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+.weather-recommendation-modal__product-price-current {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.weather-recommendation-modal__product-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #fbbf24;
+}
+
+.weather-recommendation-modal__product-rating svg {
+  width: 16px;
+  height: 16px;
+}
+
+.weather-recommendation-modal__product-rating span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .weather-recommendation-modal {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .weather-recommendation-modal__content {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 24px 24px 0 0;
+  }
+
+  .weather-recommendation-modal__header {
+    padding: 20px;
+    border-radius: 24px 24px 0 0;
+  }
+
+  .weather-recommendation-modal__title {
+    font-size: 20px;
+  }
+
+  .weather-recommendation-modal__weather {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .weather-recommendation-modal__weather-details {
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .weather-recommendation-modal__weather-detail {
+    align-items: center;
+  }
+
+  .weather-recommendation-modal__body {
+    padding: 16px;
+  }
+
+  .weather-recommendation-modal__products {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+
+  .weather-recommendation-modal__product-info {
+    padding: 12px;
+  }
+
+  .weather-recommendation-modal__product-name {
+    font-size: 14px;
+  }
+
+  .weather-recommendation-modal__product-reason {
+    font-size: 12px;
+  }
+
+  .weather-recommendation-modal__product-price-current {
+    font-size: 14px;
+  }
+}
