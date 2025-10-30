@@ -9,6 +9,8 @@ import PotentialOrder from '../models/PotentialOrder.js';
 import Product from '../models/Product.js';
 import logger from '../utils/logger.js';
 
+const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 class OrderDetectionService {
   constructor() {
     // Vietnamese phone number patterns
@@ -347,25 +349,57 @@ class OrderDetectionService {
         }
       }
 
-      // If not found by SKU, try to match with featured products in the stream
-      if (streamData.featuredProducts && streamData.featuredProducts.length > 0) {
-        const latestFeatured = streamData.featuredProducts[streamData.featuredProducts.length - 1];
-        if (latestFeatured.productId) {
-          // Check if message mentions the product
-          const product = await Product.findById(latestFeatured.productId).select('name brand');
+      // Try to capture explicit product name mentioned before color/size metadata
+      if (!result.productId) {
+        const nameRegex =
+          /(chốt|dat|đặt|mua|lấy)?\s*\d*\s*(?:đôi|cái|chiếc|bộ|combo)?\s*([a-zA-Z0-9\s-]{3,}?)(?:\s+(?:màu|color|size)\b)/i;
+        const nameMatch = nameRegex.exec(rawMessage);
+        if (nameMatch && nameMatch[2]) {
+          const candidateName = nameMatch[2].replace(/\s{2,}/g, ' ').trim();
+          if (candidateName.length >= 3) {
+            const regex = new RegExp(escapeRegex(candidateName), 'i');
+            const productByName = await Product.findOne({ name: regex }).select('_id name brand');
+            if (productByName) {
+              result.productId = productByName._id;
+            }
+          }
+        }
+      }
 
-          if (product) {
-            const productName = product.name.toLowerCase();
-            const productBrand = product.brand.toLowerCase();
+      // If not found yet, try to match with featured products in the stream
+      if (
+        !result.productId &&
+        streamData.featuredProducts &&
+        streamData.featuredProducts.length > 0
+      ) {
+        const featuredIds = streamData.featuredProducts.map(fp => fp.productId).filter(Boolean);
 
-            if (
-              message.includes(productName) ||
-              message.includes(productBrand) ||
-              message.includes('này') || // "this one" in Vietnamese
-              message.includes('cái này') ||
-              message.includes('sản phẩm')
-            ) {
-              result.productId = product._id;
+        if (featuredIds.length > 0) {
+          const featuredProducts = await Product.find({ _id: { $in: featuredIds } }).select(
+            '_id name brand'
+          );
+
+          // Prefer direct name matches among featured products
+          const nameMatch = featuredProducts.find(prod =>
+            message.includes(prod.name.toLowerCase())
+          );
+
+          if (nameMatch) {
+            result.productId = nameMatch._id;
+          } else {
+            // Allow brand-based fallback only when the message references a generic pointer like "đôi này"
+            const hasGenericReference = /\b(này|nữa|đó|kia|sản phẩm này|đôi này)\b/i.test(
+              rawMessage
+            );
+
+            if (hasGenericReference) {
+              const brandMatches = featuredProducts.filter(prod =>
+                message.includes(prod.brand.toLowerCase())
+              );
+
+              if (brandMatches.length === 1) {
+                result.productId = brandMatches[0]._id;
+              }
             }
           }
         }

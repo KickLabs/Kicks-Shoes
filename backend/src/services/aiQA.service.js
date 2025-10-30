@@ -160,6 +160,7 @@ class AIQAService {
       return {
         id: product._id,
         name: product.name,
+        sku: product.sku,
         description: product.description,
         brand: product.brand?.name || 'Unknown',
         category: product.category?.name || 'Unknown',
@@ -218,10 +219,15 @@ class AIQAService {
       // Build context for AI
       const productsInfo = featuredProducts.map(p => ({
         name: p.productId?.name || 'Unknown',
+        sku: p.productId?.sku || p.productId?.productSku || 'Unknown',
         price: p.productId?.price?.regular || p.productId?.price || 'N/A',
         colors: p.productId?.variants?.colors || [],
         sizes: p.productId?.variants?.sizes || [],
       }));
+
+      const pinnedProductInfo = pinnedProduct?.productId
+        ? `📌 PINNED PRODUCT: ${pinnedProduct.productId.name} → SKU: ${pinnedProduct.productId.sku || 'Unknown'}`
+        : '📌 PINNED PRODUCT: None';
 
       // Add detailed product info if available
       let detailedProductInfo = '';
@@ -229,6 +235,7 @@ class AIQAService {
         detailedProductInfo = `SẢN PHẨM ĐANG PIN (THÔNG TIN CHI TIẾT):
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         📦 TÊN: ${detailedProduct.name}
+  🆔 SKU: ${detailedProduct.sku || 'Chưa cập nhật'}
         🏷️ BRAND: ${detailedProduct.brand}
         📁 CATEGORY: ${detailedProduct.category}
         💰 GIÁ: - Giá gốc: ${detailedProduct.price.regular?.toLocaleString('vi-VN')}đ ${detailedProduct.price.sale ? `- Giá sale: ${detailedProduct.price.sale.toLocaleString('vi-VN')}đ` : ''} ${detailedProduct.price.discount ? `- Giảm: ${detailedProduct.price.discount}%` : ''}
@@ -249,6 +256,7 @@ class AIQAService {
         - Description: ${streamDescription}
         ${detailedProductInfo}
         👟 FEATURED PRODUCTS: ${productsInfo.length > 0 ? JSON.stringify(productsInfo, null, 2) : 'No products featured yet'}
+  ${pinnedProductInfo}
         📦 SHOP POLICIES:
         - COD: Available nationwide
         - Shipping: 30,000đ (urban), 40,000đ (rural)
@@ -353,10 +361,10 @@ class AIQAService {
         Question: "SKU Nike Air Max là gì?"
         Context: Featured product "Nike Air Max" with SKU "NK-AM-999"
         Response: "✅ **SKU của Nike Air Max:** NK-AM-999 **Form đặt hàng:** chốt 1 đôi NK-AM-999 màu [màu] size [size] [SĐT] Bạn muốn đặt hàng không? Cho mình biết size và màu nhé! 👟"
-        **Example 9 - SKU of pinned product:**
-        Question: "mã sản phẩm đang pin là gì?"
-        Context: Pinned product "Jordan 3 Mid TD 1" with SKU "JD-3M-TD1"
-        Response: "📌 **Mã sản phẩm đang pin:** **Jordan 3 Mid TD 1** → JD-3M-TD1 **Để đặt hàng:** chốt [số_lượng] JD-3M-TD1 màu [màu] size [size] [SĐT] **Ví dụ:** chốt 1 đôi JD-3M-TD1 màu black size 42 0909123456 Ready để order chưa? 🎉"
+  **Example 9 - SKU of pinned product:**
+  Question: "mã sản phẩm đang pin là gì?"
+  Context: Pinned product "[PRODUCT_NAME]" with SKU "[PRODUCT_SKU]"
+  Response: "📌 **Mã sản phẩm đang pin:** **[PRODUCT_NAME]** → [PRODUCT_SKU] **Để đặt hàng:** chốt [số_lượng] [PRODUCT_SKU] màu [màu] size [size] [SĐT] **Ví dụ:** chốt 1 đôi [PRODUCT_SKU] màu black size 42 0909123456 Ready để order chưa? 🎉"
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         Remember: Always match the user's language and format responses clearly!`;
 
