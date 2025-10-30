@@ -158,29 +158,28 @@ Your primary objective is to execute a FLAWLESS virtual try-on. You will take a 
       try {
         console.log('🎨 Starting Gemini image generation...');
 
-        // Get the model instance
+        // Get the model instance for image generation
         const model = ai.getGenerativeModel({
           model: MODEL_ID,
+        });
+
+        // For image generation models, pass parts directly (not wrapped in contents array)
+        const parts = [
+          { text: detailedPrompt },
+          { inlineData: { mimeType: userImageMimeType, data: userImageBase64 } },
+          { inlineData: { mimeType: clothingImageMimeType, data: clothingImageBase64 } },
+        ];
+
+        console.log('📤 Sending request to Gemini API for image generation...');
+        response = await model.generateContent({
+          contents: [{ parts }],
           generationConfig: {
             temperature: 0.6,
             topP: 0.95,
             topK: 40,
+            responseMimeType: 'image/png', // Request image output
           },
         });
-
-        const contents = [
-          {
-            role: 'user',
-            parts: [
-              { text: detailedPrompt },
-              { inlineData: { mimeType: userImageMimeType, data: userImageBase64 } },
-              { inlineData: { mimeType: clothingImageMimeType, data: clothingImageBase64 } },
-            ],
-          },
-        ];
-
-        console.log('📤 Sending request to Gemini API...');
-        response = await model.generateContent(contents);
         console.log('✅ Received response from Gemini API');
       } catch (err) {
         console.error('❌ Gemini API error:', err);

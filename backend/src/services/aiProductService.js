@@ -325,7 +325,25 @@ export class AIProductService {
   static async getProductSuggestions(message, limit = 5) {
     try {
       const searchCriteria = this.analyzeUserQuery(message);
-      const products = await this.searchProducts(searchCriteria, limit);
+      let products = await this.searchProducts(searchCriteria, limit);
+
+      // If no products found and user requested specific sizes, retry without size filter
+      // to provide helpful suggestions instead of returning empty list.
+      if (
+        (!products || products.length === 0) &&
+        searchCriteria.sizes &&
+        searchCriteria.sizes.length > 0
+      ) {
+        logger.warn(
+          'No products found for sizes:',
+          searchCriteria.sizes,
+          ' - retrying without size filter'
+        );
+        const fallbackCriteria = { ...searchCriteria, sizes: [] };
+        products = await this.searchProducts(fallbackCriteria, limit);
+        // Mark that this is a fallback (optional: included in aiResponse)
+        searchCriteria._fallbackNoSize = true;
+      }
 
       const suggestions = products.map(product => ({
         id: product._id,
