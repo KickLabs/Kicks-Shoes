@@ -57,7 +57,7 @@ export const useFlashSales = (refreshInterval = 60000) => {
           setActiveFlashSales(flashSales);
           lastRefreshRef.current = Date.now();
         } else {
-          console.log('No active flash sale data');
+          // No active flash sales - this is normal, not an error
           setActiveFlashSales([]);
           lastRefreshRef.current = Date.now();
         }

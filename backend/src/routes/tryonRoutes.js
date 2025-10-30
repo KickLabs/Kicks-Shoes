@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import dotenv from 'dotenv';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
 
@@ -9,23 +9,12 @@ const router = express.Router();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Try multiple environment variable names for compatibility
-const GEMINI_API_KEY =
-  process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
-
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 if (!GEMINI_API_KEY) {
-  console.error('⚠️ Missing Gemini API Key! Please set GOOGLE_AI_API_KEY environment variable.');
-  console.error(
-    'Available env vars:',
-    Object.keys(process.env).filter(k => k.includes('API'))
-  );
-} else {
-  console.log('✅ Gemini API Key found (length:', GEMINI_API_KEY.length, ')');
+  console.error('Missing GEMINI_API_KEY environment variable.');
 }
-
-const ai = new GoogleGenerativeAI(GEMINI_API_KEY);
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 const MODEL_ID = process.env.GEMINI_MODEL_ID || 'gemini-2.0-flash-exp-image-generation';
-console.log('🤖 Using Gemini Model:', MODEL_ID);
 
 router.post(
   '/',
@@ -34,44 +23,11 @@ router.post(
     { name: 'clothingImage', maxCount: 1 },
   ]),
   async (req, res) => {
-    console.log('=== TRYON ENDPOINT DEBUG ===');
-    console.log('Request received at:', new Date().toISOString());
-    console.log('Request method:', req.method);
-    console.log('Request URL:', req.url);
-    console.log('Request headers:', req.headers);
-    console.log('Request files:', req.files ? Object.keys(req.files) : 'No files');
-    console.log('Request body keys:', Object.keys(req.body));
-
     try {
       const userImageFile = req.files?.userImage?.[0];
       const clothingImageFile = req.files?.clothingImage?.[0];
 
-      console.log(
-        'User image file:',
-        userImageFile
-          ? {
-              fieldname: userImageFile.fieldname,
-              originalname: userImageFile.originalname,
-              mimetype: userImageFile.mimetype,
-              size: userImageFile.size,
-            }
-          : 'Not found'
-      );
-
-      console.log(
-        'Clothing image file:',
-        clothingImageFile
-          ? {
-              fieldname: clothingImageFile.fieldname,
-              originalname: clothingImageFile.originalname,
-              mimetype: clothingImageFile.mimetype,
-              size: clothingImageFile.size,
-            }
-          : 'Not found'
-      );
-
       if (!userImageFile || !clothingImageFile) {
-        console.log('Missing files - returning 400 error');
         return res
           .status(400)
           .json({ error: 'Both userImage and clothingImage files are required' });
@@ -146,51 +102,32 @@ Your primary objective is to execute a FLAWLESS virtual try-on. You will take a 
       const userImageMimeType = userImageFile.mimetype || 'image/jpeg';
       const clothingImageMimeType = clothingImageFile.mimetype || 'image/png';
 
-      // Check if API key is available
-      if (!GEMINI_API_KEY) {
-        console.error('❌ Cannot process: Gemini API key is not configured');
-        return res.status(500).json({
-          error: 'AI service not configured. Please contact administrator.',
-        });
-      }
-
       let response;
       try {
-        console.log('🎨 Starting Gemini image generation...');
-
-        // Get the model instance for image generation
-        const model = ai.getGenerativeModel({
-          model: MODEL_ID,
-        });
-
-        // For image generation models, pass parts directly (not wrapped in contents array)
-        const parts = [
-          { text: detailedPrompt },
-          { inlineData: { mimeType: userImageMimeType, data: userImageBase64 } },
-          { inlineData: { mimeType: clothingImageMimeType, data: clothingImageBase64 } },
+        const contents = [
+          {
+            role: 'user',
+            parts: [
+              { text: detailedPrompt },
+              { inlineData: { mimeType: userImageMimeType, data: userImageBase64 } },
+              { inlineData: { mimeType: clothingImageMimeType, data: clothingImageBase64 } },
+            ],
+          },
         ];
 
-        console.log('📤 Sending request to Gemini API for image generation...');
-        response = await model.generateContent({
-          contents: [{ parts }],
-          generationConfig: {
+        response = await ai.models.generateContent({
+          model: MODEL_ID,
+          contents,
+          config: {
             temperature: 0.6,
             topP: 0.95,
             topK: 40,
-            responseMimeType: 'image/png', // Request image output
+            responseModalities: ['Text', 'Image'],
           },
         });
-        console.log('✅ Received response from Gemini API');
       } catch (err) {
-        console.error('❌ Gemini API error:', err);
-        console.error('Error details:', {
-          message: err.message,
-          status: err.status,
-          statusText: err.statusText,
-        });
-        return res.status(500).json({
-          error: 'AI generation failed: ' + (err.message || 'Unknown error'),
-        });
+        console.error('Gemini API error:', err);
+        return res.status(500).json({ error: 'AI generation failed' });
       }
 
       let textResponse = null;
@@ -214,19 +151,12 @@ Your primary objective is to execute a FLAWLESS virtual try-on. You will take a 
         return res.status(500).json({ error: `Empty AI response (${reason})` });
       }
 
-      const responseData = {
+      return res.json({
         image: imageData ? `data:${imageMimeType};base64,${imageData}` : null,
         description: textResponse || 'AI description not available.',
-      };
-
-      console.log('Successfully processed try-on request');
-      console.log('Response data keys:', Object.keys(responseData));
-      console.log('Image data length:', responseData.image ? responseData.image.length : 0);
-
-      return res.json(responseData);
+      });
     } catch (error) {
       console.error('Error processing try-on:', error);
-      console.error('Error stack:', error.stack);
       return res.status(500).json({ error: 'Failed to process virtual try-on' });
     }
   }

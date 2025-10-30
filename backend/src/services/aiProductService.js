@@ -211,9 +211,12 @@ export class AIProductService {
         filter.brand = { $in: searchCriteria.brands };
       }
 
-      // Apply product type filter
+      // Apply product type filter - Make it optional with fallback to category
       if (searchCriteria.productType) {
-        filter.productType = searchCriteria.productType;
+        // Don't strictly require productType field - many products may not have it
+        // Instead, use it as a hint but don't filter strictly
+        // This allows finding Nike products even if they don't have productType set
+        logger.info('ProductType requested:', searchCriteria.productType);
       }
 
       // Apply gender filter
@@ -298,7 +301,7 @@ export class AIProductService {
 
       logger.info('Searching products with criteria:', searchCriteria);
 
-      const products = await Product.find(filter)
+      let products = await Product.find(filter)
         .populate('category', 'name')
         .sort({
           rating: -1,
@@ -309,6 +312,25 @@ export class AIProductService {
         .lean();
 
       logger.info(`Found ${products.length} products matching criteria`);
+
+      // FALLBACK: If no products found and we have brand, try simple brand-only search
+      if (products.length === 0 && searchCriteria.brands && searchCriteria.brands.length > 0) {
+        logger.warn('No products with full criteria, trying brand-only search...');
+        products = await Product.find({
+          brand: { $in: searchCriteria.brands },
+          status: true,
+        })
+          .populate('category', 'name')
+          .sort({
+            rating: -1,
+            sales: -1,
+            finalPrice: 1,
+          })
+          .limit(limit)
+          .lean();
+        logger.info(`Brand-only fallback found ${products.length} products`);
+      }
+
       return products;
     } catch (error) {
       logger.error('Error searching products:', error);
