@@ -11,8 +11,8 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "@google/genai": "^1.28.0",
     "@google/generative-ai": "^0.21.0",
-    "@google/genai": "^0.5.0",
     "@payos/node": "^2.0.3",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
