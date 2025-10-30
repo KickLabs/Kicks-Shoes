@@ -16,7 +16,8 @@
     "test:unit": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest tests/utils --coverage",
     "test:integration": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest tests/integration --coverage",
     "test:services": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest tests/services --coverage",
-    "test:payos": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules npx c8 --reporter=text --reporter=lcov --reporter=html --include=src/controllers/payosController.js --include=src/services/payos.service.js --report-dir=coverage/payos npm test -- --config=tests/payos/jest.config.payos.js"
+    "test:payos": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules npx c8 --reporter=text --reporter=lcov --reporter=html --include=src/controllers/payosController.js --include=src/services/payos.service.js --report-dir=coverage/payos npm test -- --config=tests/payos/jest.config.payos.js",
+    "test:routing-app": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config=tests/routing-app/jest.config.routing-app.js --coverage"
   },
   "dependencies": {
     "@google/genai": "^1.19.0",
