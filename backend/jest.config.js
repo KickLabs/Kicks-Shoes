@@ -56,7 +56,7 @@ export default {
     '!src/controllers/blogCommentController.js', // Exclude blog comment
     '!src/controllers/chatController.js', // Exclude chat
     'src/controllers/dashboardController.js', // Dashboard controller
-    '!src/controllers/payosController.js', // Exclude payos
+    'src/controllers/payosController.js', // Exclude payos
     '!src/controllers/vnpayController.js', // Exclude vnpay
     '!src/services/auth.service.js', // Exclude auth service
     '!src/services/user.service.js', // Exclude user service
@@ -75,7 +75,7 @@ export default {
     '!src/services/chat.service.js', // Exclude chat service
     'src/services/email.service.js', // Email service
     '!src/services/otp.service.js', // Exclude otp service
-    '!src/services/payos.service.js', // Exclude payos service
+    'src/services/payos.service.js', // Exclude payos service
     '!src/services/vnpay.service.js', // Exclude vnpay service
     '!src/models/User.js', // Exclude user model
     'src/models/Product.js', // Product model
