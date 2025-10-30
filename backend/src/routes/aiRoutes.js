@@ -76,7 +76,8 @@ router.post('/stream', async (req, res) => {
 
     // === Language detection & policy ===
     userLang = detectLanguage(message); // 'vi' | 'en'
-    const replyIn = userLang === 'vi' ? 'Vietnamese' : 'English';
+    const respondInVietnamese = userLang === 'vi';
+    const replyIn = respondInVietnamese ? 'Vietnamese' : 'English';
 
     // === System prompts (all ENGLISH) ===
     let systemPrompt = '';
@@ -89,6 +90,7 @@ LANGUAGE POLICY:
 - If the user writes in Vietnamese, reply ONLY in Vietnamese.
 - If the user writes in English, reply ONLY in English.
 - Do NOT translate the user's text unless explicitly asked.
+- Do NOT ask the user for additional data unless the message clearly states that data is missing.
 - Your final answer must be written in ${replyIn}.`.trim();
 
     // Admin/shop analytics intent detection
@@ -244,9 +246,10 @@ Remember: Final answer must be in ${replyIn}.
 ${JSON.stringify(analyticsData, null, 2)}
 
 TASKS:
-- Interpret and summarize insights.
-- Provide clear takeaways and recommended actions.
-- Keep it concise and structured.
+- Use ONLY this data to interpret and summarize insights.
+- Provide clear takeaways, key highlights, and recommended actions.
+- Present the numbers directly; do not ask the user to supply more data.
+- Keep it concise, structured, and tailored to the query.
 - Final answer must be in ${replyIn}.
 `;
       }
@@ -392,7 +395,11 @@ TASKS:
 
     if (analyticsData) {
       // Keep analytics mock via your service (it should already produce natural language).
-      mockResponse = AdminAnalyticsService.generateAdminResponse(message, analyticsData);
+      mockResponse = AdminAnalyticsService.generateAdminResponse(
+        message,
+        analyticsData,
+        respondInVietnamese ? 'vi' : 'en'
+      );
     } else {
       if (suggestions?.suggestions && suggestions.suggestions.length > 0) {
         mockResponse = `${t.hi}\n\n${t.basedOn(message)} ${t.productsCount(suggestions.suggestions.length)}`;
