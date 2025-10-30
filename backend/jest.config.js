@@ -30,7 +30,7 @@ export default {
     // Suite 6: Edge Cases & Error Handling
     'src/middlewares/error.middleware.js', // Error middleware
     'src/utils/logger.js', // Logger utility
-    '!src/utils/validation.js', // Validation utility
+    'src/utils/validation.js', // Validation utility
 
     // AI & Try-on Feature (Integration test - no service layer)
     'src/routes/tryonRoutes.js', // Try-on routes with Gemini AI integration
@@ -43,7 +43,9 @@ export default {
     'src/controllers/livestreamController.js', // Livestream controller
     '!src/app.js', // Exclude main app file
     '!src/socket.js', // Exclude socket file
-    '!src/config/**', // Exclude config files
+    'src/config/**', // Exclude config files
+    '!src/config/cloudinary.js',
+    '!src/config/vnpay.config.js',
     '!src/templates/**', // Exclude email templates
     '!src/vnpay/**', // Exclude vnpay
     'src/controllers/authController.js', // Exclude auth
@@ -105,7 +107,7 @@ export default {
     '!src/models/Report.js', // Exclude report model
     '!src/models/TokenBlacklist.js', // Exclude token blacklist model
     '!src/models/OrderItem.js', // Exclude order item model
-    '!src/utils/errorResponse.js', // Exclude error response utility
+    'src/utils/errorResponse.js', // Exclude error response utility
     '!src/utils/helpers.js', // Exclude helpers utility
     '!src/utils/upload.js', // Exclude upload utility
   ],
