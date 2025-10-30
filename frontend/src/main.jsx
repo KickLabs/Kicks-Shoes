@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { VideoCallProvider } from './contexts/VideoCallContext';
 import { WeatherRecommendationProvider } from './contexts/WeatherRecommendationContext';
 import { persistor, store } from './store/store';
+import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Common Components
 import ChatPage from './components/common/components/ChatPage';
@@ -625,7 +626,7 @@ const router = createBrowserRouter([
 const Root = () => (
   <React.StrictMode>
     <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
+      <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
         <AuthProvider>
           <VideoCallProvider>
             <WeatherRecommendationProvider>
@@ -644,7 +645,9 @@ const Root = () => (
               <GoogleOAuthProvider
                 clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
               >
-                <RouterProvider router={router} />
+                <Suspense fallback={<LoadingSpinner />}>
+                  <RouterProvider router={router} />
+                </Suspense>
               </GoogleOAuthProvider>
             </WeatherRecommendationProvider>
           </VideoCallProvider>

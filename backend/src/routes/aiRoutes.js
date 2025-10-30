@@ -151,7 +151,7 @@ Hãy tư vấn một cách thân thiện, chuyên nghiệp và hữu ích.`;
                   content: {
                     final_response: fullResponse,
                     conversation_id: conversationId || null,
-                    product_suggestions: res.locals.productSuggestions || [],
+                    product_suggestions: suggestions?.suggestions || [],
                     analytics_data: analyticsData || null,
                     user_role: userRole || 'customer',
                   },

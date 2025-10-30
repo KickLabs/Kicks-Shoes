@@ -9,12 +9,23 @@ const router = express.Router();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+// Try multiple environment variable names for compatibility
+const GEMINI_API_KEY =
+  process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+
 if (!GEMINI_API_KEY) {
-  console.error('Missing GEMINI_API_KEY environment variable.');
+  console.error('⚠️ Missing Gemini API Key! Please set GOOGLE_AI_API_KEY environment variable.');
+  console.error(
+    'Available env vars:',
+    Object.keys(process.env).filter(k => k.includes('API'))
+  );
+} else {
+  console.log('✅ Gemini API Key found (length:', GEMINI_API_KEY.length, ')');
 }
+
 const ai = new GoogleGenerativeAI(GEMINI_API_KEY);
 const MODEL_ID = process.env.GEMINI_MODEL_ID || 'gemini-2.0-flash-exp-image-generation';
+console.log('🤖 Using Gemini Model:', MODEL_ID);
 
 router.post(
   '/',
@@ -135,8 +146,28 @@ Your primary objective is to execute a FLAWLESS virtual try-on. You will take a 
       const userImageMimeType = userImageFile.mimetype || 'image/jpeg';
       const clothingImageMimeType = clothingImageFile.mimetype || 'image/png';
 
+      // Check if API key is available
+      if (!GEMINI_API_KEY) {
+        console.error('❌ Cannot process: Gemini API key is not configured');
+        return res.status(500).json({
+          error: 'AI service not configured. Please contact administrator.',
+        });
+      }
+
       let response;
       try {
+        console.log('🎨 Starting Gemini image generation...');
+
+        // Get the model instance
+        const model = ai.getGenerativeModel({
+          model: MODEL_ID,
+          generationConfig: {
+            temperature: 0.6,
+            topP: 0.95,
+            topK: 40,
+          },
+        });
+
         const contents = [
           {
             role: 'user',
@@ -148,19 +179,19 @@ Your primary objective is to execute a FLAWLESS virtual try-on. You will take a 
           },
         ];
 
-        response = await ai.models.generateContent({
-          model: MODEL_ID,
-          contents,
-          config: {
-            temperature: 0.6,
-            topP: 0.95,
-            topK: 40,
-            responseModalities: ['Text', 'Image'],
-          },
-        });
+        console.log('📤 Sending request to Gemini API...');
+        response = await model.generateContent(contents);
+        console.log('✅ Received response from Gemini API');
       } catch (err) {
-        console.error('Gemini API error:', err);
-        return res.status(500).json({ error: 'AI generation failed' });
+        console.error('❌ Gemini API error:', err);
+        console.error('Error details:', {
+          message: err.message,
+          status: err.status,
+          statusText: err.statusText,
+        });
+        return res.status(500).json({
+          error: 'AI generation failed: ' + (err.message || 'Unknown error'),
+        });
       }
 
       let textResponse = null;

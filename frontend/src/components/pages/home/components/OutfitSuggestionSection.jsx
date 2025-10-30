@@ -3,6 +3,7 @@ import { Button, Input, message } from 'antd';
 import { SearchOutlined, BulbOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import './OutfitSuggestionSection.css';
+import fitClothesImg from '../../../../assets/images/fitClothes.png';
 
 const { TextArea } = Input;
 
@@ -73,7 +74,7 @@ const OutfitSuggestionSection = () => {
         <div className="outfit-suggestion-visual">
           <div className="visual-placeholder">
             <img
-              src="/src/assets/images/fitClothes.png"
+              src={fitClothesImg}
               alt="Outfit suggestion visual"
               className="outfit-visual-image"
             />
