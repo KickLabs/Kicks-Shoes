@@ -57,6 +57,7 @@ import shipperRoutes from './routes/shipperRoutes.js'; // Added Shipper routes
 import deliveryReportRoutes from './routes/deliveryReportRoutes.js'; // Added Delivery Report routes
 import shipperApplicationRoutes from './routes/shipperApplicationRoutes.js'; // Added Shipper Application routes
 import aiInventoryRoutes from './routes/aiInventoryRoutes.js'; // AI Inventory Intelligence
+import weatherRoutes from './routes/weatherRoutes.js'; // Weather Recommendation routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import {
@@ -213,6 +214,7 @@ app.use('/api/shipper', shipperRoutes); // Added Shipper routes
 app.use('/api/delivery-reports', deliveryReportRoutes); // Added Delivery Report routes
 app.use('/api/shipper-applications', shipperApplicationRoutes); // Added Shipper Application routes
 app.use('/api/ai/inventory', aiInventoryRoutes); // AI Inventory Intelligence
+app.use('/api/weather', weatherRoutes); // Weather Recommendation routes
 
 // Start cron jobs
 startDiscountStatusUpdateCron();

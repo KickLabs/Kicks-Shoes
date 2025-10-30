@@ -5,6 +5,7 @@ import AppHeader from './../common/components/Header';
 import ScrollToTop from '../../utils/ScrollToTop';
 import { AuthProvider } from '../../contexts/AuthContext';
 import ChatWidget from './../common/components/ChatWidget';
+import WeatherWidget from '../weather/WeatherWidget';
 
 function App() {
   const location = useLocation();
@@ -98,6 +99,7 @@ function App() {
           <Outlet />
           {!shouldHideHeaderFooter && <Footer />}
           {!isLivestreamHost && <ChatWidget />}
+          {!shouldHideHeaderFooter && !isLivestreamHost && <WeatherWidget />}
         </div>
       </ConfigProvider>
     </AuthProvider>

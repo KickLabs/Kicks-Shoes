@@ -7,6 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { PersistGate } from 'redux-persist/integration/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { VideoCallProvider } from './contexts/VideoCallContext';
+import { WeatherRecommendationProvider } from './contexts/WeatherRecommendationContext';
 import { persistor, store } from './store/store';
 
 // Common Components
@@ -627,23 +628,25 @@ const Root = () => (
       <PersistGate loading={null} persistor={persistor}>
         <AuthProvider>
           <VideoCallProvider>
-            <ToastContainer
-              position="top-right"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="light"
-            />
-            <GoogleOAuthProvider
-              clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
-            >
-              <RouterProvider router={router} />
-            </GoogleOAuthProvider>
+            <WeatherRecommendationProvider>
+              <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+              />
+              <GoogleOAuthProvider
+                clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
+              >
+                <RouterProvider router={router} />
+              </GoogleOAuthProvider>
+            </WeatherRecommendationProvider>
           </VideoCallProvider>
         </AuthProvider>
       </PersistGate>
