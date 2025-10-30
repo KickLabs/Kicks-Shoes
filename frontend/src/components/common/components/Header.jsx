@@ -264,7 +264,7 @@ const AppHeader = () => {
       const response = await axiosInstance.post('/products/visual-search', formData);
 
       if (response.data.success) {
-        message.success('Phân tích ảnh thành công, đang hiển thị kết quả...');
+        message.success('Image analysis successful, displaying results...');
         setIsVisualSearchModalVisible(false);
         setVisualSearchFile(null);
         setVisualSearchPreview(null);
@@ -284,7 +284,7 @@ const AppHeader = () => {
       }
     } catch (err) {
       const errorMessage =
-        err.response?.data?.message || err.message || 'Không thể thực hiện tìm kiếm.';
+        err.response?.data?.message || err.message || 'Failed to perform search.';
       message.error(errorMessage);
     } finally {
       setVisualSearchLoading(false);

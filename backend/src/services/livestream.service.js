@@ -296,6 +296,10 @@ class LiveStreamService {
       let aiResponse = null;
       if (socketInfo.role === 'viewer' && messageData.type !== 'system') {
         try {
+          logger.info('AIQA debug: entering Q&A branch', {
+            roomId: socketInfo.roomId,
+            textPreview: (messageData.text || '').slice(0, 60),
+          });
           // Populate stream data for AI context
           await room.streamData.populate('featuredProducts.productId');
 
@@ -307,6 +311,9 @@ class LiveStreamService {
           };
 
           aiResponse = await aiQAService.processMessage(chatMessage.content, aiContext);
+          logger.info('AIQA debug: processMessage returned', {
+            hasAnswer: !!aiResponse,
+          });
 
           if (aiResponse) {
             logger.info(`AI Q&A answered question in room ${socketInfo.roomId}:`, {

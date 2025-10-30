@@ -1,22 +1,37 @@
 import cors from 'cors';
 
-// Simple and reliable CORS configuration
-const corsOptions = {
-  origin: [
-    // Development
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:4173',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
+// Allow-list and flexible origin matcher
+const allowedOrigins = [
+  // Development
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:4173',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
 
-    // Production
-    'https://kicks-shoes-2025.web.app',
-    'https://kicks-shoes-2025.firebaseapp.com',
-  ],
+  // Production (Frontend)
+  'https://kicks-shoes-2025.web.app',
+  'https://kicks-shoes-2025.firebaseapp.com',
+];
+
+const originPatterns = [
+  /^https:\/\/kicks-shoes-2025\.web\.app$/,
+  /^https:\/\/kicks-shoes-2025\.firebaseapp\.com$/,
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests without origin (mobile apps, curl)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin) || originPatterns.some(re => re.test(origin))) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
   allowedHeaders: [
     'Content-Type',

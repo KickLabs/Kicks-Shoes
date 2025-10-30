@@ -7,13 +7,14 @@
 
 import Product from '../models/Product.js';
 import Order from '../models/Order.js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// Dynamic import of Google GenAI SDK to support both package names
 import logger from '../utils/logger.js';
 
 class AIInventoryService {
   constructor() {
     this.genAI = null;
     this.model = null;
+    // Initialize asynchronously; failures should not crash the app
     this.initialize();
 
     // Thresholds for inventory alerts
@@ -26,13 +27,28 @@ class AIInventoryService {
     };
   }
 
-  initialize() {
+  async initialize() {
     try {
-      if (process.env.GOOGLE_AI_API_KEY) {
-        this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-        logger.info('AI Inventory Service initialized');
+      const apiKey =
+        process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      if (!apiKey) {
+        logger.warn('Google AI API key not configured. AI Inventory will be disabled.');
+        return;
       }
+
+      let GoogleGenerativeAIClass = null;
+      try {
+        // Import @google/generative-ai
+        const { GoogleGenerativeAI } = await import('@google/generative-ai');
+
+        // Initialize with API key (string parameter)
+        this.genAI = new GoogleGenerativeAI(apiKey);
+      } catch (error) {
+        logger.warn('Google GenAI SDK not available. Skipping AI initialization.', error.message);
+        return;
+      }
+      this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      logger.info('AI Inventory Service initialized');
     } catch (error) {
       logger.error('Failed to initialize AI Inventory Service:', error);
     }
