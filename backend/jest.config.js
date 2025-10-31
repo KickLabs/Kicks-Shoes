@@ -43,6 +43,20 @@ export default {
     'src/controllers/livestreamController.js', // Livestream controller
     '!src/app.js', // Exclude main app file
     '!src/socket.js', // Exclude socket file
+    '!src/config/**', // Exclude config files
+    'src/templates/**', // Email templates
+    '!src/vnpay/**', // Exclude vnpay
+    '!src/controllers/authController.js', // Exclude auth
+    '!src/controllers/userController.js', // Exclude user
+    'src/controllers/productController.js', // Product controller
+    '!src/controllers/orderController.js', // Exclude order
+    'src/controllers/cartController.js', // Cart controller
+    '!src/controllers/categoryController.js', // Exclude category
+    '!src/controllers/discountController.js', // Exclude discount
+    '!src/controllers/flashSaleController.js', // Exclude flash sale
+    '!src/controllers/favouriteController.js', // Exclude favourite
+    '!src/controllers/feedbackController.js', // Exclude feedback
+    'src/controllers/rewardPointController.js', // Reward point controller
     'src/config/**', // Exclude config files
     '!src/config/cloudinary.js',
     '!src/config/vnpay.config.js',
@@ -65,9 +79,20 @@ export default {
     'src/controllers/blogController.js', // Exclude blog
     'src/controllers/blogCommentController.js', // Exclude blog comment
     '!src/controllers/chatController.js', // Exclude chat
-    '!src/controllers/dashboardController.js', // Exclude dashboard
-    '!src/controllers/payosController.js', // Exclude payos
+    'src/controllers/dashboardController.js', // Dashboard controller
+    'src/controllers/payosController.js', // Exclude payos
     '!src/controllers/vnpayController.js', // Exclude vnpay
+    '!src/services/auth.service.js', // Exclude auth service
+    '!src/services/user.service.js', // Exclude user service
+    'src/services/product.service.js', // Product service
+    'src/services/order.service.js', // Order service
+    'src/services/cart.service.js', // Cart service
+    '!src/services/category.service.js', // Exclude category service
+    '!src/services/discount.service.js', // Exclude discount service
+    '!src/services/flashSale.service.js', // Exclude flash sale service
+    '!src/services/favourite.service.js', // Exclude favourite service
+    '!src/services/feedback.service.js', // Exclude feedback service
+    'src/services/rewardPoint.service.js', // Reward point serv ice
     'src/services/auth.service.js', // Exclude auth service
     'src/services/user.service.js', // Exclude user service
     'src/services/product.service.js', // Exclude product service
@@ -84,10 +109,20 @@ export default {
     'src/services/blog.service.js', // Exclude blog service
     'src/services/blogComment.service.js', // Exclude blog comment service
     '!src/services/chat.service.js', // Exclude chat service
-    '!src/services/email.service.js', // Exclude email service
+    'src/services/email.service.js', // Email service
     '!src/services/otp.service.js', // Exclude otp service
-    '!src/services/payos.service.js', // Exclude payos service
+    'src/services/payos.service.js', // Exclude payos service
     '!src/services/vnpay.service.js', // Exclude vnpay service
+    '!src/models/User.js', // Exclude user model
+    'src/models/Product.js', // Product model
+    '!src/models/Order.js', // Exclude order model
+    'src/models/Cart.js', // Cart model
+    '!src/models/Category.js', // Exclude category model
+    '!src/models/Discount.js', // Exclude discount model
+    '!src/models/FlashSale.js', // Exclude flash sale model
+    '!src/models/Favourite.js', // Exclude favourite model
+    '!src/models/Feedback.js', // Exclude feedback model
+    'src/models/RewardPoint.js', // Reward point model
     'src/models/User.js', // User model
     'src/models/Product.js', // Exclude product model
     '!src/models/Order.js', // Exclude order model
@@ -104,12 +139,17 @@ export default {
     '!src/models/Message.js', // Exclude message model
     '!src/models/Conversation.js', // Exclude conversation model
     '!src/models/Refund.js', // Exclude refund model
-    '!src/models/Report.js', // Exclude report model
+    'src/models/Report.js', // Report model
     '!src/models/TokenBlacklist.js', // Exclude token blacklist model
     '!src/models/OrderItem.js', // Exclude order item model
     'src/utils/errorResponse.js', // Exclude error response utility
     '!src/utils/helpers.js', // Exclude helpers utility
-    '!src/utils/upload.js', // Exclude upload utility
+    'src/utils/upload.js', // Exclude upload utility
+
+    // Uploads & Media module
+    'src/middlewares/upload.middleware.js', // Upload middleware
+    'src/config/cloudinary.js', // Cloudinary config
+    'src/routes/uploadRoutes.js', // Upload routes
   ],
 
   // Coverage thresholds - Giảm threshold để phù hợp với coverage hiện tại

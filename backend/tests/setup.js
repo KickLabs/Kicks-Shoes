@@ -30,6 +30,14 @@ process.env.EMAIL_PORT = '587';
 process.env.EMAIL_USER = 'test-user';
 process.env.EMAIL_PASSWORD = 'test-password';
 
+// Email configuration for tests
+process.env.EMAIL_FROM = 'test@kicks-shoes.com';
+process.env.EMAIL_HOST = 'smtp.test.com';
+process.env.EMAIL_PORT = '587';
+process.env.EMAIL_USER = 'testuser';
+process.env.EMAIL_PASSWORD = 'testpassword';
+process.env.ADMIN_EMAIL = 'admin@test.com';
+
 // Cấu hình để xử lý ES modules
 process.env.NODE_OPTIONS = '--experimental-vm-modules';
 

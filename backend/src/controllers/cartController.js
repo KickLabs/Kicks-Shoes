@@ -196,7 +196,7 @@ export const removeOrderedItems = async (req, res) => {
 
     // Remove only the items that were ordered
     // orderedItems should contain the cart item IDs that were ordered
-    const orderedItemIds = orderedItems.map(item => item._id || item.id);
+    const orderedItemIds = orderedItems.map(item => (item._id || item.id).toString());
     cart.items = cart.items.filter(item => !orderedItemIds.includes(item._id.toString()));
 
     recalculateTotalPrice(cart);
