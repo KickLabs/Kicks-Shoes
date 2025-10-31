@@ -19,7 +19,7 @@ class AIDescriptionService {
 
       logger.info(`Generating description for product: ${name}`);
 
-      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      const apiKey = process.env.GOOGLE_AI_API_KEY_DESCRIPTION;
       if (!apiKey) {
         logger.warn('Google AI API key not configured, using fallback description');
         return this.generateFallbackDescription(productInfo);
@@ -63,8 +63,10 @@ Generate a compelling, SEO-optimized product description for the following produ
 Generate compelling copy that sells the product and helps customers make informed decisions.
 `;
 
+      const model = process.env.GOOGLE_AI_MODEL_DESCRIPTION || 'gemini-2.0-flash-exp';
+
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {

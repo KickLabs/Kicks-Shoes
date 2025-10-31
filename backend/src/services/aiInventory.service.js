@@ -29,14 +29,12 @@ class AIInventoryService {
 
   async initialize() {
     try {
-      const apiKey =
-        process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      const apiKey = process.env.GOOGLE_AI_API_KEY_INVENTORY;
       if (!apiKey) {
-        logger.warn('Google AI API key not configured. AI Inventory will be disabled.');
+        logger.warn('GOOGLE_AI_API_KEY_INVENTORY not configured. AI Inventory will be disabled.');
         return;
       }
 
-      let GoogleGenerativeAIClass = null;
       try {
         // Import @google/generative-ai
         const { GoogleGenerativeAI } = await import('@google/generative-ai');
@@ -47,8 +45,10 @@ class AIInventoryService {
         logger.warn('Google GenAI SDK not available. Skipping AI initialization.', error.message);
         return;
       }
-      this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-      logger.info('AI Inventory Service initialized');
+
+      const modelName = process.env.GOOGLE_AI_MODEL_INVENTORY || 'gemini-2.0-flash-exp';
+      this.model = this.genAI.getGenerativeModel({ model: modelName });
+      logger.info(`AI Inventory Service initialized with model: ${modelName}`);
     } catch (error) {
       logger.error('Failed to initialize AI Inventory Service:', error);
     }

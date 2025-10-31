@@ -505,9 +505,9 @@ export class AIProductService {
    */
   static async analyzeOccasionWithAI(context, allProducts) {
     try {
-      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      const apiKey = process.env.GOOGLE_AI_API_KEY_PRODUCT;
       if (!apiKey) {
-        throw new Error('GOOGLE_AI_API_KEY not configured');
+        throw new Error('GOOGLE_AI_API_KEY_PRODUCT not configured');
       }
 
       // Get product names for context
@@ -562,8 +562,10 @@ Analysis should be based on:
 6. Professional styling explanation
 `;
 
+      const model = process.env.GOOGLE_AI_MODEL_PRODUCT || 'gemini-2.0-flash-exp';
+
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
@@ -1053,9 +1055,9 @@ Analysis should be based on:
    */
   static async optimizeContext(context) {
     try {
-      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      const apiKey = process.env.GOOGLE_AI_API_KEY_PRODUCT;
       if (!apiKey) {
-        throw new Error('GOOGLE_AI_API_KEY not configured');
+        throw new Error('GOOGLE_AI_API_KEY_PRODUCT not configured');
       }
 
       const prompt = `
@@ -1080,8 +1082,10 @@ Examples:
 
 Optimized context:`;
 
+      const model = process.env.GOOGLE_AI_MODEL_PRODUCT || 'gemini-2.0-flash-exp';
+
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {

@@ -101,11 +101,14 @@ export const getOutfitRecommendations = async (req, res) => {
     logger.info(`Found ${products.length} products for AI analysis`);
 
     // Use Gemini AI to analyze and recommend products
-    const genAI = new GoogleGenerativeAI(
-      process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY
-    );
+    const apiKey = process.env.GOOGLE_AI_API_KEY_WEATHER;
+    if (!apiKey) {
+      throw new Error('GOOGLE_AI_API_KEY_WEATHER is not configured');
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash-exp',
+      model: process.env.GOOGLE_AI_MODEL_WEATHER || 'gemini-2.0-flash-exp',
     });
 
     const prompt = `You are a fashion consultant expert. Analyze the weather and suggest appropriate outfits.

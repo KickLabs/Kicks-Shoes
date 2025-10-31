@@ -96,9 +96,9 @@ class ReviewSummaryService {
    */
   static async generateAISummary(reviews) {
     try {
-      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      const apiKey = process.env.GOOGLE_AI_API_KEY_REVIEW;
       if (!apiKey) {
-        logger.warn('Google AI API key not configured, using fallback summary');
+        logger.warn('GOOGLE_AI_API_KEY_REVIEW not configured, using fallback summary');
         return this.generateFallbackSummary(reviews);
       }
 
@@ -172,8 +172,10 @@ Lưu ý:
 - Chỉ trả về JSON, không thêm text giải thích
 `;
 
+      const model = process.env.GOOGLE_AI_MODEL_REVIEW || 'gemini-2.0-flash-exp';
+
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {

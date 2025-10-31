@@ -15,8 +15,8 @@ class AIQAService {
     try {
       logger.info('🔍 AI Q&A Service - Checking environment variables...');
       logger.info('Environment variables available:', {
-        GOOGLE_AI_API_KEY: process.env.GOOGLE_AI_API_KEY
-          ? '✅ SET (length: ' + process.env.GOOGLE_AI_API_KEY.length + ')'
+        GOOGLE_AI_API_KEY_AIQA: process.env.GOOGLE_AI_API_KEY_AIQA
+          ? '✅ SET (length: ' + process.env.GOOGLE_AI_API_KEY_AIQA.length + ')'
           : '❌ NOT SET',
         GEMINI_API_KEY: process.env.GEMINI_API_KEY
           ? '✅ SET (length: ' + process.env.GEMINI_API_KEY.length + ')'
@@ -27,13 +27,12 @@ class AIQAService {
         NODE_ENV: process.env.NODE_ENV || 'not set',
       });
 
-      const apiKey =
-        process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      const apiKey = process.env.GOOGLE_AI_API_KEY_AIQA;
 
       if (!apiKey) {
         logger.error(
-          '❌ CRITICAL: No Google AI API key found in environment variables!\n' +
-            '   Required: GOOGLE_AI_API_KEY, GEMINI_API_KEY, or GOOGLE_API_KEY\n' +
+          '❌ CRITICAL: GOOGLE_AI_API_KEY_AIQA not found in environment variables!\n' +
+            '   Required: GOOGLE_AI_API_KEY_AIQA\n' +
             '   AI Q&A will be DISABLED and fallback to NLP rule-based system.'
         );
         this.model = null;
@@ -61,7 +60,7 @@ class AIQAService {
       // Initialize Gemini with API key
       logger.info('Creating Gemini instance...');
       this.genAI = new GoogleGenerativeAI(apiKey);
-      const modelName = 'gemini-2.0-flash-exp';
+      const modelName = process.env.GOOGLE_AI_MODEL_AIQA || 'gemini-2.0-flash-exp';
       logger.info(`Initializing Gemini model: ${modelName}`);
       this.model = this.genAI.getGenerativeModel({ model: modelName });
 
