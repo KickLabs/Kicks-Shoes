@@ -109,7 +109,8 @@ describe('Order Controller - Unit Tests', () => {
 
     next = jest.fn();
 
-    // Reset mock implementations
+    // Reset mock implementations - ensure constructor always returns the same instance
+    MockVNPayService.mockImplementation(() => mockVNPayInstance);
     mockVNPayInstance.initialize.mockResolvedValue(undefined);
     mockVNPayInstance.refundPayment.mockResolvedValue({
       success: true,
@@ -463,6 +464,15 @@ describe('Order Controller - Unit Tests', () => {
       req.body.reason = 'Customer request';
       req.ip = '127.0.0.1';
 
+      // Reset and setup VNPay mocks
+      MockVNPayService.mockImplementation(() => mockVNPayInstance);
+      mockVNPayInstance.initialize.mockReset().mockResolvedValue(undefined);
+      mockVNPayInstance.refundPayment.mockReset().mockResolvedValue({
+        success: true,
+        refundSuccess: true,
+        data: { transactionNo: 'REFUND123', responseCode: '00' },
+      });
+
       mockOrderService.getOrderByOrderId.mockResolvedValue(order);
       mockOrderService.updateOrder.mockResolvedValue({
         ...order,
@@ -503,15 +513,21 @@ describe('Order Controller - Unit Tests', () => {
       req.params.id = 'order123';
       req.body.reason = 'Customer request';
 
-      mockOrderService.getOrderByOrderId.mockResolvedValue(order);
-      mockVNPayInstance.refundPayment.mockResolvedValue({
+      // Reset and setup VNPay mocks
+      MockVNPayService.mockImplementation(() => mockVNPayInstance);
+      mockVNPayInstance.initialize.mockReset().mockResolvedValue(undefined);
+      mockVNPayInstance.refundPayment.mockReset().mockResolvedValue({
         success: false,
         refundSuccess: false,
         message: 'Refund failed',
       });
 
+      mockOrderService.getOrderByOrderId.mockResolvedValue(order);
+
       await cancelOrder(req, res, next);
 
+      expect(mockVNPayInstance.initialize).toHaveBeenCalled();
+      expect(mockVNPayInstance.refundPayment).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
@@ -937,6 +953,7 @@ describe('Order Controller - Unit Tests', () => {
         vnpPayDate: '20240101120000',
         vnpTransactionNo: 'TRANS123',
         user: 'user123',
+        updatedAt: new Date(),
         populate: jest.fn().mockResolvedValue({
           _id: 'order123',
           user: { fullName: 'Test User', email: 'test@example.com' },
@@ -946,6 +963,15 @@ describe('Order Controller - Unit Tests', () => {
       req.params.id = 'order123';
       req.body = { reason: 'Customer request', amount: 200 };
       req.ip = '127.0.0.1';
+
+      // Reset and setup VNPay mocks
+      MockVNPayService.mockImplementation(() => mockVNPayInstance);
+      mockVNPayInstance.initialize.mockReset().mockResolvedValue(undefined);
+      mockVNPayInstance.refundPayment.mockReset().mockResolvedValue({
+        success: true,
+        refundSuccess: true,
+        data: { transactionNo: 'REFUND123', responseCode: '00' },
+      });
 
       mockOrderService.getOrderByOrderId.mockResolvedValue(order);
       mockOrderService.updateOrder.mockResolvedValue({

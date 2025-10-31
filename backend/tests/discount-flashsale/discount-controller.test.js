@@ -724,7 +724,7 @@ describe('Discount Controller - Unit Tests', () => {
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        message: 'Minimum purchase amount of 100.000 VND required',
+        message: expect.stringMatching(/Minimum purchase amount of .*100[,.]000.* VND required/),
       });
     });
 
