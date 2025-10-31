@@ -24,18 +24,21 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: npm install, build, and test
+      - name: npm install and test
         run: |
           cd backend
           npm install
           npm run build --if-present
           npm run test --if-present
 
-      - name: Install production dependencies only
+      - name: Prepare production build
         run: |
           cd backend
+          # Clean install production dependencies only
           rm -rf node_modules
-          npm ci --only=production
+          npm ci --omit=dev
+          # Remove unnecessary files
+          rm -rf .git .env.example
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -44,10 +47,14 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_ABB59C856ED54947B8A15256E63B7375 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_94E00768217342F1BC3F78314371C518 }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'kicks-shoes-backend'
           slot-name: 'Production'
           package: ./backend
+          restart: true
+
+      - name: Wait for deployment to complete
+        run: sleep 30
