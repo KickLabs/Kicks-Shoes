@@ -30,32 +30,24 @@ const ROLE_HIERARCHY = {
  */
 export const checkRoleLevel = requiredLevel => {
   return (req, res, next) => {
-    try {
-      if (!req.user) {
-        return next(new ErrorResponse('Authentication required', 401));
-      }
-
-      const userRoleLevel = ROLE_HIERARCHY[req.user.role];
-
-      if (userRoleLevel === undefined) {
-        logger.error('Invalid user role', { role: req.user.role });
-        return next(new ErrorResponse('Invalid user role', 403));
-      }
-
-      if (userRoleLevel < requiredLevel) {
-        return next(
-          new ErrorResponse(`Role ${req.user.role} is not authorized to access this route`, 403)
-        );
-      }
-
-      next();
-    } catch (error) {
-      logger.error('Role check error', {
-        error: error.message,
-        stack: error.stack,
-      });
-      next(error);
+    if (!req.user) {
+      return next(new ErrorResponse('Authentication required', 401));
     }
+
+    const userRoleLevel = ROLE_HIERARCHY[req.user.role];
+
+    if (userRoleLevel === undefined) {
+      logger.error('Invalid user role', { role: req.user.role });
+      return next(new ErrorResponse('Invalid user role', 403));
+    }
+
+    if (userRoleLevel < requiredLevel) {
+      return next(
+        new ErrorResponse(`Role ${req.user.role} is not authorized to access this route`, 403)
+      );
+    }
+
+    next();
   };
 };
 
@@ -70,23 +62,15 @@ export const requireAdmin = checkRoleLevel(ROLE_HIERARCHY[ROLES.ADMIN]);
  */
 export const requireExactRole = role => {
   return (req, res, next) => {
-    try {
-      if (!req.user) {
-        return next(new ErrorResponse('Authentication required', 401));
-      }
-
-      if (req.user.role !== role) {
-        return next(new ErrorResponse(`Only ${role} can access this route`, 403));
-      }
-
-      next();
-    } catch (error) {
-      logger.error('Exact role check error', {
-        error: error.message,
-        stack: error.stack,
-      });
-      next(error);
+    if (!req.user) {
+      return next(new ErrorResponse('Authentication required', 401));
     }
+
+    if (req.user.role !== role) {
+      return next(new ErrorResponse(`Only ${role} can access this route`, 403));
+    }
+
+    next();
   };
 };
 

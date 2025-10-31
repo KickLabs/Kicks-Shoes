@@ -463,6 +463,48 @@ describe('Authentication & Authorization — Test Suite 4: Auth Service (Unit)',
         'Password must be at least 8 characters long'
       );
     });
+
+    test('TC-418.1 | Error - Should throw error when user not found', async () => {
+      // Given: Valid token but user doesn't exist
+      const token = 'valid-reset-token';
+      const newPassword = 'NewPassword123!';
+
+      jwt.verify.mockReturnValue({ userId: 'nonexistent-user-id' });
+      User.findById.mockResolvedValue(null);
+
+      // When & Then: Should throw error
+      await expect(AuthService.resetPassword(token, newPassword)).rejects.toThrow('User not found');
+      expect(jwt.verify).toHaveBeenCalledWith(token, process.env.JWT_SECRET);
+      expect(User.findById).toHaveBeenCalledWith('nonexistent-user-id');
+      expect(bcrypt.genSalt).not.toHaveBeenCalled();
+      expect(bcrypt.hash).not.toHaveBeenCalled();
+    });
+
+    test('TC-418.2 | Error - Should handle JsonWebTokenError (catch block)', async () => {
+      // Given: Invalid or expired token
+      const token = 'invalid-or-expired-token';
+      const newPassword = 'NewPassword123!';
+
+      const jwtError = new Error('Invalid token');
+      jwtError.name = 'JsonWebTokenError';
+      jwt.verify.mockImplementation(() => {
+        throw jwtError;
+      });
+
+      // When & Then: Should catch error and throw custom error
+      await expect(AuthService.resetPassword(token, newPassword)).rejects.toThrow(
+        'Invalid or expired reset token'
+      );
+      expect(jwt.verify).toHaveBeenCalledWith(token, process.env.JWT_SECRET);
+      expect(User.findById).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        'Reset password error:',
+        expect.objectContaining({
+          error: 'Invalid token',
+          stack: expect.any(String),
+        })
+      );
+    });
   });
 
   // ========================================
@@ -587,6 +629,28 @@ describe('Authentication & Authorization — Test Suite 4: Auth Service (Unit)',
       expect(TokenBlacklist.findOne).toHaveBeenCalledWith({ token });
       expect(result).toBe(false);
     });
+
+    test('TC-426 | Error - Should handle database error (catch block)', async () => {
+      // Given: Database error when checking blacklist
+      const token = 'some-token';
+      const dbError = new Error('Database connection failed');
+      TokenBlacklist.findOne.mockRejectedValue(dbError);
+
+      // When: Check if blacklisted and expect error to be thrown
+      await expect(AuthService.isTokenBlacklisted(token)).rejects.toThrow(
+        'Database connection failed'
+      );
+
+      // Then: Should log error and re-throw
+      expect(TokenBlacklist.findOne).toHaveBeenCalledWith({ token });
+      expect(logger.error).toHaveBeenCalledWith(
+        'Token blacklist check error:',
+        expect.objectContaining({
+          error: 'Database connection failed',
+          stack: expect.any(String),
+        })
+      );
+    });
   });
 
   // ========================================
@@ -678,6 +742,115 @@ describe('Authentication & Authorization — Test Suite 4: Auth Service (Unit)',
         'User already verified'
       );
     });
+
+    test('TC-429.1 | Error - Should throw error when user not found', async () => {
+      // Given: Email that doesn't exist
+      const email = 'notfound@example.com';
+      MockUser.findOne.mockResolvedValue(null);
+
+      // When & Then: Should throw error
+      await expect(AuthService.sendVerificationEmail(email)).rejects.toThrow('User not found');
+      expect(MockUser.findOne).toHaveBeenCalledWith({ email });
+      expect(jwt.sign).not.toHaveBeenCalled();
+      expect(EmailService.sendTemplatedEmail).not.toHaveBeenCalled();
+    });
+
+    test('TC-429.2 | Error - Should handle jwt.sign error (catch block)', async () => {
+      // Given: Valid user but jwt.sign throws error
+      const email = 'jwterror@example.com';
+      const mockUser = {
+        _id: 'user-id-123',
+        email,
+        name: 'Test User',
+        isVerified: false,
+      };
+
+      MockUser.findOne.mockResolvedValue(mockUser);
+      const jwtError = new Error('JWT secret key invalid');
+      jwt.sign.mockImplementation(() => {
+        throw jwtError;
+      });
+
+      // When & Then: Should catch error and log
+      await expect(AuthService.sendVerificationEmail(email)).rejects.toThrow(
+        'JWT secret key invalid'
+      );
+      expect(MockUser.findOne).toHaveBeenCalledWith({ email });
+      expect(jwt.sign).toHaveBeenCalledWith({ userId: mockUser._id }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
+      expect(logger.error).toHaveBeenCalledWith(
+        'Send verification email error:',
+        expect.objectContaining({
+          email,
+          error: 'JWT secret key invalid',
+          stack: expect.any(String),
+        })
+      );
+      expect(EmailService.sendTemplatedEmail).not.toHaveBeenCalled();
+    });
+
+    test('TC-429.3 | Error - Should handle EmailService.sendTemplatedEmail error (catch block)', async () => {
+      // Given: Valid user but email service fails
+      const email = 'emailfail@example.com';
+      const mockUser = {
+        _id: 'user-id-123',
+        email,
+        name: 'Test User',
+        isVerified: false,
+      };
+
+      MockUser.findOne.mockResolvedValue(mockUser);
+      jwt.sign.mockReturnValue('verification-token');
+      const emailError = new Error('Email service unavailable');
+      EmailService.sendTemplatedEmail.mockRejectedValue(emailError);
+
+      // When & Then: Should catch error and log
+      await expect(AuthService.sendVerificationEmail(email)).rejects.toThrow(
+        'Email service unavailable'
+      );
+      expect(MockUser.findOne).toHaveBeenCalledWith({ email });
+      expect(jwt.sign).toHaveBeenCalled();
+      expect(EmailService.sendTemplatedEmail).toHaveBeenCalledWith(
+        email,
+        'REGISTRATION',
+        expect.objectContaining({
+          name: mockUser.name,
+          verificationLink: expect.stringContaining('verification-token'),
+        })
+      );
+      expect(logger.error).toHaveBeenCalledWith(
+        'Send verification email error:',
+        expect.objectContaining({
+          email,
+          error: 'Email service unavailable',
+          stack: expect.any(String),
+        })
+      );
+    });
+
+    test('TC-429.4 | Error - Should handle database error when finding user (catch block)', async () => {
+      // Given: Database error when finding user
+      const email = 'dberror@example.com';
+      const dbError = new Error('Database connection failed');
+      MockUser.findOne.mockRejectedValue(dbError);
+
+      // When & Then: Should catch error and log
+      await expect(AuthService.sendVerificationEmail(email)).rejects.toThrow(
+        'Database connection failed'
+      );
+      expect(MockUser.findOne).toHaveBeenCalledWith({ email });
+      expect(logger.error).toHaveBeenCalledWith(
+        'Send verification email error:',
+        expect.objectContaining({
+          email,
+          error: 'Database connection failed',
+          stack: expect.any(String),
+        })
+      );
+      expect(jwt.sign).not.toHaveBeenCalled();
+      expect(EmailService.sendTemplatedEmail).not.toHaveBeenCalled();
+    });
   });
 
   // ========================================
@@ -705,6 +878,132 @@ describe('Authentication & Authorization — Test Suite 4: Auth Service (Unit)',
       expect(MockUser.findOne).toHaveBeenCalledWith({ email });
       expect(EmailService.sendTemplatedEmail).toHaveBeenCalled();
       expect(result).toEqual({ success: true });
+    });
+
+    test('TC-431 | Error - Should throw error when user not found', async () => {
+      // Given: Email that doesn't exist
+      const email = 'notfound@example.com';
+      MockUser.findOne.mockResolvedValue(null);
+
+      // When: Resend verification email
+      // Then: Should throw error
+      await expect(AuthService.resendVerificationEmail(email)).rejects.toThrow('User not found');
+      expect(MockUser.findOne).toHaveBeenCalledWith({ email });
+      expect(jwt.sign).not.toHaveBeenCalled();
+      expect(EmailService.sendTemplatedEmail).not.toHaveBeenCalled();
+    });
+
+    test('TC-432 | Error - Should throw error when user already verified', async () => {
+      // Given: Verified user
+      const email = 'verified@example.com';
+      const mockUser = {
+        _id: 'user-id-123',
+        email,
+        name: 'Verified User',
+        isVerified: true,
+      };
+
+      MockUser.findOne.mockResolvedValue(mockUser);
+
+      // When: Resend verification email
+      // Then: Should throw error
+      await expect(AuthService.resendVerificationEmail(email)).rejects.toThrow(
+        'User already verified'
+      );
+      expect(MockUser.findOne).toHaveBeenCalledWith({ email });
+      expect(jwt.sign).not.toHaveBeenCalled();
+      expect(EmailService.sendTemplatedEmail).not.toHaveBeenCalled();
+    });
+
+    test('TC-433 | Error - Should handle database error when finding user (catch block)', async () => {
+      // Given: Database error when finding user
+      const email = 'dberror@example.com';
+      const dbError = new Error('Database connection failed');
+      MockUser.findOne.mockRejectedValue(dbError);
+
+      // When: Resend verification email
+      // Then: Should catch error and log
+      await expect(AuthService.resendVerificationEmail(email)).rejects.toThrow(
+        'Database connection failed'
+      );
+      expect(MockUser.findOne).toHaveBeenCalledWith({ email });
+      expect(logger.error).toHaveBeenCalledWith(
+        'Resend verification email error:',
+        expect.objectContaining({
+          email,
+          error: 'Database connection failed',
+          stack: expect.any(String),
+        })
+      );
+    });
+
+    test('TC-434 | Error - Should handle jwt.sign error (catch block)', async () => {
+      // Given: Valid user but jwt.sign throws error
+      const email = 'jwterror@example.com';
+      const mockUser = {
+        _id: 'user-id-123',
+        email,
+        name: 'Test User',
+        isVerified: false,
+      };
+
+      MockUser.findOne.mockResolvedValue(mockUser);
+      const jwtError = new Error('JWT secret key invalid');
+      jwt.sign.mockImplementation(() => {
+        throw jwtError;
+      });
+
+      // When: Resend verification email
+      // Then: Should catch error and log
+      await expect(AuthService.resendVerificationEmail(email)).rejects.toThrow(
+        'JWT secret key invalid'
+      );
+      expect(MockUser.findOne).toHaveBeenCalledWith({ email });
+      expect(jwt.sign).toHaveBeenCalledWith({ userId: mockUser._id }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
+      expect(logger.error).toHaveBeenCalledWith(
+        'Resend verification email error:',
+        expect.objectContaining({
+          email,
+          error: 'JWT secret key invalid',
+          stack: expect.any(String),
+        })
+      );
+      expect(EmailService.sendTemplatedEmail).not.toHaveBeenCalled();
+    });
+
+    test('TC-435 | Error - Should handle EmailService.sendTemplatedEmail error (catch block)', async () => {
+      // Given: Valid user but email service fails
+      const email = 'emailfail@example.com';
+      const mockUser = {
+        _id: 'user-id-123',
+        email,
+        name: 'Test User',
+        isVerified: false,
+      };
+
+      MockUser.findOne.mockResolvedValue(mockUser);
+      jwt.sign.mockReturnValue('verification-token');
+      const emailError = new Error('Email service unavailable');
+      EmailService.sendTemplatedEmail.mockRejectedValue(emailError);
+
+      // When: Resend verification email
+      // Then: Should catch error and log
+      await expect(AuthService.resendVerificationEmail(email)).rejects.toThrow(
+        'Email service unavailable'
+      );
+      expect(MockUser.findOne).toHaveBeenCalledWith({ email });
+      expect(jwt.sign).toHaveBeenCalled();
+      expect(EmailService.sendTemplatedEmail).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        'Resend verification email error:',
+        expect.objectContaining({
+          email,
+          error: 'Email service unavailable',
+          stack: expect.any(String),
+        })
+      );
     });
   });
 

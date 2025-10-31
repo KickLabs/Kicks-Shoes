@@ -119,6 +119,7 @@ const {
   login,
   logout,
   verifyEmail,
+  resendVerification,
   forgotPassword,
   resetPassword,
   refreshToken,
@@ -788,6 +789,207 @@ describe('Authentication & Authorization — Test Suite 2: Auth Controller (Unit
   });
 
   // ========================================
+  // RESEND VERIFICATION TESTS
+  // ========================================
+  describe('resendVerification()', () => {
+    test('TC-225.1 | Happy Path - Should resend verification email successfully', async () => {
+      // Given: Valid email for unverified user
+      req.body = {
+        email: 'unverified@example.com',
+      };
+
+      const unverifiedUser = {
+        ...mockUser,
+        email: req.body.email,
+        isVerified: false,
+        username: 'testuser',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockUserFindOne.mockResolvedValue(unverifiedUser);
+      mockGenerateToken.mockReturnValue('new.verification.token');
+
+      // When: Call resendVerification
+      await resendVerification(req, res, next);
+
+      // Then: Should generate token, update user, send email, and return 200
+      expect(mockUserFindOne).toHaveBeenCalledWith({ email: req.body.email });
+      expect(mockGenerateToken).toHaveBeenCalledWith(
+        { email: unverifiedUser.email },
+        process.env.JWT_VERIFY_EXPIRES_IN || '1h'
+      );
+      expect(unverifiedUser.verificationToken).toBe('new.verification.token');
+      expect(unverifiedUser.verificationTokenExpires).toBeInstanceOf(Date);
+      expect(unverifiedUser.save).toHaveBeenCalled();
+      expect(mockSendTemplatedEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: unverifiedUser.email,
+          templateType: 'VERIFICATION',
+          templateData: expect.objectContaining({
+            name: unverifiedUser.username,
+            verificationLink: expect.stringContaining('new.verification.token'),
+          }),
+        })
+      );
+      expect(mockLoggerInfo).toHaveBeenCalledWith('Verification email resent successfully', {
+        userId: unverifiedUser._id,
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        message: 'Verification email sent successfully',
+      });
+    });
+
+    test('TC-225.2 | Error - Should return 400 if email is missing', async () => {
+      // Given: No email provided
+      req.body = {};
+
+      // When: Call resendVerification
+      await resendVerification(req, res, next);
+
+      // Then: Should return 400
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+      const errorArg = next.mock.calls[0][0];
+      expect(errorArg.statusCode).toBe(400);
+      expect(errorArg.message).toBe('Email is required');
+      expect(mockUserFindOne).not.toHaveBeenCalled();
+    });
+
+    test('TC-225.3 | Error - Should return 404 if user not found', async () => {
+      // Given: Email doesn't exist
+      req.body = {
+        email: 'notfound@example.com',
+      };
+
+      mockUserFindOne.mockResolvedValue(null);
+
+      // When: Call resendVerification
+      await resendVerification(req, res, next);
+
+      // Then: Should return 404
+      expect(mockUserFindOne).toHaveBeenCalledWith({ email: req.body.email });
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+      const errorArg = next.mock.calls[0][0];
+      expect(errorArg.statusCode).toBe(404);
+      expect(errorArg.message).toBe('User not found');
+      expect(mockGenerateToken).not.toHaveBeenCalled();
+    });
+
+    test('TC-225.4 | Error - Should return 400 if email is already verified', async () => {
+      // Given: User is already verified
+      req.body = {
+        email: 'verified@example.com',
+      };
+
+      const verifiedUser = {
+        ...mockUser,
+        email: req.body.email,
+        isVerified: true,
+      };
+
+      mockUserFindOne.mockResolvedValue(verifiedUser);
+
+      // When: Call resendVerification
+      await resendVerification(req, res, next);
+
+      // Then: Should return 400
+      expect(mockUserFindOne).toHaveBeenCalledWith({ email: req.body.email });
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+      const errorArg = next.mock.calls[0][0];
+      expect(errorArg.statusCode).toBe(400);
+      expect(errorArg.message).toBe('Email is already verified');
+      expect(mockGenerateToken).not.toHaveBeenCalled();
+      expect(verifiedUser.save).not.toHaveBeenCalled();
+    });
+
+    test('TC-225.5 | Error - Should handle database error when saving user', async () => {
+      // Given: Valid unverified user but save fails
+      req.body = {
+        email: 'dberror@example.com',
+      };
+
+      const unverifiedUser = {
+        ...mockUser,
+        email: req.body.email,
+        isVerified: false,
+        username: 'testuser',
+        save: jest.fn().mockRejectedValue(new Error('Database connection error')),
+      };
+
+      mockUserFindOne.mockResolvedValue(unverifiedUser);
+      mockGenerateToken.mockReturnValue('token.here');
+
+      // When: Call resendVerification
+      await resendVerification(req, res, next);
+
+      // Then: Should catch error and log
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error in resendVerification controller',
+        expect.objectContaining({
+          error: 'Database connection error',
+          stack: expect.any(String),
+        })
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+    });
+
+    test('TC-225.6 | Error - Should handle email sending failure', async () => {
+      // Given: Valid unverified user but email service fails
+      req.body = {
+        email: 'emailfail@example.com',
+      };
+
+      const unverifiedUser = {
+        ...mockUser,
+        email: req.body.email,
+        isVerified: false,
+        username: 'testuser',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockUserFindOne.mockResolvedValue(unverifiedUser);
+      mockGenerateToken.mockReturnValue('token.here');
+      mockSendTemplatedEmail.mockRejectedValue(new Error('Email service unavailable'));
+
+      // When: Call resendVerification
+      await resendVerification(req, res, next);
+
+      // Then: Should catch error and log
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error in resendVerification controller',
+        expect.objectContaining({
+          error: 'Email service unavailable',
+          stack: expect.any(String),
+        })
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+    });
+
+    test('TC-225.7 | Error - Should handle database error when finding user', async () => {
+      // Given: Database error when finding user
+      req.body = {
+        email: 'db@example.com',
+      };
+
+      mockUserFindOne.mockRejectedValue(new Error('Database connection failed'));
+
+      // When: Call resendVerification
+      await resendVerification(req, res, next);
+
+      // Then: Should catch error and log
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error in resendVerification controller',
+        expect.objectContaining({
+          error: 'Database connection failed',
+          stack: expect.any(String),
+        })
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+    });
+  });
+
+  // ========================================
   // FORGOT PASSWORD TESTS
   // ========================================
   describe('forgotPassword()', () => {
@@ -940,6 +1142,101 @@ describe('Authentication & Authorization — Test Suite 2: Auth Controller (Unit
       expect(next).toHaveBeenCalledWith(expect.any(Error));
       const errorArg = next.mock.calls[0][0];
       expect(errorArg.statusCode).toBe(404);
+    });
+
+    test('TC-231.1 | Error - Should handle invalid/expired token (catch block)', async () => {
+      // Given: Invalid or expired token
+      req.body = {
+        token: 'invalid.or.expired.token',
+        newPassword: 'NewPassword@123',
+      };
+
+      // Mock jwt.verify to throw error (invalid token, expired, etc.)
+      const jwtError = new Error('Token expired');
+      mockJwtVerify.mockImplementation(() => {
+        throw jwtError;
+      });
+
+      // When: Call resetPassword
+      await resetPassword(req, res, next);
+
+      // Then: Should catch error and log
+      expect(mockJwtVerify).toHaveBeenCalledWith(
+        req.body.token,
+        expect.any(String) // JWT_SECRET
+      );
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error in resetPassword controller',
+        expect.objectContaining({
+          error: 'Token expired',
+          stack: expect.any(String),
+        })
+      );
+      expect(next).toHaveBeenCalledWith(jwtError);
+      expect(mockUserFindById).not.toHaveBeenCalled(); // Should not reach user lookup
+    });
+
+    test('TC-231.2 | Error - Should handle database error when finding user (catch block)', async () => {
+      // Given: Valid token but database error when finding user
+      req.body = {
+        token: 'valid.token',
+        newPassword: 'NewPassword@123',
+      };
+
+      mockJwtVerify.mockReturnValue({ id: mockUser._id });
+
+      const dbError = new Error('Database connection failed');
+      mockUserFindById.mockRejectedValue(dbError);
+
+      // When: Call resetPassword
+      await resetPassword(req, res, next);
+
+      // Then: Should catch error and log
+      expect(mockJwtVerify).toHaveBeenCalled();
+      expect(mockUserFindById).toHaveBeenCalledWith(mockUser._id);
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error in resetPassword controller',
+        expect.objectContaining({
+          error: 'Database connection failed',
+          stack: expect.any(String),
+        })
+      );
+      expect(next).toHaveBeenCalledWith(dbError);
+    });
+
+    test('TC-231.3 | Error - Should handle database error when saving user (catch block)', async () => {
+      // Given: Valid token and user found, but save fails
+      req.body = {
+        token: 'valid.token',
+        newPassword: 'NewPassword@123',
+      };
+
+      mockJwtVerify.mockReturnValue({ id: mockUser._id });
+
+      const userWithSaveError = {
+        ...mockUser,
+        password: 'oldPassword',
+        save: jest.fn().mockRejectedValue(new Error('Database save failed')),
+      };
+
+      mockUserFindById.mockResolvedValue(userWithSaveError);
+
+      // When: Call resetPassword
+      await resetPassword(req, res, next);
+
+      // Then: Should catch error and log
+      expect(mockJwtVerify).toHaveBeenCalled();
+      expect(mockUserFindById).toHaveBeenCalledWith(mockUser._id);
+      expect(userWithSaveError.password).toBe('NewPassword@123');
+      expect(userWithSaveError.save).toHaveBeenCalled();
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error in resetPassword controller',
+        expect.objectContaining({
+          error: 'Database save failed',
+          stack: expect.any(String),
+        })
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
     });
   });
 
@@ -1200,9 +1497,50 @@ describe('Authentication & Authorization — Test Suite 2: Auth Controller (Unit
       // Then: Should catch error
       expect(mockLoggerError).toHaveBeenCalledWith(
         'Error in updateProfile controller',
-        expect.any(Object)
+        expect.objectContaining({
+          error: 'Duplicate email',
+          stack: expect.any(String),
+        })
       );
       expect(next).toHaveBeenCalledWith(validationError);
+    });
+
+    test('TC-242.1 | Error - Should handle database connection error (catch block)', async () => {
+      // Given: Valid data but database connection fails
+      req.user = { id: mockUser._id };
+      req.body = {
+        fullName: 'Test User',
+        phone: '0987654321',
+      };
+
+      const dbError = new Error('Database connection failed');
+      mockUserFindByIdAndUpdate.mockRejectedValue(dbError);
+
+      // When: Call updateProfile
+      await updateProfile(req, res, next);
+
+      // Then: Should catch error and log with full details
+      expect(mockUserFindByIdAndUpdate).toHaveBeenCalledWith(
+        req.user.id,
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            fullName: req.body.fullName,
+            phone: req.body.phone,
+          }),
+        }),
+        expect.objectContaining({
+          new: true,
+          runValidators: true,
+        })
+      );
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error in updateProfile controller',
+        expect.objectContaining({
+          error: 'Database connection failed',
+          stack: expect.any(String),
+        })
+      );
+      expect(next).toHaveBeenCalledWith(dbError);
     });
 
     test('TC-243 | Happy Path - Should handle file uploads (avatar)', async () => {
@@ -1235,6 +1573,120 @@ describe('Authentication & Authorization — Test Suite 2: Auth Controller (Unit
           }),
         }),
         expect.any(Object)
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('TC-243.1 | Happy Path - Should update username field', async () => {
+      // Given: Update username
+      req.user = { id: mockUser._id };
+      req.body = {
+        username: 'newusername',
+      };
+
+      const updatedUser = {
+        ...mockUser,
+        username: req.body.username,
+      };
+
+      mockUserFindByIdAndUpdate.mockResolvedValue(updatedUser);
+
+      // When: Call updateProfile
+      await updateProfile(req, res, next);
+
+      // Then: Should include username in update
+      expect(mockUserFindByIdAndUpdate).toHaveBeenCalledWith(
+        req.user.id,
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            username: req.body.username,
+          }),
+        }),
+        expect.objectContaining({
+          new: true,
+          runValidators: true,
+        })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: updatedUser,
+        })
+      );
+    });
+
+    test('TC-243.2 | Happy Path - Should update aboutMe field', async () => {
+      // Given: Update aboutMe
+      req.user = { id: mockUser._id };
+      req.body = {
+        aboutMe: 'This is my bio and about me section',
+      };
+
+      const updatedUser = {
+        ...mockUser,
+        aboutMe: req.body.aboutMe,
+      };
+
+      mockUserFindByIdAndUpdate.mockResolvedValue(updatedUser);
+
+      // When: Call updateProfile
+      await updateProfile(req, res, next);
+
+      // Then: Should include aboutMe in update
+      expect(mockUserFindByIdAndUpdate).toHaveBeenCalledWith(
+        req.user.id,
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            aboutMe: req.body.aboutMe,
+          }),
+        }),
+        expect.objectContaining({
+          new: true,
+          runValidators: true,
+        })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: updatedUser,
+        })
+      );
+    });
+
+    test('TC-243.3 | Happy Path - Should update username and aboutMe together', async () => {
+      // Given: Update both username and aboutMe
+      req.user = { id: mockUser._id };
+      req.body = {
+        username: 'updatedusername',
+        aboutMe: 'Updated bio information',
+      };
+
+      const updatedUser = {
+        ...mockUser,
+        username: req.body.username,
+        aboutMe: req.body.aboutMe,
+      };
+
+      mockUserFindByIdAndUpdate.mockResolvedValue(updatedUser);
+
+      // When: Call updateProfile
+      await updateProfile(req, res, next);
+
+      // Then: Should include both username and aboutMe in update
+      expect(mockUserFindByIdAndUpdate).toHaveBeenCalledWith(
+        req.user.id,
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            username: req.body.username,
+            aboutMe: req.body.aboutMe,
+          }),
+        }),
+        expect.objectContaining({
+          new: true,
+          runValidators: true,
+        })
       );
       expect(res.status).toHaveBeenCalledWith(200);
     });
@@ -1580,7 +2032,42 @@ describe('Authentication & Authorization — Test Suite 2: Auth Controller (Unit
       );
     });
   });
+  test('TC-255.1 | Happy Path - Should handle username collision (covers line 477)', async () => {
+    // Given: New Facebook user whose username already exists
+    req.body = {
+      email: 'fbuser@facebook.com', // baseUsername will be 'fbuser'
+      name: 'Trần Thị Facebook',
+      picture: 'https.facebook.com/avatar.jpg',
+    };
 
+    mockUserFindOne.mockResolvedValue(null); // User is new
+
+    // When: Mock User.exists to return TRUE first, then FALSE
+    // This forces the 'while' loop to run exactly one time
+    let existsCallCount = 0;
+    mockUserExists.mockImplementation(async ({ username }) => {
+      existsCallCount++;
+      // Lần 1: 'fbuser' -> Trả về true (để chạy vào loop)
+      if (username === 'fbuser' && existsCallCount === 1) {
+        return true;
+      }
+      // Lần 2: 'fbuser1' -> Trả về false (để thoát loop)
+      return false;
+    });
+
+    await loginWithFacebook(req, res, next);
+
+    // Then: Dòng 477 đã được chạy.
+    // We verify by checking that User.exists was called twice
+    expect(mockUserExists).toHaveBeenCalledTimes(2);
+
+    // And response user should have the new username 'fbuser1'
+    const payload = res.json.mock.calls[0][0];
+    expect(payload).toBeDefined();
+    expect(payload.user).toBeDefined();
+    expect(payload.user.username).toBe('fbuser1');
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
   // ========================================
   // REGISTER APP (OTP) TESTS
   // ========================================
@@ -1685,6 +2172,50 @@ describe('Authentication & Authorization — Test Suite 2: Auth Controller (Unit
       const errorArg = next.mock.calls[0][0];
       expect(errorArg.statusCode).toBe(400);
       expect(errorArg.message).toContain('Email and OTP are required');
+    });
+
+    test('TC-262.6 | Happy Path - Valid OTP flows through delete + tokens + 200 JSON', async () => {
+      const email = 'flow@example.com';
+      const otp = '999999';
+      req.body = { email, otp };
+
+      // Đảm bảo không bị ảnh hưởng bởi test khác
+      jest.clearAllMocks();
+      mockGenerateToken.mockReturnValue('mock.jwt.token');
+
+      // OTP hợp lệ
+      const mapGetSpy = jest.spyOn(Map.prototype, 'get').mockReturnValue({
+        otp,
+        expiresAt: Date.now() + 120 * 1000,
+      });
+
+      const userAfterUpdate = {
+        ...mockUser,
+        _id: 'user-flow-1',
+        email,
+        isVerified: true,
+        toObject: () => ({ ...mockUser, _id: 'user-flow-1', email, isVerified: true }),
+      };
+      mockUserFindOneAndUpdate.mockResolvedValue(userAfterUpdate);
+
+      await verifyOtp(req, res, next);
+
+      expect(mockUserFindOneAndUpdate).toHaveBeenCalled();
+      expect(mockGenerateToken).toHaveBeenCalledTimes(2);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            tokens: expect.objectContaining({
+              accessToken: expect.any(String),
+              refreshToken: expect.any(String),
+            }),
+          }),
+        })
+      );
+
+      mapGetSpy.mockRestore();
     });
 
     test('TC-264 | Error - Should return 400 for invalid or expired OTP', async () => {
@@ -1944,6 +2475,129 @@ describe('Authentication & Authorization — Test Suite 2: Auth Controller (Unit
           message: 'Set password failed',
         })
       );
+    });
+  });
+
+  // ========================================
+  // BỔ SUNG ĐẶC BIỆT ĐỂ COVER 100%
+  // ========================================
+  describe('Extra 100% coverage special cases', () => {
+    test('verifyOtp - OTP đúng, user không tồn tại sau xác minh', async () => {
+      const email = 'test2@otp.com',
+        otp = '123456';
+      req.body = { email, otp };
+      // Mock hàm get của Map để giả lập OTP hợp lệ
+      jest.spyOn(Map.prototype, 'get').mockImplementation(input => {
+        if (input === email) return { otp, expiresAt: Date.now() + 10000 };
+        return undefined;
+      });
+      // user không tồn tại sau xác minh OTP
+      mockUserFindOneAndUpdate.mockResolvedValue(null);
+      await verifyOtp(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+      const err = next.mock.calls[0][0];
+      expect(err.statusCode).toBe(404);
+      expect(err.message).toContain('User not found');
+      Map.prototype.get.mockRestore();
+    });
+
+    test('loginWithGoogle - Social unique username loop', async () => {
+      req.body = {
+        email: 'username@test.com',
+        name: 'Social User',
+        picture: 'pic',
+        rememberMe: false,
+      };
+      // Lặp lại 2 lần mới sinh được username không trùng
+      let existsCalled = 0;
+      mockUserFindOne.mockResolvedValue(null);
+      mockUserExists.mockImplementation(async ({ username }) => {
+        existsCalled++;
+        return existsCalled < 2; // lần 1 trùng, lần 2 không trùng
+      });
+      const userObj = { ...mockUser, toObject: () => ({ ...mockUser }) };
+      mockUserCreate.mockImplementation(() => userObj);
+      userObj.save = jest.fn().mockResolvedValue(userObj);
+      await loginWithGoogle(req, res, next);
+      expect(existsCalled).toBeGreaterThan(1);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalled();
+    });
+  });
+  describe('Extra for uncovered error/catch/branch cases', () => {
+    test('registerApp - Should handle unexpected error (catch block)', async () => {
+      req.body = {
+        fullName: 'A',
+        username: 'uncover',
+        email: 'failregister@example.com',
+        password: '123456',
+        phone: '1010101010',
+        address: 'addr',
+      };
+      mockUserFindOne.mockResolvedValue(null);
+      mockUserCreate.mockRejectedValue(new Error('Unexpected'));
+      await registerApp(req, res, next);
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error in registerApp controller',
+        expect.any(Object)
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+    });
+
+    test('verifyOtp - Should catch DB error in catch block', async () => {
+      req.body = { email: 'failcatchverify@example.com', otp: '654321' };
+      jest
+        .spyOn(Map.prototype, 'get')
+        .mockReturnValue({ otp: '654321', expiresAt: Date.now() + 10000 });
+      mockUserFindOneAndUpdate.mockRejectedValue(new Error('DBfail'));
+      await verifyOtp(req, res, next);
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error in verifyOtp controller',
+        expect.any(Object)
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+      Map.prototype.get.mockRestore();
+    });
+
+    test('updateProfile - Should update with profileImage file', async () => {
+      req.user = { id: mockUser._id };
+      req.body = { fullName: 'HasProfileImg' };
+      req.files = { profileImage: [{ path: '/uploads/pic.jpg' }] };
+      const updatedUser = {
+        ...mockUser,
+        fullName: req.body.fullName,
+        profileImage: '/uploads/pic.jpg',
+      };
+      mockUserFindByIdAndUpdate.mockResolvedValue(updatedUser);
+      await updateProfile(req, res, next);
+      expect(mockUserFindByIdAndUpdate).toHaveBeenCalledWith(
+        req.user.id,
+        expect.objectContaining({
+          $set: expect.objectContaining({ profileImage: '/uploads/pic.jpg' }),
+        }),
+        expect.any(Object)
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('register - Should use custom JWT_REFRESH_EXPIRES_IN from env', async () => {
+      req.body = {
+        fullName: 'Env Test',
+        username: 'envtest',
+        email: 'envtest@example.com',
+        password: '123456',
+        phone: '0988776655',
+        address: 'Hello address',
+      };
+      mockUserFindOne.mockResolvedValue(null);
+      mockUserCreate.mockResolvedValue({ ...mockUser, email: req.body.email, _id: 'env-id' });
+      process.env.JWT_REFRESH_EXPIRES_IN = '14d';
+      await register(req, res, next);
+      expect(mockGenerateToken).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'env-id' }),
+        '14d'
+      );
+      delete process.env.JWT_REFRESH_EXPIRES_IN;
     });
   });
 });
