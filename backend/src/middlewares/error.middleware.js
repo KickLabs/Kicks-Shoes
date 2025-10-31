@@ -6,7 +6,7 @@
  * It provides consistent error responses and logging across all routes and services.
  */
 
-import logger from "../utils/logger.js";
+import logger from '../utils/logger.js';
 
 /**
  * Custom error class for API errors
@@ -30,7 +30,7 @@ export const errorHandler = (err, req, res, next) => {
   error.message = err.message;
 
   // Log error
-  logger.error("Error occurred:", {
+  logger.error('Error occurred:', {
     error: err.message,
     stack: err.stack,
     path: req.path,
@@ -41,36 +41,42 @@ export const errorHandler = (err, req, res, next) => {
   });
 
   // Mongoose bad ObjectId
-  if (err.name === "CastError") {
-    const message = "Resource not found";
+  if (err.name === 'CastError') {
+    const message = 'Resource not found';
     error = new ErrorResponse(message, 404);
   }
 
   // Mongoose duplicate key
   if (err.code === 11000) {
-    const message = "Duplicate field value entered";
+    const message = 'Duplicate field value entered';
     error = new ErrorResponse(message, 400);
   }
 
   // Mongoose validation error
-  if (err.name === "ValidationError") {
-    const message = Object.values(err.errors).map((val) => val.message);
+  if (err.name === 'ValidationError') {
+    const message = Object.values(err.errors).map(val => val.message);
     error = new ErrorResponse(message, 400);
   }
 
   // JWT errors
-  if (err.name === "JsonWebTokenError") {
-    const message = "Invalid token";
+  if (err.name === 'JsonWebTokenError') {
+    const message = 'Invalid token';
     error = new ErrorResponse(message, 401);
   }
 
-  if (err.name === "TokenExpiredError") {
-    const message = "Token expired";
+  if (err.name === 'TokenExpiredError') {
+    const message = 'Token expired';
     error = new ErrorResponse(message, 401);
+  }
+
+  // JSON parse errors
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    const message = 'Invalid JSON in request body';
+    error = new ErrorResponse(message, 400);
   }
 
   res.status(error.statusCode || 500).json({
     success: false,
-    error: error.message || "Server Error",
+    error: error.message || 'Server Error',
   });
 };

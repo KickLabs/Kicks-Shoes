@@ -199,6 +199,13 @@ if (process.env.NODE_ENV !== 'test') {
   startFlashSaleStatusUpdateCron();
 }
 
+// 404 handler - catch all routes that don't match
+app.use((req, res, next) => {
+  const error = new Error(`Route ${req.originalUrl} not found`);
+  error.statusCode = 404;
+  next(error);
+});
+
 // Error handler
 app.use(errorHandler);
 

@@ -197,7 +197,7 @@ export const getShopOrders = asyncHandler(async (req, res) => {
  * @access Private (Shop)
  */
 export const getShopFeedback = asyncHandler(async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
+  const page = parseInt(req.query.page);
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
@@ -246,7 +246,7 @@ export const getShopDiscounts = asyncHandler(async (req, res) => {
  * @access Private (Shop)
  */
 export const getShopSalesData = asyncHandler(async (req, res) => {
-  const period = req.query.period || 'monthly';
+  const period = req.query.period;
 
   let groupBy;
   if (period === 'daily') {
@@ -549,7 +549,7 @@ export const getAdminFeedback = asyncHandler(async (req, res) => {
  * @access Private (Admin)
  */
 export const getAdminRevenueData = asyncHandler(async (req, res) => {
-  const period = req.query.period || 'monthly';
+  const period = req.query.period;
 
   let groupBy;
   if (period === 'daily') {
@@ -588,7 +588,7 @@ export const getAdminRevenueData = asyncHandler(async (req, res) => {
  * @access Private (Admin)
  */
 export const getAdminUserGrowthData = asyncHandler(async (req, res) => {
-  const period = req.query.period || 'monthly';
+  const period = req.query.period;
 
   let groupBy;
   if (period === 'daily') {
@@ -621,7 +621,7 @@ export const getAdminUserGrowthData = asyncHandler(async (req, res) => {
  * @access Private (Admin)
  */
 export const getAdminOrdersData = asyncHandler(async (req, res) => {
-  const period = req.query.period || 'monthly';
+  const period = req.query.period;
 
   let groupBy;
   if (period === 'daily') {
@@ -753,7 +753,7 @@ export const getAdminShopRevenueData = asyncHandler(async (req, res) => {
  * @access Private (Admin)
  */
 export const getAdminCustomerGrowthData = asyncHandler(async (req, res) => {
-  const period = req.query.period || 'monthly';
+  const period = req.query.period;
 
   let groupBy;
   if (period === 'daily') {
@@ -1043,7 +1043,7 @@ export const unbanUser = asyncHandler(async (req, res) => {
         templateType: 'USER_UNBANNED',
         templateData: {
           userName: user.fullName || user.email,
-          adminNote: adminNote || 'Account restored by admin',
+          adminNote: adminNote,
         },
       });
       console.log('Unban notification email sent successfully');
@@ -1236,8 +1236,8 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
             email: shopUser.email,
             templateType: 'PRODUCT_DELETED',
             templateData: {
-              shopName: shopUser.fullName || 'Shop',
-              productName: product?.name || 'Product',
+              shopName: shopUser.fullName,
+              productName: product?.name,
               adminNote,
               resolution: 'Product Deleted',
             },
@@ -1256,8 +1256,8 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
             email: reporterUser.email,
             templateType: 'REPORT_RESOLVED',
             templateData: {
-              userName: reporterUser.fullName || reporterUser.email,
-              productName: product?.name || 'Product',
+              userName: reporterUser.fullName,
+              productName: product?.name,
               adminNote,
               resolution: 'Product Deleted',
               reportReason: report.reason,
@@ -1278,7 +1278,7 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
             email: shopUser.email,
             templateType: 'PRODUCT_WARNING',
             templateData: {
-              shopName: shopUser.fullName || 'Shop',
+              shopName: shopUser.fullName,
               productName: product.name,
               adminNote,
               resolution: 'Warning',
@@ -1298,7 +1298,7 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
             email: reporterUser.email,
             templateType: 'REPORT_RESOLVED',
             templateData: {
-              userName: reporterUser.fullName || reporterUser.email,
+              userName: reporterUser.fullName,
               productName: product.name,
               adminNote,
               resolution: 'Warning',
@@ -1343,9 +1343,9 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
             email: shopUser.email,
             templateType: 'REVIEW_DELETED_SHOP',
             templateData: {
-              shopName: shopUser.fullName || 'Shop',
+              shopName: shopUser.fullName,
               productName: feedback.product.name,
-              userName: feedback.user?.fullName || feedback.user?.email || 'User',
+              userName: feedback.user?.fullName,
               adminNote,
               resolution: 'Review Deleted',
             },
@@ -1370,8 +1370,8 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
             email: reporterUser.email,
             templateType: 'REPORT_RESOLVED',
             templateData: {
-              userName: reporterUser.fullName || reporterUser.email,
-              targetName: feedback?.product?.name || 'Product Review',
+              userName: reporterUser.fullName,
+              targetName: feedback?.product?.name,
               adminNote,
               resolution: 'Review Deleted',
               reportReason: report.reason,
@@ -1397,8 +1397,8 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
             email: feedback.user.email,
             templateType: 'REVIEW_WARNING',
             templateData: {
-              userName: feedback.user.fullName || feedback.user.email,
-              productName: feedback.product?.name || 'Product',
+              userName: feedback.user.fullName,
+              productName: feedback.product?.name,
               adminNote,
               resolution: 'Warning',
             },
@@ -1417,8 +1417,8 @@ export const resolveProductReport = asyncHandler(async (req, res) => {
             email: reporterUser.email,
             templateType: 'REPORT_RESOLVED',
             templateData: {
-              userName: reporterUser.fullName || reporterUser.email,
-              targetName: feedback?.product?.name || 'Product Review',
+              userName: reporterUser.fullName,
+              targetName: feedback?.product?.name,
               adminNote,
               resolution: 'Warning',
               reportReason: report.reason,
