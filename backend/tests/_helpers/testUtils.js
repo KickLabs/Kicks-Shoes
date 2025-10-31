@@ -46,6 +46,40 @@ function getMockReqRes(overrides = {}) {
 }
 
 /**
+ * Factory to generate a mock livestream object (POJO)
+ * @param {Object} overrides - Custom values to override defaults
+ * @returns {Object} Mock livestream data object
+ */
+function makeStream(overrides = {}) {
+  const defaultStream = {
+    _id: generateObjectId(), // Dùng helper bạn đã có
+    title: 'Mock Livestream',
+    hostId: generateObjectId(),
+    status: 'pending',
+    featuredProducts: [],
+    roomId: `room_${generateObjectId()}`,
+    viewers: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    // Thêm các phương thức mock giống như các factory khác
+    save: jest.fn(async function () {
+      return this;
+    }),
+    toObject: jest.fn(function () {
+      const obj = { ...this };
+      delete obj.save;
+      delete obj.toObject;
+      return obj;
+    }),
+  };
+
+  return {
+    ...defaultStream,
+    ...overrides,
+  };
+}
+
+/**
  * Factory to generate a mock user object (POJO - Plain Old JavaScript Object)
  * @param {Object} overrides - Custom values to override defaults
  * @returns {Object} Mock user data object
@@ -443,4 +477,5 @@ export {
   makePotentialOrder,
   makeProduct,
   makeUser,
+  makeStream,
 };

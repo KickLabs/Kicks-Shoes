@@ -65,7 +65,7 @@ export default {
     'src/controllers/authController.js', // Exclude auth
     'src/controllers/userController.js', // Exclude user
     'src/controllers/productController.js', // Exclude product
-    '!src/controllers/orderController.js', // Exclude order
+    'src/controllers/orderController.js', // Exclude order
     '!src/controllers/cartController.js', // Exclude cart
 
     'src/controllers/categoryController.js', // Exclude category
@@ -96,7 +96,7 @@ export default {
     'src/services/auth.service.js', // Exclude auth service
     'src/services/user.service.js', // Exclude user service
     'src/services/product.service.js', // Exclude product service
-    '!src/services/order.service.js', // Exclude order service
+    'src/services/order.service.js', // Exclude order service
     '!src/services/cart.service.js', // Exclude cart service
 
     'src/services/category.service.js', // Exclude category service
@@ -125,7 +125,7 @@ export default {
     'src/models/RewardPoint.js', // Reward point model
     'src/models/User.js', // User model
     'src/models/Product.js', // Exclude product model
-    '!src/models/Order.js', // Exclude order model
+    'src/models/Order.js', // Exclude order model
     '!src/models/Cart.js', // Exclude cart model
     'src/models/Category.js', // Exclude category model
     'src/models/Discount.js', // Exclude discount model
@@ -208,7 +208,7 @@ export default {
     '/coverage/',
     '/logs/',
     '/uploads/',
-    'suite7-integration-e2e.test.js', // Tạm thời bỏ qua do thiếu cấu hình email
+    // 'suite7-integration-e2e.test.js', // Tạm thời bỏ qua do thiếu cấu hình email
   ],
 
   // Chạy tất cả test files, không bỏ qua file nào

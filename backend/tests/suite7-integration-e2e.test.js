@@ -229,9 +229,30 @@ describe('Suite 7: Integration & End-to-End Tests', () => {
     test('should handle concurrent orders without conflicts', async () => {
       // Create multiple users
       const users = await Promise.all([
-        User.create(makeUser({ email: 'user1@test.com', isVerified: true, status: true })),
-        User.create(makeUser({ email: 'user2@test.com', isVerified: true, status: true })),
-        User.create(makeUser({ email: 'user3@test.com', isVerified: true, status: true })),
+        User.create(
+          makeUser({
+            email: 'user1@test.com',
+            username: 'testuser1',
+            isVerified: true,
+            status: true,
+          })
+        ),
+        User.create(
+          makeUser({
+            email: 'user2@test.com',
+            username: 'testuser2',
+            isVerified: true,
+            status: true,
+          })
+        ),
+        User.create(
+          makeUser({
+            email: 'user3@test.com',
+            username: 'testuser3',
+            isVerified: true,
+            status: true,
+          })
+        ),
       ]);
 
       // Generate real JWT tokens for each user
