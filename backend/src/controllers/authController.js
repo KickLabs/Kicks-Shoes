@@ -49,7 +49,7 @@ export const register = async (req, res, next) => {
     }
 
     // Generate verification token
-    const verificationToken = generateToken({ email }, process.env.JWT_VERIFY_EXPIRES_IN || '1h');
+    const verificationToken = generateToken({ email }, process.env.JWT_VERIFY_EXPIRES_IN);
 
     // Create user
     const user = await User.create({
@@ -71,18 +71,13 @@ export const register = async (req, res, next) => {
       templateType: 'VERIFICATION',
       templateData: {
         name: user.fullName,
-        verificationLink: `${
-          process.env.FRONTEND_URL || 'http://localhost:5000'
-        }/verify-email?token=${verificationToken}`,
+        verificationLink: `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`,
       },
     });
 
     // Generate tokens
-    const accessToken = generateToken({ id: user._id }, process.env.JWT_EXPIRES_IN || '1d');
-    const refreshToken = generateToken(
-      { id: user._id },
-      process.env.JWT_REFRESH_EXPIRES_IN || '7d'
-    );
+    const accessToken = generateToken({ id: user._id }, process.env.JWT_EXPIRES_IN);
+    const refreshToken = generateToken({ id: user._id }, process.env.JWT_REFRESH_EXPIRES_IN);
 
     // Remove sensitive data from response
     user.password = undefined;
@@ -321,8 +316,8 @@ export const login = async (req, res, next) => {
     }
 
     // Generate tokens with different expiration based on rememberMe
-    const accessTokenExpiry = rememberMe ? '30d' : process.env.JWT_EXPIRES_IN || '1d';
-    const refreshTokenExpiry = rememberMe ? '90d' : process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+    const accessTokenExpiry = rememberMe ? '30d' : process.env.JWT_EXPIRES_IN;
+    const refreshTokenExpiry = rememberMe ? '90d' : process.env.JWT_REFRESH_EXPIRES_IN;
 
     const accessToken = generateToken({ id: user._id }, accessTokenExpiry);
     const refreshToken = generateToken({ id: user._id }, refreshTokenExpiry);
@@ -400,11 +395,11 @@ export const loginWithGoogle = async (req, res) => {
       }
 
       user = new User({
-        fullName: name || 'Google User',
+        fullName: name,
         email,
         username,
         password: fakePassword,
-        avatar: picture || '', // Ensure avatar is set
+        avatar: picture, // Ensure avatar is set
         isVerified: true,
         role: 'customer',
         address: '',
@@ -440,10 +435,7 @@ export const loginWithGoogle = async (req, res) => {
       refreshToken,
       isNewUser,
     });
-  } catch (error) {
-    console.error('Google login error:', error);
-    res.status(500).json({ success: false, message: 'Login Google failed' });
-  }
+  } catch (error) {}
 };
 
 /**
@@ -478,7 +470,7 @@ export const loginWithFacebook = async (req, res) => {
       }
 
       user = new User({
-        fullName: name || 'Facebook User',
+        fullName: name,
         email,
         username,
         password: fakePassword,
@@ -514,10 +506,7 @@ export const loginWithFacebook = async (req, res) => {
       refreshToken,
       isNewUser,
     });
-  } catch (error) {
-    console.error('Facebook login error:', error);
-    return res.status(500).json({ success: false, message: 'Login Facebook failed' });
-  }
+  } catch (error) {}
 };
 
 /**
@@ -685,7 +674,7 @@ export const forgotPassword = async (req, res, next) => {
     }
 
     // Generate reset token
-    const resetToken = generateToken({ id: user._id }, process.env.JWT_RESET_EXPIRES_IN || '1h');
+    const resetToken = generateToken({ id: user._id }, process.env.JWT_RESET_EXPIRES_IN);
 
     // Send reset email
     await sendTemplatedEmail({
@@ -891,7 +880,7 @@ export const resendVerification = async (req, res, next) => {
     // Generate new verification token
     const verificationToken = generateToken(
       { email: user.email },
-      process.env.JWT_VERIFY_EXPIRES_IN || '1h'
+      process.env.JWT_VERIFY_EXPIRES_IN
     );
 
     // Update user
@@ -905,9 +894,7 @@ export const resendVerification = async (req, res, next) => {
       templateType: 'VERIFICATION',
       templateData: {
         name: user.username,
-        verificationLink: `${
-          process.env.FRONTEND_URL || 'http://localhost:5000'
-        }/verify-email?token=${verificationToken}`,
+        verificationLink: `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`,
       },
     });
 
