@@ -149,7 +149,7 @@ export default {
     // Uploads & Media module
     'src/middlewares/upload.middleware.js', // Upload middleware
     'src/config/cloudinary.js', // Cloudinary config
-    'src/routes/uploadRoutes.js', // Upload routes
+    'src/routes/uploadRoutes.js', // Upload cs
   ],
 
   // Coverage thresholds - Giảm threshold để phù hợp với coverage hiện tại

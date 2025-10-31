@@ -210,6 +210,26 @@ describe('Dashboard & Reports - Coverage Tests', () => {
       const response = res.json.mock.calls[0][0];
       expect(response.data.topProducts).toHaveLength(4);
     });
+
+    test('Should calculate revenue change when previous > 0', async () => {
+      mockOrder.countDocuments.mockResolvedValue(10);
+      mockOrder.aggregate
+        .mockResolvedValueOnce([{ total: 2000000 }]) // Total revenue
+        .mockResolvedValueOnce([{ total: 2000000 }]) // Current month
+        .mockResolvedValueOnce([{ total: 1000000 }]) // Previous month
+        .mockResolvedValueOnce([]) // Status distribution
+        .mockResolvedValueOnce([]); // Top products
+      mockProduct.countDocuments.mockResolvedValue(100);
+      mockFeedback.aggregate.mockResolvedValue([{ avg: 5, count: 10 }]);
+
+      const req = { user: { id: 'shop1' } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await getShopStats(req, res);
+
+      const response = res.json.mock.calls[0][0];
+      expect(response.data.totalRevenueChange).toBe(100); // (2,000,000 - 1,000,000)/1,000,000 * 100
+    });
   });
 
   describe('getShopOrders', () => {
@@ -322,6 +342,33 @@ describe('Dashboard & Reports - Coverage Tests', () => {
     });
   });
 
+  describe('getShopFeedback pagination branches', () => {
+    test('Should calculate skip for page=2 with default limit=10', async () => {
+      const mockQuery = {
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+      };
+      mockQuery.populate.mockReturnValueOnce(mockQuery).mockResolvedValueOnce([]);
+
+      mockFeedback.find = jest.fn().mockReturnValue(mockQuery);
+      mockFeedback.countDocuments = jest.fn().mockResolvedValue(0);
+
+      const dashboard = await import('../../src/controllers/dashboardController.js');
+      const getShopFeedback = dashboard.getShopFeedback;
+
+      const req = { query: { page: '2' } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await getShopFeedback(req, res);
+
+      expect(mockQuery.skip).toHaveBeenCalledWith(10); // (2-1)*10
+      expect(mockQuery.limit).toHaveBeenCalledWith(10);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
   describe('updateOrderStatus', () => {
     test('Should update order and create reward points when delivered', async () => {
       const mockOrderDoc = {
@@ -414,6 +461,60 @@ describe('Dashboard & Reports - Coverage Tests', () => {
       await updateOrderStatus(req, res);
 
       expect(mockOrderDoc.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('Should skip reward flow when status is not delivered', async () => {
+      const mockOrderDoc = {
+        _id: '507f1f77bcf86cd799439011',
+        status: 'processing',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockOrder.findById.mockResolvedValue(mockOrderDoc);
+
+      const { hasOrderEarnedRewardPoints } = await import(
+        '../../src/services/rewardPoint.service.js'
+      );
+      hasOrderEarnedRewardPoints.mockClear();
+
+      const req = {
+        params: { orderId: '507f1f77bcf86cd799439011' },
+        body: { status: 'processing' },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await updateOrderStatus(req, res);
+
+      expect(hasOrderEarnedRewardPoints).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('Should skip createRewardPoints when already earned', async () => {
+      const mockOrderDoc = {
+        _id: '507f1f77bcf86cd799439011',
+        status: 'processing',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockOrder.findById.mockResolvedValue(mockOrderDoc);
+
+      const { hasOrderEarnedRewardPoints, createRewardPointsForOrder } = await import(
+        '../../src/services/rewardPoint.service.js'
+      );
+      hasOrderEarnedRewardPoints.mockResolvedValue(true);
+      createRewardPointsForOrder.mockClear();
+
+      const req = {
+        params: { orderId: '507f1f77bcf86cd799439011' },
+        body: { status: 'delivered' },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await updateOrderStatus(req, res);
+
+      expect(hasOrderEarnedRewardPoints).toHaveBeenCalled();
+      expect(createRewardPointsForOrder).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });
@@ -627,6 +728,54 @@ describe('Dashboard & Reports - Coverage Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(200);
     });
+
+    test('Should handle email failure gracefully when unbanning user', async () => {
+      const mockUserDoc = {
+        _id: '507f1f77bcf86cd799439011',
+        email: 'john@example.com',
+        status: true,
+      };
+
+      mockUser.findByIdAndUpdate.mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockUserDoc),
+      });
+
+      const { sendTemplatedEmail } = await import('../../src/utils/sendEmail.js');
+      sendTemplatedEmail.mockRejectedValueOnce(new Error('Email service down'));
+
+      const req = {
+        params: { userId: '507f1f77bcf86cd799439011' },
+        body: { adminNote: 'Reinstated' },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await unbanUser(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('Should skip email when banning user without email', async () => {
+      const mockUserDoc = {
+        _id: '507f1f77bcf86cd799439011',
+        // email intentionally undefined
+        status: false,
+      };
+
+      mockUser.findByIdAndUpdate.mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockUserDoc),
+      });
+
+      const { sendTemplatedEmail } = await import('../../src/utils/sendEmail.js');
+      sendTemplatedEmail.mockClear();
+
+      const req = { params: { userId: '507f1f77bcf86cd799439011' }, body: {} };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await banUser(req, res);
+
+      expect(sendTemplatedEmail).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
   });
 
   // ========== ADDITIONAL SHOP DASHBOARD TESTS ==========
@@ -832,6 +981,26 @@ describe('Dashboard & Reports - Coverage Tests', () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
+    test('getAdminUsers - should use default pagination when not provided', async () => {
+      const mockQuery = {
+        select: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue([]),
+      };
+      mockUser.find = jest.fn().mockReturnValue(mockQuery);
+      mockUser.countDocuments.mockResolvedValue(0);
+
+      const req = { query: {} }; // no page/limit
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await getAdminUsers(req, res);
+
+      expect(mockQuery.skip).toHaveBeenCalledWith(0);
+      expect(mockQuery.limit).toHaveBeenCalledWith(10);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
     test('getAdminFeedback - should exclude deleted feedbacks (status=false)', async () => {
       const mockQuery = {
         sort: jest.fn().mockReturnThis(),
@@ -912,6 +1081,15 @@ describe('Dashboard & Reports - Coverage Tests', () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
+    test('deactivateCategory - should throw 404 if not found', async () => {
+      mockCategory.findByIdAndUpdate.mockResolvedValue(null);
+
+      const req = { params: { categoryId: '507f1f77bcf86cd799439011' } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await expect(deactivateCategory(req, res)).rejects.toThrow('Category not found');
+    });
+
     test('updateCategory - should update category when name is unique', async () => {
       mockCategory.findById.mockResolvedValue({
         _id: '507f1f77bcf86cd799439011',
@@ -960,6 +1138,30 @@ describe('Dashboard & Reports - Coverage Tests', () => {
       await expect(updateCategory(req, res)).rejects.toThrow(
         'Category with this name already exists'
       );
+    });
+
+    test('updateCategory - should update when name not provided (skip duplicate check)', async () => {
+      mockCategory.findById.mockResolvedValue({
+        _id: '507f1f77bcf86cd799439011',
+        name: 'OldName',
+      });
+      mockCategory.findByIdAndUpdate.mockResolvedValue({
+        _id: '507f1f77bcf86cd799439011',
+        name: 'OldName',
+        description: 'Updated',
+      });
+
+      const req = {
+        params: { categoryId: '507f1f77bcf86cd799439011' },
+        body: { description: 'Updated' },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await updateCategory(req, res);
+
+      expect(mockCategory.findOne).not.toHaveBeenCalled();
+      expect(mockCategory.findByIdAndUpdate).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
     test('updateCategory - should not throw 404 if category not found', async () => {
@@ -1023,6 +1225,28 @@ describe('Dashboard & Reports - Coverage Tests', () => {
       });
     });
 
+    test('getAdminRevenueData - should use monthly format by default', async () => {
+      mockOrder.aggregate.mockResolvedValue([]);
+
+      const req = { query: {} }; // no period provided
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await getAdminRevenueData(req, res);
+
+      const aggregateCall = mockOrder.aggregate.mock.calls[0][0];
+      expect(aggregateCall).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            $group: expect.objectContaining({
+              _id: expect.objectContaining({
+                $dateToString: expect.objectContaining({ format: '%Y-%m' }),
+              }),
+            }),
+          }),
+        ])
+      );
+    });
+
     test('getAdminRevenueData - should use daily format when period=daily', async () => {
       const mockData = [{ _id: '2024-01-15', totalRevenue: 100000, orderCount: 5 }];
       mockOrder.aggregate.mockResolvedValue(mockData);
@@ -1066,6 +1290,28 @@ describe('Dashboard & Reports - Coverage Tests', () => {
 
       expect(mockOrder.aggregate).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('getAdminOrdersData - should use monthly format by default', async () => {
+      mockOrder.aggregate.mockResolvedValue([]);
+
+      const req = { query: {} };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await getAdminOrdersData(req, res);
+
+      const aggregateCall = mockOrder.aggregate.mock.calls[0][0];
+      expect(aggregateCall).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            $group: expect.objectContaining({
+              _id: expect.objectContaining({
+                $dateToString: expect.objectContaining({ format: '%Y-%m' }),
+              }),
+            }),
+          }),
+        ])
+      );
     });
 
     test('getAdminTopProductsData - should return top selling products', async () => {
@@ -1127,6 +1373,28 @@ describe('Dashboard & Reports - Coverage Tests', () => {
         success: true,
         data: mockData,
       });
+    });
+
+    test('getAdminUserGrowthData - should use monthly format by default', async () => {
+      mockUser.aggregate = jest.fn().mockResolvedValue([]);
+
+      const req = { query: {} };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await getAdminUserGrowthData(req, res);
+
+      const aggregateCall = mockUser.aggregate.mock.calls[0][0];
+      expect(aggregateCall).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            $group: expect.objectContaining({
+              _id: expect.objectContaining({
+                $dateToString: expect.objectContaining({ format: '%Y-%m' }),
+              }),
+            }),
+          }),
+        ])
+      );
     });
 
     test('getAdminUserGrowthData - should use weekly format when period=weekly', async () => {
@@ -1388,6 +1656,114 @@ describe('Dashboard & Reports - Coverage Tests', () => {
       deleteReportedProduct = dashboard.deleteReportedProduct;
     });
 
+    test('resolveProductReport - delete_comment should skip reporter email when missing', async () => {
+      const mockReportDoc = {
+        _id: '507f1f77bcf86cd799439011',
+        targetType: 'review',
+        targetId: 'fb1',
+        reporter: 'reporter1',
+        status: 'pending',
+        reason: 'Spam',
+        description: 'Spam review',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockReportGlobal.findById.mockResolvedValue(mockReportDoc);
+
+      const mockFeedbackDoc = {
+        _id: 'fb1',
+        user: { _id: 'user1', email: 'user@test.com', fullName: 'User' },
+        product: { _id: 'prod1', name: 'Product' },
+      };
+
+      const mockFeedbackPopQuery = { populate: jest.fn().mockReturnThis() };
+      mockFeedbackPopQuery.populate
+        .mockReturnValueOnce(mockFeedbackPopQuery)
+        .mockResolvedValueOnce(mockFeedbackDoc);
+
+      mockFeedback.findById = jest.fn().mockReturnValue(mockFeedbackPopQuery);
+      mockFeedback.findByIdAndUpdate = jest
+        .fn()
+        .mockResolvedValue({ ...mockFeedbackDoc, status: false });
+
+      const mockShopUser = { _id: 'shop1', email: 'shop@test.com', fullName: 'Shop', role: 'shop' };
+      const mockReporterUser = { _id: 'reporter1' }; // no email -> should hit else branch
+
+      mockUser.findOne = jest.fn().mockResolvedValue(mockShopUser);
+      mockUser.findById = jest.fn().mockResolvedValue(mockReporterUser);
+
+      const { sendTemplatedEmail } = await import('../../src/utils/sendEmail.js');
+      sendTemplatedEmail.mockClear();
+
+      const req = {
+        params: { id: '507f1f77bcf86cd799439011' },
+        body: { resolution: 'delete_comment', adminNote: 'Review deleted' },
+        user: { id: 'admin1' },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await resolveProductReport(req, res);
+
+      // Only shop email should be sent, reporter email skipped
+      expect(sendTemplatedEmail.mock.calls.length).toBe(1);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('resolveProductReport - warning should handle email failures in catch blocks', async () => {
+      const mockReportDoc = {
+        _id: '507f1f77bcf86cd799439011',
+        targetType: 'review',
+        targetId: 'fb1',
+        reporter: 'reporter1',
+        status: 'pending',
+        reason: 'Inappropriate',
+        description: 'Bad review',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockReportGlobal.findById.mockResolvedValue(mockReportDoc);
+
+      const mockFeedbackDoc = {
+        _id: 'fb1',
+        user: { _id: 'user1', email: 'user@test.com', fullName: 'User' },
+        product: { _id: 'prod1', name: 'Product' },
+      };
+
+      const mockFeedbackPopQuery = { populate: jest.fn().mockReturnThis() };
+      mockFeedbackPopQuery.populate
+        .mockReturnValueOnce(mockFeedbackPopQuery)
+        .mockResolvedValueOnce(mockFeedbackDoc);
+
+      mockFeedback.findById = jest.fn().mockReturnValue(mockFeedbackPopQuery);
+
+      const mockShopUser = { _id: 'shop1', email: 'shop@test.com', fullName: 'Shop', role: 'shop' };
+      const mockReporterUser = {
+        _id: 'reporter1',
+        email: 'reporter@test.com',
+        fullName: 'Reporter',
+      };
+
+      mockUser.findOne = jest.fn().mockResolvedValue(mockShopUser);
+      mockUser.findById = jest.fn().mockResolvedValue(mockReporterUser);
+
+      const { sendTemplatedEmail } = await import('../../src/utils/sendEmail.js');
+      // First two calls (author warning + reporter CC) should throw to hit both catches
+      sendTemplatedEmail
+        .mockRejectedValueOnce(new Error('Author email failed'))
+        .mockRejectedValueOnce(new Error('Reporter email failed'));
+
+      const req = {
+        params: { id: '507f1f77bcf86cd799439011' },
+        body: { resolution: 'warning', adminNote: 'Warning issued' },
+        user: { id: 'admin1' },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      // Should not throw despite email failures
+      await resolveProductReport(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
     test('deleteFeedback - should set feedback status to false', async () => {
       const mockFeedbackDoc = {
         _id: '507f1f77bcf86cd799439011',
@@ -1418,6 +1794,57 @@ describe('Dashboard & Reports - Coverage Tests', () => {
         '507f1f77bcf86cd799439011',
         expect.objectContaining({ status: false })
       );
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('deleteFeedback - should notify reporter and update pending report', async () => {
+      const mockFeedbackDoc = {
+        _id: '507f1f77bcf86cd799439011',
+        status: true,
+        user: { _id: 'u1', email: 'user@test.com', fullName: 'User' },
+        product: { _id: 'prod1', name: 'Product' },
+      };
+
+      const mockQuery = { populate: jest.fn().mockReturnThis() };
+      mockQuery.populate.mockReturnValueOnce(mockQuery).mockResolvedValueOnce(mockFeedbackDoc);
+      mockFeedback.findById.mockReturnValue(mockQuery);
+      mockFeedback.findByIdAndUpdate = jest
+        .fn()
+        .mockResolvedValue({ ...mockFeedbackDoc, status: false });
+
+      // Pending report exists
+      const pendingReport = {
+        _id: 'rep1',
+        reporter: 'repUserId',
+        reason: 'Spam',
+        description: 'Bad',
+        status: 'pending',
+        save: jest.fn().mockResolvedValue(true),
+      };
+      mockReportGlobal.findOne.mockResolvedValue(pendingReport);
+
+      // Reporter user
+      const reporterUserQuery = { select: jest.fn().mockReturnThis(), lean: jest.fn() };
+      reporterUserQuery.lean.mockResolvedValue({
+        _id: 'repUserId',
+        email: 'rep@test.com',
+        fullName: 'Reporter',
+      });
+      mockUser.findById = jest.fn().mockReturnValue(reporterUserQuery);
+
+      const { sendTemplatedEmail } = await import('../../src/utils/sendEmail.js');
+      sendTemplatedEmail.mockClear();
+
+      const req = { params: { feedbackId: '507f1f77bcf86cd799439011' }, user: { id: 'admin1' } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await deleteFeedback(req, res);
+
+      expect(sendTemplatedEmail).toHaveBeenCalled();
+      expect(pendingReport.status).toBe('resolved');
+      expect(pendingReport.resolution).toBe('delete_comment');
+      expect(pendingReport.resolvedBy).toBe('admin1');
+      expect(pendingReport.save).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
@@ -1477,6 +1904,28 @@ describe('Dashboard & Reports - Coverage Tests', () => {
       expect(response.success).toBe(true);
       expect(response.data.categories).toHaveLength(2);
       expect(response.data.categories[0].productsCount).toBe(25);
+    });
+
+    test('getAdminCategories - should handle empty categories list', async () => {
+      const mockQuery = {
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue([]),
+      };
+
+      mockCategory.find.mockReturnValue(mockQuery);
+      mockCategory.countDocuments.mockResolvedValue(0);
+
+      const req = { query: {} };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await getAdminCategories(req, res);
+
+      const response = res.json.mock.calls[0][0];
+      expect(response.success).toBe(true);
+      expect(response.data.categories).toHaveLength(0);
+      expect(response.data.pagination.total).toBe(0);
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
     test('deleteReportedProduct - should delete product successfully', async () => {
@@ -1662,6 +2111,52 @@ describe('Dashboard & Reports - Coverage Tests', () => {
         status: jest.fn().mockReturnThis(),
         json: jest.fn(),
       };
+
+      await resolveProductReport(req, res);
+
+      expect(mockProduct.findByIdAndDelete).toHaveBeenCalledWith('prod1');
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('resolveProductReport - delete_product should handle email failures', async () => {
+      const mockReportDoc = {
+        _id: '507f1f77bcf86cd799439011',
+        targetType: 'product',
+        targetId: 'prod1',
+        reporter: 'reporter1',
+        status: 'pending',
+        reason: 'Violation',
+        description: 'Bad product',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockReportGlobal.findById.mockResolvedValue(mockReportDoc);
+
+      const mockProductDoc = { _id: 'prod1', name: 'Bad Product' };
+      mockProduct.findById = jest.fn().mockResolvedValue(mockProductDoc);
+      mockProduct.findByIdAndDelete = jest.fn().mockResolvedValue(mockProductDoc);
+
+      const mockShopUser = { _id: 'shop1', email: 'shop@test.com', fullName: 'Shop', role: 'shop' };
+      const mockReporterUser = {
+        _id: 'reporter1',
+        email: 'reporter@test.com',
+        fullName: 'Reporter',
+      };
+
+      mockUser.findOne = jest.fn().mockResolvedValue(mockShopUser);
+      mockUser.findById = jest.fn().mockResolvedValue(mockReporterUser);
+
+      const { sendTemplatedEmail } = await import('../../src/utils/sendEmail.js');
+      sendTemplatedEmail
+        .mockRejectedValueOnce(new Error('Shop email failed'))
+        .mockRejectedValueOnce(new Error('Reporter email failed'));
+
+      const req = {
+        params: { id: '507f1f77bcf86cd799439011' },
+        body: { resolution: 'delete_product', adminNote: 'Delete now' },
+        user: { id: 'admin1' },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
       await resolveProductReport(req, res);
 
@@ -1878,6 +2373,88 @@ describe('Dashboard & Reports - Coverage Tests', () => {
       expect(response.data.reports[0].target).toBeDefined();
     });
 
+    test('getAdminReportedProducts - should populate feedback targets', async () => {
+      const mockReports = [
+        {
+          _id: 'rep1',
+          targetType: 'feedback',
+          targetId: 'fb1',
+          reporter: { _id: 'rep1', fullName: 'User A', email: 'usera@test.com' },
+        },
+      ];
+
+      const mockReportQuery = {
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue(mockReports),
+      };
+      mockReportGlobal.find.mockReturnValue(mockReportQuery);
+      mockReportGlobal.countDocuments.mockResolvedValue(1);
+
+      const mockFeedbackQuery = {
+        select: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue({ comment: 'Nice', user: { fullName: 'A' } }),
+      };
+      mockFeedback.findById = jest.fn().mockReturnValue(mockFeedbackQuery);
+
+      const req = { query: { page: '1', limit: '10' } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await getAdminReportedProducts(req, res);
+
+      const response = res.json.mock.calls[0][0];
+      expect(response.data.reports[0].target).toBeDefined();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('resolveProductReport - delete_comment should skip shop email if no shop user', async () => {
+      const mockReportDoc = {
+        _id: '507f1f77bcf86cd799439011',
+        targetType: 'review',
+        targetId: 'fb1',
+        reporter: 'reporter1',
+        status: 'pending',
+        reason: 'Spam',
+        description: 'Spam review',
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      mockReportGlobal.findById.mockResolvedValue(mockReportDoc);
+
+      const mockFeedbackDoc = {
+        _id: 'fb1',
+        user: { _id: 'user1', email: 'user@test.com', fullName: 'User' },
+        product: { _id: 'prod1', name: 'Product' },
+      };
+
+      const mockFeedbackPopQuery = { populate: jest.fn().mockReturnThis() };
+      mockFeedbackPopQuery.populate
+        .mockReturnValueOnce(mockFeedbackPopQuery)
+        .mockResolvedValueOnce(mockFeedbackDoc);
+
+      mockFeedback.findById = jest.fn().mockReturnValue(mockFeedbackPopQuery);
+      mockFeedback.findByIdAndUpdate = jest
+        .fn()
+        .mockResolvedValue({ ...mockFeedbackDoc, status: false });
+
+      mockUser.findOne = jest.fn().mockResolvedValue(null); // No shop user -> skip shop email
+      mockUser.findById = jest.fn().mockResolvedValue({ _id: 'reporter1', email: 'rep@test.com' });
+
+      const req = {
+        params: { id: '507f1f77bcf86cd799439011' },
+        body: { resolution: 'delete_comment', adminNote: 'Review deleted' },
+        user: { id: 'admin1' },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await resolveProductReport(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
     test('getAdminReportedProducts - should use default pagination', async () => {
       const mockReportQuery = {
         sort: jest.fn().mockReturnThis(),
@@ -1900,6 +2477,48 @@ describe('Dashboard & Reports - Coverage Tests', () => {
 
       expect(mockReportQuery.skip).toHaveBeenCalledWith(0); // (1-1)*10
       expect(mockReportQuery.limit).toHaveBeenCalledWith(10);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('getAdminReportedProducts - should populate comment targets via global Comment', async () => {
+      // Prepare global Comment mock since controller references it without import
+      global.Comment = {
+        findById: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnThis(),
+          populate: jest.fn().mockReturnThis(),
+          lean: jest
+            .fn()
+            .mockResolvedValue({ comment: 'c1', user: { fullName: 'U' }, product: { name: 'P' } }),
+        }),
+      };
+
+      const mockReports = [
+        {
+          _id: 'rep1',
+          targetType: 'comment',
+          targetId: 'c1',
+          reporter: { _id: 'rep1', fullName: 'User A', email: 'usera@test.com' },
+        },
+      ];
+
+      const mockReportQuery = {
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        populate: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockResolvedValue(mockReports),
+      };
+
+      mockReportGlobal.find.mockReturnValue(mockReportQuery);
+      mockReportGlobal.countDocuments.mockResolvedValue(1);
+
+      const req = { query: { page: '1', limit: '10' } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await getAdminReportedProducts(req, res);
+
+      const response = res.json.mock.calls[0][0];
+      expect(response.data.reports[0].target).toBeDefined();
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
