@@ -1,376 +1,446 @@
+/**
+ * @fileoverview Test Helper Utilities for Authentication & Authorization
+ * @module testUtils
+ * @description Provides factory functions for creating mock objects,
+ * request/response pairs, and test data for Jest tests
+ */
+
+import { jest } from '@jest/globals';
 import mongoose from 'mongoose';
 
-export function makeMessage(content, overrides = {}) {
-  return {
-    content,
-    _id: new mongoose.Types.ObjectId(),
-    streamId: new mongoose.Types.ObjectId(),
-    ...overrides,
+/**
+ * Factory to create mock req/res/next objects for middleware/controller testing
+ * @param {Object} overrides - Custom values to override defaults
+ * @param {Object} overrides.req - Request overrides
+ * @param {Object} overrides.res - Response overrides
+ * @returns {Object} { req, res, next }
+ */
+function getMockReqRes(overrides = {}) {
+  const req = {
+    body: {},
+    params: {},
+    query: {},
+    headers: {},
+    user: null,
+    file: null,
+    files: null,
+    get: jest.fn(header => {
+      return req.headers[header.toLowerCase()];
+    }),
+    ...overrides.req,
   };
-}
 
-export function makeStream(overrides = {}) {
-  return {
-    roomId: 'test-room-123',
-    featuredProducts: [],
-    ...overrides,
-  };
-}
-
-export function makeUser(overrides = {}) {
-  return {
-    fullName: 'Test User',
-    username: 'testuser_' + Math.random().toString(36).substring(7),
-    email: 'test_' + Math.random().toString(36).substring(7) + '@test.com',
-    password: 'password123',
-    role: 'customer',
-    ...overrides,
-  };
-}
-
-export function makePotentialOrder(overrides = {}) {
-  return {
-    _id: new mongoose.Types.ObjectId(),
-    chatMessageId: new mongoose.Types.ObjectId(),
-    streamId: new mongoose.Types.ObjectId(),
-    roomId: 'room-001',
-    status: 'pending',
-    confidence: 0.85,
-    customerInfo: {
-      userId: new mongoose.Types.ObjectId(),
-      customerName: 'Nguyễn Văn A',
-      phoneNumber: '0912345678',
-    },
-    productInfo: {
-      originalMessage: 'Chốt đơn HJ6777 size 42 sđt 0912345678',
-      productId: new mongoose.Types.ObjectId(),
-      extractedSize: '42',
-      extractedColor: 'đen',
-      extractedQuantity: 1,
-    },
-    detectionData: {
-      confidence: 0.85,
-      detectedKeywords: ['chốt', 'đơn', 'size'],
-      phoneMatches: ['0912345678'],
-      timestamp: new Date(),
-    },
-    priority: 'medium',
-    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    hostActions: {
-      viewedAt: null,
-      contactedAt: null,
-      notes: null,
-      confirmedBy: null,
-      confirmedAt: null,
-    },
-    convertedOrderId: null,
-    createdAt: new Date(),
-    ...overrides,
-  };
-}
-
-export function normalizePhone(vnPhoneStr) {
-  return (vnPhoneStr || '').replace(/\D+/g, '');
-}
-
-export async function perf(fn, ...args) {
-  const start = Date.now();
-  const result = await fn(...args);
-  const ms = Date.now() - start;
-  return { result, ms };
-}
-
-/**
- * Create mock Vietnamese order keywords for testing
- * @returns {Array<string>} Array of Vietnamese order keywords
- */
-export function getOrderKeywords() {
-  return [
-    'chốt',
-    'đơn',
-    'mua',
-    'đặt',
-    'order',
-    'chốt đơn',
-    'ship',
-    'giao',
-    'cod',
-    'ship gấp',
-    'giao gấp',
-    'size',
-    'cỡ',
-    'số',
-    'màu',
-    'color',
-    'đôi',
-    'cái',
-    'chiếc',
-    'combo',
-    'bộ',
-  ];
-}
-
-/**
- * Create mock Vietnamese phone number variations for testing
- * @returns {Array<string>} Array of phone number formats
- */
-export function getPhoneVariations() {
-  return [
-    '0912345678',
-    '0912 345 678',
-    '0912.345.678',
-    '0912-345-678',
-    '091 234 5678',
-    '091.234.5678',
-    '091-234-5678',
-  ];
-}
-
-/**
- * Create mock Vietnamese size variations
- * @returns {Array<string>} Array of size formats
- */
-export function getSizeVariations() {
-  return [
-    '42',
-    '40',
-    '41',
-    '43',
-    '44',
-    'XL',
-    'XXL',
-    'S',
-    'M',
-    'L',
-    'ONESIZE',
-    'one size',
-    'ONE SIZE',
-    'size 42',
-    'cỡ 42',
-    '42 size',
-  ];
-}
-
-/**
- * Create mock Vietnamese color variations
- * @returns {Array<string>} Array of color names
- */
-export function getColorVariations() {
-  return [
-    'đen',
-    'trắng',
-    'đỏ',
-    'xanh',
-    'vàng',
-    'hồng',
-    'nâu',
-    'xám',
-    'xanh navy',
-    'xanh dương',
-    'màu đen',
-    'màu trắng',
-    'màu đỏ',
-    'màu xanh',
-  ];
-}
-
-/**
- * Wait for specified duration (for testing async operations)
- * @param {number} ms - Milliseconds to wait
- * @returns {Promise<void>}
- */
-export function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Create mock order data for Order Auto-Creation testing
- * @param {Object} overrides - Override default values
- * @returns {Object} Mock order data
- */
-export function makeOrder(overrides = {}) {
-  return {
-    _id: new mongoose.Types.ObjectId(),
-    orderNumber: `ORD-${Date.now()}`,
-    user: new mongoose.Types.ObjectId(),
-    products: [
-      {
-        id: new mongoose.Types.ObjectId(),
-        quantity: 1,
-        price: 3500000,
-        size: '42',
-        color: 'đen',
-      },
-    ],
-    totalAmount: 3500000,
-    paymentMethod: 'cash_on_delivery',
-    shippingAddress: '123 Nguyễn Huệ, Q1, TPHCM',
-    notes: 'Auto-created from potential order',
-    status: 'pending',
-    paymentStatus: 'pending',
-    createdAt: new Date(),
-    ...overrides,
-  };
-}
-
-/**
- * Create mock product data for Order Auto-Creation testing
- * @param {Object} overrides - Override default values
- * @returns {Object} Mock product data
- */
-export function makeProduct(overrides = {}) {
-  return {
-    _id: new mongoose.Types.ObjectId(),
-    name: 'Nike Air Max 270',
-    sku: 'HJ6777',
-    brand: 'Nike',
-    category: new mongoose.Types.ObjectId(),
-    finalPrice: 3500000,
-    price: { regular: 3500000 },
-    productType: 'shoes',
-    inventory: [
-      { size: '42', color: 'đen', quantity: 5 },
-      { size: '40', color: 'đen', quantity: 3 },
-      { size: '41', color: 'trắng', quantity: 8 },
-    ],
-    checkInventory: function (options = {}) {
-      if (options.size) {
-        const sizeInventory = this.inventory.find(inv => inv.size === options.size);
-        if (!sizeInventory) {
-          return {
-            available: false,
-            quantity: 0,
-            availableSizes: this.inventory.map(inv => inv.size),
-          };
-        }
-        return {
-          available: sizeInventory.quantity > 0,
-          quantity: sizeInventory.quantity,
-        };
-      }
-      const totalQuantity = this.inventory.reduce((sum, inv) => sum + inv.quantity, 0);
-      return {
-        available: totalQuantity > 0,
-        quantity: totalQuantity,
-      };
-    },
-    ...overrides,
-  };
-}
-
-/**
- * Create mock flash sale data
- * @param {Object} overrides - Override default values
- * @returns {Object} Mock flash sale data
- */
-export function makeFlashSale(overrides = {}) {
-  return {
-    _id: new mongoose.Types.ObjectId().toString(),
-    title: 'Flash Sale 30%',
-    status: 'active',
-    startDate: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-    endDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1 day from now
-    products: [
-      {
-        productId: new mongoose.Types.ObjectId().toString(),
-        flashPrice: 500000,
-        discountPercent: 30,
-      },
-    ],
-    ...overrides,
-  };
-}
-
-/**
- * Create mock email response
- * @param {Object} overrides - Override default values
- * @returns {Object} Mock email response
- */
-export function makeEmailResponse(overrides = {}) {
-  return {
-    messageId: `email-${Date.now()}`,
-    email: 'customer@example.com',
-    template: 'LIVESTREAM_ORDER_SUCCESS',
-    data: {
-      name: 'Nguyễn Văn A',
-      orderNumber: 'ORD-123456',
-    },
-    ...overrides,
-  };
-}
-
-/**
- * Create mock inventory check result
- * @param {Object} overrides - Override default values
- * @returns {Object} Mock inventory check result
- */
-export function makeInventoryCheck(overrides = {}) {
-  return {
-    available: true,
-    quantity: 5,
-    availableSizes: ['40', '42', '43'],
-    ...overrides,
-  };
-}
-
-/**
- * Create mock order creation request data
- * @param {Object} overrides - Override default values
- * @returns {Object} Mock order creation request
- */
-export function makeOrderCreationRequest(overrides = {}) {
-  return {
-    user: new mongoose.Types.ObjectId().toString(),
-    products: [
-      {
-        id: new mongoose.Types.ObjectId().toString(),
-        quantity: 1,
-        price: 3500000,
-        size: '42',
-        color: 'đen',
-      },
-    ],
-    totalAmount: 3500000,
-    paymentMethod: 'cash_on_delivery',
-    shippingAddress: '123 Nguyễn Huệ, Q1, TPHCM',
-    notes: 'Auto-created from potential order',
-    status: 'pending',
-    paymentStatus: 'pending',
-    ...overrides,
-  };
-}
-
-/**
- * Create mock request object for controller testing
- * @param {Object} overrides - Override default values
- * @returns {Object} Mock request object
- */
-export function makeRequest(overrides = {}) {
-  return {
-    params: { id: new mongoose.Types.ObjectId().toString() },
-    body: { status: 'confirmed' },
-    user: { id: new mongoose.Types.ObjectId().toString() },
-    ...overrides,
-  };
-}
-
-/**
- * Create mock response object for controller testing
- * @returns {Object} Mock response object
- */
-export function makeResponse() {
-  return {
+  const res = {
     status: jest.fn().mockReturnThis(),
-    json: jest.fn(),
-    send: jest.fn(),
-    setHeader: jest.fn(),
+    json: jest.fn().mockReturnThis(),
+    send: jest.fn().mockReturnThis(),
+    redirect: jest.fn().mockReturnThis(),
+    cookie: jest.fn().mockReturnThis(),
+    clearCookie: jest.fn().mockReturnThis(),
+    ...overrides.res,
+  };
+
+  const next = jest.fn();
+
+  return { req, res, next };
+}
+
+/**
+ * Factory to generate a mock user object (POJO - Plain Old JavaScript Object)
+ * @param {Object} overrides - Custom values to override defaults
+ * @returns {Object} Mock user data object
+ */
+function generateMockUser(overrides = {}) {
+  const defaultUser = {
+    _id: new mongoose.Types.ObjectId().toString(),
+    fullName: 'Nguyễn Văn Test',
+    username: 'testuser',
+    email: 'test@example.com',
+    password: '$2a$10$hashedPasswordHere',
+    phone: '0987654321',
+    address: '123 Đường Test, Quận 1, TP.HCM',
+    role: 'customer',
+    avatar: 'https://example.com/avatar.jpg',
+    isVerified: true,
+    status: true,
+    reward_point: 0,
+    gender: 'other',
+    dateOfBirth: new Date('1990-01-01'),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    // Instance methods (mocked)
+    matchPassword: jest.fn().mockResolvedValue(true),
+    save: jest.fn(async function () {
+      return this;
+    }),
+    toObject: jest.fn(function () {
+      const obj = { ...this };
+      delete obj.password;
+      delete obj.matchPassword;
+      delete obj.save;
+      delete obj.toObject;
+      return obj;
+    }),
+  };
+
+  return {
+    ...defaultUser,
+    ...overrides,
   };
 }
 
 /**
- * Create mock next function for middleware testing
- * @returns {Function} Mock next function
+ * Generate Vietnamese test users with realistic data
+ * @param {number} count - Number of users to generate
+ * @returns {Array<Object>} Array of mock user objects
  */
-export function makeNext() {
-  return jest.fn();
+function generateVietnameseUsers(count = 5) {
+  const vietnameseNames = [
+    { fullName: 'Trần Thị Hoa', username: 'tranthihoa', email: 'hoa.tran@example.com' },
+    { fullName: 'Lê Văn Nam', username: 'levannam', email: 'nam.le@example.com' },
+    { fullName: 'Phạm Minh Tuấn', username: 'phamminhtuan', email: 'tuan.pham@example.com' },
+    { fullName: 'Nguyễn Thị Lan', username: 'nguyenthilan', email: 'lan.nguyen@example.com' },
+    { fullName: 'Hoàng Văn Đức', username: 'hoangvanduc', email: 'duc.hoang@example.com' },
+  ];
+
+  return Array.from({ length: count }, (_, index) => {
+    const userData = vietnameseNames[index % vietnameseNames.length];
+    return generateMockUser({
+      ...userData,
+      _id: new mongoose.Types.ObjectId().toString(),
+      phone: `098765${String(index).padStart(4, '0')}`,
+    });
+  });
 }
+
+// ============================================================================
+// Category Testing Helpers
+// ============================================================================
+
+/**
+ * Create mock category data
+ * @param {Object} overrides - Override default values
+ * @returns {Object} Mock category object
+ */
+export function makeCategory(overrides = {}) {
+  return {
+    _id: new mongoose.Types.ObjectId(),
+    name: 'Running',
+    slug: 'running',
+    description: 'Running shoes and gear',
+    status: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+/**
+ * Generate a mock JWT token (for testing purposes - NOT cryptographically secure)
+ * @param {Object} payload - Token payload
+ * @param {string} secret - Secret key (optional, for test purposes)
+ * @param {string} expiresIn - Expiration time (e.g., '1d', '1h')
+ * @returns {string} Mock JWT token string
+ */
+function generateMockToken(payload = {}, secret = 'test-secret', expiresIn = '1d') {
+  // This is a FAKE token for testing purposes only
+  // In real tests, use jwt.sign from jsonwebtoken library or mock it
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64');
+  const body = Buffer.from(
+    JSON.stringify({ ...payload, iat: Date.now(), exp: Date.now() + 86400000 })
+  ).toString('base64');
+  const signature = 'mockSignature';
+  return `${header}.${body}.${signature}`;
+}
+
+/**
+ * Create a mock Error Response object
+ * @param {string} message - Error message
+ * @param {number} statusCode - HTTP status code
+ * @returns {Error} Error object with statusCode property
+ */
+function createMockErrorResponse(message, statusCode) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.message = message;
+  return error;
+}
+
+/**
+ * Helper to verify ErrorResponse was called with specific args
+ * @param {Function} mockNext - Mocked next function
+ * @param {number} expectedStatusCode - Expected status code
+ * @param {string|RegExp} expectedMessage - Expected message (string or regex)
+ */
+function expectErrorResponse(mockNext, expectedStatusCode, expectedMessage) {
+  expect(mockNext).toHaveBeenCalled();
+  const errorArg = mockNext.mock.calls[0][0];
+  expect(errorArg).toBeInstanceOf(Error);
+  expect(errorArg.statusCode).toBe(expectedStatusCode);
+
+  if (expectedMessage instanceof RegExp) {
+    expect(errorArg.message).toMatch(expectedMessage);
+  } else {
+    expect(errorArg.message).toContain(expectedMessage);
+  }
+}
+
+/**
+ * Generate a random ObjectId string
+ * @returns {string} MongoDB ObjectId string
+ */
+function generateObjectId() {
+  return new mongoose.Types.ObjectId().toString();
+}
+
+/**
+ * Create a mock Mongoose model instance
+ * @param {Object} data - Initial data for the instance
+ * @returns {Object} Mock Mongoose model instance
+ */
+function createMockModelInstance(data = {}) {
+  return {
+    ...data,
+    _id: data._id || generateObjectId(),
+    save: jest.fn().mockResolvedValue(data),
+    remove: jest.fn().mockResolvedValue(data),
+    delete: jest.fn().mockResolvedValue(data),
+    toObject: jest.fn(() => ({ ...data })),
+    toJSON: jest.fn(() => ({ ...data })),
+  };
+}
+
+/**
+ * Factory to generate a mock product object (POJO)
+ * @param {Object} overrides - Custom values to override defaults
+ * @returns {Object} Mock product data object
+ */
+function generateMockProduct(overrides = {}) {
+  const defaultProduct = {
+    _id: generateObjectId(),
+    name: 'Nike Air Max 90',
+    summary: 'Classic running shoes',
+    description: 'Comfortable and stylish running shoes',
+    brand: 'Nike',
+    category: generateObjectId(),
+    productType: 'shoes',
+    sku: 'NK-ARM-901',
+    status: true,
+    price: {
+      regular: 2500000,
+      discountPercent: 0,
+      isOnSale: false,
+    },
+    finalPrice: 2500000,
+    stock: 50,
+    sales: 0,
+    variants: {
+      sizes: ['40', '41', '42', '43', '44'],
+      colors: ['Black', 'White', 'Red'],
+    },
+    inventory: [
+      { size: 40, color: 'Black', quantity: 10, isAvailable: true },
+      { size: 41, color: 'Black', quantity: 15, isAvailable: true },
+      { size: 42, color: 'Black', quantity: 20, isAvailable: true },
+    ],
+    mainImage: 'https://example.com/images/air-max-90.jpg',
+    images: ['https://example.com/images/air-max-90-1.jpg'],
+    rating: 4.5,
+    isNew: false,
+    attributes: {
+      gender: 'unisex',
+      material: 'Synthetic leather',
+      season: 'All seasons',
+      style: 'Casual',
+      care: 'Machine washable',
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    // Instance methods (mocked)
+    save: jest.fn(async function () {
+      return this;
+    }),
+    toObject: jest.fn(function () {
+      const obj = { ...this };
+      delete obj.save;
+      delete obj.toObject;
+      return obj;
+    }),
+  };
+
+  return {
+    ...defaultProduct,
+    ...overrides,
+  };
+}
+
+/**
+ * Create multiple mock categories
+ * @param {number} count - Number of categories to create
+ * @returns {Array<Object>} Array of mock categories
+ */
+export function makeCategories(count = 5) {
+  const names = ['Running', 'Basketball', 'Casual Shoes', 'Golf', 'Hiking', 'Sneaker', 'Tennis'];
+  return Array.from({ length: count }, (_, i) => {
+    const name = names[i] || `Category ${i + 1}`;
+    return makeCategory({
+      name,
+      slug: name.toLowerCase().replace(/\s+/g, '-'),
+    });
+  });
+}
+
+/**
+ * Create mock category input data for validation testing
+ * @param {boolean} valid - Whether to create valid or invalid data
+ * @returns {Object} Category input data
+ */
+export function makeCategoryInput(valid = true) {
+  if (valid) {
+    return {
+      name: 'Golf Shoes',
+      description: 'Professional golf footwear',
+      status: true,
+    };
+  }
+  // Invalid: missing required name
+  return {
+    description: 'Missing name field',
+  };
+}
+
+/**
+ * Create mock admin user for category operations
+ * @param {Object} overrides - Override default values
+ * @returns {Object} Mock admin user
+ */
+export function makeAdminUser(overrides = {}) {
+  return {
+    _id: new mongoose.Types.ObjectId(),
+    email: 'admin@kicks.com',
+    fullName: 'Admin User',
+    role: 'admin',
+    status: true,
+    ...overrides,
+  };
+}
+
+/** Factory to create mock PotentialOrder objects
+ * @param {Object} overrides - Custom values to override defaults
+ * @returns {Object} Mock PotentialOrder object
+ */
+function makePotentialOrder(overrides = {}) {
+  const defaultPotentialOrder = {
+    _id: generateObjectId(),
+    user: generateObjectId(),
+    product: generateObjectId(),
+    quantity: 1,
+    color: 'red',
+    size: 'M',
+    message: 'I want to buy this product',
+    status: 'pending',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    save: jest.fn().mockResolvedValue(true),
+    toObject: jest.fn(function () {
+      const obj = { ...this };
+      delete obj.save;
+      delete obj.toObject;
+      return obj;
+    }),
+  };
+
+  return {
+    ...defaultPotentialOrder,
+    ...overrides,
+  };
+}
+
+/**
+ * Create mock JWT token for admin
+ * @returns {string} Mock JWT token
+ */
+export function makeAdminToken() {
+  return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.admin.token';
+}
+
+/**
+ * Create mock request with auth headers for category operations
+ * @param {Object} options - Request options
+ * @returns {Object} Mock authenticated request
+ */
+export function makeAuthRequest(options = {}) {
+  return {
+    params: {},
+    body: {},
+    query: {},
+    headers: {
+      authorization: `Bearer ${makeAdminToken()}`,
+    },
+    user: makeAdminUser(),
+    ...options,
+  };
+}
+
+/* Factory to create mock Order objects
+ * @param {Object} overrides - Custom values to override defaults
+ * @returns {Object} Mock Order object
+ */
+function makeOrder(overrides = {}) {
+  const defaultOrder = {
+    _id: generateObjectId(),
+    user: generateObjectId(),
+    items: [
+      {
+        product: generateObjectId(),
+        quantity: 1,
+        price: 100000,
+      },
+    ],
+    totalAmount: 100000,
+    status: 'pending',
+    paymentMethod: 'cod',
+    shippingAddress: {
+      fullName: 'Test User',
+      phone: '0123456789',
+      address: '123 Test Street',
+      city: 'Ho Chi Minh',
+      district: 'District 1',
+      ward: 'Ward 1',
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    save: jest.fn().mockResolvedValue(true),
+    toObject: jest.fn(function () {
+      const obj = { ...this };
+      delete obj.save;
+      delete obj.toObject;
+      return obj;
+    }),
+  };
+
+  return {
+    ...defaultOrder,
+    ...overrides,
+  };
+}
+
+// Alias for compatibility
+const makeProduct = generateMockProduct;
+const makeUser = generateMockUser;
+
+export {
+  createMockErrorResponse,
+  createMockModelInstance,
+  expectErrorResponse,
+  generateMockProduct,
+  generateMockToken,
+  generateMockUser,
+  generateObjectId,
+  generateVietnameseUsers,
+  getMockReqRes,
+  makeOrder,
+  makePotentialOrder,
+  makeProduct,
+  makeUser,
+};

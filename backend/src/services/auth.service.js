@@ -11,7 +11,7 @@ import User from '../models/User.js';
 import TokenBlacklist from '../models/TokenBlacklist.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { validateEmail, validatePhone } from '../validations/validation.js';
+import { validateEmail, validatePhone } from '../utils/validation.js';
 import EmailService from './email.service.js';
 import logger from '../utils/logger.js';
 
@@ -103,7 +103,7 @@ class AuthService {
       const verificationToken = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
         expiresIn: '1h',
       });
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL;
       const verificationLink = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
 
       await EmailService.sendTemplatedEmail(email, 'REGISTRATION', {
@@ -353,7 +353,7 @@ class AuthService {
       const verificationToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
         expiresIn: '1h',
       });
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL;
       const verificationLink = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
 
       await EmailService.sendTemplatedEmail(email, 'REGISTRATION', {
@@ -392,7 +392,7 @@ class AuthService {
       const verificationToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
         expiresIn: '1h',
       });
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL;
       const verificationLink = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
 
       await EmailService.sendTemplatedEmail(email, 'VERIFICATION', {
@@ -456,7 +456,7 @@ class AuthService {
       const resetToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
         expiresIn: '1h',
       });
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL;
       const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
 
       await EmailService.sendTemplatedEmail(email, 'PASSWORD_RESET', {

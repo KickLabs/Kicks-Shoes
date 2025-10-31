@@ -63,10 +63,21 @@ xdg-open coverage/index.html # Linux
 ```
 tests/
 ├── _helpers/
-│   └── testUtils.js           # Shared test utilities
+│   └── testUtils.js           # Shared test utilities (User helpers included)
 ├── mocks/
 │   ├── productService.mock.js # Product service mocks
+│   ├── userService.mock.js    # User service mocks (in-memory)
 │   └── sanitize.mock.js       # Sanitization mocks
+├── user/
+│   └── user-model.test.js     # User Model unit tests (UM-001 to UM-020)
+├── authen/
+│   ├── auth-middleware-unit.test.js  # Auth Middleware tests (TC-301 to TC-312)
+│   └── output_prompt/
+│       ├── authentication-authorization-analysis.md  # Feature analysis
+│       └── test-cases-matrix-authentication-authorization.md  # Test matrix
+├── mocks/
+│   └── models/
+│       └── User.mock.js       # User model mock with Vietnamese data
 ├── setup.js                   # Global test setup
 ├── orderDetection.analyze.spec.js
 ├── orderDetection.extract.spec.js
@@ -96,6 +107,9 @@ Tests use a separate MongoDB instance:
 | livestream.service.js       | 94.55%     | 83.33%   | 93.33%    | 94.52% |
 | livestreamSocket.service.js | 93.04%     | 84.61%   | 94.11%    | 92.92% |
 | orderDetection.service.js   | 48.12%     | 33.83%   | 64.28%    | 50%    |
+| models/User.js              | ~95%       | ~90%     | ~95%      | ~95%   |
+
+**Note:** User Model coverage estimated after implementing all 20 tests (UM-001 to UM-020)
 
 ## Test Suites
 
@@ -145,7 +159,46 @@ Tests for `updateOrderStatus()` with status = "confirmed":
 - Error handling and rollback scenarios
 - Authorization and security checks
 
-# Suite 6: Edge Cases & Error Handling (15 tests)
+### Suite 6: Users Feature - Unit Tests (20 tests)
+
+Tests for **User Model** (`models/User.js`):
+
+**Run Command:**
+
+```bash
+npm test tests/user/user-model.test.js
+```
+
+**Test Coverage:**
+
+- **User Creation** (UM-001): Valid data with default values
+- **Password Hashing** (UM-002, UM-003): bcrypt integration, hash preservation on non-password updates
+- **Password Matching** (UM-004, UM-005, UM-006): Correct/incorrect passwords, empty password handling
+- **Required Fields** (UM-007, UM-008, UM-009): fullName, username, email validation
+- **Email Validation** (UM-010, UM-011): Format validation, lowercase normalization
+- **Username Validation** (UM-012, UM-013): Length constraints (3-30 chars)
+- **Full Name Validation** (UM-014, UM-015): Length constraints (2-50 chars)
+- **Phone Validation** (UM-016): Format validation (10-11 digits)
+- **About Me Validation** (UM-017): Max length (500 chars)
+- **Enum Validation** (UM-018, UM-019): Valid gender and role values
+- **Unique Constraints** (UM-020): Duplicate email rejection
+
+**Coverage Target:** 95%+ for User Model  
+**Execution Time:** ~5-8 seconds
+
+**Test Data Helpers Available:**
+
+```javascript
+const {
+  makeUser,
+  makeAdminUser,
+  makeShopUser,
+  makeUnverifiedUser,
+  makeBannedUser,
+} = require('./_helpers/testUtils');
+```
+
+# Suite 7: Edge Cases & Error Handling (15 tests)
 
 Tests for error scenarios and edge cases:
 
