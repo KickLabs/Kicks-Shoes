@@ -14,7 +14,7 @@ export async function analyzeProductImage(imageBuffer, mimeType) {
   }
 
   // Sử dụng model từ env hoặc fallback
-  const model = process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash-exp';
+  const model = process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash';
   const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
   const prompt = `
       You are a fashion product analysis assistant.
