@@ -322,28 +322,28 @@ productSchema.methods.recalculateStock = function () {
 };
 
 /**
- * THÊM MỚI: Thêm số lượng tồn kho cho một variant cụ thể.
- * Tự động tạo variant mới nếu chưa tồn tại.
+ * NEW: Add stock quantity for a specific variant.
+ * Automatically creates new variant if it doesn't exist.
  * @param {Object} variantData - { size, clothingSize, isOneSize, color }
- * @param {number} quantityToAdd - Số lượng muốn thêm (phải là số dương)
+ * @param {number} quantityToAdd - Quantity to add (must be positive)
  */
 productSchema.methods.addStockToVariant = async function (variantData, quantityToAdd) {
   if (quantityToAdd <= 0) {
-    throw new Error('Số lượng thêm vào phải lớn hơn 0');
+    throw new Error('Quantity to add must be greater than 0');
   }
 
   const { size, clothingSize, color } = variantData;
   const productType = this.productType;
 
-  if (!color) throw new Error('Màu sắc là bắt buộc');
+  if (!color) throw new Error('Color is required');
 
-  // 1. Định nghĩa hàm tìm kiếm dựa trên productType
+  // 1. Define search function based on productType
   const match = it => {
     if (String(it.color).toLowerCase() !== String(color).toLowerCase()) {
       return false;
     }
     if (productType === 'shoes') {
-      // Đảm bảo so sánh chuỗi với chuỗi hoặc số với số
+      // Ensure string to string or number to number comparison
       return String(it.size) === String(size);
     }
     if (productType === 'clothing') {
@@ -352,42 +352,42 @@ productSchema.methods.addStockToVariant = async function (variantData, quantityT
     if (productType === 'accessory') {
       return it.isOneSize === true;
     }
-    return false; // Không hỗ trợ "other"
+    return false; // "other" not supported
   };
 
   let inventoryItem = (this.inventory || []).find(match);
 
   if (inventoryItem) {
-    // 2a. ĐÃ CÓ: Chỉ cần cộng dồn số lượng
+    // 2a. EXISTS: Just add to quantity
     inventoryItem.quantity += quantityToAdd;
   } else {
-    // 2b. CHƯA CÓ: Tạo mới inventory item
+    // 2b. NOT EXISTS: Create new inventory item
     const newItem = {
       color: color,
       quantity: quantityToAdd,
-      isAvailable: true, // Mặc định là true vì đang thêm hàng
+      isAvailable: true, // Default to true as we're adding stock
     };
 
     if (productType === 'shoes') {
-      if (!size) throw new Error('Size giày là bắt buộc');
+      if (!size) throw new Error('Shoe size is required');
       newItem.size = Number(size);
     } else if (productType === 'clothing') {
-      if (!clothingSize) throw new Error('Size quần áo là bắt buộc');
+      if (!clothingSize) throw new Error('Clothing size is required');
       newItem.clothingSize = clothingSize;
     } else if (productType === 'accessory') {
       newItem.isOneSize = true;
     } else {
-      throw new Error('Loại sản phẩm không được hỗ trợ');
+      throw new Error('Product type not supported');
     }
 
-    // Thêm variant mới vào mảng inventory
+    // Add new variant to inventory array
     this.inventory.push(newItem);
   }
 
-  // 3. Hook pre('save') sẽ tự động chạy để:
-  // - Cập nhật lại tổng this.stock (qua this.recalculateStock())
-  // - Đồng bộ lại this.variants (qua this.syncVariantsFromInventory())
-  // - Tạo SKU cho variant mới (nếu chưa có)
+  // 3. Hook pre('save') will automatically run to:
+  // - Update total this.stock (via this.recalculateStock())
+  // - Sync this.variants (via this.syncVariantsFromInventory())
+  // - Generate SKU for new variant (if not exists)
 
   return this.save();
 };

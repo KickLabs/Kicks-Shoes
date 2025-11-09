@@ -1,4 +1,4 @@
-import React, { useState, createContext } from 'react';
+import React, { useState, createContext, useEffect } from 'react';
 import { Layout } from 'antd';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../../common/components/Sidebar';
@@ -92,6 +92,15 @@ export default function DashboardLayout() {
   };
 
   const tabs = getTabs();
+
+  // Sync activeTab with current location
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const matchedTab = tabs.find(tab => tab.path === currentPath);
+    if (matchedTab) {
+      setActiveTab(matchedTab.key);
+    }
+  }, [location.pathname, tabs]);
 
   return (
     <ActiveTabContext.Provider value={{ activeTab, setActiveTab }}>

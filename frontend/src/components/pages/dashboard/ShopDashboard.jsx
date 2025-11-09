@@ -79,8 +79,20 @@ export default function ShopDashboard() {
   // State for real data
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersLimit] = useState(10);
+
   const [feedback, setFeedback] = useState([]);
+  const [totalFeedback, setTotalFeedback] = useState(0);
+  const [feedbackPage, setFeedbackPage] = useState(1);
+  const [feedbackLimit] = useState(10);
+
   const [discounts, setDiscounts] = useState([]);
+  const [totalDiscounts, setTotalDiscounts] = useState(0);
+  const [discountsPage, setDiscountsPage] = useState(1);
+  const [discountsLimit] = useState(10);
+
   const [salesData, setSalesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -119,6 +131,27 @@ export default function ShopDashboard() {
     fetchData();
   }, [currentView]);
 
+  // Reload orders when page changes
+  useEffect(() => {
+    if (currentView === 'orders') {
+      fetchOrders(ordersPage, ordersLimit);
+    }
+  }, [ordersPage, currentView]);
+
+  // Reload feedback when page changes
+  useEffect(() => {
+    if (currentView === 'feedback') {
+      fetchFeedback(feedbackPage, feedbackLimit);
+    }
+  }, [feedbackPage, currentView]);
+
+  // Reload discounts when page changes
+  useEffect(() => {
+    if (currentView === 'discounts') {
+      fetchDiscounts(discountsPage, discountsLimit);
+    }
+  }, [discountsPage, currentView]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -134,13 +167,13 @@ export default function ShopDashboard() {
           ]);
           break;
         case 'orders':
-          await fetchOrders();
+          await fetchOrders(ordersPage, ordersLimit);
           break;
         case 'feedback':
-          await fetchFeedback();
+          await fetchFeedback(feedbackPage, feedbackLimit);
           break;
         case 'discounts':
-          await fetchDiscounts();
+          await fetchDiscounts(discountsPage, discountsLimit);
           break;
         case 'flash-sales':
           // Flash sale data will be fetched by FlashSaleManagement component
@@ -225,11 +258,12 @@ export default function ShopDashboard() {
     }
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (page = 1, limit = 10) => {
     try {
-      const response = await getShopOrders(1, 10);
+      const response = await getShopOrders(page, limit);
       console.log('Orders response:', response);
       setOrders(response.data?.orders || []);
+      setTotalOrders(response.data?.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching orders:', err);
     }
@@ -245,25 +279,27 @@ export default function ShopDashboard() {
     }
   };
 
-  const fetchFeedback = async () => {
+  const fetchFeedback = async (page = 1, limit = 10) => {
     try {
-      const response = await getShopFeedback(1, 10);
+      const response = await getShopFeedback(page, limit);
       console.log('Feedback response:', response);
       setFeedback(response.data?.feedback || []);
+      setTotalFeedback(response.data?.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching feedback:', err);
     }
   };
 
-  const fetchDiscounts = async () => {
+  const fetchDiscounts = async (page = 1, limit = 10) => {
     try {
-      const response = await getShopDiscounts();
+      const response = await getShopDiscounts(page, limit);
       console.log('Discounts response:', response);
       console.log('Discounts data:', response.data);
       if (response.data && response.data.length > 0) {
         console.log('First discount:', response.data[0]);
       }
       setDiscounts(response.data || []);
+      setTotalDiscounts(response.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching discounts:', err);
     }
@@ -877,10 +913,13 @@ export default function ShopDashboard() {
               )}
               rowKey="_id"
               pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
+                current: ordersPage,
+                pageSize: ordersLimit,
+                total: totalOrders,
+                showSizeChanger: false,
                 showQuickJumper: true,
                 showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} orders`,
+                onChange: page => setOrdersPage(page),
               }}
               style={{ borderRadius: 8 }}
             />
@@ -898,10 +937,13 @@ export default function ShopDashboard() {
               dataSource={feedback}
               rowKey="_id"
               pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
+                current: feedbackPage,
+                pageSize: feedbackLimit,
+                total: totalFeedback,
+                showSizeChanger: false,
                 showQuickJumper: true,
                 showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} reviews`,
+                onChange: page => setFeedbackPage(page),
               }}
               style={{ borderRadius: 8 }}
             />
@@ -930,10 +972,13 @@ export default function ShopDashboard() {
               dataSource={discounts}
               rowKey="_id"
               pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
+                current: discountsPage,
+                pageSize: discountsLimit,
+                total: totalDiscounts,
+                showSizeChanger: false,
                 showQuickJumper: true,
                 showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} discounts`,
+                onChange: page => setDiscountsPage(page),
               }}
               style={{ borderRadius: 8 }}
             />

@@ -101,7 +101,7 @@ const VisualSearch = () => {
 
   const handleSearch = async () => {
     if (!file) {
-      message.error('Vui lòng chọn một hình ảnh để tìm kiếm.');
+      message.error('Please select an image to search.');
       return;
     }
     setLoading(true);
@@ -113,13 +113,13 @@ const VisualSearch = () => {
       const response = await axios.post('/api/products/visual-search', formData);
       if (response.data.success) {
         setSearchResults(response.data.data);
-        message.success('Tìm kiếm hoàn tất!');
+        message.success('Search complete!');
       } else {
         throw new Error(response.data.message);
       }
     } catch (err) {
       const errorMessage =
-        err.response?.data?.message || err.message || 'Không thể thực hiện tìm kiếm.';
+        err.response?.data?.message || err.message || 'The search could not be performed.';
       setError(errorMessage);
       message.error(errorMessage);
     } finally {
@@ -143,12 +143,12 @@ const VisualSearch = () => {
   return (
     <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '80vh' }}>
       <Title level={2} style={{ textAlign: 'center', marginBottom: '24px' }}>
-        Tìm Kiếm Sản Phẩm Bằng Hình Ảnh
+        Search Products by Image
       </Title>
       {!searchResults && (
         <Row justify="center" gutter={[24, 24]}>
           <Col xs={24} md={12} lg={8}>
-            <Card title="Tải Lên Hình Ảnh Của Bạn" bordered={false}>
+            <Card title="Upload Your Photos" bordered={false}>
               <Dragger {...draggerProps}>
                 {previewImage ? (
                   <img
@@ -161,8 +161,8 @@ const VisualSearch = () => {
                     <p className="ant-upload-drag-icon">
                       <CameraOutlined />
                     </p>
-                    <p className="ant-upload-text">Nhấn hoặc kéo thả file vào đây</p>
-                    <p className="ant-upload-hint">Hỗ trợ PNG, JPG, WEBP (Tối đa 5MB).</p>
+                    <p className="ant-upload-text">Click or drag and drop files here</p>
+                    <p className="ant-upload-hint">Support PNG, JPG, WEBP (Max 5MB).</p>
                   </>
                 )}
               </Dragger>
@@ -176,7 +176,7 @@ const VisualSearch = () => {
                 size="large"
                 style={{ marginTop: '16px' }}
               >
-                {loading ? 'Đang phân tích...' : 'Tìm Kiếm'}
+                {loading ? 'Analyzing...' : 'Search'}
               </Button>
             </Card>
           </Col>
@@ -187,13 +187,11 @@ const VisualSearch = () => {
           {loading && (
             <div style={{ textAlign: 'center', padding: '50px 0' }}>
               <Spin size="large" />
-              <Paragraph style={{ marginTop: '16px' }}>
-                AI đang phân tích hình ảnh của bạn...
-              </Paragraph>
+              <Paragraph style={{ marginTop: '16px' }}>AI is analyzing your images...</Paragraph>
             </div>
           )}
           {error && !loading && (
-            <Alert message="Lỗi Tìm Kiếm" description={error} type="error" showIcon />
+            <Alert message="Search Error" description={error} type="error" showIcon />
           )}
           {!loading && searchResults && <SearchResults results={searchResults} />}
         </Col>

@@ -57,7 +57,6 @@ const ClothingPage = () => {
         if (newFilters[key] && newFilters[key] !== '' && key !== 'productType') {
           // Only add price filters if they're not default values
           if (key === 'minPrice' && newFilters[key] === 0) return;
-          if (key === 'maxPrice' && newFilters[key] === 1000) return;
           params[key] = newFilters[key];
         }
       });

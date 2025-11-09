@@ -7,6 +7,7 @@ import CategoryPanel from './CategoryPanel';
 import PricePanel from './PricePanel';
 import SaleFilterPanel from './SaleFilterPanel';
 import { useState, useEffect } from 'react';
+import axiosInstance from '../../../../services/axiosInstance';
 
 // Filter configurations for each product type
 const FILTER_CONFIGS = {
@@ -54,9 +55,42 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedPrice, setSelectedPrice] = useState([0, 1000]);
   const [selectedSaleType, setSelectedSaleType] = useState(null);
+  const [maxPriceLimit, setMaxPriceLimit] = useState(1000);
 
   // Get filter config for current product type
   const filterConfig = FILTER_CONFIGS[productType] || FILTER_CONFIGS.all;
+
+  // Fetch max price from products
+  useEffect(() => {
+    const fetchMaxPrice = async () => {
+      try {
+        const params = {
+          page: 1,
+          limit: 1,
+          sortBy: 'finalPrice',
+          order: 'desc',
+        };
+
+        // Add productType filter if not 'all'
+        if (productType && productType !== 'all') {
+          params.productType = productType;
+        }
+
+        const response = await axiosInstance.get('/products', { params });
+
+        if (response.data.success && response.data.data.products?.length > 0) {
+          const maxPrice = response.data.data.products[0].finalPrice;
+          const roundedMax = Math.ceil(maxPrice / 100) * 100; // Round up to nearest 100
+          setMaxPriceLimit(roundedMax);
+          setSelectedPrice([0, roundedMax]);
+        }
+      } catch (error) {
+        console.error('Error fetching max price:', error);
+      }
+    };
+
+    fetchMaxPrice();
+  }, [productType]);
 
   // Debug log
   console.log('FilterSidebar - productType:', productType);
@@ -68,7 +102,7 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
     selectedColor,
     selectedBrand,
     selectedCategory,
-    selectedPrice[0] > 0 || selectedPrice[1] < 1000,
+    selectedPrice[0] > 0 || selectedPrice[1] < maxPriceLimit,
     selectedSaleType,
   ].filter(Boolean).length;
 
@@ -103,7 +137,7 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
     setSelectedColor(null);
     setSelectedBrand(null);
     setSelectedCategory(null);
-    setSelectedPrice([0, 1000]);
+    setSelectedPrice([0, maxPriceLimit]);
     setSelectedSaleType(null);
   };
 
@@ -194,7 +228,11 @@ const FilterSidebar = ({ onFiltersChange, productType = 'all' }) => {
       key: '5',
       label: 'PRICE',
       children: (
-        <PricePanel priceRange={selectedPrice} onPriceChange={price => setSelectedPrice(price)} />
+        <PricePanel
+          priceRange={selectedPrice}
+          maxPrice={maxPriceLimit}
+          onPriceChange={price => setSelectedPrice(price)}
+        />
       ),
     },
     {

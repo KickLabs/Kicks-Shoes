@@ -27,7 +27,7 @@ export const fetchProvinces = async () => {
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching provinces:', error);
-    throw new Error('Không thể tải danh sách tỉnh/thành phố');
+    throw new Error('Unable to load province/city list');
   }
 };
 
@@ -80,7 +80,7 @@ export const fetchWards = async provinceCode => {
     return allWards;
   } catch (error) {
     console.error('Error fetching wards:', error);
-    throw new Error('Không thể tải danh sách phường/xã');
+    throw new Error('Unable to load ward/commune list');
   }
 };
 
@@ -101,7 +101,7 @@ export const getProvinceById = async provinceCode => {
     return data || {};
   } catch (error) {
     console.error('Error fetching province details:', error);
-    throw new Error('Không thể tải thông tin chi tiết tỉnh/thành phố');
+    throw new Error('Unable to load province/city details');
   }
 };
 
@@ -125,7 +125,7 @@ export const searchProvinces = async searchTerm => {
     );
   } catch (error) {
     console.error('Error searching provinces:', error);
-    throw new Error('Không thể tìm kiếm tỉnh/thành phố');
+    throw new Error('Unable to search province/city');
   }
 };
 
@@ -150,7 +150,7 @@ export const searchWards = async (provinceCode, searchTerm) => {
     );
   } catch (error) {
     console.error('Error searching wards:', error);
-    throw new Error('Không thể tìm kiếm phường/xã');
+    throw new Error('Unable to search ward/commune');
   }
 };
 

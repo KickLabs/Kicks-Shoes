@@ -560,10 +560,11 @@ const AppHeader = () => {
                 />
               </>
             )}
+            Search for products or describe your needs
             {showInput && (
               <Input
                 ref={inputRef}
-                placeholder="Tìm kiếm sản phẩm hoặc mô tả nhu cầu..."
+                placeholder="Search for products or describe your needs..."
                 prefix={<SearchOutlined />}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -746,7 +747,7 @@ const AppHeader = () => {
             {showInput && (
               <Input
                 ref={inputRef}
-                placeholder="Tìm kiếm sản phẩm hoặc mô tả nhu cầu..."
+                placeholder="Search for products or describe your needs..."
                 prefix={<SearchOutlined />}
                 value={search}
                 onChange={e => setSearch(e.target.value)}

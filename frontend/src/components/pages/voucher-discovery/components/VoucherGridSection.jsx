@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Tag, Button, Empty, Spin, message, Modal, App } from 'antd';
+import { Card, Row, Col, Tag, Button, Empty, Spin, message, Modal } from 'antd';
 import {
   GiftOutlined,
   CopyOutlined,
@@ -9,32 +9,31 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
-import { getShopDiscounts, saveVoucher } from '../../../../services/dashboardService';
-import axiosInstance from '../../../../services/axiosInstance';
+import { getActiveDiscounts } from '../../../../services/discountService';
+import { saveVoucher } from '../../../../services/dashboardService';
 import './VoucherGridSection.css';
 
 export const VoucherGridSection = () => {
-  const { message: messageApi, modal } = App.useApp();
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copiedVoucher, setCopiedVoucher] = useState(null);
   const [savedVouchers, setSavedVouchers] = useState(new Set());
 
-  // Load shop owner discounts from API
+  // Load public active discounts (shop + admin) from API
   useEffect(() => {
-    const fetchShopDiscounts = async () => {
+    const fetchPublicDiscounts = async () => {
       try {
         setLoading(true);
-        console.log('Fetching shop discounts...');
-        // Fetch shop owner discounts instead of user discounts
-        const response = await getShopDiscounts();
+        console.log('Fetching active public discounts...');
+        // Fetch active discounts (no auth) and filter by source
+        const response = await getActiveDiscounts();
         console.log('API Response:', response);
 
         // Transform API response to match component expectations
         if (response.success && response.data) {
-          // Filter only active discounts and transform discount data to match voucher format
+          // Only include vouchers from shop or admin (exclude reward points)
           const transformedVouchers = response.data
-            .filter(discount => discount.status === 'active')
+            .filter(discount => ['shop', 'admin'].includes(discount.source))
             .map(discount => ({
               id: discount._id,
               code: discount.code,
@@ -60,15 +59,15 @@ export const VoucherGridSection = () => {
           setVouchers([]);
         }
       } catch (error) {
-        console.error('Error fetching shop discounts:', error);
-        messageApi.error('Unable to load vouchers. Please try again.');
+        console.error('Error fetching active discounts:', error);
+        message.error('Unable to load vouchers. Please try again.');
         setVouchers([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchShopDiscounts();
+    fetchPublicDiscounts();
   }, []);
 
   const formatCurrency = amount => {
@@ -178,7 +177,7 @@ export const VoucherGridSection = () => {
   const copyToClipboard = code => {
     navigator.clipboard.writeText(code).then(() => {
       setCopiedVoucher(code);
-      messageApi.success(`Voucher code copied: ${code}`);
+      message.success(`Voucher code copied: ${code}`);
       setTimeout(() => setCopiedVoucher(null), 2000);
     });
   };
@@ -186,17 +185,17 @@ export const VoucherGridSection = () => {
   const handleSaveVoucher = async voucher => {
     // Check if user already saved a voucher
     if (savedVouchers.size > 0) {
-      messageApi.warning('You can only save one voucher at a time.');
+      message.warning('You can only save one voucher at a time.');
       return;
     }
 
     // Check if voucher still has available usage
     if (voucher.usedCount >= voucher.usageLimit) {
-      messageApi.error('This voucher is no longer available.');
+      message.error('This voucher is no longer available.');
       return;
     }
 
-    modal.confirm({
+    Modal.confirm({
       title: 'Save Voucher',
       content: `Are you sure you want to save voucher "${voucher.title}"? This will reduce the available quantity by 1.`,
       async onOk() {
@@ -227,7 +226,7 @@ export const VoucherGridSection = () => {
               )
             );
 
-            messageApi.success('Voucher saved successfully!');
+            message.success('Voucher saved successfully!');
             copyToClipboard(voucher.code);
           }
         } catch (error) {
@@ -237,18 +236,18 @@ export const VoucherGridSection = () => {
           console.error('Error data:', error.response?.data);
 
           if (error.response?.data?.message) {
-            messageApi.error(error.response.data.message);
+            message.error(error.response.data.message);
           } else if (error.response?.status === 401) {
-            messageApi.error('Please login to save vouchers');
+            message.error('Please login to save vouchers');
           } else if (error.response?.status === 404) {
-            messageApi.error('API endpoint not found. Please check backend server.');
+            message.error('API endpoint not found. Please check backend server.');
           } else if (error.response?.status >= 500) {
-            messageApi.error('Server error. Please try again later.');
+            message.error('Server error. Please try again later.');
           } else {
             // Show the actual error message from backend
             const errorMsg =
               error.response?.data?.message || 'Unable to save voucher. Please try again.';
-            messageApi.error(errorMsg);
+            message.error(errorMsg);
             console.log('Full error details:', error.response?.data);
           }
         }

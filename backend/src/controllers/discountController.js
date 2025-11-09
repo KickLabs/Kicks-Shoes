@@ -248,7 +248,9 @@ const getActiveDiscounts = async (req, res) => {
       endDate: { $gte: now },
       $expr: { $lt: ['$usedCount', '$usageLimit'] },
     })
-      .select('code description type value minPurchase maxDiscount startDate endDate')
+      .select(
+        'code description type value minPurchase maxDiscount startDate endDate status source usageLimit usedCount'
+      )
       .sort({ createdAt: -1 });
 
     res.status(200).json({

@@ -232,12 +232,26 @@ export const getShopFeedback = asyncHandler(async (req, res) => {
  * @access Private (Shop)
  */
 export const getShopDiscounts = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
   // Only get discounts created by shop (source = 'shop')
-  const discounts = await Discount.find({ source: 'shop' }).sort({ createdAt: -1 });
+  const total = await Discount.countDocuments({ source: 'shop' });
+  const discounts = await Discount.find({ source: 'shop' })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
 
   res.status(200).json({
     success: true,
     data: discounts,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
   });
 });
 
@@ -1567,10 +1581,25 @@ export const getMyFeedbackReports = asyncHandler(async (req, res) => {
 
 // ADMIN: Get all admin discounts
 export const getAdminDiscounts = asyncHandler(async (req, res) => {
-  const discounts = await Discount.find({ source: 'admin' }).sort({ createdAt: -1 });
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const total = await Discount.countDocuments({ source: 'admin' });
+  const discounts = await Discount.find({ source: 'admin' })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
   res.status(200).json({
     success: true,
     data: discounts,
+    pagination: {
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
+    },
   });
 });
 

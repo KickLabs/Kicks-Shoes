@@ -87,10 +87,10 @@ const HeaderVisualSearch = () => {
         icon={<CameraOutlined />}
         onClick={showModal}
         type="text"
-        aria-label="Tìm kiếm bằng hình ảnh"
+        aria-label="Find by image"
       />
       <Modal
-        title="Tìm Kiếm Bằng Hình Ảnh"
+        title="Find by image"
         open={isModalVisible}
         onCancel={handleCancel}
         footer={[
@@ -121,8 +121,8 @@ const HeaderVisualSearch = () => {
               <p className="ant-upload-drag-icon">
                 <CameraOutlined />
               </p>
-              <p className="ant-upload-text">Nhấn hoặc kéo thả file vào đây</p>
-              <p className="ant-upload-hint">Tìm kiếm bất kỳ sản phẩm nào từ một hình ảnh.</p>
+              <p className="ant-upload-text">Click or drag and drop files here</p>
+              <p className="ant-upload-hint">Search any product from an image.</p>
             </>
           )}
         </Dragger>
