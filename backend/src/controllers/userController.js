@@ -146,10 +146,22 @@ export const updateUserProfile = async (req, res, next) => {
       'aboutMe',
       'avatar',
       'address',
+      'provinceCode',
+      'provinceName',
+      'wardCode',
+      'wardName',
       'phone',
       'dateOfBirth',
       'gender',
     ];
+
+    // Log raw request body to debug multer parsing
+    logger.info('Profile update - raw req.body:', {
+      body: req.body,
+      keys: Object.keys(req.body),
+      hasFiles: !!req.files,
+      files: req.files ? Object.keys(req.files) : [],
+    });
 
     // Filter out fields that are not allowed to be updated
     const updates = Object.keys(req.body)
@@ -159,10 +171,20 @@ export const updateUserProfile = async (req, res, next) => {
         return obj;
       }, {});
 
-    // Handle avatar upload
-    if (req.file) {
-      logger.info('File uploaded to Cloudinary', { path: req.file.path });
-      updates.avatar = req.file.path;
+    logger.info('Profile update - filtered updates:', { updates });
+
+    // Handle file uploads
+    if (req.files) {
+      if (req.files.avatar && req.files.avatar[0]) {
+        logger.info('Avatar uploaded to Cloudinary', { path: req.files.avatar[0].path });
+        updates.avatar = req.files.avatar[0].path;
+      }
+      if (req.files.profileImage && req.files.profileImage[0]) {
+        logger.info('ProfileImage uploaded to Cloudinary', {
+          path: req.files.profileImage[0].path,
+        });
+        updates.profileImage = req.files.profileImage[0].path;
+      }
     }
 
     const user = await User.findByIdAndUpdate(
@@ -178,6 +200,8 @@ export const updateUserProfile = async (req, res, next) => {
     logger.info('Profile updated successfully', {
       userId: user._id,
       avatar: user.avatar,
+      provinceCode: user.provinceCode,
+      wardCode: user.wardCode,
       updates,
     });
 

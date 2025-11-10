@@ -47,6 +47,32 @@ const ShipperDashboard = () => {
   const [uploading, setUploading] = useState(false);
   const [proofImageUrl, setProofImageUrl] = useState('');
 
+  // Helper function to determine if a status option should be disabled
+  const isStatusDisabled = (optionStatus, currentStatus) => {
+    // Status progression order: picked_up -> in_transit -> delivered/failed
+    const statusOrder = {
+      picked_up: 1,
+      in_transit: 2,
+      delivered: 3,
+      failed: 3, // Failed is same level as delivered
+    };
+
+    // If no current status, allow all
+    if (!currentStatus) return false;
+
+    // Can't go back to previous statuses
+    const currentOrder = statusOrder[currentStatus] || 0;
+    const optionOrder = statusOrder[optionStatus] || 0;
+
+    // Disable if option is earlier in progression than current status
+    if (optionOrder < currentOrder) return true;
+
+    // If current status is delivered or failed, disable everything (can't change after final status)
+    if (currentStatus === 'delivered' || currentStatus === 'failed') return true;
+
+    return false;
+  };
+
   useEffect(() => {
     fetchAssignedOrders();
     fetchDeliveryHistory();
@@ -118,7 +144,7 @@ const ShipperDashboard = () => {
   const customUploadRequest = async ({ file, onSuccess, onError, onProgress }) => {
     const token = localStorage.getItem('accessToken');
     console.log('Custom upload request, token:', token ? 'exists' : 'NO TOKEN');
-    
+
     if (!token) {
       message.error('Please login again. No authentication token found.');
       onError(new Error('No token'));
@@ -130,8 +156,8 @@ const ShipperDashboard = () => {
 
     try {
       const xhr = new XMLHttpRequest();
-      
-      xhr.upload.onprogress = (event) => {
+
+      xhr.upload.onprogress = event => {
         if (event.lengthComputable) {
           const percent = (event.loaded / event.total) * 100;
           onProgress({ percent });
@@ -410,10 +436,30 @@ const ShipperDashboard = () => {
               rules={[{ required: true, message: 'Please select a status' }]}
             >
               <Select placeholder="Select status" onChange={handleStatusChange}>
-                <Select.Option value="picked_up">Picked Up</Select.Option>
-                <Select.Option value="in_transit">In Transit</Select.Option>
-                <Select.Option value="delivered">Delivered</Select.Option>
-                <Select.Option value="failed">Failed</Select.Option>
+                <Select.Option
+                  value="picked_up"
+                  disabled={isStatusDisabled('picked_up', selectedOrder?.status)}
+                >
+                  Picked Up
+                </Select.Option>
+                <Select.Option
+                  value="in_transit"
+                  disabled={isStatusDisabled('in_transit', selectedOrder?.status)}
+                >
+                  In Transit
+                </Select.Option>
+                <Select.Option
+                  value="delivered"
+                  disabled={isStatusDisabled('delivered', selectedOrder?.status)}
+                >
+                  Delivered
+                </Select.Option>
+                <Select.Option
+                  value="failed"
+                  disabled={isStatusDisabled('failed', selectedOrder?.status)}
+                >
+                  Failed
+                </Select.Option>
               </Select>
             </Form.Item>
 
@@ -509,4 +555,3 @@ const ShipperDashboard = () => {
 };
 
 export default ShipperDashboard;
-

@@ -14,7 +14,7 @@ const paymentOptions = [
   {
     value: 'payos',
     label: 'PayOS',
-    img: 'https://payos.vn/wp-content/uploads/2023/08/logo-payos.png',
+    img: 'https://payos.vn/docs/img/logo.svg',
   },
 ];
 

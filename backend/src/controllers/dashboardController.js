@@ -339,10 +339,9 @@ export const saveVoucher = asyncHandler(async (req, res) => {
     collectedAt: new Date(),
   });
 
-  // Update discount usedCount
-  await Discount.findByIdAndUpdate(discountId, {
-    $inc: { usedCount: 1 },
-  });
+  // NOTE: Do NOT increment usedCount here!
+  // usedCount should only be incremented when the voucher is actually USED in an order
+  // Saving/claiming a voucher just reserves it for the user, but doesn't consume it yet
 
   res.status(200).json({
     success: true,
