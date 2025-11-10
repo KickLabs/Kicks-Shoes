@@ -33,7 +33,7 @@ const HeaderVisualSearch = () => {
 
   const handleSearch = async () => {
     if (!file) {
-      message.error('Vui lòng chọn một hình ảnh để tìm kiếm.');
+      message.error('Please select an image to search.');
       return;
     }
 
@@ -45,7 +45,7 @@ const HeaderVisualSearch = () => {
       const response = await axios.post('/api/products/visual-search', formData);
 
       if (response.data.success) {
-        message.success('Phân tích ảnh thành công, đang hiển thị kết quả...');
+        message.success('Image analysis successful, displaying results...');
         setIsModalVisible(false);
         navigate('/shop/visual-search', {
           state: { searchResults: response.data.data },
@@ -55,7 +55,7 @@ const HeaderVisualSearch = () => {
       }
     } catch (err) {
       const errorMessage =
-        err.response?.data?.message || err.message || 'Không thể thực hiện tìm kiếm.';
+        err.response?.data?.message || err.message || 'Failed to perform search.';
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -71,9 +71,9 @@ const HeaderVisualSearch = () => {
     beforeUpload: file => {
       const isJpgOrPng =
         file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
-      if (!isJpgOrPng) message.error('Bạn chỉ có thể tải lên file JPG/PNG/WEBP!');
+      if (!isJpgOrPng) message.error('You can only upload JPG/PNG/WEBP files!');
       const isLt5M = file.size / 1024 / 1024 < 5;
-      if (!isLt5M) message.error('Hình ảnh phải nhỏ hơn 5MB!');
+      if (!isLt5M) message.error('Image must be less than 5MB!');
       if (isJpgOrPng && isLt5M) {
         handleFileChange({ file });
       }
@@ -87,10 +87,10 @@ const HeaderVisualSearch = () => {
         icon={<CameraOutlined />}
         onClick={showModal}
         type="text"
-        aria-label="Tìm kiếm bằng hình ảnh"
+        aria-label="Find by image"
       />
       <Modal
-        title="Tìm Kiếm Bằng Hình Ảnh"
+        title="Find by image"
         open={isModalVisible}
         onCancel={handleCancel}
         footer={[
@@ -121,8 +121,8 @@ const HeaderVisualSearch = () => {
               <p className="ant-upload-drag-icon">
                 <CameraOutlined />
               </p>
-              <p className="ant-upload-text">Nhấn hoặc kéo thả file vào đây</p>
-              <p className="ant-upload-hint">Tìm kiếm bất kỳ sản phẩm nào từ một hình ảnh.</p>
+              <p className="ant-upload-text">Click or drag and drop files here</p>
+              <p className="ant-upload-hint">Search any product from an image.</p>
             </>
           )}
         </Dragger>

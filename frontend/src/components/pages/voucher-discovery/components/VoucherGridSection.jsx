@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Tag, Button, Empty, Spin, message, Modal, Alert } from 'antd';
+import { Card, Row, Col, Tag, Button, Empty, Spin, message, Modal } from 'antd';
 import {
   GiftOutlined,
   CopyOutlined,
@@ -9,84 +9,57 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
+import { getActiveDiscounts } from '../../../../services/discountService';
 import { saveVoucher } from '../../../../services/dashboardService';
-import axiosInstance from '../../../../services/axiosInstance';
-import { useAuth } from '../../../../contexts/AuthContext';
 import './VoucherGridSection.css';
 
 export const VoucherGridSection = () => {
-  const { user } = useAuth(); // Get current user from AuthContext
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copiedVoucher, setCopiedVoucher] = useState(null);
   const [savedVouchers, setSavedVouchers] = useState(new Set());
-  const [loadingSavedVouchers, setLoadingSavedVouchers] = useState(true);
 
-  // Load user's saved vouchers from API - Reload when user changes
+  // Load public active discounts (shop + admin) from API
   useEffect(() => {
-    const loadSavedVouchers = async () => {
-      try {
-        setLoadingSavedVouchers(true);
-
-        if (!user) {
-          // User not logged in, clear saved vouchers
-          console.log('❌ No user logged in, clearing saved vouchers');
-          setSavedVouchers(new Set());
-          setLoadingSavedVouchers(false);
-          return;
-        }
-
-        console.log('🔄 Loading saved vouchers for user:', user._id, user.email);
-        const response = await axiosInstance.get('/user-discounts');
-        console.log('📦 User discounts response:', response.data);
-
-        if (response.data.success && response.data.data) {
-          // Get discount codes of saved vouchers (matching against voucher.code)
-          const savedCodes = response.data.data
-            .filter(ud => ud.status === 'saved')
-            .map(ud => ud.code);
-
-          console.log('✅ Loaded saved voucher codes:', savedCodes);
-          console.log('📊 Total saved vouchers:', savedCodes.length);
-
-          // Store codes to check against voucher.code later
-          setSavedVouchers(new Set(savedCodes));
-        } else {
-          console.log('⚠️ No saved vouchers found');
-          setSavedVouchers(new Set());
-        }
-      } catch (error) {
-        console.error('❌ Error loading saved vouchers:', error);
-        console.error('Error details:', error.response?.data);
-        // Clear saved vouchers on error (e.g., 401 unauthorized after login change)
-        setSavedVouchers(new Set());
-      } finally {
-        setLoadingSavedVouchers(false);
-      }
-    };
-    loadSavedVouchers();
-  }, [user?._id]); // ✅ Reload when user changes (login/logout/switch account)
-
-  // Load available discounts from API
-  useEffect(() => {
-    const fetchShopDiscounts = async () => {
+    const fetchPublicDiscounts = async () => {
       try {
         setLoading(true);
-        console.log('Fetching available discounts...');
-        // Fetch available discounts for customers
-        const response = await axiosInstance.get('/user-discounts/available');
-        console.log('API Response:', response.data);
+        console.log('Fetching active public discounts...');
+        // Fetch active discounts (no auth) and filter by source
+        const response = await getActiveDiscounts();
+        console.log('API Response:', response);
 
-        // API already returns data in the correct format
-        if (response.data.success && response.data.data) {
-          console.log('Available vouchers:', response.data.data);
-          setVouchers(response.data.data);
+        // Transform API response to match component expectations
+        if (response.success && response.data) {
+          // Only include vouchers from shop or admin (exclude reward points)
+          const transformedVouchers = response.data
+            .filter(discount => ['shop', 'admin'].includes(discount.source))
+            .map(discount => ({
+              id: discount._id,
+              code: discount.code,
+              title: discount.description || `Discount ${discount.code}`,
+              description:
+                discount.description ||
+                `Get ${discount.type === 'percentage' ? discount.value + '%' : discount.value + ' VND'} off`,
+              discountType: discount.type,
+              discountValue: discount.value,
+              minOrderAmount: discount.minPurchase || 0,
+              maxDiscountAmount: discount.maxDiscount,
+              validFrom: discount.startDate,
+              validTo: discount.endDate,
+              status: discount.status,
+              usageLimit: discount.usageLimit || 1,
+              usedCount: discount.usedCount || 0,
+              source: discount.source,
+            }));
+          console.log('Transformed vouchers:', transformedVouchers);
+          setVouchers(transformedVouchers);
         } else {
           console.log('No data received');
           setVouchers([]);
         }
       } catch (error) {
-        console.error('Error fetching shop discounts:', error);
+        console.error('Error fetching active discounts:', error);
         message.error('Unable to load vouchers. Please try again.');
         setVouchers([]);
       } finally {
@@ -94,7 +67,7 @@ export const VoucherGridSection = () => {
       }
     };
 
-    fetchShopDiscounts();
+    fetchPublicDiscounts();
   }, []);
 
   const formatCurrency = amount => {
@@ -178,29 +151,15 @@ export const VoucherGridSection = () => {
 
           <div className="voucher-actions">
             <Button
-              className={`voucher-save-btn ${savedVouchers.has(voucher.code) ? 'saved' : ''}`}
+              className={`voucher-save-btn ${savedVouchers.has(voucher.id) ? 'saved' : ''}`}
               onClick={() => handleSaveVoucher(voucher)}
               disabled={
-                loadingSavedVouchers || // ✅ Disable while checking saved vouchers
                 voucher.status !== 'active' ||
-                savedVouchers.has(voucher.code) ||
-                voucher.usedCount >= voucher.usageLimit ||
-                savedVouchers.size > 0 // ✅ Disable all if user already has a saved voucher
+                savedVouchers.has(voucher.id) ||
+                voucher.usedCount >= voucher.usageLimit
               }
-              title={
-                loadingSavedVouchers
-                  ? 'Checking saved vouchers...'
-                  : savedVouchers.size > 0 && !savedVouchers.has(voucher.code)
-                    ? 'You already have a saved voucher. Please use or remove it first.'
-                    : ''
-              }
-              loading={loadingSavedVouchers}
             >
-              {loadingSavedVouchers
-                ? 'Checking...'
-                : savedVouchers.has(voucher.code)
-                  ? 'Saved'
-                  : 'Save'}
+              {savedVouchers.has(voucher.id) ? 'Saved' : 'Save'}
             </Button>
             <div className="voucher-conditions">
               <a href="#" onClick={e => e.preventDefault()}>
@@ -218,26 +177,15 @@ export const VoucherGridSection = () => {
   const copyToClipboard = code => {
     navigator.clipboard.writeText(code).then(() => {
       setCopiedVoucher(code);
+      message.success(`Voucher code copied: ${code}`);
       setTimeout(() => setCopiedVoucher(null), 2000);
     });
   };
 
   const handleSaveVoucher = async voucher => {
-    // Debug log
-    console.log('🎯 Attempting to save voucher:', {
-      code: voucher.code,
-      id: voucher.id,
-      savedVouchersSize: savedVouchers.size,
-      savedVouchersList: Array.from(savedVouchers),
-      loadingSavedVouchers,
-    });
-
     // Check if user already saved a voucher
     if (savedVouchers.size > 0) {
-      const savedList = Array.from(savedVouchers).join(', ');
-      message.warning(
-        `You already have saved voucher(s): ${savedList}. Please use or remove it first.`
-      );
+      message.warning('You can only save one voucher at a time.');
       return;
     }
 
@@ -268,8 +216,8 @@ export const VoucherGridSection = () => {
           console.log('Save voucher response:', response);
 
           if (response.success) {
-            // Update local state with voucher code
-            setSavedVouchers(prev => new Set([...prev, voucher.code]));
+            // Update local state
+            setSavedVouchers(prev => new Set([...prev, voucher.id]));
 
             // Update the voucher's usedCount locally
             setVouchers(prevVouchers =>
@@ -328,7 +276,6 @@ export const VoucherGridSection = () => {
         <h2>SHOP VOUCHERS</h2>
         <p>Discover attractive vouchers from shop owners to save maximum when shopping</p>
       </div>
-
       <Row gutter={[16, 16]}>
         {vouchers.length === 0 ? (
           <Col span={24}>

@@ -413,56 +413,99 @@ export class AdminAnalyticsService {
    * @param {Object} analytics - Analytics data
    * @returns {string} AI response text
    */
-  static generateAdminResponse(message, analytics) {
+  static generateAdminResponse(message, analytics, language = 'vi') {
+    const locale = 'vi-VN';
+    const formatCurrency = value => `${Number(value || 0).toLocaleString(locale)}đ`;
+    const formatPercentage = value => `${Number(value || 0).toFixed(1)}%`;
+
+    if (language === 'en') {
+      let response = '📊 **Analytics Summary**\n\n';
+
+      if (analytics.totalRevenue !== undefined) {
+        response += `💰 **Revenue**\n`;
+        response += `• Total revenue: ${formatCurrency(analytics.totalRevenue)}\n`;
+        response += `• Total orders: ${analytics.totalOrders}\n`;
+        response += `• Average order value: ${formatCurrency(analytics.averageOrderValue)}\n\n`;
+
+        if (analytics.topProducts && analytics.topProducts.length > 0) {
+          response += '🏆 **Top products**\n';
+          analytics.topProducts.slice(0, 5).forEach((product, index) => {
+            response += `${index + 1}. Product ID ${product.productId} – revenue ${formatCurrency(product.revenue)}\n`;
+          });
+          response += '\n';
+        }
+      }
+
+      if (analytics.totalProducts !== undefined) {
+        response += `📦 **Inventory**\n`;
+        response += `• Total SKUs: ${analytics.totalProducts}\n`;
+        response += `• Units in stock: ${analytics.totalStock}\n`;
+        response += `• Stock value: ${formatCurrency(analytics.totalValue)}\n`;
+        response += `• Low stock items: ${analytics.lowStockProducts.length}\n`;
+        response += `• Out of stock items: ${analytics.outOfStockProducts.length}\n\n`;
+      }
+
+      if (analytics.totalCustomers !== undefined) {
+        response += `👥 **Customers**\n`;
+        response += `• Total customers: ${analytics.totalCustomers}\n`;
+        response += `• Total orders: ${analytics.totalOrders}\n`;
+        response += `• Avg orders per customer: ${analytics.averageOrdersPerCustomer?.toFixed(1) || '0.0'}\n\n`;
+      }
+
+      if (analytics.totalOrders !== undefined && analytics.completedOrders !== undefined) {
+        response += `📈 **Sales performance**\n`;
+        response += `• Total orders: ${analytics.totalOrders}\n`;
+        response += `• Completed orders: ${analytics.completedOrders}\n`;
+        response += `• Conversion rate: ${formatPercentage(analytics.conversionRate)}\n\n`;
+      }
+
+      response +=
+        'Need deeper detail? Ask about revenue over time, stock by category, top customers, or sales status breakdowns.';
+      return response;
+    }
+
     let response = '📊 **Báo cáo phân tích dữ liệu:**\n\n';
 
     if (analytics.totalRevenue !== undefined) {
-      // Revenue analytics
       response += `💰 **Doanh thu:**\n`;
-      response += `• Tổng doanh thu: ${analytics.totalRevenue.toLocaleString('vi-VN')}đ\n`;
+      response += `• Tổng doanh thu: ${formatCurrency(analytics.totalRevenue)}\n`;
       response += `• Tổng đơn hàng: ${analytics.totalOrders}\n`;
-      response += `• Giá trị đơn hàng trung bình: ${analytics.averageOrderValue.toLocaleString('vi-VN')}đ\n\n`;
+      response += `• Giá trị đơn hàng trung bình: ${formatCurrency(analytics.averageOrderValue)}\n\n`;
 
       if (analytics.topProducts && analytics.topProducts.length > 0) {
         response += `🏆 **Sản phẩm bán chạy:**\n`;
         analytics.topProducts.slice(0, 5).forEach((product, index) => {
-          response += `${index + 1}. Sản phẩm ID: ${product.productId} - Doanh thu: ${product.revenue.toLocaleString('vi-VN')}đ\n`;
+          response += `${index + 1}. Sản phẩm ID ${product.productId} - Doanh thu ${formatCurrency(product.revenue)}\n`;
         });
         response += '\n';
       }
     }
 
     if (analytics.totalProducts !== undefined) {
-      // Inventory analytics
       response += `📦 **Tồn kho:**\n`;
       response += `• Tổng sản phẩm: ${analytics.totalProducts}\n`;
       response += `• Tổng tồn kho: ${analytics.totalStock}\n`;
-      response += `• Giá trị tồn kho: ${analytics.totalValue.toLocaleString('vi-VN')}đ\n`;
+      response += `• Giá trị tồn kho: ${formatCurrency(analytics.totalValue)}\n`;
       response += `• Sản phẩm sắp hết: ${analytics.lowStockProducts.length}\n`;
       response += `• Sản phẩm hết hàng: ${analytics.outOfStockProducts.length}\n\n`;
     }
 
     if (analytics.totalCustomers !== undefined) {
-      // Customer analytics
       response += `👥 **Khách hàng:**\n`;
       response += `• Tổng khách hàng: ${analytics.totalCustomers}\n`;
       response += `• Tổng đơn hàng: ${analytics.totalOrders}\n`;
-      response += `• Đơn hàng trung bình/khách: ${analytics.averageOrdersPerCustomer.toFixed(1)}\n\n`;
+      response += `• Đơn hàng trung bình/khách: ${analytics.averageOrdersPerCustomer?.toFixed(1) || '0.0'}\n\n`;
     }
 
     if (analytics.totalOrders !== undefined && analytics.completedOrders !== undefined) {
-      // Sales analytics
       response += `📈 **Bán hàng:**\n`;
       response += `• Tổng đơn hàng: ${analytics.totalOrders}\n`;
       response += `• Đơn hàng hoàn thành: ${analytics.completedOrders}\n`;
-      response += `• Tỷ lệ chuyển đổi: ${analytics.conversionRate.toFixed(1)}%\n\n`;
+      response += `• Tỷ lệ chuyển đổi: ${formatPercentage(analytics.conversionRate)}\n\n`;
     }
 
-    response += 'Bạn có muốn xem chi tiết về phần nào không? Hoặc có thể hỏi về:\n';
-    response += '• Doanh thu theo thời gian\n';
-    response += '• Tồn kho theo danh mục\n';
-    response += '• Top khách hàng\n';
-    response += '• Thống kê bán hàng';
+    response +=
+      'Bạn muốn xem sâu hơn phần nào? Bạn có thể hỏi về doanh thu theo thời gian, tồn kho theo danh mục, khách hàng nổi bật, hoặc thống kê trạng thái đơn hàng.';
 
     return response;
   }

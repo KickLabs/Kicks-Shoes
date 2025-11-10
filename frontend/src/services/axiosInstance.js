@@ -48,13 +48,24 @@ axiosInstance.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
 
-    // Handle user banned (403)
+    // Handle user banned (403) ONLY when message indicates ban
     if (error.response?.status === 403) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('userInfo');
-      localStorage.removeItem('token');
-      window.location.href = '/banned';
+      const message = error.response?.data?.message?.toLowerCase?.() || '';
+      const errorCode = error.response?.data?.code;
+      const isBanIndicated =
+        errorCode === 'USER_BANNED' ||
+        message.includes('deactivated') ||
+        message.includes('banned');
+
+      if (isBanIndicated) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userInfo');
+        localStorage.removeItem('token');
+        window.location.href = '/banned';
+        return Promise.reject(error);
+      }
+      // For other 403s (role/forbidden), do not hard-redirect; let caller handle it
       return Promise.reject(error);
     }
 

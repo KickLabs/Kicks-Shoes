@@ -57,7 +57,6 @@ const OtherPage = () => {
         if (newFilters[key] && newFilters[key] !== '' && key !== 'productType') {
           // Only add price filters if they're not default values
           if (key === 'minPrice' && newFilters[key] === 0) return;
-          if (key === 'maxPrice' && newFilters[key] === 3000000) return;
           params[key] = newFilters[key];
         }
       });

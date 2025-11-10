@@ -42,6 +42,7 @@ import axiosInstance from '../../../services/axiosInstance';
 import { message as antMessage } from 'antd';
 import BotMessage from './BotMessage';
 import PersonalNotification from './PersonalNotification';
+import LivestreamDebugOverlay from './LivestreamDebugOverlay';
 import './LiveStreamViewer.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -78,6 +79,7 @@ const LiveStreamViewer = () => {
     remoteStream,
     retryConnection,
     dismissNotification,
+    socket,
   } = useWebRTC(roomId, 'viewer', user?.id);
 
   // Load stream data
@@ -1063,6 +1065,18 @@ const LiveStreamViewer = () => {
           </div>
         )}
       </Modal>
+
+      {/* Debug overlay (enable via ?debug=1 or VITE_DEBUG_LIVESTREAM=1) */}
+      {(new URLSearchParams(window.location.search).get('debug') === '1' ||
+        import.meta.env.VITE_DEBUG_LIVESTREAM === '1') && (
+        <LivestreamDebugOverlay
+          roomId={roomId}
+          userId={user?.id}
+          socket={socket}
+          isConnected={isConnected}
+          sendChatMessage={sendChatMessage}
+        />
+      )}
     </div>
   );
 };

@@ -44,9 +44,11 @@ export const getShopFeedback = async (page = 1, limit = 10) => {
   }
 };
 
-export const getShopDiscounts = async () => {
+export const getShopDiscounts = async (page = 1, limit = 10) => {
   try {
-    const response = await axiosInstance.get('/dashboard/shop/discounts');
+    const response = await axiosInstance.get('/dashboard/shop/discounts', {
+      params: { page, limit },
+    });
     return response.data;
   } catch (error) {
     console.error('Error fetching shop discounts:', error);
@@ -194,8 +196,10 @@ export const getAdminCategories = async (page = 1, limit = 10) => {
   }
 };
 
-export const getAdminDiscounts = async () => {
-  const response = await axiosInstance.get('/dashboard/admin/discounts');
+export const getAdminDiscounts = async (page = 1, limit = 10) => {
+  const response = await axiosInstance.get('/dashboard/admin/discounts', {
+    params: { page, limit },
+  });
   return response.data;
 };
 

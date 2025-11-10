@@ -8,13 +8,13 @@
 // Không cần import thư viện @google/generative-ai nữa
 
 export async function analyzeProductImage(imageBuffer, mimeType) {
-  const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
   if (!apiKey) {
-    throw new Error('GOOGLE_AI_API_KEY or GOOGLE_API_KEY is not set in the environment variables.');
+    throw new Error('GOOGLE_AI_API_KEY is not set in the environment variables.');
   }
 
-  // Sử dụng model 'gemini-2.0-flash' với API version v1 (model mới nhất, nhanh nhất)
-  const model = 'gemini-2.0-flash';
+  // Sử dụng model từ env hoặc fallback
+  const model = process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash';
   const apiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
   const prompt = `
       You are a fashion product analysis assistant.

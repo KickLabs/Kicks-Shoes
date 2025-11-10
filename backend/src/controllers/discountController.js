@@ -247,9 +247,10 @@ const getActiveDiscounts = async (req, res) => {
       startDate: { $lte: now },
       endDate: { $gte: now },
       $expr: { $lt: ['$usedCount', '$usageLimit'] },
-      source: { $ne: 'reward_points' }, // ❌ Loại bỏ discount từ reward points
     })
-      .select('code description type value minPurchase maxDiscount startDate endDate source')
+      .select(
+        'code description type value minPurchase maxDiscount startDate endDate status source usageLimit usedCount'
+      )
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -269,7 +270,7 @@ const getActiveDiscounts = async (req, res) => {
 const validateDiscountCode = async (req, res) => {
   try {
     const { code, cartTotal, cartItems = [] } = req.body;
-    const userId = req.user?._id;
+    const userId = req.user?.id;
 
     if (!code) {
       return res.status(400).json({
@@ -295,56 +296,6 @@ const validateDiscountCode = async (req, res) => {
       });
     }
 
-    // ✅ Check if user has collected this discount and its status (if user is logged in)
-    if (userId) {
-      console.log('🔍 Checking UserDiscount for userId:', userId, 'discountId:', discount._id);
-      const UserDiscount = (await import('../models/UserDiscount.js')).default;
-      const userDiscount = await UserDiscount.findOne({
-        user: userId,
-        discount: discount._id,
-      });
-
-      console.log(
-        '📦 UserDiscount found:',
-        userDiscount
-          ? {
-              id: userDiscount._id,
-              status: userDiscount.status,
-              usedAt: userDiscount.usedAt,
-            }
-          : 'Not found'
-      );
-
-      if (userDiscount) {
-        // If user has this discount, it must be 'saved' (not 'used' or 'expired')
-        if (userDiscount.status === 'used') {
-          console.log('❌ BLOCKED: Voucher already used');
-          return res.status(400).json({
-            success: false,
-            message: 'You have already used this voucher',
-          });
-        }
-
-        if (userDiscount.status === 'expired') {
-          console.log('❌ BLOCKED: Voucher expired');
-          return res.status(400).json({
-            success: false,
-            message: 'This voucher has expired',
-          });
-        }
-
-        if (userDiscount.status !== 'saved') {
-          console.log('❌ BLOCKED: Voucher status is not saved:', userDiscount.status);
-          return res.status(400).json({
-            success: false,
-            message: 'This voucher is not available',
-          });
-        }
-      }
-    } else {
-      console.log('⚠️ No userId found, skipping UserDiscount validation');
-    }
-
     // Check minimum purchase amount
     if (cartTotal < discount.minPurchase) {
       return res.status(400).json({
@@ -353,7 +304,7 @@ const validateDiscountCode = async (req, res) => {
       });
     }
 
-    // Check if user has already used this discount in completed orders (if user is logged in)
+    // Check if user has already used this discount (if user is logged in)
     if (userId) {
       const Order = (await import('../models/Order.js')).default;
       const userUsageCount = await Order.countDocuments({

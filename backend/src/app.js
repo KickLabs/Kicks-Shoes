@@ -57,13 +57,13 @@ import shipperRoutes from './routes/shipperRoutes.js'; // Added Shipper routes
 import deliveryReportRoutes from './routes/deliveryReportRoutes.js'; // Added Delivery Report routes
 import shipperApplicationRoutes from './routes/shipperApplicationRoutes.js'; // Added Shipper Application routes
 import aiInventoryRoutes from './routes/aiInventoryRoutes.js'; // AI Inventory Intelligence
+import weatherRoutes from './routes/weatherRoutes.js'; // Weather Recommendation routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import {
   startDiscountStatusUpdateCron,
   startFlashSaleStatusUpdateCron,
   startAutoCompleteOrdersCron,
-  startUserDiscountExpireCheckCron,
 } from './utils/cronJobs.js';
 import inventoryScheduler from './services/inventoryScheduler.service.js'; // AI Inventory Scheduler
 
@@ -84,6 +84,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Apply CORS middleware first - this should handle everything
 app.use(corsMiddleware);
+// Ensure preflight requests are handled explicitly across all routes
+app.options('*', corsMiddleware);
 
 // Enhanced request logging with detailed debug info
 app.use((req, res, next) => {
@@ -212,12 +214,12 @@ app.use('/api/shipper', shipperRoutes); // Added Shipper routes
 app.use('/api/delivery-reports', deliveryReportRoutes); // Added Delivery Report routes
 app.use('/api/shipper-applications', shipperApplicationRoutes); // Added Shipper Application routes
 app.use('/api/ai/inventory', aiInventoryRoutes); // AI Inventory Intelligence
+app.use('/api/weather', weatherRoutes); // Weather Recommendation routes
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
 startFlashSaleStatusUpdateCron();
 startAutoCompleteOrdersCron();
-startUserDiscountExpireCheckCron(); // ✅ Auto-update expired user discounts
 
 // Start AI Inventory Scheduler (runs daily at 8:00 AM)
 inventoryScheduler.start();

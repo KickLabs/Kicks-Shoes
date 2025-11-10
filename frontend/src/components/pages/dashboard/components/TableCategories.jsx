@@ -33,7 +33,15 @@ StatusTag.propTypes = {
   status: PropTypes.bool.isRequired,
 };
 
-const TableCategories = ({ title, categories, onReload }) => {
+const TableCategories = ({
+  title,
+  categories,
+  onReload,
+  total,
+  currentPage,
+  pageSize,
+  onPageChange,
+}) => {
   const [loading, setLoading] = useState(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -232,12 +240,24 @@ const TableCategories = ({ title, categories, onReload }) => {
         <Table
           columns={columns}
           dataSource={categories}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} categories`,
-          }}
+          pagination={
+            total !== undefined
+              ? {
+                  current: currentPage,
+                  pageSize: pageSize,
+                  total: total,
+                  showSizeChanger: false,
+                  showQuickJumper: true,
+                  showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} categories`,
+                  onChange: onPageChange,
+                }
+              : {
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  showQuickJumper: true,
+                  showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} categories`,
+                }
+          }
           rowKey="_id"
           loading={loading}
           scroll={{ x: 'max-content' }}
@@ -386,6 +406,10 @@ TableCategories.propTypes = {
     })
   ).isRequired,
   onReload: PropTypes.func.isRequired,
+  total: PropTypes.number,
+  currentPage: PropTypes.number,
+  pageSize: PropTypes.number,
+  onPageChange: PropTypes.func,
 };
 
 export default React.memo(TableCategories);

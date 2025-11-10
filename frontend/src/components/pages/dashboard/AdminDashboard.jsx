@@ -71,10 +71,31 @@ export default function AdminDashboard() {
 
   // State for real data
   const [stats, setStats] = useState(null);
+
+  // Users pagination
   const [users, setUsers] = useState([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersLimit] = useState(10);
+
+  // Categories pagination
   const [categories, setCategories] = useState([]);
+  const [totalCategories, setTotalCategories] = useState(0);
+  const [categoriesPage, setCategoriesPage] = useState(1);
+  const [categoriesLimit] = useState(10);
+
+  // Reported Products pagination
   const [reportedProducts, setReportedProducts] = useState([]);
+  const [totalReportedProducts, setTotalReportedProducts] = useState(0);
+  const [reportedProductsPage, setReportedProductsPage] = useState(1);
+  const [reportedProductsLimit] = useState(10);
+
+  // Feedback pagination
   const [feedback, setFeedback] = useState([]);
+  const [totalFeedback, setTotalFeedback] = useState(0);
+  const [feedbackPage, setFeedbackPage] = useState(1);
+  const [feedbackLimit] = useState(10);
+
   const [revenueData, setRevenueData] = useState([]);
   const [userGrowthData, setUserGrowthData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +120,9 @@ export default function AdminDashboard() {
 
   // Discount Management State
   const [discounts, setDiscounts] = useState([]);
+  const [totalDiscounts, setTotalDiscounts] = useState(0);
+  const [discountsPage, setDiscountsPage] = useState(1);
+  const [discountsLimit] = useState(10);
   const [isAddDiscountModalVisible, setIsAddDiscountModalVisible] = useState(false);
   const [discountForm] = Form.useForm();
 
@@ -147,19 +171,19 @@ export default function AdminDashboard() {
           }
           break;
         case 'users':
-          await fetchUsers();
+          await fetchUsers(usersPage, usersLimit);
           break;
         case 'categories':
-          await fetchCategories();
+          await fetchCategories(categoriesPage, categoriesLimit);
           break;
         case 'moderation':
-          await fetchReportedProducts();
+          await fetchReportedProducts(reportedProductsPage, reportedProductsLimit);
           break;
         case 'feedback':
-          await fetchFeedback();
+          await fetchFeedback(feedbackPage, feedbackLimit);
           break;
         case 'discounts':
-          await fetchDiscounts();
+          await fetchDiscounts(discountsPage, discountsLimit);
           break;
         default:
           break;
@@ -172,6 +196,41 @@ export default function AdminDashboard() {
     }
   };
 
+  // Reload users when page changes
+  useEffect(() => {
+    if (currentView === 'users') {
+      fetchUsers(usersPage, usersLimit);
+    }
+  }, [usersPage, currentView]);
+
+  // Reload categories when page changes
+  useEffect(() => {
+    if (currentView === 'categories') {
+      fetchCategories(categoriesPage, categoriesLimit);
+    }
+  }, [categoriesPage, currentView]);
+
+  // Reload reported products when page changes
+  useEffect(() => {
+    if (currentView === 'moderation') {
+      fetchReportedProducts(reportedProductsPage, reportedProductsLimit);
+    }
+  }, [reportedProductsPage, currentView]);
+
+  // Reload feedback when page changes
+  useEffect(() => {
+    if (currentView === 'feedback') {
+      fetchFeedback(feedbackPage, feedbackLimit);
+    }
+  }, [feedbackPage, currentView]);
+
+  // Reload discounts when page changes
+  useEffect(() => {
+    if (currentView === 'discounts') {
+      fetchDiscounts(discountsPage, discountsLimit);
+    }
+  }, [discountsPage, currentView]);
+
   const fetchStats = async () => {
     try {
       const response = await getAdminStats();
@@ -181,37 +240,41 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = 1, limit = 10) => {
     try {
-      const response = await getAdminUsers(1, 10);
+      const response = await getAdminUsers(page, limit);
       setUsers(response.data?.users || []);
+      setTotalUsers(response.data?.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching users:', err);
     }
   };
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (page = 1, limit = 10) => {
     try {
-      const response = await getAdminCategories(1, 10);
+      const response = await getAdminCategories(page, limit);
       setCategories(response.data?.categories || []);
+      setTotalCategories(response.data?.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching categories:', err);
     }
   };
 
-  const fetchReportedProducts = async () => {
+  const fetchReportedProducts = async (page = 1, limit = 10) => {
     try {
-      const response = await getAdminReportedProducts(1, 10);
+      const response = await getAdminReportedProducts(page, limit);
       setReportedProducts(response.data?.reports || []);
+      setTotalReportedProducts(response.data?.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching reported products:', err);
     }
   };
 
-  const fetchFeedback = async () => {
+  const fetchFeedback = async (page = 1, limit = 10) => {
     try {
-      const response = await getAdminFeedback(1, 10);
+      const response = await getAdminFeedback(page, limit);
       setFeedback(response.data?.feedback || []);
+      setTotalFeedback(response.data?.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching feedback:', err);
     }
@@ -330,10 +393,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchDiscounts = async () => {
+  const fetchDiscounts = async (page = 1, limit = 10) => {
     try {
-      const response = await getAdminDiscounts();
+      const response = await getAdminDiscounts(page, limit);
       setDiscounts(response.data || []);
+      setTotalDiscounts(response.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching discounts:', err);
     }
@@ -868,7 +932,15 @@ export default function AdminDashboard() {
         return (
           <>
             <TabHeader breadcrumb="User Management" />
-            <TableUsers title="All Users" users={users} onReload={fetchUsers} />
+            <TableUsers
+              title="All Users"
+              users={users}
+              total={totalUsers}
+              currentPage={usersPage}
+              pageSize={usersLimit}
+              onPageChange={page => setUsersPage(page)}
+              onReload={() => fetchUsers(usersPage, usersLimit)}
+            />
           </>
         );
 
@@ -879,7 +951,11 @@ export default function AdminDashboard() {
             <TableCategories
               title="All Categories"
               categories={categories}
-              onReload={fetchCategories}
+              onReload={() => fetchCategories(categoriesPage, categoriesLimit)}
+              total={totalCategories}
+              currentPage={categoriesPage}
+              pageSize={categoriesLimit}
+              onPageChange={page => setCategoriesPage(page)}
             />
           </>
         );
@@ -896,7 +972,15 @@ export default function AdminDashboard() {
                 columns={productColumns}
                 dataSource={reportedProducts}
                 rowKey="id"
-                pagination={{ pageSize: 10 }}
+                pagination={{
+                  current: reportedProductsPage,
+                  pageSize: reportedProductsLimit,
+                  total: totalReportedProducts,
+                  showSizeChanger: false,
+                  showQuickJumper: true,
+                  showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} reports`,
+                  onChange: page => setReportedProductsPage(page),
+                }}
               />
             </Card>
           </>
@@ -1045,11 +1129,13 @@ export default function AdminDashboard() {
                 dataSource={feedback}
                 rowKey="_id"
                 pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
+                  current: feedbackPage,
+                  pageSize: feedbackLimit,
+                  total: totalFeedback,
+                  showSizeChanger: false,
                   showQuickJumper: true,
                   showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} feedback`,
-                  pageSizeOptions: ['10', '20', '50'],
+                  onChange: page => setFeedbackPage(page),
                 }}
                 loading={loading}
                 scroll={{ x: 'max-content' }}
@@ -1082,10 +1168,13 @@ export default function AdminDashboard() {
                 dataSource={discounts}
                 rowKey="_id"
                 pagination={{
-                  pageSize: 10,
-                  showSizeChanger: true,
+                  current: discountsPage,
+                  pageSize: discountsLimit,
+                  total: totalDiscounts,
+                  showSizeChanger: false,
                   showQuickJumper: true,
                   showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} discounts`,
+                  onChange: page => setDiscountsPage(page),
                 }}
                 style={{ borderRadius: 8 }}
               />

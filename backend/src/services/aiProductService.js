@@ -211,9 +211,12 @@ export class AIProductService {
         filter.brand = { $in: searchCriteria.brands };
       }
 
-      // Apply product type filter
+      // Apply product type filter - Make it optional with fallback to category
       if (searchCriteria.productType) {
-        filter.productType = searchCriteria.productType;
+        // Don't strictly require productType field - many products may not have it
+        // Instead, use it as a hint but don't filter strictly
+        // This allows finding Nike products even if they don't have productType set
+        logger.info('ProductType requested:', searchCriteria.productType);
       }
 
       // Apply gender filter
@@ -298,7 +301,7 @@ export class AIProductService {
 
       logger.info('Searching products with criteria:', searchCriteria);
 
-      const products = await Product.find(filter)
+      let products = await Product.find(filter)
         .populate('category', 'name')
         .sort({
           rating: -1,
@@ -309,6 +312,25 @@ export class AIProductService {
         .lean();
 
       logger.info(`Found ${products.length} products matching criteria`);
+
+      // FALLBACK: If no products found and we have brand, try simple brand-only search
+      if (products.length === 0 && searchCriteria.brands && searchCriteria.brands.length > 0) {
+        logger.warn('No products with full criteria, trying brand-only search...');
+        products = await Product.find({
+          brand: { $in: searchCriteria.brands },
+          status: true,
+        })
+          .populate('category', 'name')
+          .sort({
+            rating: -1,
+            sales: -1,
+            finalPrice: 1,
+          })
+          .limit(limit)
+          .lean();
+        logger.info(`Brand-only fallback found ${products.length} products`);
+      }
+
       return products;
     } catch (error) {
       logger.error('Error searching products:', error);
@@ -325,7 +347,25 @@ export class AIProductService {
   static async getProductSuggestions(message, limit = 5) {
     try {
       const searchCriteria = this.analyzeUserQuery(message);
-      const products = await this.searchProducts(searchCriteria, limit);
+      let products = await this.searchProducts(searchCriteria, limit);
+
+      // If no products found and user requested specific sizes, retry without size filter
+      // to provide helpful suggestions instead of returning empty list.
+      if (
+        (!products || products.length === 0) &&
+        searchCriteria.sizes &&
+        searchCriteria.sizes.length > 0
+      ) {
+        logger.warn(
+          'No products found for sizes:',
+          searchCriteria.sizes,
+          ' - retrying without size filter'
+        );
+        const fallbackCriteria = { ...searchCriteria, sizes: [] };
+        products = await this.searchProducts(fallbackCriteria, limit);
+        // Mark that this is a fallback (optional: included in aiResponse)
+        searchCriteria._fallbackNoSize = true;
+      }
 
       const suggestions = products.map(product => ({
         id: product._id,
@@ -465,9 +505,9 @@ export class AIProductService {
    */
   static async analyzeOccasionWithAI(context, allProducts) {
     try {
-      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      const apiKey = process.env.GOOGLE_AI_API_KEY_PRODUCT;
       if (!apiKey) {
-        throw new Error('GOOGLE_AI_API_KEY not configured');
+        throw new Error('GOOGLE_AI_API_KEY_PRODUCT not configured');
       }
 
       // Get product names for context
@@ -522,8 +562,10 @@ Analysis should be based on:
 6. Professional styling explanation
 `;
 
+      const model = process.env.GOOGLE_AI_MODEL_PRODUCT || 'gemini-2.0-flash-exp';
+
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
@@ -1013,9 +1055,9 @@ Analysis should be based on:
    */
   static async optimizeContext(context) {
     try {
-      const apiKey = process.env.GOOGLE_AI_API_KEY;
+      const apiKey = process.env.GOOGLE_AI_API_KEY_PRODUCT;
       if (!apiKey) {
-        throw new Error('GOOGLE_AI_API_KEY not configured');
+        throw new Error('GOOGLE_AI_API_KEY_PRODUCT not configured');
       }
 
       const prompt = `
@@ -1040,8 +1082,10 @@ Examples:
 
 Optimized context:`;
 
+      const model = process.env.GOOGLE_AI_MODEL_PRODUCT || 'gemini-2.0-flash-exp';
+
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {

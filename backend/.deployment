@@ -1,5 +1,6 @@
 [config]
-command = deploy.cmd
+SCM_DO_BUILD_DURING_DEPLOYMENT=false
+WEBSITE_NODE_DEFAULT_VERSION=20.19.5
 
 
 

@@ -222,25 +222,46 @@ export const useWebRTC = (roomId, role, userId) => {
   // Handle ICE candidate
   const handleIceCandidate = useCallback(
     async data => {
+      console.log('📡 Received ICE candidate event:', {
+        role,
+        hasCandidate: !!data.candidate,
+        candidateType: data.candidate?.type,
+      });
+
       if (role === 'host') {
         const pc = peersRef.current.get(data.viewerId);
         if (pc && data.candidate) {
           try {
-            console.log('📡 Host adding ICE candidate:', data.candidate.type);
+            console.log(
+              '📡 Host adding ICE candidate from viewer:',
+              data.viewerId,
+              'type:',
+              data.candidate.type
+            );
             await pc.addIceCandidate(data.candidate);
+            console.log('✅ Host successfully added ICE candidate');
           } catch (error) {
             console.error('❌ Host error adding ICE candidate:', error);
             // Don't fail the connection for ICE candidate errors
           }
+        } else {
+          console.warn('⚠️ Host cannot add ICE candidate:', {
+            hasPc: !!pc,
+            hasCandidate: !!data.candidate,
+            viewerId: data.viewerId,
+          });
         }
       } else if (role === 'viewer' && peerConnectionRef.current && data.candidate) {
         try {
-          console.log('📡 Viewer adding ICE candidate:', data.candidate.type);
+          console.log('📡 Viewer adding ICE candidate from host, type:', data.candidate.type);
           await peerConnectionRef.current.addIceCandidate(data.candidate);
+          console.log('✅ Viewer successfully added ICE candidate');
         } catch (error) {
           console.error('❌ Viewer error adding ICE candidate:', error);
           // Don't fail the connection for ICE candidate errors
         }
+      } else if (role === 'viewer' && !data.candidate) {
+        console.log('📡 Viewer received end of ICE candidates signal from host');
       }
     },
     [role]
@@ -316,11 +337,36 @@ export const useWebRTC = (roomId, role, userId) => {
 
     pc.onicecandidate = event => {
       if (event.candidate && socketRef.current) {
-        console.log('📡 Sending ICE candidate:', event.candidate.type);
+        console.log(
+          '📡 Host sending ICE candidate to viewer:',
+          viewerId,
+          'type:',
+          event.candidate.type
+        );
         socketRef.current.emit('webrtc_ice', {
           viewerId,
           candidate: event.candidate,
         });
+      } else if (!event.candidate) {
+        console.log('📡 Host ICE gathering complete for viewer:', viewerId);
+      }
+    };
+
+    pc.onicegatheringstatechange = () => {
+      console.log('📡 ICE gathering state:', pc.iceGatheringState);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log('📡 Host ICE connection state:', pc.iceConnectionState, 'for viewer:', viewerId);
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        console.warn('⚠️ Host ICE connection failed/disconnected, attempting restart...');
+        // Try to restart ICE after a delay
+        setTimeout(() => {
+          if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
+            console.log('🔄 Host restarting ICE connection for viewer:', viewerId);
+            pc.restartIce();
+          }
+        }, 2000);
       }
     };
 
@@ -338,8 +384,17 @@ export const useWebRTC = (roomId, role, userId) => {
     };
 
     pc.onconnectionstatechange = () => {
-      console.log('📡 Connection state:', pc.connectionState);
-      if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+      console.log('📡 Host connection state:', pc.connectionState, 'for viewer:', viewerId);
+      if (['failed', 'disconnected'].includes(pc.connectionState)) {
+        console.warn('⚠️ Host connection failed/disconnected for viewer:', viewerId);
+        // Don't immediately delete - try to recover first
+        setTimeout(() => {
+          if (pc.connectionState === 'closed' || pc.connectionState === 'failed') {
+            console.log('🗑️ Removing failed peer connection for viewer:', viewerId);
+            peersRef.current.delete(viewerId);
+          }
+        }, 5000);
+      } else if (pc.connectionState === 'closed') {
         peersRef.current.delete(viewerId);
       }
     };
@@ -351,26 +406,37 @@ export const useWebRTC = (roomId, role, userId) => {
   // Create offer for viewer (host only)
   const createOfferForViewer = useCallback(
     async viewerId => {
-      if (role !== 'host' || !localStreamRef.current) return;
+      if (role !== 'host' || !localStreamRef.current) {
+        console.warn('⚠️ Cannot create offer: role or stream not ready');
+        return;
+      }
 
+      console.log('📡 Host creating offer for viewer:', viewerId);
       const pc = createPeerConnection(viewerId);
 
       // Add local stream tracks
       localStreamRef.current.getTracks().forEach(track => {
+        console.log('📹 Adding track to peer connection:', track.kind, track.label);
         pc.addTrack(track, localStreamRef.current);
       });
 
-      const offer = await pc.createOffer({
-        offerToReceiveAudio: false,
-        offerToReceiveVideo: false,
-      });
+      try {
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: false,
+          offerToReceiveVideo: false,
+        });
 
-      await pc.setLocalDescription(offer);
+        console.log('📡 Setting local description (offer)');
+        await pc.setLocalDescription(offer);
 
-      socketRef.current?.emit('webrtc_offer', {
-        viewerId,
-        sdp: offer.sdp,
-      });
+        console.log('📡 Sending offer to viewer:', viewerId);
+        socketRef.current?.emit('webrtc_offer', {
+          viewerId,
+          sdp: offer.sdp,
+        });
+      } catch (error) {
+        console.error('❌ Error creating offer for viewer:', viewerId, error);
+      }
     },
     [role, createPeerConnection]
   );
@@ -432,11 +498,31 @@ export const useWebRTC = (roomId, role, userId) => {
 
       pc.onicecandidate = event => {
         if (event.candidate && socketRef.current) {
-          console.log('📡 Sending ICE candidate from viewer:', event.candidate.type);
+          console.log('📡 Viewer sending ICE candidate to host, type:', event.candidate.type);
           socketRef.current.emit('webrtc_ice', {
             viewerId: offerData.viewerId,
             candidate: event.candidate,
           });
+        } else if (!event.candidate) {
+          console.log('📡 Viewer ICE gathering complete');
+        }
+      };
+
+      pc.onicegatheringstatechange = () => {
+        console.log('📡 Viewer ICE gathering state:', pc.iceGatheringState);
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log('📡 Viewer ICE connection state:', pc.iceConnectionState);
+        if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+          console.warn('⚠️ Viewer ICE connection failed/disconnected, attempting restart...');
+          // Try to restart ICE
+          setTimeout(() => {
+            if (pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
+              console.log('🔄 Restarting ICE connection...');
+              pc.restartIce();
+            }
+          }, 2000);
         }
       };
 
@@ -455,6 +541,18 @@ export const useWebRTC = (roomId, role, userId) => {
       pc.onconnectionstatechange = () => {
         console.log('📡 Viewer connection state:', pc.connectionState);
         setConnectionState(pc.connectionState);
+
+        // Auto-retry on failure
+        if (pc.connectionState === 'failed') {
+          console.error('❌ Connection failed, will retry...');
+          setError('Connection failed. Retrying...');
+          setTimeout(() => {
+            if (pc.connectionState === 'failed') {
+              console.log('🔄 Attempting to restart ICE after connection failure');
+              pc.restartIce();
+            }
+          }, 3000);
+        }
       };
 
       try {

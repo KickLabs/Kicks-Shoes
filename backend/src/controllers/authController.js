@@ -563,7 +563,27 @@ export const getMe = async (req, res, next) => {
  */
 export const updateProfile = async (req, res, next) => {
   try {
-    const { fullName, username, email, phone, address, dateOfBirth, gender, aboutMe } = req.body;
+    const {
+      fullName,
+      username,
+      email,
+      phone,
+      address,
+      provinceCode,
+      provinceName,
+      wardCode,
+      wardName,
+      dateOfBirth,
+      gender,
+      aboutMe,
+    } = req.body;
+
+    logger.info('Profile update - raw req.body:', {
+      body: req.body,
+      keys: Object.keys(req.body),
+      hasFiles: !!req.files,
+      files: req.files ? Object.keys(req.files) : [],
+    });
 
     // Build update object
     const updateFields = {};
@@ -572,9 +592,15 @@ export const updateProfile = async (req, res, next) => {
     if (email) updateFields.email = email;
     if (phone) updateFields.phone = phone;
     if (address) updateFields.address = address;
+    if (provinceCode) updateFields.provinceCode = provinceCode;
+    if (provinceName) updateFields.provinceName = provinceName;
+    if (wardCode) updateFields.wardCode = wardCode;
+    if (wardName) updateFields.wardName = wardName;
     if (dateOfBirth) updateFields.dateOfBirth = dateOfBirth;
     if (gender) updateFields.gender = gender;
     if (aboutMe) updateFields.aboutMe = aboutMe;
+
+    logger.info('Profile update - updateFields:', { updateFields });
 
     // Handle files from multer.fields
     if (req.files && req.files.avatar && req.files.avatar[0]) {
@@ -597,7 +623,13 @@ export const updateProfile = async (req, res, next) => {
       return next(new ErrorResponse('User not found', 404));
     }
 
-    logger.info('User profile updated successfully', { userId: user._id });
+    logger.info('User profile updated successfully', {
+      userId: user._id,
+      provinceCode: user.provinceCode,
+      wardCode: user.wardCode,
+      provinceName: user.provinceName,
+      wardName: user.wardName,
+    });
 
     res.status(200).json({
       success: true,

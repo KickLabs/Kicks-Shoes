@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
@@ -8,7 +8,9 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { App as AntApp } from 'antd';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { VideoCallProvider } from './contexts/VideoCallContext';
+import { WeatherRecommendationProvider } from './contexts/WeatherRecommendationContext';
 import { persistor, store } from './store/store';
+import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Common Components
 import ChatPage from './components/common/components/ChatPage';
@@ -32,6 +34,7 @@ import FavouritesTab from './components/pages/account/components/FavouritesTab';
 import ProfileTab from './components/pages/account/components/ProfileTab';
 import VoucherTab from './components/pages/account/components/VoucherTab';
 import RewardPointsDetail from './components/pages/account/components/RewardPointsDetail';
+import VoucherTab from './components/pages/account/components/VoucherTab';
 import CartPage from './components/pages/cart/pages/CartPage';
 import AllCategories from './components/pages/categories/AllCategories';
 import CheckoutPage from './components/pages/checkout/CheckOut';
@@ -47,6 +50,7 @@ import PaymentStatus from './components/pages/payment/PaymentStatus';
 import PaymentSuccess from './components/pages/payment/PaymentSuccess';
 import ProductDetailPage from './components/pages/product/pages/ProductDetailPage';
 import VisualSearch from './components/pages/shop/VisualSearch';
+import VoucherDiscoveryPage from './components/pages/voucher-discovery/VoucherDiscoveryPage';
 import OutfitSuggestionPage from './components/pages/outfit/OutfitSuggestionPage';
 
 // New Role-Based Dashboard Components
@@ -625,26 +629,30 @@ const router = createBrowserRouter([
 const Root = () => (
   <React.StrictMode>
     <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
+      <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
         <AuthProvider>
           <VideoCallProvider>
-            <ToastContainer
-              position="top-right"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="light"
-            />
-            <GoogleOAuthProvider
-              clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
-            >
-              <RouterProvider router={router} />
-            </GoogleOAuthProvider>
+            <WeatherRecommendationProvider>
+              <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+              />
+              <GoogleOAuthProvider
+                clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id'}
+              >
+                <Suspense fallback={<LoadingSpinner />}>
+                  <RouterProvider router={router} />
+                </Suspense>
+              </GoogleOAuthProvider>
+            </WeatherRecommendationProvider>
           </VideoCallProvider>
         </AuthProvider>
       </PersistGate>

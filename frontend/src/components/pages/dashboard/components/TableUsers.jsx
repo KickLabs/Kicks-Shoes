@@ -50,7 +50,15 @@ RoleTag.propTypes = {
   role: PropTypes.string.isRequired,
 };
 
-const TableUsers = ({ title, users, onReload }) => {
+const TableUsers = ({
+  title,
+  users,
+  total = 0,
+  currentPage = 1,
+  pageSize = 10,
+  onPageChange,
+  onReload,
+}) => {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState(''); // 'ban' or 'unban'
@@ -232,10 +240,13 @@ const TableUsers = ({ title, users, onReload }) => {
           columns={columns}
           dataSource={users}
           pagination={{
-            pageSize: 10,
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} users`,
+            onChange: onPageChange,
           }}
           loading={loading}
           rowKey="_id"
@@ -297,6 +308,10 @@ TableUsers.propTypes = {
       createdAt: PropTypes.string.isRequired,
     })
   ).isRequired,
+  total: PropTypes.number,
+  currentPage: PropTypes.number,
+  pageSize: PropTypes.number,
+  onPageChange: PropTypes.func,
   onReload: PropTypes.func.isRequired,
 };
 

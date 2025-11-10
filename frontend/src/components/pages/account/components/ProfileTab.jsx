@@ -26,6 +26,11 @@ import {
   formatWardName,
 } from '../../../../utils/vietnamProvinceApi';
 
+// Helper function to compose full address for display only
+const getFullAddress = (address, wardName, provinceName) => {
+  return [address, wardName, provinceName].filter(Boolean).join(', ');
+};
+
 export default function ProfileTab() {
   const { user, updateProfile } = useAuth();
   const [form] = Form.useForm();
@@ -47,6 +52,10 @@ export default function ProfileTab() {
         username: user.username,
         phone: user.phone,
         address: user.address,
+        provinceCode: user.provinceCode,
+        provinceName: user.provinceName,
+        wardCode: user.wardCode,
+        wardName: user.wardName,
         gender: user.gender || 'male',
         aboutMe: user.aboutMe,
         dateOfBirth: user.dateOfBirth ? dayjs(user.dateOfBirth) : null,
@@ -55,13 +64,29 @@ export default function ProfileTab() {
     }
   }, [user, form]);
 
+  // Load provinces on mount and restore user's saved province/ward
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setLoadingProvinces(true);
         const data = await fetchProvinces();
-        if (mounted) setProvinces(data);
+        if (mounted) {
+          setProvinces(data);
+
+          // After provinces loaded, if user has provinceCode but Select shows code instead of name,
+          // we need to ensure the form value matches the option value
+          if (user?.provinceCode && form.getFieldValue('provinceCode')) {
+            const existingProvince = data.find(p => p.code === user.provinceCode);
+            if (existingProvince) {
+              // Force re-render Select with correct value
+              form.setFieldsValue({
+                provinceCode: user.provinceCode,
+                provinceName: user.provinceName || formatProvinceName(existingProvince),
+              });
+            }
+          }
+        }
       } catch (e) {
       } finally {
         if (mounted) setLoadingProvinces(false);
@@ -70,7 +95,35 @@ export default function ProfileTab() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [user?.provinceCode]);
+
+  // Load wards when user has provinceCode
+  useEffect(() => {
+    if (user?.provinceCode && provinces.length > 0) {
+      (async () => {
+        try {
+          setLoadingWards(true);
+          const wardList = await fetchWards(user.provinceCode);
+          setWards(wardList);
+
+          // After wards loaded, ensure form value is correct
+          if (user?.wardCode && form.getFieldValue('wardCode')) {
+            const existingWard = wardList.find(w => w.code === user.wardCode);
+            if (existingWard) {
+              form.setFieldsValue({
+                wardCode: user.wardCode,
+                wardName: user.wardName || formatWardName(existingWard),
+              });
+            }
+          }
+        } catch (e) {
+          setWards([]);
+        } finally {
+          setLoadingWards(false);
+        }
+      })();
+    }
+  }, [user?.provinceCode, provinces]);
 
   const handleProvinceChange = async value => {
     form.setFieldsValue({
@@ -224,17 +277,14 @@ export default function ProfileTab() {
       setLoading(true);
       const formData = new FormData();
 
-      // Thêm các giá trị form vào FormData
-      const composedAddress = [values.address, values.wardName, values.provinceName]
-        .filter(Boolean)
-        .join(', ');
-      const finalValues = { ...values, address: composedAddress };
-      Object.keys(finalValues).forEach(key => {
-        if (finalValues[key] !== undefined && finalValues[key] !== null) {
+      // Don't compose address - keep it separate from province/ward
+      // Backend will store them separately
+      Object.keys(values).forEach(key => {
+        if (values[key] !== undefined && values[key] !== null) {
           if (key === 'dateOfBirth') {
-            formData.append(key, finalValues[key].toISOString());
+            formData.append(key, values[key].toISOString());
           } else {
-            formData.append(key, finalValues[key]);
+            formData.append(key, values[key]);
           }
         }
       });
@@ -566,11 +616,12 @@ export default function ProfileTab() {
                 name="address"
                 label={
                   <label>
-                    <HomeOutlined /> Address
+                    <HomeOutlined /> Street Address
                   </label>
                 }
+                extra="Enter only street number and name (e.g., 26 Le Trung Dinh). Province and ward will be selected below."
               >
-                <Input placeholder="Detailed Address (street, building, etc.)" />
+                <Input placeholder="Street number and name only (e.g., 26 Le Trung Dinh)" />
               </Form.Item>
               <div style={{ display: 'flex', gap: 12 }}>
                 <Form.Item name="provinceCode" style={{ flex: 1 }}>
@@ -580,7 +631,13 @@ export default function ProfileTab() {
                     loading={loadingProvinces}
                     optionFilterProp="label"
                     onChange={handleProvinceChange}
-                    options={provinces.map(p => ({ label: formatProvinceName(p), value: p.code }))}
+                    options={
+                      provinces.length > 0
+                        ? provinces.map(p => ({ label: formatProvinceName(p), value: p.code }))
+                        : user?.provinceCode && user?.provinceName
+                          ? [{ label: user.provinceName, value: user.provinceCode }]
+                          : []
+                    }
                   />
                 </Form.Item>
                 <Form.Item name="wardCode" style={{ flex: 1 }}>
@@ -591,7 +648,13 @@ export default function ProfileTab() {
                     loading={loadingWards}
                     optionFilterProp="label"
                     onChange={handleWardChange}
-                    options={wards.map(w => ({ label: formatWardName(w), value: w.code }))}
+                    options={
+                      wards.length > 0
+                        ? wards.map(w => ({ label: formatWardName(w), value: w.code }))
+                        : user?.wardCode && user?.wardName
+                          ? [{ label: user.wardName, value: user.wardCode }]
+                          : []
+                    }
                   />
                 </Form.Item>
               </div>

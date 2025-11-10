@@ -1467,7 +1467,7 @@ Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan
                   )}
                 </div>
               </div>
-              <div style={{ maxHeight: 'none' }} className="chat-messages" ref={messagesEndRef}>
+              <div style={{ maxHeight: '84vh' }} className="chat-messages" ref={messagesEndRef}>
                 {isLoading && messages.length === 0 && (
                   <div className="loading-messages">
                     <Text>Loading messages...</Text>
