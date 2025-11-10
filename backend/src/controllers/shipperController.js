@@ -10,7 +10,7 @@ import Delivery from '../models/Delivery.js';
 import User from '../models/User.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
 import logger from '../utils/logger.js';
-import EmailService from '../services/email.service.js';
+// import EmailService from '../services/email.service.js'; // DISABLED - No longer sending emails for delivery updates
 
 /**
  * Helper function to generate delivery timeline
@@ -53,10 +53,7 @@ function getDeliveryTimeline(delivery) {
       timestamp: delivery.inTransitAt,
       completed: true,
     });
-  } else if (
-    delivery.status !== 'assigned' &&
-    delivery.status !== 'picked_up'
-  ) {
+  } else if (delivery.status !== 'assigned' && delivery.status !== 'picked_up') {
     timeline.push({
       status: 'in_transit',
       label: 'In Transit',
@@ -113,7 +110,7 @@ export const getAssignedOrders = async (req, res, next) => {
 
     // Build filter
     const filter = {};
-    
+
     if (status) {
       filter.status = status;
     }
@@ -228,7 +225,9 @@ export const updateDeliveryStatus = async (req, res, next) => {
 
     // Validate proof of delivery is required for delivered status
     if (status === 'delivered' && !proofOfDelivery) {
-      return next(new ErrorResponse('Proof of delivery image is required for delivered status', 400));
+      return next(
+        new ErrorResponse('Proof of delivery image is required for delivered status', 400)
+      );
     }
 
     // Find delivery
@@ -277,18 +276,18 @@ export const updateDeliveryStatus = async (req, res, next) => {
     if (status === 'picked_up' && order.status === 'processing') {
       order.status = 'shipped';
       await order.save();
-      
-      // Send email notification to customer
-      await EmailService.sendOrderShippedEmail(order.user.email, {
-        customerName: order.user.fullName,
-        orderNumber: order.orderNumber,
-        trackingNumber: order.trackingNumber || 'N/A',
-      });
+
+      // Send email notification to customer - DISABLED
+      // await EmailService.sendOrderShippedEmail(order.user.email, {
+      //   customerName: order.user.fullName,
+      //   orderNumber: order.orderNumber,
+      //   trackingNumber: order.trackingNumber || 'N/A',
+      // });
     } else if (status === 'delivered') {
       order.status = 'delivered_pending_confirmation';
       // Set auto-complete due date to 3 days from now
       order.autoCompleteDueAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-      
+
       // Auto-update payment status to 'paid' for COD orders
       if (order.paymentMethod === 'cash_on_delivery' && order.paymentStatus === 'pending') {
         order.paymentStatus = 'paid';
@@ -298,7 +297,7 @@ export const updateDeliveryStatus = async (req, res, next) => {
           orderNumber: order.orderNumber,
         });
       }
-      
+
       await order.save();
 
       // Decrement shipper's current delivery count
@@ -306,12 +305,12 @@ export const updateDeliveryStatus = async (req, res, next) => {
         $inc: { currentDeliveryCount: -1 },
       });
 
-      // Send email notification to customer
-      await EmailService.sendOrderDeliveredEmail(order.user.email, {
-        customerName: order.user.fullName,
-        orderNumber: order.orderNumber,
-        autoCompleteDate: order.autoCompleteDueAt.toLocaleDateString('vi-VN'),
-      });
+      // Send email notification to customer - DISABLED
+      // await EmailService.sendOrderDeliveredEmail(order.user.email, {
+      //   customerName: order.user.fullName,
+      //   orderNumber: order.orderNumber,
+      //   autoCompleteDate: order.autoCompleteDueAt.toLocaleDateString('vi-VN'),
+      // });
     } else if (status === 'failed') {
       delivery.failureReason = note;
       await delivery.save();
@@ -341,7 +340,7 @@ export const updateDeliveryStatus = async (req, res, next) => {
       await User.findByIdAndUpdate(shipperId, {
         $inc: { currentDeliveryCount: 1 },
       });
-      
+
       logger.info('Incremented delivery count - retrying after failed delivery', {
         shipperId,
         orderId,
@@ -582,5 +581,3 @@ export const getShipperStats = async (req, res, next) => {
     next(error);
   }
 };
-
-

@@ -67,6 +67,22 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    provinceCode: {
+      type: String,
+      trim: true,
+    },
+    provinceName: {
+      type: String,
+      trim: true,
+    },
+    wardCode: {
+      type: String,
+      trim: true,
+    },
+    wardName: {
+      type: String,
+      trim: true,
+    },
     phone: {
       type: String,
       trim: true,

@@ -52,7 +52,16 @@ router.get('/profile', protect, async (req, res, next) => {
 });
 
 // Protected routes
-router.put('/profile', protect, upload.single('avatar'), handleUpload, updateUserProfile);
+router.put(
+  '/profile',
+  protect,
+  upload.fields([
+    { name: 'avatar', maxCount: 1 },
+    { name: 'profileImage', maxCount: 1 },
+  ]),
+  handleUpload,
+  updateUserProfile
+);
 
 // Admin only routes
 router.route('/').get(protect, requireAdmin, getUsers).post(protect, requireAdmin, createUser);

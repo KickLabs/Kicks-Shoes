@@ -121,7 +121,9 @@ export default function ShippingAddress({ form, user, onAddressOptionChange }) {
 
     const parts = [];
     if (user.fullName) parts.push(user.fullName);
-    if (user.address) parts.push(user.address);
+    // Compose full address from separate fields
+    const addressParts = [user.address, user.wardName, user.provinceName].filter(Boolean);
+    if (addressParts.length > 0) parts.push(addressParts.join(', '));
     if (user.phone) parts.push(user.phone);
 
     const result = parts.length > 0 ? parts.join(', ') : 'No default address available';

@@ -188,7 +188,9 @@ export default function CheckoutForm({
       if (user) {
         const parts = [];
         if (user.fullName) parts.push(user.fullName);
-        if (user.address) parts.push(user.address);
+        // Compose full address from separate fields
+        const addressParts = [user.address, user.wardName, user.provinceName].filter(Boolean);
+        if (addressParts.length > 0) parts.push(addressParts.join(', '));
         if (user.phone) parts.push(user.phone);
         shippingAddress = parts.join(', ');
       }
