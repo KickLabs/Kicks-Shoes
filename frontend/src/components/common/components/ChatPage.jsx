@@ -78,6 +78,9 @@ const ChatPage = props => {
   const [streamingMessage, setStreamingMessage] = useState('');
   const [shopUserId, setShopUserId] = useState(null);
   const [productSuggestions, setProductSuggestions] = useState([]);
+  const pendingOfferRef = useRef(null);
+  const callReceiverRef = useRef(null);
+  const callConversationIdRef = useRef(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   // Video call states
@@ -480,6 +483,27 @@ Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan
 
       setIsVideoCallActive(true);
       setIsVideoCallModalOpen(true);
+
+      // Once the receiver accepts, send the pending WebRTC offer through socket
+      if (
+        pendingOfferRef.current &&
+        socketRef.current &&
+        (callReceiverRef.current || data?.from || data?.to)
+      ) {
+        const offerPayload = {
+          from: userId || user?._id,
+          to: callReceiverRef.current || data?.from || data?.to,
+          offer: pendingOfferRef.current,
+          conversationId:
+            callConversationIdRef.current || data?.conversationId || selectedChat?._id,
+        };
+
+        console.log('📤 Sending stored WebRTC offer after acceptance:', offerPayload);
+        socketRef.current.emit('video_call_offer', offerPayload);
+        pendingOfferRef.current = null;
+      } else {
+        console.warn('⚠️ No pending offer to send after acceptance');
+      }
     };
 
     const handleCallRejected = data => {
@@ -1100,6 +1124,9 @@ Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan
       }
 
       const finalConversationId = selectedChat._id === 'shop' ? conversationId : selectedChat._id;
+      callReceiverRef.current = receiverId;
+      callConversationIdRef.current = finalConversationId;
+
       const callData = {
         to: receiverId,
         from: userId || user?._id, // Đảm bảo có from ID
@@ -1107,6 +1134,7 @@ Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan
         offer: offer,
         conversationId: finalConversationId,
       };
+      pendingOfferRef.current = offer;
 
       // Validation trước khi gửi
       if (!callData.from || !callData.to) {
@@ -1304,6 +1332,10 @@ Hãy bắt đầu bằng cách hỏi về bất kỳ chủ đề nào bạn quan
         conversationId: selectedChat?._id,
       });
     }
+
+    pendingOfferRef.current = null;
+    callReceiverRef.current = null;
+    callConversationIdRef.current = null;
 
     // Reset states
     setIsVideoCallModalOpen(false);

@@ -14,7 +14,7 @@ if (!GEMINI_API_KEY) {
   console.error('Missing GEMINI_API_KEY environment variable.');
 }
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-const MODEL_ID = process.env.GEMINI_MODEL_ID || 'gemini-2.0-flash-exp-image-generation';
+const MODEL_ID = process.env.GEMINI_MODEL_ID || 'gemini-2.5-flash-image';
 
 router.post(
   '/',
