@@ -143,7 +143,12 @@ const ShipperDashboard = () => {
 
   const customUploadRequest = async ({ file, onSuccess, onError, onProgress }) => {
     const token = localStorage.getItem('accessToken');
-    console.log('Custom upload request, token:', token ? 'exists' : 'NO TOKEN');
+    console.log('Custom upload request initiated', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      hasToken: !!token,
+    });
 
     if (!token) {
       message.error('Please login again. No authentication token found.');
@@ -154,28 +159,46 @@ const ShipperDashboard = () => {
     const formData = new FormData();
     formData.append('image', file);
 
+    // Log FormData contents
+    console.log('FormData prepared:', {
+      hasImage: formData.has('image'),
+    });
+
     try {
       const xhr = new XMLHttpRequest();
 
       xhr.upload.onprogress = event => {
         if (event.lengthComputable) {
           const percent = (event.loaded / event.total) * 100;
+          console.log('Upload progress:', percent.toFixed(2) + '%');
           onProgress({ percent });
         }
       };
 
       xhr.onload = () => {
+        console.log('Upload request completed', {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          responseLength: xhr.responseText?.length,
+        });
+
         try {
           if (xhr.status === 200) {
             const response = JSON.parse(xhr.responseText);
+            console.log('Upload successful:', response);
             onSuccess(response, xhr);
           } else {
             // Try to parse error response
             let errorData;
             try {
               errorData = JSON.parse(xhr.responseText);
+              console.error('Upload failed with error:', errorData);
             } catch (parseError) {
               // If response is not JSON (e.g., HTML error page)
+              console.error(
+                'Upload failed, non-JSON response:',
+                xhr.responseText.substring(0, 200)
+              );
               errorData = {
                 error: 'Upload failed',
                 message: `Server returned ${xhr.status}: ${xhr.statusText}`,
@@ -194,11 +217,14 @@ const ShipperDashboard = () => {
       };
 
       xhr.onerror = () => {
+        console.error('Network error during upload');
         onError(new Error('Network error during upload'));
       };
 
       xhr.open('POST', '/api/upload/delivery-proof');
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      console.log('Sending upload request to:', '/api/upload/delivery-proof');
       xhr.send(formData);
     } catch (error) {
       console.error('Upload error:', error);
@@ -253,16 +279,22 @@ const ShipperDashboard = () => {
   };
 
   const beforeUpload = file => {
-    const isImage = file.type.startsWith('image/');
-    if (!isImage) {
-      message.error('You can only upload image files!');
+    // Validate file type - accept jpg, jpeg, png, gif
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    const isValidType = allowedTypes.includes(file.type.toLowerCase());
+
+    if (!isValidType) {
+      message.error('You can only upload JPG, JPEG, PNG, or GIF image files!');
       return Upload.LIST_IGNORE;
     }
-    const isLt5M = file.size / 1024 / 1024 < 5;
-    if (!isLt5M) {
-      message.error('Image must be smaller than 5MB!');
+
+    // Validate file size (10MB to match backend)
+    const isLt10M = file.size / 1024 / 1024 < 10;
+    if (!isLt10M) {
+      message.error('Image must be smaller than 10MB!');
       return Upload.LIST_IGNORE;
     }
+
     return true;
   };
 
@@ -519,6 +551,7 @@ const ShipperDashboard = () => {
               >
                 <Upload
                   name="image"
+                  accept="image/jpeg,image/jpg,image/png,image/gif"
                   customRequest={customUploadRequest}
                   listType="picture-card"
                   fileList={fileList}
