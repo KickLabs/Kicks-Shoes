@@ -164,6 +164,20 @@ const ShipperDashboard = () => {
       hasImage: formData.has('image'),
     });
 
+    // Get correct API URL for both development and production
+    const getApiBaseUrl = () => {
+      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+        return 'http://localhost:3000';
+      }
+      if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL;
+      }
+      return ''; // Relative path for same-origin
+    };
+
+    const apiUrl = `${getApiBaseUrl()}/api/upload/delivery-proof`;
+    console.log('Upload API URL:', apiUrl);
+
     try {
       const xhr = new XMLHttpRequest();
 
@@ -221,10 +235,10 @@ const ShipperDashboard = () => {
         onError(new Error('Network error during upload'));
       };
 
-      xhr.open('POST', '/api/upload/delivery-proof');
+      xhr.open('POST', apiUrl);
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
-      console.log('Sending upload request to:', '/api/upload/delivery-proof');
+      console.log('Sending upload request to:', apiUrl);
       xhr.send(formData);
     } catch (error) {
       console.error('Upload error:', error);
