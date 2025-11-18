@@ -331,44 +331,104 @@ export default function OrderDetails() {
         return;
       }
 
-      // Prepare items for checkout similar to buyNow format
+      setLoading(true);
+
+      // Fetch current product data to get latest prices
+      const productIds = [...new Set(order.items.map(item => item.product._id))];
+      const productPromises = productIds.map(id =>
+        axiosInstance.get(`/products/${id}`).catch(err => {
+          console.error(`Failed to fetch product ${id}:`, err);
+          return null;
+        })
+      );
+
+      const productResponses = await Promise.all(productPromises);
+      const productsMap = {};
+
+      productResponses.forEach(response => {
+        if (response && response.data.success) {
+          const product = response.data.data;
+          productsMap[product._id] = product;
+        }
+      });
+
+      // Prepare items for checkout with CURRENT prices
       const selectedItems = order.items.map(item => {
-        // Get the correct image from inventory
-        const inv = item.product?.inventory?.find(
+        const currentProduct = productsMap[item.product._id];
+
+        if (!currentProduct) {
+          console.warn(`Product ${item.product._id} not found, using order data`);
+          // Fallback to order data if product fetch failed
+          const inv = item.product?.inventory?.find(
+            inv => inv.size === item.size && inv.color === item.color
+          );
+          const image = inv?.images?.[0] || item.product?.mainImage || '';
+
+          return {
+            product: item.product._id,
+            productDetails: {
+              _id: item.product._id,
+              name: item.product.name,
+              mainImage: image,
+              price: item.product.price || {
+                regular: item.price,
+                isOnSale: false,
+                discountPercent: 0,
+              },
+              inventory: item.product.inventory,
+            },
+            quantity: item.quantity,
+            size: item.size,
+            color: item.color,
+            price: item.price,
+          };
+        }
+
+        // Use CURRENT product data with latest prices
+        const inv = currentProduct.inventory?.find(
           inv => inv.size === item.size && inv.color === item.color
         );
-        const image = inv?.images?.[0] || item.product?.mainImage || '';
+        const image = inv?.images?.[0] || currentProduct.mainImage || '';
+
+        // Calculate current price (with sale if applicable)
+        let currentPrice = currentProduct.price.regular;
+        if (currentProduct.price.isOnSale && currentProduct.price.discountPercent) {
+          currentPrice =
+            currentProduct.price.regular * (1 - currentProduct.price.discountPercent / 100);
+        }
 
         return {
-          product: item.product._id,
+          product: currentProduct._id,
           productDetails: {
-            _id: item.product._id,
-            name: item.product.name,
+            _id: currentProduct._id,
+            name: currentProduct.name,
             mainImage: image,
             price: {
-              regular: item.price,
-              isOnSale: item.product.price?.isOnSale || false,
-              discountPercent: item.product.price?.discountPercent || 0,
+              regular: currentProduct.price.regular,
+              isOnSale: currentProduct.price.isOnSale || false,
+              discountPercent: currentProduct.price.discountPercent || 0,
             },
-            inventory: item.product.inventory,
+            inventory: currentProduct.inventory,
           },
           quantity: item.quantity,
           size: item.size,
           color: item.color,
-          price: item.price,
+          price: currentPrice, // Use CURRENT calculated price
         };
       });
 
       // Save to localStorage for checkout page
       localStorage.setItem('selectedCartItems', JSON.stringify(selectedItems));
 
-      message.success(`Preparing ${selectedItems.length} item(s) for checkout`);
+      message.success(`Preparing ${selectedItems.length} item(s) for checkout with current prices`);
 
       // Navigate to checkout with selectedItems parameter
       navigate('/checkout?selectedItems=true');
     } catch (error) {
       console.error('Error preparing buy again:', error);
       message.error('Failed to prepare items for checkout');
+    } finally {
+      setLoading(false);
     }
   };
 
