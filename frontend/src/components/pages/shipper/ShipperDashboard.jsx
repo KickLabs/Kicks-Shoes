@@ -143,7 +143,12 @@ const ShipperDashboard = () => {
 
   const customUploadRequest = async ({ file, onSuccess, onError, onProgress }) => {
     const token = localStorage.getItem('accessToken');
-    console.log('Custom upload request, token:', token ? 'exists' : 'NO TOKEN');
+    console.log('Custom upload request initiated', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      hasToken: !!token,
+    });
 
     if (!token) {
       message.error('Please login again. No authentication token found.');
@@ -154,32 +159,86 @@ const ShipperDashboard = () => {
     const formData = new FormData();
     formData.append('image', file);
 
+    // Log FormData contents
+    console.log('FormData prepared:', {
+      hasImage: formData.has('image'),
+    });
+
+    // Get correct API URL for both development and production
+    const getApiBaseUrl = () => {
+      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+        return 'http://localhost:3000';
+      }
+      if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL;
+      }
+      return ''; // Relative path for same-origin
+    };
+
+    const apiUrl = `${getApiBaseUrl()}/api/upload/delivery-proof`;
+    console.log('Upload API URL:', apiUrl);
+
     try {
       const xhr = new XMLHttpRequest();
 
       xhr.upload.onprogress = event => {
         if (event.lengthComputable) {
           const percent = (event.loaded / event.total) * 100;
+          console.log('Upload progress:', percent.toFixed(2) + '%');
           onProgress({ percent });
         }
       };
 
       xhr.onload = () => {
-        if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText);
-          onSuccess(response, xhr);
-        } else {
-          const error = JSON.parse(xhr.responseText);
-          onError(error);
+        console.log('Upload request completed', {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          responseLength: xhr.responseText?.length,
+        });
+
+        try {
+          if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+            console.log('Upload successful:', response);
+            onSuccess(response, xhr);
+          } else {
+            // Try to parse error response
+            let errorData;
+            try {
+              errorData = JSON.parse(xhr.responseText);
+              console.error('Upload failed with error:', errorData);
+            } catch (parseError) {
+              // If response is not JSON (e.g., HTML error page)
+              console.error(
+                'Upload failed, non-JSON response:',
+                xhr.responseText.substring(0, 200)
+              );
+              errorData = {
+                error: 'Upload failed',
+                message: `Server returned ${xhr.status}: ${xhr.statusText}`,
+                details: xhr.responseText.substring(0, 200),
+              };
+            }
+            onError(errorData);
+          }
+        } catch (error) {
+          console.error('Error processing upload response:', error);
+          onError({
+            error: 'Upload failed',
+            message: error.message || 'Failed to process server response',
+          });
         }
       };
 
       xhr.onerror = () => {
-        onError(new Error('Upload failed'));
+        console.error('Network error during upload');
+        onError(new Error('Network error during upload'));
       };
 
-      xhr.open('POST', '/api/upload/delivery-proof');
+      xhr.open('POST', apiUrl);
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      console.log('Sending upload request to:', apiUrl);
       xhr.send(formData);
     } catch (error) {
       console.error('Upload error:', error);
@@ -200,27 +259,56 @@ const ShipperDashboard = () => {
         setProofImageUrl(info.file.response.url);
       }
     } else if (info.file.status === 'error') {
-      const errorMsg = info.file.response?.error || info.file.response?.message || 'Upload failed';
-      if (info.file.response?.error === 'Unauthorized' || errorMsg.includes('401')) {
-        message.error('Session expired. Please login again.');
-      } else {
-        message.error(`${info.file.name} upload failed: ${errorMsg}`);
+      // Handle different error formats
+      let errorMsg = 'Upload failed';
+
+      if (info.file.response) {
+        // Try to extract error message from various formats
+        if (typeof info.file.response === 'string') {
+          errorMsg = info.file.response;
+        } else if (info.file.response.message) {
+          errorMsg = info.file.response.message;
+        } else if (info.file.response.error) {
+          errorMsg = info.file.response.error;
+          if (info.file.response.message) {
+            errorMsg += `: ${info.file.response.message}`;
+          }
+        }
       }
-      console.error('Upload error:', info.file.response);
+
+      if (
+        errorMsg.includes('401') ||
+        errorMsg.includes('Unauthorized') ||
+        errorMsg.includes('token')
+      ) {
+        message.error('Session expired. Please login again.');
+      } else if (errorMsg.includes('File too large') || errorMsg.includes('LIMIT_FILE_SIZE')) {
+        message.error('File is too large. Maximum size is 10MB.');
+      } else {
+        message.error(`Upload failed: ${errorMsg}`);
+      }
+
+      console.error('Upload error details:', info.file.response);
     }
   };
 
   const beforeUpload = file => {
-    const isImage = file.type.startsWith('image/');
-    if (!isImage) {
-      message.error('You can only upload image files!');
+    // Validate file type - accept jpg, jpeg, png, gif
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    const isValidType = allowedTypes.includes(file.type.toLowerCase());
+
+    if (!isValidType) {
+      message.error('You can only upload JPG, JPEG, PNG, or GIF image files!');
       return Upload.LIST_IGNORE;
     }
-    const isLt5M = file.size / 1024 / 1024 < 5;
-    if (!isLt5M) {
-      message.error('Image must be smaller than 5MB!');
+
+    // Validate file size (10MB to match backend)
+    const isLt10M = file.size / 1024 / 1024 < 10;
+    if (!isLt10M) {
+      message.error('Image must be smaller than 10MB!');
       return Upload.LIST_IGNORE;
     }
+
     return true;
   };
 
@@ -477,6 +565,7 @@ const ShipperDashboard = () => {
               >
                 <Upload
                   name="image"
+                  accept="image/jpeg,image/jpg,image/png,image/gif"
                   customRequest={customUploadRequest}
                   listType="picture-card"
                   fileList={fileList}
