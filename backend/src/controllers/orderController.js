@@ -305,11 +305,13 @@ export const getOrderById = async (req, res, next) => {
       success: true,
       data: {
         ...order.toObject(),
-        delivery: delivery ? {
-          ...delivery,
-          timeline: getDeliveryTimeline(delivery),
-          statusHistory: delivery.statusHistory,
-        } : null,
+        delivery: delivery
+          ? {
+              ...delivery,
+              timeline: getDeliveryTimeline(delivery),
+              statusHistory: delivery.statusHistory,
+            }
+          : null,
       },
     });
   } catch (error) {
@@ -365,9 +367,12 @@ export const getOrderTracking = async (req, res, next) => {
         actualDeliveryTime: delivery.actualDeliveryTime,
         proofOfDelivery: delivery.proofOfDelivery,
         recipientName: delivery.recipientName,
-        deliveryDuration: delivery.deliveredAt && delivery.assignedAt 
-          ? Math.floor((new Date(delivery.deliveredAt) - new Date(delivery.assignedAt)) / 1000 / 60)
-          : null,
+        deliveryDuration:
+          delivery.deliveredAt && delivery.assignedAt
+            ? Math.floor(
+                (new Date(delivery.deliveredAt) - new Date(delivery.assignedAt)) / 1000 / 60
+              )
+            : null,
       },
     });
   } catch (error) {
@@ -420,10 +425,7 @@ function getDeliveryTimeline(delivery) {
       timestamp: delivery.inTransitAt,
       completed: true,
     });
-  } else if (
-    delivery.status !== 'assigned' &&
-    delivery.status !== 'picked_up'
-  ) {
+  } else if (delivery.status !== 'assigned' && delivery.status !== 'picked_up') {
     timeline.push({
       status: 'in_transit',
       label: 'In Transit',
@@ -700,10 +702,10 @@ export const refundOrder = async (req, res, next) => {
   try {
     const { id } = req.params;
     let { reason, amount } = req.body;
-    
+
     // Ensure amount is always positive
     amount = Math.abs(parseFloat(amount));
-    
+
     if (!id?.trim()) {
       return res.status(400).json({
         success: false,
@@ -780,83 +782,55 @@ export const refundOrder = async (req, res, next) => {
       paymentMethod: orderToRefund.paymentMethod,
     });
     let refundInfo = null;
-    // Nếu là VNPAY đã thanh toán thì gọi refund VNPAY
-    if (orderToRefund.paymentMethod === 'vnpay' && orderToRefund.paymentStatus === 'paid') {
-      const refundResult = await handleVNPayRefund(orderToRefund, amount, reason, req);
-      if (!refundResult.success || !refundResult.refundSuccess) {
-        return res.status(500).json({
-          success: false,
-          message: 'VNPay refund failed: ' + (refundResult.message || refundResult.error),
-        });
-      }
-      await OrderService.updateOrder(id, {
-        paymentStatus: 'refunded',
-        status: 'refunded',
-        refundAmount: amount,
-        refundReason: reason,
-        refundedAt: new Date(),
-        refundTransactionNo: refundResult.data?.transactionNo,
-        refundResponseCode: refundResult.data?.responseCode,
-      });
-      refundInfo = refundResult.data;
-    }
-    // Nếu là COD hoặc PayOS (không phải VNPay) thì refund bằng điểm thưởng
-    logger.info('Checking COD/PayOS refund eligibility', {
+
+    // REFUND ALL PAYMENT METHODS AS REWARD POINTS
+    // This is simpler and more reliable than dealing with payment gateway APIs
+    logger.info('Processing refund as reward points', {
+      amount,
       paymentMethod: orderToRefund.paymentMethod,
-      paymentStatus: orderToRefund.paymentStatus,
-      status: orderToRefund.status,
-      shouldRefund: orderToRefund.paymentMethod !== 'vnpay' &&
-        orderToRefund.paymentStatus === 'paid' &&
-        (orderToRefund.status === 'delivered' || orderToRefund.status === 'completed')
     });
-    
-    if (
-      orderToRefund.paymentMethod !== 'vnpay' &&
-      orderToRefund.paymentStatus === 'paid' &&
-      (orderToRefund.status === 'delivered' || orderToRefund.status === 'completed')
-    ) {
-      logger.info('Creating reward points for COD/PayOS refund', { amount });
-      
-      // Cộng điểm thưởng tương ứng số tiền refund
-      // IMPORTANT: 1000 VND = 1 point (divide by 1000)
-      const refundPoints = Math.floor(Math.abs(Number(amount)) / 1000);
-      
-      logger.info('Refund points to be added', {
-        originalAmount: amount,
-        refundPoints: refundPoints,
-        conversionRate: '1000 VND = 1 point'
-      });
-      
-      const rewardPoint = await RewardPoint.create({
-        user: orderToRefund.user,
-        points: refundPoints, // 1000 VND = 1 point
-        type: 'adjust', // Use 'adjust' for refund points
-        description: `Refund for order #${orderToRefund.orderNumber || orderToRefund._id}`,
-        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
-        status: 'active',
-      });
-      
-      logger.info('Reward points created successfully for refund', {
-        rewardPointId: rewardPoint._id,
-        points: rewardPoint.points,
-        user: orderToRefund.user,
-        orderId: id
-      });
-      
-      await OrderService.updateOrder(id, {
-        status: 'refunded',
-        paymentStatus: 'refunded',
-        refundAmount: amount,
-        refundReason: reason,
-        refundedAt: new Date(),
-      });
-      refundInfo = { 
-        refundAmountVND: amount,
-        pointsRefunded: refundPoints,
-        conversionRate: '1000 VND = 1 point',
-        message: `Refund processed as ${refundPoints} reward points`
-      };
-    }
+
+    // Cộng điểm thưởng tương ứng số tiền refund
+    // IMPORTANT: 1000 VND = 1 point (divide by 1000)
+    const refundPoints = Math.floor(Math.abs(Number(amount)) / 1000);
+
+    logger.info('Refund points to be added', {
+      originalAmount: amount,
+      refundPoints: refundPoints,
+      conversionRate: '1000 VND = 1 point',
+    });
+
+    const rewardPoint = await RewardPoint.create({
+      user: orderToRefund.user,
+      points: refundPoints, // 1000 VND = 1 point
+      type: 'adjust', // Use 'adjust' for refund points
+      description: `Refund for order #${orderToRefund.orderNumber || orderToRefund._id}`,
+      expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+      status: 'active',
+    });
+
+    logger.info('Reward points created successfully for refund', {
+      rewardPointId: rewardPoint._id,
+      points: rewardPoint.points,
+      user: orderToRefund.user,
+      orderId: id,
+    });
+
+    await OrderService.updateOrder(id, {
+      status: 'refunded',
+      paymentStatus: 'refunded',
+      refundAmount: amount,
+      refundReason: reason,
+      refundedAt: new Date(),
+    });
+
+    refundInfo = {
+      refundAmountVND: amount,
+      pointsRefunded: refundPoints,
+      conversionRate: '1000 VND = 1 point',
+      message: `Refund processed as ${refundPoints} reward points`,
+      paymentMethod: orderToRefund.paymentMethod,
+    };
     // Trừ điểm nếu đã từng cộng cho order này
     try {
       await deductRewardPointsForOrder(orderToRefund);
@@ -1114,10 +1088,7 @@ export const autoAssignShipper = async (req, res, next) => {
       role: 'shipper',
       status: true,
       isVerified: true,
-      $or: [
-        { isActive: true },
-        { isActive: { $exists: false } }
-      ]
+      $or: [{ isActive: true }, { isActive: { $exists: false } }],
     }).sort({ currentDeliveryCount: 1 });
 
     if (!shipper) {
@@ -1185,17 +1156,14 @@ export const getAvailableShippers = async (req, res, next) => {
       role: 'shipper',
       status: true,
       isVerified: true,
-      $or: [
-        { isActive: true },
-        { isActive: { $exists: false } }
-      ]
+      $or: [{ isActive: true }, { isActive: { $exists: false } }],
     })
       .select('fullName email phone avatar vehicleType currentDeliveryCount isActive')
       .sort({ currentDeliveryCount: 1 });
 
     logger.info('Available shippers found', {
       count: shippers.length,
-      shippers: shippers.map(s => ({ id: s._id, name: s.fullName, isActive: s.isActive }))
+      shippers: shippers.map(s => ({ id: s._id, name: s.fullName, isActive: s.isActive })),
     });
 
     res.status(200).json({
@@ -1260,7 +1228,7 @@ export const confirmOrderReceived = async (req, res, next) => {
             populate: { path: 'product' },
           })
           .lean();
-        
+
         // Increment sales for each product
         if (fullOrder && Array.isArray(fullOrder.items)) {
           for (const item of fullOrder.items) {
@@ -1271,7 +1239,7 @@ export const confirmOrderReceived = async (req, res, next) => {
             }
           }
         }
-        
+
         const reward = await createRewardPointsForOrder(fullOrder);
         if (reward) {
           logger.info('[REWARD] Points awarded for order:', {
@@ -1405,7 +1373,8 @@ export const reportDeliveryIssue = async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: report,
-      message: 'Delivery issue reported successfully. Our team will investigate and contact you soon.',
+      message:
+        'Delivery issue reported successfully. Our team will investigate and contact you soon.',
     });
   } catch (error) {
     logger.error('Report delivery issue error', {
