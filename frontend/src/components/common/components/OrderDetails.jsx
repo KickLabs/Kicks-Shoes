@@ -7,6 +7,7 @@ import {
   ArrowLeftOutlined,
   TruckOutlined,
   TeamOutlined,
+  ShoppingCartOutlined,
 } from '@ant-design/icons';
 import {
   Avatar,
@@ -29,7 +30,7 @@ import { ActiveTabContext } from './ActiveTabContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import './order-details.css';
 import TabHeader from './TabHeader';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axiosInstance from '@/services/axiosInstance';
 import FeedbackModal from './Feedback';
 import { formatPrice } from '../../../utils/StringFormat';
@@ -39,6 +40,7 @@ const { Option } = Select;
 export default function OrderDetails() {
   const { setActiveTab } = useContext(ActiveTabContext);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const showActions =
     location.pathname.includes('/dashboard/orders/') ||
@@ -106,7 +108,7 @@ export default function OrderDetails() {
     { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
     { title: 'Total', dataIndex: 'subtotal', key: 'subtotal', render: v => formatPrice(v || 0) },
     // Only show Review column for order owner
-    ...((order?.user?._id === user?._id || order?.user === user?._id)
+    ...(order?.user?._id === user?._id || order?.user === user?._id
       ? [
           {
             title: 'Review',
@@ -194,7 +196,7 @@ export default function OrderDetails() {
         if (response.data.success) {
           setOrder(response.data.data);
           setNote(response.data.data.notes || '');
-          
+
           // If order has delivery info, set it
           if (response.data.data.delivery) {
             setDeliveryTracking(response.data.data.delivery);
@@ -216,7 +218,7 @@ export default function OrderDetails() {
   useEffect(() => {
     const fetchDeliveryTracking = async () => {
       if (!order?.shipper || deliveryTracking) return;
-      
+
       try {
         setLoadingTracking(true);
         const response = await axiosInstance.get(`/orders/${orderId}/tracking`);
@@ -229,7 +231,7 @@ export default function OrderDetails() {
         setLoadingTracking(false);
       }
     };
-    
+
     if (order?.shipper) {
       fetchDeliveryTracking();
     }
@@ -321,6 +323,55 @@ export default function OrderDetails() {
     });
   };
 
+  // Handle buy again - add all order items to cart and navigate to checkout
+  const handleBuyAgain = async () => {
+    try {
+      if (!order || !order.items || order.items.length === 0) {
+        message.error('No items found in this order');
+        return;
+      }
+
+      // Prepare items for checkout similar to buyNow format
+      const selectedItems = order.items.map(item => {
+        // Get the correct image from inventory
+        const inv = item.product?.inventory?.find(
+          inv => inv.size === item.size && inv.color === item.color
+        );
+        const image = inv?.images?.[0] || item.product?.mainImage || '';
+
+        return {
+          product: item.product._id,
+          productDetails: {
+            _id: item.product._id,
+            name: item.product.name,
+            mainImage: image,
+            price: {
+              regular: item.price,
+              isOnSale: item.product.price?.isOnSale || false,
+              discountPercent: item.product.price?.discountPercent || 0,
+            },
+            inventory: item.product.inventory,
+          },
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+          price: item.price,
+        };
+      });
+
+      // Save to localStorage for checkout page
+      localStorage.setItem('selectedCartItems', JSON.stringify(selectedItems));
+
+      message.success(`Preparing ${selectedItems.length} item(s) for checkout`);
+
+      // Navigate to checkout with selectedItems parameter
+      navigate('/checkout?selectedItems=true');
+    } catch (error) {
+      console.error('Error preparing buy again:', error);
+      message.error('Failed to prepare items for checkout');
+    }
+  };
+
   // Handle report delivery issue
   const handleReportIssue = () => {
     setReportModalVisible(true);
@@ -341,7 +392,9 @@ export default function OrderDetails() {
       });
 
       if (response.data.success) {
-        message.success('Report submitted successfully. Our team will investigate and contact you soon.');
+        message.success(
+          'Report submitted successfully. Our team will investigate and contact you soon.'
+        );
         setReportModalVisible(false);
         setReportType('not_received');
         setReportReason('');
@@ -372,7 +425,7 @@ export default function OrderDetails() {
       console.log('Fetching shippers from /orders/shippers/available');
       const response = await axiosInstance.get('/orders/shippers/available');
       console.log('Shippers response:', response.data);
-      
+
       if (response.data.success) {
         if (response.data.data && response.data.data.length > 0) {
           setShippers(response.data.data);
@@ -427,9 +480,7 @@ export default function OrderDetails() {
       const response = await axiosInstance.post(`/orders/${orderId}/auto-assign-shipper`);
 
       if (response.data.success) {
-        message.success(
-          `Shipper ${response.data.data.shipper.fullName} assigned successfully`
-        );
+        message.success(`Shipper ${response.data.data.shipper.fullName} assigned successfully`);
         // Reload order
         const orderResponse = await axiosInstance.get(`/orders/${orderId}`);
         if (orderResponse.data.success) {
@@ -549,7 +600,19 @@ export default function OrderDetails() {
       return true;
     }
 
-    // Case 2: Delivered and paid orders (any payment method) within 3 days
+    // Case 2: Shipped and paid orders (any payment method) within 3 days
+    if (order?.paymentStatus === 'paid' && order?.status === 'shipped') {
+      if (order?.shippedAt) {
+        const shippedDate = new Date(order.shippedAt);
+        const currentDate = new Date();
+        const daysDiff = (currentDate - shippedDate) / (1000 * 60 * 60 * 24);
+        return daysDiff <= 3; // Refund available within 3 days of shipping
+      }
+      // If no shippedAt date, don't allow refund
+      return false;
+    }
+
+    // Case 3: Delivered and paid orders (any payment method) within 3 days
     if (order?.paymentStatus === 'paid' && order?.status === 'delivered') {
       if (order?.deliveredAt) {
         const deliveredDate = new Date(order.deliveredAt);
@@ -561,7 +624,7 @@ export default function OrderDetails() {
       return false;
     }
 
-    // Case 3: Completed and paid orders (any payment method) within 3 days of completion
+    // Case 4: Completed and paid orders (any payment method) within 3 days of completion
     if (order?.paymentStatus === 'paid' && order?.status === 'completed') {
       if (order?.completedAt) {
         const completedDate = new Date(order.completedAt);
@@ -653,132 +716,232 @@ export default function OrderDetails() {
           />
           <div className="order-details-container">
             <div className="order-details-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {user?.role === 'shop' && (
-                  <Button
-                    icon={<ArrowLeftOutlined />}
-                    onClick={() => (window.location.href = '/shop/orders')}
-                    style={{ marginRight: 8 }}
-                  >
-                    Back to Orders
-                  </Button>
-                )}
-                <span className="order-details-title">
-                  Orders ID: <span className="order-details-id">#{order.orderNumber}</span>
-                </span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  flexWrap: 'wrap',
+                  gap: '16px',
+                }}
+              >
+                {/* Left side: Order ID and Status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                  {user?.role === 'shop' && (
+                    <Button
+                      icon={<ArrowLeftOutlined />}
+                      onClick={() => (window.location.href = '/shop/orders')}
+                      style={{ marginRight: 8 }}
+                    >
+                      Back to Orders
+                    </Button>
+                  )}
+                  <span className="order-details-title">
+                    Orders ID: <span className="order-details-id">#{order.orderNumber}</span>
+                  </span>
 
-                <Tag
-                  color={statusColorMap[order.status] || 'orange'}
-                  className="order-details-status"
-                >
-                  {order.status?.toUpperCase()}
-                </Tag>
-              </div>
-              {canCancel && (
-                <div className="order-details-actions">
-                  <Button
-                    danger
-                    block
-                    onClick={handleCancelOrder}
-                    className="order-cancel-btn"
-                    icon={<ExclamationCircleOutlined className="order-cancel-btn-icon" />}
+                  <Tag
+                    color={statusColorMap[order.status] || 'orange'}
+                    className="order-details-status"
                   >
-                    Cancel Order
-                  </Button>
+                    {order.status?.toUpperCase()}
+                  </Tag>
                 </div>
-              )}
+
+                {/* Right side: Action Buttons */}
+                <div
+                  style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}
+                >
+                  {/* Buy Again Button */}
+                  {(() => {
+                    const isOrderOwner =
+                      order?.user?._id === user?._id || order?.user === user?._id;
+                    const canBuyAgain = [
+                      'shipped',
+                      'delivered',
+                      'delivered_pending_confirmation',
+                      'completed',
+                    ].includes(order?.status);
+
+                    // Show buy again for order owner on shipped/delivered/completed orders (not pending/processing)
+                    return isOrderOwner && canBuyAgain;
+                  })() && (
+                    <Button
+                      type="primary"
+                      onClick={handleBuyAgain}
+                      icon={<ShoppingCartOutlined />}
+                      style={{
+                        background: '#4A69E2',
+                        borderColor: '#4A69E2',
+                        fontWeight: 500,
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      Buy Again
+                    </Button>
+                  )}
+
+                  {/* Refund Button */}
+                  {shouldShowRefund && (
+                    <Button
+                      type="primary"
+                      danger
+                      onClick={handleRefundOrder}
+                      icon={<ExclamationCircleOutlined />}
+                      style={{
+                        fontWeight: 500,
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      Request Refund
+                    </Button>
+                  )}
+
+                  {/* Cancel Button */}
+                  {canCancel && (
+                    <Button
+                      danger
+                      onClick={handleCancelOrder}
+                      icon={<ExclamationCircleOutlined />}
+                      style={{
+                        height: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      Cancel Order
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Refund Info Banner */}
               {shouldShowRefund && (
-                <div className="order-details-actions">
-                  {/* Show remaining days for delivered orders */}
+                <div
+                  style={{
+                    marginTop: '16px',
+                    padding: '10px 16px',
+                    background: '#fff7e6',
+                    border: '1px solid #ffd666',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#ad6800',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginLeft: '8px',
+                  }}
+                >
+                  {order?.status === 'shipped' && order?.shippedAt && (
+                    <>
+                      {(() => {
+                        const shippedDate = new Date(order.shippedAt);
+                        const currentDate = new Date();
+                        const daysDiff = (currentDate - shippedDate) / (1000 * 60 * 60 * 24);
+                        const remainingDays = Math.max(0, 3 - Math.ceil(daysDiff));
+                        return `⏰ Refund available for ${remainingDays} more day${remainingDays !== 1 ? 's' : ''} (since shipped)`;
+                      })()}
+                    </>
+                  )}
                   {order?.status === 'delivered' && order?.deliveredAt && (
-                    <div style={{ marginBottom: 8, fontSize: '12px', color: '#666' }}>
+                    <>
                       {(() => {
                         const deliveredDate = new Date(order.deliveredAt);
                         const currentDate = new Date();
                         const daysDiff = (currentDate - deliveredDate) / (1000 * 60 * 60 * 24);
                         const remainingDays = Math.max(0, 3 - Math.ceil(daysDiff));
-                        return `Refund available for ${remainingDays} more day${remainingDays !== 1 ? 's' : ''}`;
+                        return `⏰ Refund available for ${remainingDays} more day${remainingDays !== 1 ? 's' : ''}`;
                       })()}
-                    </div>
+                    </>
                   )}
-                  {/* Show remaining days for completed orders */}
                   {order?.status === 'completed' && order?.completedAt && (
-                    <div style={{ marginBottom: 8, fontSize: '12px', color: '#666' }}>
+                    <>
                       {(() => {
                         const completedDate = new Date(order.completedAt);
                         const currentDate = new Date();
                         const daysDiff = (currentDate - completedDate) / (1000 * 60 * 60 * 24);
                         const remainingDays = Math.max(0, 3 - Math.ceil(daysDiff));
-                        return `Refund available for ${remainingDays} more day${remainingDays !== 1 ? 's' : ''} (since completion)`;
+                        return `⏰ Refund available for ${remainingDays} more day${remainingDays !== 1 ? 's' : ''} (since completion)`;
                       })()}
-                    </div>
+                    </>
                   )}
-                  <Button
-                    type="primary"
-                    danger
-                    block
-                    onClick={handleRefundOrder}
-                    className="order-refund-btn"
-                    icon={<ExclamationCircleOutlined className="order-refund-btn-icon" />}
-                  >
-                    Request Refund
-                  </Button>
                 </div>
               )}
-              
-              {/* Order Owner Confirmation Buttons for delivered_pending_confirmation */}
+
+              {/* Order Owner Confirmation Banner for delivered_pending_confirmation */}
               {(() => {
                 const isOrderOwner = order?.user?._id === user?._id || order?.user === user?._id;
                 const isDeliveredPending = order?.status === 'delivered_pending_confirmation';
-                
-                console.log('🔍 Confirmation Buttons Debug:', {
-                  isOrderOwner,
-                  isDeliveredPending,
-                  userId: user?._id,
-                  orderUserId: order?.user?._id || order?.user,
-                  orderStatus: order?.status
-                });
-                
+
                 return isOrderOwner && isDeliveredPending;
               })() && (
-                <div className="order-details-actions">
-                  <div style={{ 
-                    padding: '12px', 
-                    background: '#fff7e6', 
-                    border: '1px solid #ffd666',
-                    borderRadius: '4px',
-                    marginBottom: '12px'
-                  }}>
-                    <div style={{ fontWeight: 600, color: '#ad6800', marginBottom: '4px', fontSize: '14px' }}>
+                <div style={{ marginTop: '12px' }}>
+                  <div
+                    style={{
+                      padding: '12px',
+                      background: '#fff7e6',
+                      border: '1px solid #ffd666',
+                      borderRadius: '4px',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        color: '#ad6800',
+                        marginBottom: '4px',
+                        fontSize: '14px',
+                      }}
+                    >
                       ⏰ Action Required
                     </div>
                     <div style={{ fontSize: '12px', color: '#ad6800' }}>
                       Please confirm whether you have received this order.
                       {order?.autoCompleteDueAt && (
                         <div style={{ marginTop: '4px' }}>
-                          Auto-complete in: {Math.max(0, Math.ceil((new Date(order.autoCompleteDueAt) - new Date()) / (1000 * 60 * 60 * 24)))} days
+                          Auto-complete in:{' '}
+                          {Math.max(
+                            0,
+                            Math.ceil(
+                              (new Date(order.autoCompleteDueAt) - new Date()) /
+                                (1000 * 60 * 60 * 24)
+                            )
+                          )}{' '}
+                          days
                         </div>
                       )}
                     </div>
                   </div>
-                  <Button 
-                    type="primary" 
-                    onClick={handleConfirmOrderReceived}
-                    block
-                    style={{ marginBottom: '8px', background: '#52c41a', borderColor: '#52c41a' }}
-                  >
-                    ✓ Yes, I Received the Order
-                  </Button>
-                  <Button 
-                    danger
-                    onClick={handleReportIssue}
-                    block
-                  >
-                    ⚠ I Didn't Receive It / Report Issue
-                  </Button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button
+                      type="primary"
+                      onClick={handleConfirmOrderReceived}
+                      style={{ flex: 1, background: '#52c41a', borderColor: '#52c41a' }}
+                      icon={<span>✓</span>}
+                    >
+                      Yes, I Received the Order
+                    </Button>
+                    <Button
+                      danger
+                      onClick={handleReportIssue}
+                      style={{ flex: 1 }}
+                      icon={<span>⚠</span>}
+                    >
+                      I Didn't Receive It / Report Issue
+                    </Button>
+                  </div>
                 </div>
               )}
-              
+
               {showActions && (
                 <div className="order-details-header-actions">
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1096,9 +1259,8 @@ export default function OrderDetails() {
                         {deliveryTracking.timeline.map((step, index) => {
                           const isLatest =
                             step.completed &&
-                            index ===
-                              deliveryTracking.timeline.filter(s => s.completed).length - 1;
-                          
+                            index === deliveryTracking.timeline.filter(s => s.completed).length - 1;
+
                           return (
                             <div
                               key={step.status}
@@ -1243,9 +1405,10 @@ export default function OrderDetails() {
           >
             <div style={{ marginBottom: 16 }}>
               <p style={{ color: '#666', marginBottom: 16 }}>
-                Please provide details about the issue with your delivery. Our team will investigate and contact you soon.
+                Please provide details about the issue with your delivery. Our team will investigate
+                and contact you soon.
               </p>
-              
+
               <div style={{ marginBottom: 12 }}>
                 <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>
                   Issue Type <span style={{ color: '#ff4d4f' }}>*</span>
@@ -1291,15 +1454,18 @@ export default function OrderDetails() {
                 />
               </div>
 
-              <div style={{ 
-                background: '#fff7e6', 
-                padding: '12px', 
-                borderRadius: '4px',
-                border: '1px solid #ffd666'
-              }}>
+              <div
+                style={{
+                  background: '#fff7e6',
+                  padding: '12px',
+                  borderRadius: '4px',
+                  border: '1px solid #ffd666',
+                }}
+              >
                 <div style={{ fontSize: '12px', color: '#ad6800' }}>
-                  <strong>Note:</strong> Submitting this report will change your order status to "Under Investigation". 
-                  Our support team will review and contact you within 24-48 hours.
+                  <strong>Note:</strong> Submitting this report will change your order status to
+                  "Under Investigation". Our support team will review and contact you within 24-48
+                  hours.
                 </div>
               </div>
             </div>
