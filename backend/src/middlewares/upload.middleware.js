@@ -36,5 +36,46 @@ const deliveryProofUpload = multer({
   },
 });
 
+// Error handling wrapper for multer middleware
+const handleMulterError = uploadMiddleware => {
+  return (req, res, next) => {
+    uploadMiddleware(req, res, err => {
+      if (err) {
+        // Handle Multer errors
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+              success: false,
+              error: 'File too large',
+              message: 'File size must be less than 10MB',
+            });
+          }
+          return res.status(400).json({
+            success: false,
+            error: 'Upload error',
+            message: err.message,
+          });
+        }
+
+        // Handle other errors (like file filter errors)
+        if (err instanceof ErrorResponse) {
+          return res.status(err.statusCode || 400).json({
+            success: false,
+            error: err.message,
+          });
+        }
+
+        // Handle unknown errors
+        return res.status(500).json({
+          success: false,
+          error: 'Upload failed',
+          message: err.message || 'Unknown error occurred',
+        });
+      }
+      next();
+    });
+  };
+};
+
 export default upload;
-export { deliveryProofUpload };
+export { deliveryProofUpload, handleMulterError };

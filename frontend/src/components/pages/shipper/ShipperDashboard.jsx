@@ -165,17 +165,36 @@ const ShipperDashboard = () => {
       };
 
       xhr.onload = () => {
-        if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText);
-          onSuccess(response, xhr);
-        } else {
-          const error = JSON.parse(xhr.responseText);
-          onError(error);
+        try {
+          if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+            onSuccess(response, xhr);
+          } else {
+            // Try to parse error response
+            let errorData;
+            try {
+              errorData = JSON.parse(xhr.responseText);
+            } catch (parseError) {
+              // If response is not JSON (e.g., HTML error page)
+              errorData = {
+                error: 'Upload failed',
+                message: `Server returned ${xhr.status}: ${xhr.statusText}`,
+                details: xhr.responseText.substring(0, 200),
+              };
+            }
+            onError(errorData);
+          }
+        } catch (error) {
+          console.error('Error processing upload response:', error);
+          onError({
+            error: 'Upload failed',
+            message: error.message || 'Failed to process server response',
+          });
         }
       };
 
       xhr.onerror = () => {
-        onError(new Error('Upload failed'));
+        onError(new Error('Network error during upload'));
       };
 
       xhr.open('POST', '/api/upload/delivery-proof');
@@ -200,13 +219,36 @@ const ShipperDashboard = () => {
         setProofImageUrl(info.file.response.url);
       }
     } else if (info.file.status === 'error') {
-      const errorMsg = info.file.response?.error || info.file.response?.message || 'Upload failed';
-      if (info.file.response?.error === 'Unauthorized' || errorMsg.includes('401')) {
-        message.error('Session expired. Please login again.');
-      } else {
-        message.error(`${info.file.name} upload failed: ${errorMsg}`);
+      // Handle different error formats
+      let errorMsg = 'Upload failed';
+
+      if (info.file.response) {
+        // Try to extract error message from various formats
+        if (typeof info.file.response === 'string') {
+          errorMsg = info.file.response;
+        } else if (info.file.response.message) {
+          errorMsg = info.file.response.message;
+        } else if (info.file.response.error) {
+          errorMsg = info.file.response.error;
+          if (info.file.response.message) {
+            errorMsg += `: ${info.file.response.message}`;
+          }
+        }
       }
-      console.error('Upload error:', info.file.response);
+
+      if (
+        errorMsg.includes('401') ||
+        errorMsg.includes('Unauthorized') ||
+        errorMsg.includes('token')
+      ) {
+        message.error('Session expired. Please login again.');
+      } else if (errorMsg.includes('File too large') || errorMsg.includes('LIMIT_FILE_SIZE')) {
+        message.error('File is too large. Maximum size is 10MB.');
+      } else {
+        message.error(`Upload failed: ${errorMsg}`);
+      }
+
+      console.error('Upload error details:', info.file.response);
     }
   };
 
