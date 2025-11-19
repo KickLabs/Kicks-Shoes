@@ -1,0 +1,72 @@
+Hãy sửa lại controller updatePost trong backend để xử lý keepImages đúng cách.
+
+Hiện tại khi frontend gửi request update post với:
+- keepImages: ["url1", "url2"] (array các URL ảnh cũ cần giữ lại)
+- files: [File] (các ảnh mới cần upload, nếu có)
+
+Nhưng backend đang trả về images: [] (mảng rỗng), không giữ lại ảnh cũ.
+
+Yêu cầu sửa hàm updatePost để:
+
+1. Nhận và parse keepImages từ req.body (có thể là array hoặc JSON string nếu gửi từ FormData)
+
+2. Upload các ảnh mới từ req.files lên Cloudinary (nếu có)
+
+3. MERGE keepImages (ảnh cũ giữ lại) + newImageUrls (ảnh mới upload) thành finalImages
+
+4. Update post.images = finalImages (không được ghi đè mất ảnh cũ)
+
+Code mẫu:
+
+```javascript
+exports.updatePost = async (req, res) => {
+  try {
+    const { content, tags, address, keepImages } = req.body;
+    
+    // Parse keepImages (có thể là string hoặc array)
+    let imagesToKeep = [];
+    if (keepImages) {
+      if (typeof keepImages === 'string') {
+        try {
+          imagesToKeep = JSON.parse(keepImages);
+        } catch (e) {
+          imagesToKeep = [keepImages];
+        }
+      } else if (Array.isArray(keepImages)) {
+        imagesToKeep = keepImages;
+      }
+    }
+    
+    // Upload ảnh mới
+    let newImageUrls = [];
+    if (req.files && req.files.length > 0) {
+      newImageUrls = req.files.map(file => file.path);
+    }
+    
+    // MERGE: ảnh cũ + ảnh mới
+    const finalImages = [...imagesToKeep, ...newImageUrls];
+    
+    // Update post
+    const updatedPost = await Post.findByIdAndUpdate(
+      req.params.id,
+      {
+        content,
+        tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : [],
+        address,
+        images: finalImages  // ← QUAN TRỌNG: merge thay vì ghi đè
+      },
+      { new: true }
+    ).populate('author', 'username avatar');
+    
+    res.json(updatedPost);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+```
+
+Hãy áp dụng logic này vào controller hiện tại và đảm bảo:
+- Không mất ảnh cũ khi user chỉ xóa 1 vài ảnh
+- Merge đúng khi user vừa giữ ảnh cũ, vừa thêm ảnh mới
+- Xóa hết ảnh cũ nếu keepImages = []
+
