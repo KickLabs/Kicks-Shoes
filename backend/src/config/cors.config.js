@@ -15,6 +15,10 @@ const allowedOrigins = [
   // Production (Frontend)
   'https://kicks-shoes-2025.web.app',
   'https://kicks-shoes-2025.firebaseapp.com',
+
+  // AWS S3 + CloudFront
+  'http://kicks-shoes-frontend.s3-website-ap-southeast-1.amazonaws.com',
+  'https://kicks-shoes-frontend.s3-website-ap-southeast-1.amazonaws.com',
 ];
 
 const originPatterns = [
