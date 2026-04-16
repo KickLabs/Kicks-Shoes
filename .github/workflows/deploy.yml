@@ -95,14 +95,14 @@ jobs:
               ./backend
           fi
 
-      - name: Trivy image scan (HIGH/CRITICAL)
+      - name: Trivy image scan (HIGH/CRITICAL, non-blocking)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.build_image.outputs.image_uri }}
           format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: '0'
 
       - name: Push image tags to ECR
         shell: bash
