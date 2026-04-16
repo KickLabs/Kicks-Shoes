@@ -323,9 +323,22 @@ jobs:
 
           NAT_GW_1_RAW=""
           NAT_GW_2_RAW=""
+          if [ -n "$PUBLIC_SUBNET_1" ]; then
+            NAT_GW_1_RAW="$(aws ec2 describe-nat-gateways --filter Name=subnet-id,Values="$PUBLIC_SUBNET_1" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+          fi
+
+          if [ -n "$PUBLIC_SUBNET_2" ]; then
+            NAT_GW_2_RAW="$(aws ec2 describe-nat-gateways --filter Name=subnet-id,Values="$PUBLIC_SUBNET_2" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+          fi
+
           if [ -n "$ALB_VPC_ID" ]; then
-            NAT_GW_1_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-1" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
-            NAT_GW_2_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-2" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+            if [ -z "$(normalize_none "$NAT_GW_1_RAW")" ]; then
+              NAT_GW_1_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-1" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+            fi
+
+            if [ -z "$(normalize_none "$NAT_GW_2_RAW")" ]; then
+              NAT_GW_2_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-2" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+            fi
           fi
           NAT_GW_1_ID="$(normalize_none "$NAT_GW_1_RAW")"
           NAT_GW_2_ID="$(normalize_none "$NAT_GW_2_RAW")"
@@ -338,22 +351,26 @@ jobs:
 
           NAT_EIP_1_RAW=""
           NAT_EIP_2_RAW=""
+
+          if [ -n "$NAT_GW_1_ID" ]; then
+            NAT_EIP_1_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_1_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
+          fi
+
+          if [ -n "$NAT_GW_2_ID" ]; then
+            NAT_EIP_2_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_2_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
+          fi
+
           if [ -n "$ALB_VPC_ID" ]; then
-            NAT_EIP_1_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-1" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
-            NAT_EIP_2_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-2" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
+            if [ -z "$(normalize_none "$NAT_EIP_1_RAW")" ]; then
+              NAT_EIP_1_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-1" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
+            fi
+
+            if [ -z "$(normalize_none "$NAT_EIP_2_RAW")" ]; then
+              NAT_EIP_2_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-2" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
+            fi
           fi
           NAT_EIP_1_ID="$(normalize_none "$NAT_EIP_1_RAW")"
           NAT_EIP_2_ID="$(normalize_none "$NAT_EIP_2_RAW")"
-
-          if [ -z "$NAT_EIP_1_ID" ] && [ -n "$NAT_GW_1_ID" ]; then
-            NAT_EIP_1_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_1_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
-            NAT_EIP_1_ID="$(normalize_none "$NAT_EIP_1_RAW")"
-          fi
-
-          if [ -z "$NAT_EIP_2_ID" ] && [ -n "$NAT_GW_2_ID" ]; then
-            NAT_EIP_2_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_2_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
-            NAT_EIP_2_ID="$(normalize_none "$NAT_EIP_2_RAW")"
-          fi
 
           TG_ARN_RAW="$(aws elbv2 describe-target-groups --names "${APP_NAME}-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
           TG_ARN="$(normalize_none "$TG_ARN_RAW")"
