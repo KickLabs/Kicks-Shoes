@@ -1,0 +1,116 @@
+name: Deploy Frontend to AWS S3 + CloudFront
+
+on:
+  push:
+    branches:
+      - main
+      - production
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      
+      - name: Run linter
+        working-directory: frontend
+        run: npm run lint
+        continue-on-error: true
+      
+      - name: Build application
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_FACEBOOK_APP_ID: ${{ secrets.VITE_FACEBOOK_APP_ID }}
+          VITE_SOCKET_URL: ${{ secrets.VITE_SOCKET_URL }}
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_GEMINI_MODEL: ${{ secrets.VITE_GEMINI_MODEL }}
+          VITE_AI_USE_PROXY: ${{ secrets.VITE_AI_USE_PROXY }}
+          VITE_NODE_ENV: production
+          VITE_STUN_URL: ${{ secrets.VITE_STUN_URL }}
+          VITE_STUN_URL_2: ${{ secrets.VITE_STUN_URL_2 }}
+          VITE_TURN_URL: ${{ secrets.VITE_TURN_URL }}
+          VITE_TURN_USERNAME: ${{ secrets.VITE_TURN_USERNAME }}
+          VITE_TURN_CREDENTIAL: ${{ secrets.VITE_TURN_CREDENTIAL }}
+          VITE_XIRYS_TURN_URL: ${{ secrets.VITE_XIRYS_TURN_URL }}
+          VITE_XIRYS_TURN_USERNAME: ${{ secrets.VITE_XIRYS_TURN_USERNAME }}
+          VITE_XIRYS_TURN_CREDENTIAL: ${{ secrets.VITE_XIRYS_TURN_CREDENTIAL }}
+          VITE_WEBRTC_FORCE_TURN: ${{ secrets.VITE_WEBRTC_FORCE_TURN }}
+          VITE_TINYMCE_API_KEY: ${{ secrets.VITE_TINYMCE_API_KEY }}
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
+      
+      - name: Upload HTML files to S3 (no-cache)
+        working-directory: frontend
+        run: |
+          aws s3 sync dist/ s3://${{ secrets.AWS_S3_BUCKET }} \
+            --exclude "*" \
+            --include "*.html" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --metadata-directive REPLACE \
+            --delete
+      
+      - name: Upload static assets to S3 (with cache)
+        working-directory: frontend
+        run: |
+          aws s3 sync dist/ s3://${{ secrets.AWS_S3_BUCKET }} \
+            --exclude "*.html" \
+            --cache-control "public, max-age=31536000, immutable" \
+            --metadata-directive REPLACE \
+            --delete
+      
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+      
+      - name: Deployment summary
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "🌐 CloudFront URL: https://${{ secrets.AWS_CLOUDFRONT_DOMAIN }}"
+          echo "📦 S3 Bucket: ${{ secrets.AWS_S3_BUCKET }}"
+          echo "🔄 CloudFront Distribution: ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }}"
+      
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful"
+          else
+            echo "❌ Deployment failed"
+          fi
