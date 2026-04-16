@@ -54,15 +54,25 @@ function runEslintForProject(projectPath, files, label) {
     return;
   }
 
-  const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
-  const args = ["--prefix", projectPath, "exec", "eslint", "--", "--max-warnings=0", ...files];
+  const npmCmd = "npm";
+  const args = ["exec", "eslint", "--", "--max-warnings=0", ...files];
 
   console.log(`[LINT-CHANGED] Linting ${label} files:`);
   for (const file of files) {
     console.log(`- ${file}`);
   }
 
-  const result = spawnSync(npmCmd, args, { stdio: "inherit" });
+  const result = spawnSync(npmCmd, args, {
+    stdio: "inherit",
+    cwd: projectPath,
+    shell: process.platform === "win32",
+  });
+
+  if (result.error) {
+    console.error(`[LINT-CHANGED] Failed to run eslint for ${label}: ${result.error.message}`);
+    process.exit(1);
+  }
+
   if (result.status !== 0) {
     process.exit(result.status || 1);
   }
