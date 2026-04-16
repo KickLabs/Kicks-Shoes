@@ -1,11 +1,7 @@
-# Required image values from your CI/CD pipeline output.
-container_image    = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/kicks-shoes-backend:sha-abcdef0"
-ecr_repository_arn = "arn:aws:ecr:ap-southeast-1:123456789012:repository/kicks-shoes-backend"
+# CI/CD should inject this dynamically at deploy time.
+container_image = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/kicks-shoes-backend:sha-abcdef0"
 
-# Strong random value. Keep this in a secure secret store.
-origin_verify_header_value = "replace-with-long-random-token"
-
-# Option A: one JSON secret in Secrets Manager (recommended)
+# Secret that stores app runtime configuration.
 app_config_secret_arn = "arn:aws:secretsmanager:ap-southeast-1:123456789012:secret:kicks/prod/app-config-abc123"
 app_config_secret_keys = [
   "JWT_SECRET",
@@ -14,10 +10,9 @@ app_config_secret_keys = [
   "GOOGLE_AI_API_KEY"
 ]
 
-# Option B: direct per-variable secret references (use when needed)
-# secret_environment_variables = {
-#   PAYOS_API_KEY = "arn:aws:secretsmanager:ap-southeast-1:123456789012:secret:kicks/prod/payos:PAYOS_API_KEY::"
-# }
-
-# Extra secret ARNs for execution role if you use Option B.
-secret_access_arns = []
+# Optional overrides
+# project_name = "kicks-shoes-prod"
+# aws_region   = "ap-southeast-1"
+# desired_count = 2
+# autoscaling_min = 2
+# autoscaling_max = 6

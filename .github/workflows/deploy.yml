@@ -21,9 +21,10 @@ concurrency:
 
 env:
   AWS_REGION: ap-southeast-1
+  APP_NAME: kicks-shoes-prod
   ECR_REPOSITORY: kicks-shoes-backend
   TF_WORKING_DIR: infra/terraform/environments/production
-  DOCKERFILE_PATH: backend/Dockerfile
+  DOCKERFILE_PATH: Dockerfile.evolution
 
 jobs:
   deploy:
@@ -60,6 +61,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login_ecr.outputs.registry }}
           COMMIT_SHA: ${{ github.sha }}
+          BASE_IMAGE_URI: ${{ secrets.BASE_IMAGE_URI }}
         run: |
           set -euo pipefail
           IMAGE_REPO="$ECR_REGISTRY/$ECR_REPOSITORY"
@@ -75,12 +77,23 @@ jobs:
 
           docker pull "$IMAGE_REPO:latest" || true
 
-          docker build \
-            --cache-from "$IMAGE_REPO:latest" \
-            -t "$IMAGE_URI" \
-            -t "$IMAGE_REPO:latest" \
-            -f "$DOCKERFILE_PATH" \
-            ./backend
+          if [ -n "${BASE_IMAGE_URI:-}" ]; then
+            docker build \
+              --build-arg BASE_IMAGE_URI="$BASE_IMAGE_URI" \
+              --cache-from "$IMAGE_REPO:latest" \
+              -t "$IMAGE_URI" \
+              -t "$IMAGE_REPO:latest" \
+              -f "$DOCKERFILE_PATH" \
+              .
+          else
+            echo "BASE_IMAGE_URI secret is empty. Falling back to backend/Dockerfile."
+            docker build \
+              --cache-from "$IMAGE_REPO:latest" \
+              -t "$IMAGE_URI" \
+              -t "$IMAGE_REPO:latest" \
+              -f backend/Dockerfile \
+              ./backend
+          fi
 
       - name: Trivy image scan (HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@master
@@ -103,14 +116,13 @@ jobs:
         with:
           terraform_wrapper: false
 
-      - name: Terraform init, validate and apply
+      - name: Terraform init, plan and apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         shell: bash
         env:
+          TF_VAR_project_name: ${{ env.APP_NAME }}
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
           TF_VAR_container_image: ${{ steps.build_image.outputs.image_uri }}
-          TF_VAR_ecr_repository_arn: arn:aws:ecr:${{ env.AWS_REGION }}:${{ steps.aws_account.outputs.account_id }}:repository/${{ env.ECR_REPOSITORY }}
-          TF_VAR_origin_verify_header_value: ${{ secrets.ORIGIN_VERIFY_HEADER_VALUE }}
           TF_VAR_app_config_secret_arn: ${{ secrets.APP_CONFIG_SECRET_ARN }}
           TF_VAR_app_config_secret_keys: '["JWT_SECRET","JWT_REFRESH_SECRET","MONGODB_URI","GOOGLE_AI_API_KEY"]'
         run: |
@@ -118,4 +130,5 @@ jobs:
           terraform init -input=false
           terraform fmt -check
           terraform validate
-          terraform apply -input=false -auto-approve
+          terraform plan -input=false -out=tfplan
+          terraform apply -input=false -auto-approve tfplan
