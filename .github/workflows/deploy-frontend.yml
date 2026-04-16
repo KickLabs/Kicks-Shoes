@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - production
+      - feature/tientp-deployfe
     paths:
       - 'frontend/**'
   workflow_dispatch:
