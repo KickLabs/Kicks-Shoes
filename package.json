@@ -16,7 +16,8 @@
     "prepare": "husky",
     "commitlint": "commitlint --from=HEAD~1 --to=HEAD",
     "security:scan": "node scripts/security/pre-push-audit.cjs",
-    "prepush:verify": "npm run security:scan && npm test",
+    "lint:changed": "node scripts/security/lint-changed.cjs",
+    "prepush:verify": "npm run security:scan && npm run lint:changed && npm test",
     "prepush:verify:full": "npm run security:scan && npm run lint && npm test",
     "test": "echo \"No tests specified\" && exit 0"
   },
