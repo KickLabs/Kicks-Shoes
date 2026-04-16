@@ -483,13 +483,51 @@ jobs:
           fi
 
           if [ -n "$NAT_EIP_1_ID" ] && [ -z "$NAT_GW_1_ID" ]; then
-            echo "NAT gateway for EIP $NAT_EIP_1_ID could not be resolved. Stopping to avoid duplicate NAT creation."
-            exit 1
+            EIP1_ASSOC_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_1_ID" --query 'Addresses[0].AssociationId' --output text 2>/dev/null || true)")"
+            EIP1_ASSOC_NAT_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_1_ID" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)")"
+            EIP1_ASSOC_INSTANCE_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_1_ID" --query 'Addresses[0].InstanceId' --output text 2>/dev/null || true)")"
+
+            if [ -n "$EIP1_ASSOC_INSTANCE_ID" ]; then
+              echo "EIP $NAT_EIP_1_ID is attached to EC2 instance $EIP1_ASSOC_INSTANCE_ID. Manual confirmation is required before detach."
+              exit 1
+            fi
+
+            if [ -n "$EIP1_ASSOC_NAT_ID" ]; then
+              EIP1_ASSOC_NAT_STATE="$(normalize_none "$(nat_gateway_state "$EIP1_ASSOC_NAT_ID")")"
+              if [ "$EIP1_ASSOC_NAT_STATE" = "available" ] || [ "$EIP1_ASSOC_NAT_STATE" = "pending" ]; then
+                NAT_GW_1_ID="$EIP1_ASSOC_NAT_ID"
+                echo "Recovered NAT index 0 from EIP association: $NAT_GW_1_ID"
+              else
+                echo "EIP $NAT_EIP_1_ID references NAT $EIP1_ASSOC_NAT_ID in state ${EIP1_ASSOC_NAT_STATE:-unknown}; allowing cleanup/recreate flow."
+              fi
+            elif [ -n "$EIP1_ASSOC_ID" ]; then
+              echo "EIP $NAT_EIP_1_ID has stale association $EIP1_ASSOC_ID with no NAT/instance. Disassociating."
+              aws ec2 disassociate-address --association-id "$EIP1_ASSOC_ID" || true
+            fi
           fi
 
           if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$NAT_EIP_2_ID" ] && [ -z "$NAT_GW_2_ID" ]; then
-            echo "NAT gateway for EIP $NAT_EIP_2_ID could not be resolved. Stopping to avoid duplicate NAT creation."
-            exit 1
+            EIP2_ASSOC_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_2_ID" --query 'Addresses[0].AssociationId' --output text 2>/dev/null || true)")"
+            EIP2_ASSOC_NAT_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_2_ID" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)")"
+            EIP2_ASSOC_INSTANCE_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_2_ID" --query 'Addresses[0].InstanceId' --output text 2>/dev/null || true)")"
+
+            if [ -n "$EIP2_ASSOC_INSTANCE_ID" ]; then
+              echo "EIP $NAT_EIP_2_ID is attached to EC2 instance $EIP2_ASSOC_INSTANCE_ID. Manual confirmation is required before detach."
+              exit 1
+            fi
+
+            if [ -n "$EIP2_ASSOC_NAT_ID" ]; then
+              EIP2_ASSOC_NAT_STATE="$(normalize_none "$(nat_gateway_state "$EIP2_ASSOC_NAT_ID")")"
+              if [ "$EIP2_ASSOC_NAT_STATE" = "available" ] || [ "$EIP2_ASSOC_NAT_STATE" = "pending" ]; then
+                NAT_GW_2_ID="$EIP2_ASSOC_NAT_ID"
+                echo "Recovered NAT index 1 from EIP association: $NAT_GW_2_ID"
+              else
+                echo "EIP $NAT_EIP_2_ID references NAT $EIP2_ASSOC_NAT_ID in state ${EIP2_ASSOC_NAT_STATE:-unknown}; allowing cleanup/recreate flow."
+              fi
+            elif [ -n "$EIP2_ASSOC_ID" ]; then
+              echo "EIP $NAT_EIP_2_ID has stale association $EIP2_ASSOC_ID with no NAT/instance. Disassociating."
+              aws ec2 disassociate-address --association-id "$EIP2_ASSOC_ID" || true
+            fi
           fi
 
           echo "STEP 1 - Check current EIP and NAT state"
