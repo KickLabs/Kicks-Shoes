@@ -376,6 +376,35 @@ jobs:
           NAT_EIP_1_ID="$(normalize_none "$NAT_EIP_1_RAW")"
           NAT_EIP_2_ID="$(normalize_none "$NAT_EIP_2_RAW")"
 
+          # Prefer NAT mapping by EIP live association to keep Terraform index stable.
+          if [ -n "$NAT_EIP_1_ID" ]; then
+            NAT_GW_FROM_EIP_1_RAW="$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_1_ID" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)"
+            NAT_GW_FROM_EIP_1_ID="$(normalize_none "$NAT_GW_FROM_EIP_1_RAW")"
+            [ -n "$NAT_GW_FROM_EIP_1_ID" ] && NAT_GW_1_ID="$NAT_GW_FROM_EIP_1_ID"
+          fi
+
+          if [ -n "$NAT_EIP_2_ID" ]; then
+            NAT_GW_FROM_EIP_2_RAW="$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_2_ID" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)"
+            NAT_GW_FROM_EIP_2_ID="$(normalize_none "$NAT_GW_FROM_EIP_2_RAW")"
+            [ -n "$NAT_GW_FROM_EIP_2_ID" ] && NAT_GW_2_ID="$NAT_GW_FROM_EIP_2_ID"
+          fi
+
+          NAT_GW_1_SUBNET_RAW=""
+          NAT_GW_2_SUBNET_RAW=""
+          if [ -n "$NAT_GW_1_ID" ]; then
+            NAT_GW_1_SUBNET_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_1_ID" --query 'NatGateways[0].SubnetId' --output text 2>/dev/null || true)"
+          fi
+
+          if [ -n "$NAT_GW_2_ID" ]; then
+            NAT_GW_2_SUBNET_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_2_ID" --query 'NatGateways[0].SubnetId' --output text 2>/dev/null || true)"
+          fi
+
+          NAT_GW_1_SUBNET_ID="$(normalize_none "$NAT_GW_1_SUBNET_RAW")"
+          NAT_GW_2_SUBNET_ID="$(normalize_none "$NAT_GW_2_SUBNET_RAW")"
+
+          [ -n "$NAT_GW_1_SUBNET_ID" ] && PUBLIC_SUBNET_1="$NAT_GW_1_SUBNET_ID"
+          [ -n "$NAT_GW_2_SUBNET_ID" ] && PUBLIC_SUBNET_2="$NAT_GW_2_SUBNET_ID"
+
           echo "STEP 1 - Check current EIP and NAT state"
           EIP_ALLOCATION_IDS=()
           [ -n "$NAT_EIP_1_ID" ] && EIP_ALLOCATION_IDS+=("$NAT_EIP_1_ID")
