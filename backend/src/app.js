@@ -23,7 +23,7 @@ import helmet from 'helmet';
 import http from 'http';
 import morgan from 'morgan';
 import { Server as SocketIOServer } from 'socket.io';
-import { corsMiddleware } from './config/cors.config.js';
+import { corsMiddleware, isOriginAllowed } from './config/cors.config.js';
 import connectDB from './config/database.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import authRoutes from './routes/authRoutes.js';
@@ -107,19 +107,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // List of allowed origins
-  const allowedOrigins = [
-    'https://kicks-shoes-2025.web.app',
-    'https://kicks-shoes-2025.firebaseapp.com',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:5173',
-    // Azure App Service domains
-    process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null,
-    process.env.WEBSITE_HOSTNAME ? `http://${process.env.WEBSITE_HOSTNAME}` : null,
-  ].filter(Boolean);
-
-  if (allowedOrigins.includes(origin)) {
+  if (origin && isOriginAllowed(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
@@ -229,7 +217,11 @@ logger.info('AI Inventory Intelligence started - Daily analysis at 8:00 AM');
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || (process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : 'localhost'); // Docker & Azure compatibility
+const HOST =
+  process.env.HOST ||
+  (process.env.NODE_ENV === 'development' && !process.env.WEBSITE_HOSTNAME
+    ? 'localhost'
+    : '0.0.0.0');
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
@@ -238,22 +230,7 @@ const io = new SocketIOServer(server, {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
-      const allowedOrigins = [
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'http://127.0.0.1:5173',
-        'https://kicks-shoes-2025.web.app',
-        'https://kicks-shoes-2025.firebaseapp.com',
-        // Azure App Service domains
-        process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null,
-        process.env.WEBSITE_HOSTNAME ? `http://${process.env.WEBSITE_HOSTNAME}` : null,
-        // Additional domains for better cross-network support
-        'https://kicks-shoes-frontend.azurewebsites.net',
-        'https://kicks-shoes-app.azurewebsites.net',
-        'https://kicks-shoes-backend.azurewebsites.net',
-      ].filter(Boolean);
-
-      if (allowedOrigins.indexOf(origin) !== -1) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
         console.log('Socket CORS blocked origin:', origin);
