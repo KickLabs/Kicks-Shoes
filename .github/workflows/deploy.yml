@@ -23,6 +23,7 @@ env:
   AWS_REGION: ap-southeast-1
   APP_NAME: kicks-shoes-prod
   ECR_REPOSITORY: kicks-shoes-backend
+  TF_STATE_KEY: terraform/production/kicks-shoes-prod.tfstate
   TF_WORKING_DIR: infra/terraform/environments/production
   DOCKERFILE_PATH: Dockerfile.evolution
 
@@ -120,14 +121,120 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         shell: bash
         env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_DYNAMODB_TABLE: ${{ secrets.TF_STATE_DYNAMODB_TABLE }}
+          TF_STATE_KEY: ${{ env.TF_STATE_KEY }}
           TF_VAR_project_name: ${{ env.APP_NAME }}
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
           TF_VAR_container_image: ${{ steps.build_image.outputs.image_uri }}
+          TF_VAR_dynamodb_table_name: ${{ env.APP_NAME }}
           TF_VAR_app_config_secret_arn: ${{ secrets.APP_CONFIG_SECRET_ARN }}
           TF_VAR_app_config_secret_keys: '["JWT_SECRET","JWT_REFRESH_SECRET","MONGODB_URI","GOOGLE_AI_API_KEY"]'
         run: |
           set -euo pipefail
-          terraform init -input=false
+
+          if [ -z "${TF_STATE_BUCKET:-}" ]; then
+            echo "TF_STATE_BUCKET secret is required for persistent Terraform state."
+            exit 1
+          fi
+
+          BACKEND_ARGS=(
+            "-backend-config=bucket=${TF_STATE_BUCKET}"
+            "-backend-config=key=${TF_STATE_KEY}"
+            "-backend-config=region=${AWS_REGION}"
+            "-backend-config=encrypt=true"
+          )
+
+          if [ -n "${TF_STATE_DYNAMODB_TABLE:-}" ]; then
+            BACKEND_ARGS+=("-backend-config=dynamodb_table=${TF_STATE_DYNAMODB_TABLE}")
+          fi
+
+          terraform init -input=false "${BACKEND_ARGS[@]}"
+
+          state_has() {
+            terraform state show "$1" >/dev/null 2>&1
+          }
+
+          normalize_none() {
+            if [ "$1" = "None" ] || [ "$1" = "null" ]; then
+              echo ""
+            else
+              echo "$1"
+            fi
+          }
+
+          import_if_needed() {
+            local address="$1"
+            local identifier="$2"
+            if [ -n "$identifier" ] && ! state_has "$address"; then
+              echo "Importing $address -> $identifier"
+              terraform import -input=false "$address" "$identifier" || true
+            fi
+          }
+
+          APP_TABLE_NAME="${TF_VAR_dynamodb_table_name:-$APP_NAME}"
+
+          ALB_ARN_RAW="$(aws elbv2 describe-load-balancers --names "${APP_NAME}-alb" --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || true)"
+          ALB_ARN="$(normalize_none "$ALB_ARN_RAW")"
+
+          ALB_SG_RAW=""
+          ALB_VPC_RAW=""
+          if [ -n "$ALB_ARN" ]; then
+            ALB_SG_RAW="$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" --query 'LoadBalancers[0].SecurityGroups[0]' --output text 2>/dev/null || true)"
+            ALB_VPC_RAW="$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" --query 'LoadBalancers[0].VpcId' --output text 2>/dev/null || true)"
+          fi
+          ALB_SG_ID="$(normalize_none "$ALB_SG_RAW")"
+          ALB_VPC_ID="$(normalize_none "$ALB_VPC_RAW")"
+
+          TG_ARN_RAW="$(aws elbv2 describe-target-groups --names "${APP_NAME}-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
+          TG_ARN="$(normalize_none "$TG_ARN_RAW")"
+
+          LISTENER_ARN_RAW=""
+          if [ -n "$ALB_ARN" ]; then
+            LISTENER_ARN_RAW="$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query 'Listeners[?Port==`80`][0].ListenerArn' --output text 2>/dev/null || true)"
+          fi
+          LISTENER_ARN="$(normalize_none "$LISTENER_ARN_RAW")"
+
+          ECS_SG_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            ECS_SG_RAW="$(aws ec2 describe-security-groups --filters Name=group-name,Values="${APP_NAME}-ecs-sg" Name=vpc-id,Values="$ALB_VPC_ID" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || true)"
+          fi
+          ECS_SG_ID="$(normalize_none "$ECS_SG_RAW")"
+
+          LOG_GROUP_RAW="$(aws logs describe-log-groups --log-group-name-prefix "/ecs/${APP_NAME}" --query 'logGroups[0].logGroupName' --output text 2>/dev/null || true)"
+          LOG_GROUP_NAME="$(normalize_none "$LOG_GROUP_RAW")"
+
+          TASK_EXEC_ROLE_RAW="$(aws iam get-role --role-name "${APP_NAME}-ecs-task-execution-role" --query 'Role.RoleName' --output text 2>/dev/null || true)"
+          TASK_EXEC_ROLE_NAME="$(normalize_none "$TASK_EXEC_ROLE_RAW")"
+
+          TASK_ROLE_RAW="$(aws iam get-role --role-name "${APP_NAME}-ecs-task-role" --query 'Role.RoleName' --output text 2>/dev/null || true)"
+          TASK_ROLE_NAME="$(normalize_none "$TASK_ROLE_RAW")"
+
+          CLUSTER_RAW="$(aws ecs describe-clusters --clusters "${APP_NAME}-cluster" --query 'clusters[0].clusterName' --output text 2>/dev/null || true)"
+          CLUSTER_NAME="$(normalize_none "$CLUSTER_RAW")"
+
+          SERVICE_STATUS_RAW="$(aws ecs describe-services --cluster "${APP_NAME}-cluster" --services "${APP_NAME}-service" --query 'services[0].status' --output text 2>/dev/null || true)"
+          SERVICE_STATUS="$(normalize_none "$SERVICE_STATUS_RAW")"
+
+          DDB_TABLE_RAW="$(aws dynamodb describe-table --table-name "${APP_TABLE_NAME}" --query 'Table.TableName' --output text 2>/dev/null || true)"
+          DDB_TABLE_NAME="$(normalize_none "$DDB_TABLE_RAW")"
+
+          import_if_needed module.alb.aws_lb.this "$ALB_ARN"
+          import_if_needed module.alb.aws_lb_target_group.ecs "$TG_ARN"
+          import_if_needed module.dynamodb.aws_dynamodb_table.this "$DDB_TABLE_NAME"
+          import_if_needed module.ecs.aws_cloudwatch_log_group.app "$LOG_GROUP_NAME"
+          import_if_needed module.ecs.aws_iam_role.task_execution "$TASK_EXEC_ROLE_NAME"
+          import_if_needed module.ecs.aws_iam_role.task "$TASK_ROLE_NAME"
+          import_if_needed module.ecs.aws_ecs_cluster.this "$CLUSTER_NAME"
+
+          if [ -n "$CLUSTER_NAME" ] && [ -n "$SERVICE_STATUS" ] && [ "$SERVICE_STATUS" != "MISSING" ]; then
+            import_if_needed module.ecs.aws_ecs_service.this "${APP_NAME}-cluster/${APP_NAME}-service"
+          fi
+
+          import_if_needed module.alb.aws_security_group.alb "$ALB_SG_ID"
+          import_if_needed module.alb.aws_lb_listener.http "$LISTENER_ARN"
+          import_if_needed module.ecs.aws_security_group.ecs "$ECS_SG_ID"
+
           terraform validate
           terraform plan -input=false -out=tfplan
           terraform apply -input=false -auto-approve tfplan
