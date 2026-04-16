@@ -1,0 +1,23 @@
+aws_region   = "ap-southeast-1"
+name_prefix  = "kicks-fargate-demo"
+
+# Update this for your ECR image URI.
+container_image = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/kicks-shoes-backend:demo-v1"
+
+container_name = "kicks-backend"
+container_port = 3000
+
+desired_count = 2
+min_capacity  = 2
+max_capacity  = 6
+
+task_cpu    = 512
+task_memory = 1024
+
+target_cpu_utilization = 60
+
+health_check_path = "/api/health"
+
+environment_variables = {
+  NODE_ENV = "production"
+}

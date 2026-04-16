@@ -1,0 +1,121 @@
+name: AWS Production Deploy
+
+on:
+  push:
+    branches:
+      - kicks-production
+      - main
+    paths:
+      - backend/**
+      - infra/terraform/**
+      - .github/workflows/deploy.yml
+      - Dockerfile.evolution
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-production-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REPOSITORY: kicks-shoes-backend
+  TF_WORKING_DIR: infra/terraform/environments/production
+  DOCKERFILE_PATH: backend/Dockerfile
+
+jobs:
+  deploy:
+    name: Trivy Scan, Build, Push, Terraform Apply
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (supports workshop session token)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Resolve AWS account ID
+        id: aws_account
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Amazon ECR
+        id: login_ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image with registry cache
+        id: build_image
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.login_ecr.outputs.registry }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          IMAGE_REPO="$ECR_REGISTRY/$ECR_REPOSITORY"
+          IMAGE_TAG="sha-${COMMIT_SHA::12}"
+          IMAGE_URI="$IMAGE_REPO:$IMAGE_TAG"
+
+          echo "IMAGE_REPO=$IMAGE_REPO" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+          echo "image_repo=$IMAGE_REPO" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+          docker pull "$IMAGE_REPO:latest" || true
+
+          docker build \
+            --cache-from "$IMAGE_REPO:latest" \
+            -t "$IMAGE_URI" \
+            -t "$IMAGE_REPO:latest" \
+            -f "$DOCKERFILE_PATH" \
+            ./backend
+
+      - name: Trivy image scan (HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build_image.outputs.image_uri }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Push image tags to ECR
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker push "${{ steps.build_image.outputs.image_uri }}"
+          docker push "${{ steps.build_image.outputs.image_repo }}:latest"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init, validate and apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        shell: bash
+        env:
+          TF_VAR_aws_region: ${{ env.AWS_REGION }}
+          TF_VAR_container_image: ${{ steps.build_image.outputs.image_uri }}
+          TF_VAR_ecr_repository_arn: arn:aws:ecr:${{ env.AWS_REGION }}:${{ steps.aws_account.outputs.account_id }}:repository/${{ env.ECR_REPOSITORY }}
+          TF_VAR_origin_verify_header_value: ${{ secrets.ORIGIN_VERIFY_HEADER_VALUE }}
+          TF_VAR_app_config_secret_arn: ${{ secrets.APP_CONFIG_SECRET_ARN }}
+          TF_VAR_app_config_secret_keys: '["JWT_SECRET","JWT_REFRESH_SECRET","MONGODB_URI","GOOGLE_AI_API_KEY"]'
+        run: |
+          set -euo pipefail
+          terraform init -input=false
+          terraform fmt -check
+          terraform validate
+          terraform apply -input=false -auto-approve
