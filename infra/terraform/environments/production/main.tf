@@ -18,6 +18,7 @@ module "network" {
   azs                   = slice(data.aws_availability_zones.available.names, 0, 2)
   public_subnet_cidrs   = var.public_subnet_cidrs
   private_subnet_cidrs  = var.private_subnet_cidrs
+  nat_gateway_count     = var.nat_gateway_count
   tags                  = local.common_tags
 }
 

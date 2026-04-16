@@ -23,6 +23,11 @@ variable "private_subnet_cidrs" {
   default = ["10.42.10.0/24", "10.42.11.0/24"]
 }
 
+variable "nat_gateway_count" {
+  type    = number
+  default = 1
+}
+
 variable "container_image" {
   type = string
 }

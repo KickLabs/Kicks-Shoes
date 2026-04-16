@@ -1,5 +1,6 @@
 locals {
-  subnet_count = length(var.azs)
+  subnet_count      = length(var.azs)
+  nat_gateway_count = min(var.nat_gateway_count, length(var.azs))
 }
 
 resource "aws_vpc" "this" {
@@ -48,7 +49,7 @@ resource "aws_subnet" "private" {
 }
 
 resource "aws_eip" "nat" {
-  count = local.subnet_count
+  count = local.nat_gateway_count
 
   domain = "vpc"
 
@@ -58,7 +59,7 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "this" {
-  count = local.subnet_count
+  count = local.nat_gateway_count
 
   allocation_id = aws_eip.nat[count.index].id
   subnet_id     = aws_subnet.public[count.index].id
@@ -97,7 +98,7 @@ resource "aws_route_table" "private" {
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.this[count.index].id
+    nat_gateway_id = aws_nat_gateway.this[min(count.index, local.nat_gateway_count - 1)].id
   }
 
   tags = merge(var.tags, {

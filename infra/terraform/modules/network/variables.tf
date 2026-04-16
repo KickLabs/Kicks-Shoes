@@ -33,6 +33,16 @@ variable "private_subnet_cidrs" {
   }
 }
 
+variable "nat_gateway_count" {
+  type    = number
+  default = 1
+
+  validation {
+    condition     = var.nat_gateway_count >= 1 && var.nat_gateway_count <= 2
+    error_message = "nat_gateway_count must be between 1 and 2."
+  }
+}
+
 variable "tags" {
   type    = map(string)
   default = {}

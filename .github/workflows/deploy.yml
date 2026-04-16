@@ -130,6 +130,7 @@ jobs:
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
           TF_VAR_container_image: ${{ steps.build_image.outputs.image_uri }}
           TF_VAR_dynamodb_table_name: ${{ env.APP_NAME }}
+          TF_VAR_nat_gateway_count: '1'
           TF_VAR_app_config_secret_arn: ${{ secrets.APP_CONFIG_SECRET_ARN }}
           TF_VAR_app_config_secret_keys: '["JWT_SECRET","JWT_REFRESH_SECRET","MONGODB_URI","GOOGLE_AI_API_KEY"]'
         run: |
@@ -188,6 +189,22 @@ jobs:
             BACKEND_ARGS+=("-backend-config=dynamodb_table=${TF_STATE_DYNAMODB_TABLE}")
           fi
 
+          DESIRED_NAT_COUNT="${TF_VAR_nat_gateway_count:-1}"
+          case "$DESIRED_NAT_COUNT" in
+            1|2) ;;
+            *)
+              echo "Unsupported TF_VAR_nat_gateway_count=$DESIRED_NAT_COUNT. Falling back to 1"
+              DESIRED_NAT_COUNT="1"
+              ;;
+          esac
+
+          NAT_SECONDARY_ENABLED="false"
+          if [ "$DESIRED_NAT_COUNT" -ge 2 ]; then
+            NAT_SECONDARY_ENABLED="true"
+          fi
+
+          echo "Desired NAT gateway count: $DESIRED_NAT_COUNT"
+
           terraform init -input=false "${BACKEND_ARGS[@]}"
 
           state_has() {
@@ -237,6 +254,29 @@ jobs:
 
             echo "Importing $address -> $identifier"
             terraform import -input=false "$address" "$identifier" || true
+          }
+
+          ensure_import_strict() {
+            local address="$1"
+            local identifier="$2"
+            local current_identifier=""
+
+            if [ -z "$identifier" ]; then
+              return
+            fi
+
+            if state_has "$address"; then
+              current_identifier="$(state_id "$address" || true)"
+              if [ "$current_identifier" = "$identifier" ]; then
+                return
+              fi
+
+              echo "State drift for $address: '$current_identifier' -> '$identifier'. Re-importing (strict)."
+              terraform state rm "$address" >/dev/null 2>&1 || true
+            fi
+
+            echo "Importing $address -> $identifier (strict)"
+            terraform import -input=false "$address" "$identifier"
           }
 
           APP_TABLE_NAME="${TF_VAR_dynamodb_table_name:-$APP_NAME}"
@@ -331,7 +371,7 @@ jobs:
             NAT_GW_1_RAW="$(aws ec2 describe-nat-gateways --filter Name=subnet-id,Values="$PUBLIC_SUBNET_1" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
           fi
 
-          if [ -n "$PUBLIC_SUBNET_2" ]; then
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$PUBLIC_SUBNET_2" ]; then
             NAT_GW_2_RAW="$(aws ec2 describe-nat-gateways --filter Name=subnet-id,Values="$PUBLIC_SUBNET_2" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
           fi
 
@@ -340,17 +380,19 @@ jobs:
               NAT_GW_1_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-1" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
             fi
 
-            if [ -z "$(normalize_none "$NAT_GW_2_RAW")" ]; then
+            if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -z "$(normalize_none "$NAT_GW_2_RAW")" ]; then
               NAT_GW_2_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-2" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
             fi
           fi
           NAT_GW_1_ID="$(normalize_none "$NAT_GW_1_RAW")"
           NAT_GW_2_ID="$(normalize_none "$NAT_GW_2_RAW")"
 
-          if [ -n "$ALB_VPC_ID" ] && { [ -z "$NAT_GW_1_ID" ] || [ -z "$NAT_GW_2_ID" ]; }; then
+          if [ -n "$ALB_VPC_ID" ] && { [ -z "$NAT_GW_1_ID" ] || { [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -z "$NAT_GW_2_ID" ]; }; }; then
             NAT_GW_ALL_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=state,Values=available,pending --query 'NatGateways[*].NatGatewayId' --output text 2>/dev/null || true)"
             [ -z "$NAT_GW_1_ID" ] && NAT_GW_1_ID="$(pick_sorted_nth "$NAT_GW_ALL_RAW" 0)"
-            [ -z "$NAT_GW_2_ID" ] && NAT_GW_2_ID="$(pick_sorted_nth "$NAT_GW_ALL_RAW" 1)"
+            if [ "$NAT_SECONDARY_ENABLED" = "true" ]; then
+              [ -z "$NAT_GW_2_ID" ] && NAT_GW_2_ID="$(pick_sorted_nth "$NAT_GW_ALL_RAW" 1)"
+            fi
           fi
 
           NAT_EIP_1_RAW=""
@@ -360,7 +402,7 @@ jobs:
             NAT_EIP_1_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_1_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
           fi
 
-          if [ -n "$NAT_GW_2_ID" ]; then
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$NAT_GW_2_ID" ]; then
             NAT_EIP_2_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_2_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
           fi
 
@@ -369,7 +411,7 @@ jobs:
               NAT_EIP_1_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-1" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
             fi
 
-            if [ -z "$(normalize_none "$NAT_EIP_2_RAW")" ]; then
+            if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -z "$(normalize_none "$NAT_EIP_2_RAW")" ]; then
               NAT_EIP_2_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-2" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
             fi
           fi
@@ -383,7 +425,7 @@ jobs:
             [ -n "$NAT_GW_FROM_EIP_1_ID" ] && NAT_GW_1_ID="$NAT_GW_FROM_EIP_1_ID"
           fi
 
-          if [ -n "$NAT_EIP_2_ID" ]; then
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$NAT_EIP_2_ID" ]; then
             NAT_GW_FROM_EIP_2_RAW="$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_2_ID" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)"
             NAT_GW_FROM_EIP_2_ID="$(normalize_none "$NAT_GW_FROM_EIP_2_RAW")"
             [ -n "$NAT_GW_FROM_EIP_2_ID" ] && NAT_GW_2_ID="$NAT_GW_FROM_EIP_2_ID"
@@ -395,7 +437,7 @@ jobs:
             NAT_GW_1_SUBNET_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_1_ID" --query 'NatGateways[0].SubnetId' --output text 2>/dev/null || true)"
           fi
 
-          if [ -n "$NAT_GW_2_ID" ]; then
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$NAT_GW_2_ID" ]; then
             NAT_GW_2_SUBNET_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_2_ID" --query 'NatGateways[0].SubnetId' --output text 2>/dev/null || true)"
           fi
 
@@ -403,12 +445,29 @@ jobs:
           NAT_GW_2_SUBNET_ID="$(normalize_none "$NAT_GW_2_SUBNET_RAW")"
 
           [ -n "$NAT_GW_1_SUBNET_ID" ] && PUBLIC_SUBNET_1="$NAT_GW_1_SUBNET_ID"
-          [ -n "$NAT_GW_2_SUBNET_ID" ] && PUBLIC_SUBNET_2="$NAT_GW_2_SUBNET_ID"
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ]; then
+            [ -n "$NAT_GW_2_SUBNET_ID" ] && PUBLIC_SUBNET_2="$NAT_GW_2_SUBNET_ID"
+          else
+            NAT_GW_2_ID=""
+            NAT_EIP_2_ID=""
+          fi
+
+          if [ -n "$NAT_EIP_1_ID" ] && [ -z "$NAT_GW_1_ID" ]; then
+            echo "NAT gateway for EIP $NAT_EIP_1_ID could not be resolved. Stopping to avoid duplicate NAT creation."
+            exit 1
+          fi
+
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$NAT_EIP_2_ID" ] && [ -z "$NAT_GW_2_ID" ]; then
+            echo "NAT gateway for EIP $NAT_EIP_2_ID could not be resolved. Stopping to avoid duplicate NAT creation."
+            exit 1
+          fi
 
           echo "STEP 1 - Check current EIP and NAT state"
           EIP_ALLOCATION_IDS=()
           [ -n "$NAT_EIP_1_ID" ] && EIP_ALLOCATION_IDS+=("$NAT_EIP_1_ID")
-          [ -n "$NAT_EIP_2_ID" ] && EIP_ALLOCATION_IDS+=("$NAT_EIP_2_ID")
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ]; then
+            [ -n "$NAT_EIP_2_ID" ] && EIP_ALLOCATION_IDS+=("$NAT_EIP_2_ID")
+          fi
 
           if [ ${#EIP_ALLOCATION_IDS[@]} -gt 0 ]; then
             aws ec2 describe-addresses \
@@ -472,11 +531,14 @@ jobs:
           done
 
           echo "STEP 4 - Sync Terraform NAT state"
-          for nat_state_address in module.network.aws_nat_gateway.this[0] module.network.aws_nat_gateway.this[1]; do
-            if state_has "$nat_state_address"; then
-              terraform state rm "$nat_state_address" || true
+          if [ "$NAT_SECONDARY_ENABLED" != "true" ]; then
+            if state_has module.network.aws_nat_gateway.this[1]; then
+              terraform state rm module.network.aws_nat_gateway.this[1] || true
             fi
-          done
+            if state_has module.network.aws_eip.nat[1]; then
+              terraform state rm module.network.aws_eip.nat[1] || true
+            fi
+          fi
 
           terraform refresh -input=false || true
 
@@ -516,10 +578,13 @@ jobs:
           ensure_import module.network.aws_route_table.public "$PUBLIC_RT_ID"
           ensure_import module.network.aws_route_table.private[0] "$PRIVATE_RT_1_ID"
           ensure_import module.network.aws_route_table.private[1] "$PRIVATE_RT_2_ID"
-          ensure_import module.network.aws_eip.nat[0] "$NAT_EIP_1_ID"
-          ensure_import module.network.aws_eip.nat[1] "$NAT_EIP_2_ID"
-          ensure_import module.network.aws_nat_gateway.this[0] "$NAT_GW_1_ID"
-          ensure_import module.network.aws_nat_gateway.this[1] "$NAT_GW_2_ID"
+          ensure_import_strict module.network.aws_eip.nat[0] "$NAT_EIP_1_ID"
+          ensure_import_strict module.network.aws_nat_gateway.this[0] "$NAT_GW_1_ID"
+
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ]; then
+            ensure_import_strict module.network.aws_eip.nat[1] "$NAT_EIP_2_ID"
+            ensure_import_strict module.network.aws_nat_gateway.this[1] "$NAT_GW_2_ID"
+          fi
 
           if [ -n "$PUBLIC_SUBNET_1" ] && [ -n "$PUBLIC_RT_ID" ]; then
             ensure_import module.network.aws_route_table_association.public[0] "${PUBLIC_SUBNET_1}/${PUBLIC_RT_ID}"
