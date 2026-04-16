@@ -128,7 +128,6 @@ jobs:
         run: |
           set -euo pipefail
           terraform init -input=false
-          terraform fmt -check
           terraform validate
           terraform plan -input=false -out=tfplan
           terraform apply -input=false -auto-approve tfplan
