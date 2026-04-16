@@ -89,17 +89,17 @@ app.options('*', corsMiddleware);
 
 // Enhanced request logging with detailed debug info
 app.use((req, res, next) => {
-  console.log(`=== REQUEST DEBUG ===`);
-  console.log(`${req.method} ${req.path} from ${req.headers.origin || 'unknown'}`);
-  console.log('Host:', req.headers.host);
-  console.log('User-Agent:', req.headers['user-agent']);
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Content-Length:', req.headers['content-length']);
-  console.log('Request URL:', req.url);
-  console.log('Request path:', req.path);
-  console.log('Request base URL:', req.baseUrl);
-  console.log('Request original URL:', req.originalUrl);
-  console.log('========================');
+  logger.debug('=== REQUEST DEBUG ===');
+  logger.debug(`${req.method} ${req.path} from ${req.headers.origin || 'unknown'}`);
+  logger.debug('Host:', req.headers.host);
+  logger.debug('User-Agent:', req.headers['user-agent']);
+  logger.debug('Content-Type:', req.headers['content-type']);
+  logger.debug('Content-Length:', req.headers['content-length']);
+  logger.debug('Request URL:', req.url);
+  logger.debug('Request path:', req.path);
+  logger.debug('Request base URL:', req.baseUrl);
+  logger.debug('Request original URL:', req.originalUrl);
+  logger.debug('========================');
   next();
 });
 
@@ -155,9 +155,9 @@ app.get('/api/health', (req, res) => {
 
 // Debug endpoint to test tryon route accessibility
 app.get('/api/tryon/debug', (req, res) => {
-  console.log('=== TRYON DEBUG ENDPOINT ===');
-  console.log('Request received at:', new Date().toISOString());
-  console.log('Request headers:', req.headers);
+  logger.debug('=== TRYON DEBUG ENDPOINT ===');
+  logger.debug('Request received at:', new Date().toISOString());
+  logger.debug('Request headers:', req.headers);
 
   res.status(200).json({
     message: 'Tryon endpoint is accessible',
@@ -233,7 +233,7 @@ const io = new SocketIOServer(server, {
       if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
-        console.log('Socket CORS blocked origin:', origin);
+        logger.warn('Socket CORS blocked origin:', origin);
         callback(new Error('Not allowed by CORS'));
       }
     },
