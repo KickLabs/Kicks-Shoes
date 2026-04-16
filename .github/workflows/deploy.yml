@@ -198,6 +198,10 @@ jobs:
             terraform state show "$1" 2>/dev/null | sed -n 's/^id[[:space:]]*=[[:space:]]*//p' | head -n 1
           }
 
+          nat_gateway_state() {
+            aws ec2 describe-nat-gateways --nat-gateway-ids "$1" --query 'NatGateways[0].State' --output text 2>/dev/null || true
+          }
+
           normalize_none() {
             if [ "$1" = "None" ] || [ "$1" = "null" ]; then
               echo ""
@@ -372,6 +376,81 @@ jobs:
           NAT_EIP_1_ID="$(normalize_none "$NAT_EIP_1_RAW")"
           NAT_EIP_2_ID="$(normalize_none "$NAT_EIP_2_RAW")"
 
+          echo "STEP 1 - Check current EIP and NAT state"
+          EIP_ALLOCATION_IDS=()
+          [ -n "$NAT_EIP_1_ID" ] && EIP_ALLOCATION_IDS+=("$NAT_EIP_1_ID")
+          [ -n "$NAT_EIP_2_ID" ] && EIP_ALLOCATION_IDS+=("$NAT_EIP_2_ID")
+
+          if [ ${#EIP_ALLOCATION_IDS[@]} -gt 0 ]; then
+            aws ec2 describe-addresses \
+              --allocation-ids "${EIP_ALLOCATION_IDS[@]}" \
+              --query 'Addresses[*].{AllocationId:AllocationId,AssociationId:AssociationId,NatGatewayId:NatGatewayId,InstanceId:InstanceId}' \
+              --output table || true
+          else
+            echo "No NAT EIP allocation IDs discovered yet."
+          fi
+
+          if [ -n "$ALB_VPC_ID" ]; then
+            aws ec2 describe-nat-gateways \
+              --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=state,Values=failed,deleting,deleted,pending \
+              --query 'NatGateways[*].{ID:NatGatewayId,State:State,EIP:NatGatewayAddresses[0].AllocationId}' \
+              --output table || true
+          fi
+
+          echo "STEP 2 - Delete failed NAT Gateways if any"
+          FAILED_NAT_IDS=()
+          if [ -n "$ALB_VPC_ID" ]; then
+            FAILED_NAT_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=state,Values=failed --query 'NatGateways[*].NatGatewayId' --output text 2>/dev/null || true)"
+            for failed_nat_id in $FAILED_NAT_RAW; do
+              failed_nat_id="$(normalize_none "$failed_nat_id")"
+              if [ -n "$failed_nat_id" ]; then
+                echo "Deleting failed NAT Gateway: $failed_nat_id"
+                aws ec2 delete-nat-gateway --nat-gateway-id "$failed_nat_id" || true
+                FAILED_NAT_IDS+=("$failed_nat_id")
+              fi
+            done
+          fi
+
+          if [ ${#FAILED_NAT_IDS[@]} -gt 0 ]; then
+            echo "Waiting for failed NAT gateways to reach deleted state"
+            aws ec2 wait nat-gateway-deleted --nat-gateway-ids "${FAILED_NAT_IDS[@]}" || true
+          fi
+
+          echo "STEP 3 and STEP 6 - Disassociate EIPs only when safe"
+          for allocation_id in "${EIP_ALLOCATION_IDS[@]}"; do
+            association_raw="$(aws ec2 describe-addresses --allocation-ids "$allocation_id" --query 'Addresses[0].AssociationId' --output text 2>/dev/null || true)"
+            nat_raw="$(aws ec2 describe-addresses --allocation-ids "$allocation_id" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)"
+            instance_raw="$(aws ec2 describe-addresses --allocation-ids "$allocation_id" --query 'Addresses[0].InstanceId' --output text 2>/dev/null || true)"
+
+            association_id="$(normalize_none "$association_raw")"
+            associated_nat_id="$(normalize_none "$nat_raw")"
+            associated_instance_id="$(normalize_none "$instance_raw")"
+
+            if [ -n "$associated_instance_id" ]; then
+              echo "EIP $allocation_id is attached to EC2 instance $associated_instance_id. Manual confirmation is required before detach."
+              exit 1
+            fi
+
+            if [ -n "$association_id" ] && [ -n "$associated_nat_id" ]; then
+              associated_nat_state="$(normalize_none "$(nat_gateway_state "$associated_nat_id")")"
+              if [ -z "$associated_nat_state" ] || [ "$associated_nat_state" = "failed" ] || [ "$associated_nat_state" = "deleting" ] || [ "$associated_nat_state" = "deleted" ]; then
+                echo "Disassociating EIP $allocation_id from stale association $association_id (NAT: $associated_nat_id, state: ${associated_nat_state:-unknown})"
+                aws ec2 disassociate-address --association-id "$association_id" || true
+              else
+                echo "Keeping EIP $allocation_id association because NAT $associated_nat_id is $associated_nat_state"
+              fi
+            fi
+          done
+
+          echo "STEP 4 - Sync Terraform NAT state"
+          for nat_state_address in module.network.aws_nat_gateway.this[0] module.network.aws_nat_gateway.this[1]; do
+            if state_has "$nat_state_address"; then
+              terraform state rm "$nat_state_address" || true
+            fi
+          done
+
+          terraform refresh -input=false || true
+
           TG_ARN_RAW="$(aws elbv2 describe-target-groups --names "${APP_NAME}-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
           TG_ARN="$(normalize_none "$TG_ARN_RAW")"
 
@@ -446,5 +525,6 @@ jobs:
           ensure_import module.ecs.aws_security_group.ecs "$ECS_SG_ID"
 
           terraform validate
+          echo "STEP 5 - Terraform plan and apply"
           terraform plan -input=false -out=tfplan
           terraform apply -input=false -auto-approve tfplan
