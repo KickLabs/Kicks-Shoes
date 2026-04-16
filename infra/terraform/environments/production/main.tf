@@ -27,6 +27,7 @@ module "alb" {
 
   project_name       = var.project_name
   vpc_id             = module.network.vpc_id
+  vpc_cidr           = var.vpc_cidr
   public_subnet_ids  = module.network.public_subnet_ids
   container_port     = var.container_port
   health_check_path  = "/api/health"

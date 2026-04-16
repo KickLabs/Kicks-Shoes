@@ -75,8 +75,20 @@ data "aws_iam_policy_document" "task_execution_secret_access" {
 
   statement {
     sid       = "ReadAppSecrets"
-    actions   = ["secretsmanager:GetSecretValue"]
+    actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
     resources = [var.app_config_secret_arn]
+  }
+
+  statement {
+    sid     = "DecryptSecretsEnvelope"
+    actions = ["kms:Decrypt"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["secretsmanager.${var.aws_region}.amazonaws.com"]
+    }
   }
 }
 
@@ -107,7 +119,10 @@ data "aws_iam_policy_document" "task_dynamodb_access" {
       "dynamodb:BatchGetItem",
       "dynamodb:BatchWriteItem"
     ]
-    resources = [var.dynamodb_table_arn]
+    resources = [
+      var.dynamodb_table_arn,
+      "${var.dynamodb_table_arn}/index/*"
+    ]
   }
 }
 
