@@ -28,8 +28,8 @@ variable "private_subnet_cidrs" {
   type = list(string)
 
   validation {
-    condition     = length(var.private_subnet_cidrs) == 2
-    error_message = "Provide exactly 2 private subnet CIDRs."
+    condition     = length(var.private_subnet_cidrs) == 1
+    error_message = "Provide exactly 1 private subnet CIDR."
   }
 }
 

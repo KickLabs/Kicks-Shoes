@@ -20,7 +20,7 @@ variable "public_subnet_cidrs" {
 
 variable "private_subnet_cidrs" {
   type    = list(string)
-  default = ["10.42.10.0/24", "10.42.11.0/24"]
+  default = ["10.42.10.0/24"]
 }
 
 variable "nat_gateway_count" {
