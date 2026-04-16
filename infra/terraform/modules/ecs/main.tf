@@ -1,10 +1,12 @@
 locals {
-  secret_mappings = [
+  has_app_config_secret = trimspace(var.app_config_secret_arn) != ""
+
+  secret_mappings = local.has_app_config_secret ? [
     for secret_key in var.app_config_secret_keys : {
       name      = secret_key
       valueFrom = "${var.app_config_secret_arn}:${secret_key}::"
     }
-  ]
+  ] : []
 }
 
 resource "aws_ecs_cluster" "this" {
@@ -69,6 +71,8 @@ resource "aws_iam_role_policy_attachment" "task_execution_managed" {
 }
 
 data "aws_iam_policy_document" "task_execution_secret_access" {
+  count = local.has_app_config_secret ? 1 : 0
+
   statement {
     sid       = "ReadAppSecrets"
     actions   = ["secretsmanager:GetSecretValue"]
@@ -77,9 +81,11 @@ data "aws_iam_policy_document" "task_execution_secret_access" {
 }
 
 resource "aws_iam_role_policy" "task_execution_secret_access" {
+  count = local.has_app_config_secret ? 1 : 0
+
   name   = "${var.project_name}-execution-secret-read"
   role   = aws_iam_role.task_execution.id
-  policy = data.aws_iam_policy_document.task_execution_secret_access.json
+  policy = data.aws_iam_policy_document.task_execution_secret_access[0].json
 }
 
 resource "aws_iam_role" "task" {
