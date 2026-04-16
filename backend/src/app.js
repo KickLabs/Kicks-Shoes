@@ -229,7 +229,7 @@ logger.info('AI Inventory Intelligence started - Daily analysis at 8:00 AM');
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : 'localhost'; // Azure App Service compatibility
+const HOST = process.env.HOST || (process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : 'localhost'); // Docker & Azure compatibility
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {

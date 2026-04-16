@@ -6,8 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:aws": "vite build --mode aws",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:aws": "bash deploy-aws.sh aws",
+    "deploy:aws:ps": "powershell -File deploy-aws.ps1 aws",
+    "setup:aws": "bash scripts/setup-aws.sh",
+    "setup:aws:ps": "powershell -File scripts/setup-aws.ps1"
   },
   "dependencies": {
     "@ant-design/charts": "^2.3.0",
