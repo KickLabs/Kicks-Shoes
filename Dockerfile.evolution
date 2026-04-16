@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+
+# This image must be the previously approved stable image URI from the prior developer.
+ARG BASE_IMAGE_URI=123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/kicks-shoes-backend:stable
+FROM ${BASE_IMAGE_URI}
+
+WORKDIR /app
+
+# Inject only updated application logic to preserve the validated base runtime.
+COPY --chown=nodejs:nodejs backend/src ./src
+COPY --chown=nodejs:nodejs backend/templates ./templates
+COPY --chown=nodejs:nodejs backend/startup.js ./startup.js
+
+EXPOSE 3000
+
+USER nodejs
+
+CMD ["npm", "start"]

@@ -1,0 +1,455 @@
+name: Zero-TF ECS Fargate Deploy
+
+# Safety Warning:
+# This workflow generates Terraform code at runtime (no local .tf tracked in repo).
+# Trade-off: faster bootstrap, but debugging/drift review is harder than versioned IaC files.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Optional Docker image tag (default: short SHA)"
+        required: false
+        type: string
+  push:
+    branches:
+      - kicks-production
+    paths:
+      - backend/**
+      - Dockerfile.evolution
+      - .github/workflows/zero-tf-deploy.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zero-tf-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  APP_NAME: kicks-shoes
+  ECR_REPOSITORY: kicks-shoes-backend
+  TF_STATE_KEY: zero-tf/ecs-fargate.tfstate
+  TF_DIR: .tmp/zero-tf
+
+jobs:
+  deploy:
+    name: Build Image + Generate Terraform + Apply
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (Workshop compatible)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Resolve AWS Account ID
+        id: aws_account
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure ECR repository exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "$ECR_REPOSITORY" >/dev/null
+
+      - name: Login to Amazon ECR
+        id: login_ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Docker Image
+        id: build_push
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.login_ecr.outputs.registry }}
+          BASE_IMAGE_URI: ${{ secrets.BASE_IMAGE_URI }}
+        run: |
+          set -euo pipefail
+
+          IMAGE_TAG_INPUT="${{ github.event.inputs.image_tag }}"
+          if [ -n "$IMAGE_TAG_INPUT" ]; then
+            IMAGE_TAG="$IMAGE_TAG_INPUT"
+          else
+            IMAGE_TAG="sha-${GITHUB_SHA::12}"
+          fi
+
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+          if [ -n "$BASE_IMAGE_URI" ]; then
+            echo "Building with Dockerfile.evolution"
+            docker build \
+              --build-arg BASE_IMAGE_URI="$BASE_IMAGE_URI" \
+              -f Dockerfile.evolution \
+              -t "$IMAGE_URI" \
+              .
+          else
+            echo "BASE_IMAGE_URI is empty. Fallback to backend/Dockerfile"
+            docker build \
+              -f backend/Dockerfile \
+              -t "$IMAGE_URI" \
+              ./backend
+          fi
+
+          docker push "$IMAGE_URI"
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Generate runtime main.tf (Heredoc)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$TF_DIR"
+
+          cat <<'EOF' > "$TF_DIR/main.tf"
+          terraform {
+            required_version = ">= 1.5.0"
+
+            required_providers {
+              aws = {
+                source  = "hashicorp/aws"
+                version = "~> 5.0"
+              }
+            }
+
+            backend "s3" {}
+          }
+
+          provider "aws" {
+            region = var.aws_region
+          }
+
+          data "aws_availability_zones" "available" {
+            state = "available"
+          }
+
+          variable "project_name" {
+            type    = string
+            default = "kicks-shoes"
+          }
+
+          variable "aws_region" {
+            type = string
+          }
+
+          variable "container_image" {
+            type      = string
+            sensitive = true
+          }
+
+          variable "vpc_id" {
+            type      = string
+            default   = ""
+            sensitive = true
+          }
+
+          variable "public_subnet_ids_json" {
+            type      = string
+            default   = ""
+            sensitive = true
+          }
+
+          variable "private_subnet_ids_json" {
+            type      = string
+            default   = ""
+            sensitive = true
+          }
+
+          variable "desired_count" {
+            type    = number
+            default = 1
+          }
+
+          variable "task_cpu" {
+            type    = number
+            default = 512
+          }
+
+          variable "task_memory" {
+            type    = number
+            default = 1024
+          }
+
+          variable "autoscaling_min" {
+            type    = number
+            default = 1
+          }
+
+          variable "autoscaling_max" {
+            type    = number
+            default = 4
+          }
+
+          locals {
+            name = var.project_name
+
+            provided_public_subnet_ids  = trimspace(var.public_subnet_ids_json) != "" ? jsondecode(var.public_subnet_ids_json) : []
+            provided_private_subnet_ids = trimspace(var.private_subnet_ids_json) != "" ? jsondecode(var.private_subnet_ids_json) : []
+
+            use_existing_network = var.vpc_id != "" && length(local.provided_public_subnet_ids) > 0 && length(local.provided_private_subnet_ids) > 0
+
+            effective_vpc_id          = local.use_existing_network ? var.vpc_id : module.vpc[0].vpc_id
+            effective_public_subnets  = local.use_existing_network ? local.provided_public_subnet_ids : module.vpc[0].public_subnets
+            effective_private_subnets = local.use_existing_network ? local.provided_private_subnet_ids : module.vpc[0].private_subnets
+          }
+
+          module "vpc" {
+            count = local.use_existing_network ? 0 : 1
+
+            source  = "terraform-aws-modules/vpc/aws"
+            version = "~> 5.0"
+
+            name = "${local.name}-vpc"
+            cidr = "10.42.0.0/16"
+
+            azs             = slice(data.aws_availability_zones.available.names, 0, 2)
+            public_subnets  = ["10.42.0.0/24", "10.42.1.0/24"]
+            private_subnets = ["10.42.10.0/24", "10.42.11.0/24"]
+
+            enable_nat_gateway = true
+            single_nat_gateway = false
+
+            enable_dns_hostnames = true
+            enable_dns_support   = true
+
+            tags = {
+              Project = local.name
+              Managed = "terraform"
+            }
+          }
+
+          resource "aws_security_group" "alb" {
+            name        = "${local.name}-alb-sg"
+            description = "Allow internet to ALB"
+            vpc_id      = local.effective_vpc_id
+
+            ingress {
+              from_port   = 80
+              to_port     = 80
+              protocol    = "tcp"
+              cidr_blocks = ["0.0.0.0/0"]
+            }
+
+            egress {
+              from_port   = 0
+              to_port     = 0
+              protocol    = "-1"
+              cidr_blocks = ["0.0.0.0/0"]
+            }
+          }
+
+          resource "aws_security_group" "ecs" {
+            name        = "${local.name}-ecs-sg"
+            description = "Allow ALB to ECS tasks"
+            vpc_id      = local.effective_vpc_id
+
+            ingress {
+              from_port       = 3000
+              to_port         = 3000
+              protocol        = "tcp"
+              security_groups = [aws_security_group.alb.id]
+            }
+
+            egress {
+              from_port   = 0
+              to_port     = 0
+              protocol    = "-1"
+              cidr_blocks = ["0.0.0.0/0"]
+            }
+          }
+
+          module "alb" {
+            source  = "terraform-aws-modules/alb/aws"
+            version = "~> 9.0"
+
+            name               = "${local.name}-alb"
+            load_balancer_type = "application"
+            vpc_id             = local.effective_vpc_id
+            subnets            = local.effective_public_subnets
+            security_groups    = [aws_security_group.alb.id]
+
+            target_groups = {
+              ecs = {
+                name              = "${local.name}-tg"
+                backend_protocol  = "HTTP"
+                backend_port      = 3000
+                target_type       = "ip"
+                create_attachment = false
+                health_check = {
+                  path    = "/api/health"
+                  matcher = "200-399"
+                }
+              }
+            }
+
+            listeners = {
+              http = {
+                port     = 80
+                protocol = "HTTP"
+                forward = {
+                  target_group_key = "ecs"
+                }
+              }
+            }
+          }
+
+          module "ecs_cluster" {
+            source  = "terraform-aws-modules/ecs/aws//modules/cluster"
+            version = "~> 5.0"
+
+            cluster_name = "${local.name}-cluster"
+          }
+
+          module "ecs_service" {
+            source  = "terraform-aws-modules/ecs/aws//modules/service"
+            version = "~> 5.0"
+
+            name        = "${local.name}-service"
+            cluster_arn = module.ecs_cluster.arn
+
+            desired_count = var.desired_count
+            launch_type   = "FARGATE"
+
+            cpu    = var.task_cpu
+            memory = var.task_memory
+
+            subnet_ids         = local.effective_private_subnets
+            security_group_ids = [aws_security_group.ecs.id]
+            assign_public_ip   = false
+
+            create_task_exec_iam_role = true
+            create_tasks_iam_role     = true
+
+            enable_autoscaling      = true
+            autoscaling_min_capacity = var.autoscaling_min
+            autoscaling_max_capacity = var.autoscaling_max
+
+            autoscaling_policies = {
+              cpu60 = {
+                policy_type = "TargetTrackingScaling"
+                target_tracking_scaling_policy_configuration = {
+                  predefined_metric_specification = {
+                    predefined_metric_type = "ECSServiceAverageCPUUtilization"
+                  }
+                  target_value       = 60
+                  scale_in_cooldown  = 120
+                  scale_out_cooldown = 60
+                }
+              }
+            }
+
+            container_definitions = {
+              app = {
+                image     = var.container_image
+                essential = true
+                cpu       = var.task_cpu
+                memory    = var.task_memory
+
+                port_mappings = [
+                  {
+                    name          = "http-3000"
+                    containerPort = 3000
+                    protocol      = "tcp"
+                  }
+                ]
+
+                environment = [
+                  {
+                    name  = "NODE_ENV"
+                    value = "production"
+                  }
+                ]
+              }
+            }
+
+            load_balancer = {
+              service = {
+                target_group_arn = module.alb.target_groups["ecs"].arn
+                container_name   = "app"
+                container_port   = 3000
+              }
+            }
+          }
+
+          output "alb_dns_name" {
+            value = module.alb.dns_name
+          }
+
+          output "ecs_cluster_name" {
+            value = module.ecs_cluster.name
+          }
+
+          output "ecs_service_name" {
+            value = module.ecs_service.name
+          }
+          EOF
+
+      - name: Terraform init, plan, apply
+        shell: bash
+        working-directory: ${{ env.TF_DIR }}
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_DYNAMODB_TABLE: ${{ secrets.TF_STATE_DYNAMODB_TABLE }}
+          TF_STATE_KEY: ${{ env.TF_STATE_KEY }}
+          IMAGE_URI: ${{ steps.build_push.outputs.image_uri }}
+          VPC_ID: ${{ secrets.VPC_ID }}
+          PUBLIC_SUBNET_IDS_JSON: ${{ secrets.PUBLIC_SUBNET_IDS_JSON }}
+          PRIVATE_SUBNET_IDS_JSON: ${{ secrets.PRIVATE_SUBNET_IDS_JSON }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${TF_STATE_BUCKET:-}" ]; then
+            echo "TF_STATE_BUCKET secret is required"
+            exit 1
+          fi
+
+          BACKEND_ARGS=(
+            "-backend-config=bucket=${TF_STATE_BUCKET}"
+            "-backend-config=key=${TF_STATE_KEY}"
+            "-backend-config=region=${AWS_REGION}"
+            "-backend-config=encrypt=true"
+          )
+
+          if [ -n "${TF_STATE_DYNAMODB_TABLE:-}" ]; then
+            BACKEND_ARGS+=("-backend-config=dynamodb_table=${TF_STATE_DYNAMODB_TABLE}")
+          fi
+
+          terraform init -input=false "${BACKEND_ARGS[@]}"
+
+          terraform plan -input=false -out=tfplan \
+            -var="project_name=${APP_NAME}" \
+            -var="aws_region=${AWS_REGION}" \
+            -var="container_image=${IMAGE_URI}" \
+            -var="vpc_id=${VPC_ID:-}" \
+            -var="public_subnet_ids_json=${PUBLIC_SUBNET_IDS_JSON:-}" \
+            -var="private_subnet_ids_json=${PRIVATE_SUBNET_IDS_JSON:-}"
+
+          terraform apply -input=false -auto-approve tfplan
+
+      - name: Capture Terraform Outputs
+        shell: bash
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          set -euo pipefail
+          terraform output -json | tee terraform-outputs.json
+
+      - name: Upload Terraform Outputs Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs
+          path: ${{ env.TF_DIR }}/terraform-outputs.json
