@@ -194,6 +194,10 @@ jobs:
             terraform state show "$1" >/dev/null 2>&1
           }
 
+          state_id() {
+            terraform state show "$1" 2>/dev/null | sed -n 's/^id[[:space:]]*=[[:space:]]*//p' | head -n 1
+          }
+
           normalize_none() {
             if [ "$1" = "None" ] || [ "$1" = "null" ]; then
               echo ""
@@ -202,13 +206,33 @@ jobs:
             fi
           }
 
-          import_if_needed() {
+          pick_sorted_nth() {
+            local raw="$1"
+            local index="$2"
+            echo "$raw" | tr '\t' '\n' | sed '/^[[:space:]]*$/d' | sort | sed -n "$((index + 1))p"
+          }
+
+          ensure_import() {
             local address="$1"
             local identifier="$2"
-            if [ -n "$identifier" ] && ! state_has "$address"; then
-              echo "Importing $address -> $identifier"
-              terraform import -input=false "$address" "$identifier" || true
+            local current_identifier=""
+
+            if [ -z "$identifier" ]; then
+              return
             fi
+
+            if state_has "$address"; then
+              current_identifier="$(state_id "$address" || true)"
+              if [ "$current_identifier" = "$identifier" ]; then
+                return
+              fi
+
+              echo "State drift for $address: '$current_identifier' -> '$identifier'. Re-importing."
+              terraform state rm "$address" >/dev/null 2>&1 || true
+            fi
+
+            echo "Importing $address -> $identifier"
+            terraform import -input=false "$address" "$identifier" || true
           }
 
           APP_TABLE_NAME="${TF_VAR_dynamodb_table_name:-$APP_NAME}"
@@ -224,6 +248,112 @@ jobs:
           fi
           ALB_SG_ID="$(normalize_none "$ALB_SG_RAW")"
           ALB_VPC_ID="$(normalize_none "$ALB_VPC_RAW")"
+
+          IGW_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            IGW_RAW="$(aws ec2 describe-internet-gateways --filters Name=attachment.vpc-id,Values="$ALB_VPC_ID" --query 'InternetGateways[0].InternetGatewayId' --output text 2>/dev/null || true)"
+          fi
+          IGW_ID="$(normalize_none "$IGW_RAW")"
+
+          CLUSTER_RAW="$(aws ecs describe-clusters --clusters "${APP_NAME}-cluster" --query 'clusters[0].clusterName' --output text 2>/dev/null || true)"
+          CLUSTER_NAME="$(normalize_none "$CLUSTER_RAW")"
+
+          SERVICE_STATUS_RAW="$(aws ecs describe-services --cluster "${APP_NAME}-cluster" --services "${APP_NAME}-service" --query 'services[0].status' --output text 2>/dev/null || true)"
+          SERVICE_STATUS="$(normalize_none "$SERVICE_STATUS_RAW")"
+
+          PUBLIC_SUBNET_1_RAW=""
+          PUBLIC_SUBNET_2_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            PUBLIC_SUBNET_1_RAW="$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-public-1" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || true)"
+            PUBLIC_SUBNET_2_RAW="$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-public-2" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || true)"
+          fi
+          PUBLIC_SUBNET_1="$(normalize_none "$PUBLIC_SUBNET_1_RAW")"
+          PUBLIC_SUBNET_2="$(normalize_none "$PUBLIC_SUBNET_2_RAW")"
+
+          if [ -n "$ALB_ARN" ] && { [ -z "$PUBLIC_SUBNET_1" ] || [ -z "$PUBLIC_SUBNET_2" ]; }; then
+            ALB_SUBNETS_RAW="$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" --query 'LoadBalancers[0].AvailabilityZones[*].SubnetId' --output text 2>/dev/null || true)"
+            [ -z "$PUBLIC_SUBNET_1" ] && PUBLIC_SUBNET_1="$(pick_sorted_nth "$ALB_SUBNETS_RAW" 0)"
+            [ -z "$PUBLIC_SUBNET_2" ] && PUBLIC_SUBNET_2="$(pick_sorted_nth "$ALB_SUBNETS_RAW" 1)"
+          fi
+
+          PRIVATE_SUBNET_1_RAW=""
+          PRIVATE_SUBNET_2_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            PRIVATE_SUBNET_1_RAW="$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-private-1" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || true)"
+            PRIVATE_SUBNET_2_RAW="$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-private-2" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || true)"
+          fi
+          PRIVATE_SUBNET_1="$(normalize_none "$PRIVATE_SUBNET_1_RAW")"
+          PRIVATE_SUBNET_2="$(normalize_none "$PRIVATE_SUBNET_2_RAW")"
+
+          if [ -n "$CLUSTER_NAME" ] && [ -n "$SERVICE_STATUS" ] && [ "$SERVICE_STATUS" != "MISSING" ] && { [ -z "$PRIVATE_SUBNET_1" ] || [ -z "$PRIVATE_SUBNET_2" ]; }; then
+            ECS_SUBNETS_RAW="$(aws ecs describe-services --cluster "${APP_NAME}-cluster" --services "${APP_NAME}-service" --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets' --output text 2>/dev/null || true)"
+            [ -z "$PRIVATE_SUBNET_1" ] && PRIVATE_SUBNET_1="$(pick_sorted_nth "$ECS_SUBNETS_RAW" 0)"
+            [ -z "$PRIVATE_SUBNET_2" ] && PRIVATE_SUBNET_2="$(pick_sorted_nth "$ECS_SUBNETS_RAW" 1)"
+          fi
+
+          PUBLIC_RT_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            PUBLIC_RT_RAW="$(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-public-rt" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+          fi
+          PUBLIC_RT_ID="$(normalize_none "$PUBLIC_RT_RAW")"
+
+          if [ -z "$PUBLIC_RT_ID" ] && [ -n "$PUBLIC_SUBNET_1" ]; then
+            PUBLIC_RT_RAW="$(aws ec2 describe-route-tables --filters Name=association.subnet-id,Values="$PUBLIC_SUBNET_1" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+            PUBLIC_RT_ID="$(normalize_none "$PUBLIC_RT_RAW")"
+          fi
+
+          PRIVATE_RT_1_RAW=""
+          PRIVATE_RT_2_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            PRIVATE_RT_1_RAW="$(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-private-1" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+            PRIVATE_RT_2_RAW="$(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-private-2" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+          fi
+          PRIVATE_RT_1_ID="$(normalize_none "$PRIVATE_RT_1_RAW")"
+          PRIVATE_RT_2_ID="$(normalize_none "$PRIVATE_RT_2_RAW")"
+
+          if [ -z "$PRIVATE_RT_1_ID" ] && [ -n "$PRIVATE_SUBNET_1" ]; then
+            PRIVATE_RT_1_RAW="$(aws ec2 describe-route-tables --filters Name=association.subnet-id,Values="$PRIVATE_SUBNET_1" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+            PRIVATE_RT_1_ID="$(normalize_none "$PRIVATE_RT_1_RAW")"
+          fi
+
+          if [ -z "$PRIVATE_RT_2_ID" ] && [ -n "$PRIVATE_SUBNET_2" ]; then
+            PRIVATE_RT_2_RAW="$(aws ec2 describe-route-tables --filters Name=association.subnet-id,Values="$PRIVATE_SUBNET_2" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+            PRIVATE_RT_2_ID="$(normalize_none "$PRIVATE_RT_2_RAW")"
+          fi
+
+          NAT_GW_1_RAW=""
+          NAT_GW_2_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            NAT_GW_1_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-1" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+            NAT_GW_2_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-2" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+          fi
+          NAT_GW_1_ID="$(normalize_none "$NAT_GW_1_RAW")"
+          NAT_GW_2_ID="$(normalize_none "$NAT_GW_2_RAW")"
+
+          if [ -n "$ALB_VPC_ID" ] && { [ -z "$NAT_GW_1_ID" ] || [ -z "$NAT_GW_2_ID" ]; }; then
+            NAT_GW_ALL_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=state,Values=available,pending --query 'NatGateways[*].NatGatewayId' --output text 2>/dev/null || true)"
+            [ -z "$NAT_GW_1_ID" ] && NAT_GW_1_ID="$(pick_sorted_nth "$NAT_GW_ALL_RAW" 0)"
+            [ -z "$NAT_GW_2_ID" ] && NAT_GW_2_ID="$(pick_sorted_nth "$NAT_GW_ALL_RAW" 1)"
+          fi
+
+          NAT_EIP_1_RAW=""
+          NAT_EIP_2_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            NAT_EIP_1_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-1" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
+            NAT_EIP_2_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-2" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
+          fi
+          NAT_EIP_1_ID="$(normalize_none "$NAT_EIP_1_RAW")"
+          NAT_EIP_2_ID="$(normalize_none "$NAT_EIP_2_RAW")"
+
+          if [ -z "$NAT_EIP_1_ID" ] && [ -n "$NAT_GW_1_ID" ]; then
+            NAT_EIP_1_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_1_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
+            NAT_EIP_1_ID="$(normalize_none "$NAT_EIP_1_RAW")"
+          fi
+
+          if [ -z "$NAT_EIP_2_ID" ] && [ -n "$NAT_GW_2_ID" ]; then
+            NAT_EIP_2_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_2_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
+            NAT_EIP_2_ID="$(normalize_none "$NAT_EIP_2_RAW")"
+          fi
 
           TG_ARN_RAW="$(aws elbv2 describe-target-groups --names "${APP_NAME}-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
           TG_ARN="$(normalize_none "$TG_ARN_RAW")"
@@ -249,30 +379,54 @@ jobs:
           TASK_ROLE_RAW="$(aws iam get-role --role-name "${APP_NAME}-ecs-task-role" --query 'Role.RoleName' --output text 2>/dev/null || true)"
           TASK_ROLE_NAME="$(normalize_none "$TASK_ROLE_RAW")"
 
-          CLUSTER_RAW="$(aws ecs describe-clusters --clusters "${APP_NAME}-cluster" --query 'clusters[0].clusterName' --output text 2>/dev/null || true)"
-          CLUSTER_NAME="$(normalize_none "$CLUSTER_RAW")"
-
-          SERVICE_STATUS_RAW="$(aws ecs describe-services --cluster "${APP_NAME}-cluster" --services "${APP_NAME}-service" --query 'services[0].status' --output text 2>/dev/null || true)"
-          SERVICE_STATUS="$(normalize_none "$SERVICE_STATUS_RAW")"
-
           DDB_TABLE_RAW="$(aws dynamodb describe-table --table-name "${APP_TABLE_NAME}" --query 'Table.TableName' --output text 2>/dev/null || true)"
           DDB_TABLE_NAME="$(normalize_none "$DDB_TABLE_RAW")"
 
-          import_if_needed module.alb.aws_lb.this "$ALB_ARN"
-          import_if_needed module.alb.aws_lb_target_group.ecs "$TG_ARN"
-          import_if_needed module.dynamodb.aws_dynamodb_table.this "$DDB_TABLE_NAME"
-          import_if_needed module.ecs.aws_cloudwatch_log_group.app "$LOG_GROUP_NAME"
-          import_if_needed module.ecs.aws_iam_role.task_execution "$TASK_EXEC_ROLE_NAME"
-          import_if_needed module.ecs.aws_iam_role.task "$TASK_ROLE_NAME"
-          import_if_needed module.ecs.aws_ecs_cluster.this "$CLUSTER_NAME"
+          ensure_import module.network.aws_vpc.this "$ALB_VPC_ID"
+          ensure_import module.network.aws_internet_gateway.this "$IGW_ID"
+          ensure_import module.network.aws_subnet.public[0] "$PUBLIC_SUBNET_1"
+          ensure_import module.network.aws_subnet.public[1] "$PUBLIC_SUBNET_2"
+          ensure_import module.network.aws_subnet.private[0] "$PRIVATE_SUBNET_1"
+          ensure_import module.network.aws_subnet.private[1] "$PRIVATE_SUBNET_2"
+          ensure_import module.network.aws_route_table.public "$PUBLIC_RT_ID"
+          ensure_import module.network.aws_route_table.private[0] "$PRIVATE_RT_1_ID"
+          ensure_import module.network.aws_route_table.private[1] "$PRIVATE_RT_2_ID"
+          ensure_import module.network.aws_eip.nat[0] "$NAT_EIP_1_ID"
+          ensure_import module.network.aws_eip.nat[1] "$NAT_EIP_2_ID"
+          ensure_import module.network.aws_nat_gateway.this[0] "$NAT_GW_1_ID"
+          ensure_import module.network.aws_nat_gateway.this[1] "$NAT_GW_2_ID"
 
-          if [ -n "$CLUSTER_NAME" ] && [ -n "$SERVICE_STATUS" ] && [ "$SERVICE_STATUS" != "MISSING" ]; then
-            import_if_needed module.ecs.aws_ecs_service.this "${APP_NAME}-cluster/${APP_NAME}-service"
+          if [ -n "$PUBLIC_SUBNET_1" ] && [ -n "$PUBLIC_RT_ID" ]; then
+            ensure_import module.network.aws_route_table_association.public[0] "${PUBLIC_SUBNET_1}/${PUBLIC_RT_ID}"
           fi
 
-          import_if_needed module.alb.aws_security_group.alb "$ALB_SG_ID"
-          import_if_needed module.alb.aws_lb_listener.http "$LISTENER_ARN"
-          import_if_needed module.ecs.aws_security_group.ecs "$ECS_SG_ID"
+          if [ -n "$PUBLIC_SUBNET_2" ] && [ -n "$PUBLIC_RT_ID" ]; then
+            ensure_import module.network.aws_route_table_association.public[1] "${PUBLIC_SUBNET_2}/${PUBLIC_RT_ID}"
+          fi
+
+          if [ -n "$PRIVATE_SUBNET_1" ] && [ -n "$PRIVATE_RT_1_ID" ]; then
+            ensure_import module.network.aws_route_table_association.private[0] "${PRIVATE_SUBNET_1}/${PRIVATE_RT_1_ID}"
+          fi
+
+          if [ -n "$PRIVATE_SUBNET_2" ] && [ -n "$PRIVATE_RT_2_ID" ]; then
+            ensure_import module.network.aws_route_table_association.private[1] "${PRIVATE_SUBNET_2}/${PRIVATE_RT_2_ID}"
+          fi
+
+          ensure_import module.alb.aws_lb.this "$ALB_ARN"
+          ensure_import module.alb.aws_lb_target_group.ecs "$TG_ARN"
+          ensure_import module.dynamodb.aws_dynamodb_table.this "$DDB_TABLE_NAME"
+          ensure_import module.ecs.aws_cloudwatch_log_group.app "$LOG_GROUP_NAME"
+          ensure_import module.ecs.aws_iam_role.task_execution "$TASK_EXEC_ROLE_NAME"
+          ensure_import module.ecs.aws_iam_role.task "$TASK_ROLE_NAME"
+          ensure_import module.ecs.aws_ecs_cluster.this "$CLUSTER_NAME"
+
+          if [ -n "$CLUSTER_NAME" ] && [ -n "$SERVICE_STATUS" ] && [ "$SERVICE_STATUS" != "MISSING" ]; then
+            ensure_import module.ecs.aws_ecs_service.this "${APP_NAME}-cluster/${APP_NAME}-service"
+          fi
+
+          ensure_import module.alb.aws_security_group.alb "$ALB_SG_ID"
+          ensure_import module.alb.aws_lb_listener.http "$LISTENER_ARN"
+          ensure_import module.ecs.aws_security_group.ecs "$ECS_SG_ID"
 
           terraform validate
           terraform plan -input=false -out=tfplan
