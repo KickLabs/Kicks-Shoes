@@ -33,6 +33,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import discountRoutes from './routes/discountRoutes.js';
 import emailRoutes from './routes/emailRoutes.js';
+import healthRoutes from './routes/healthRoutes.js';
 import favouriteRoutes from './routes/favouriteRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import livestreamRoutes from './routes/livestreamRoutes.js'; // Added LiveStream routes
@@ -152,6 +153,9 @@ app.get('/api/health', (req, res) => {
     version: process.env.npm_package_version || '1.0.0',
   });
 });
+
+// Extended health checks (DynamoDB read/write validation)
+app.use('/api/health', healthRoutes);
 
 // Debug endpoint to test tryon route accessibility
 app.get('/api/tryon/debug', (req, res) => {
