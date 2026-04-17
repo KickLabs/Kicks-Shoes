@@ -1,0 +1,158 @@
+name: Deploy Dev Two Stack
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - kicks-production
+    paths:
+      - backend/**
+      - infra/terraform/environments/dev/**
+      - .github/workflows/deploy-dev-two-stack.yml
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ap-southeast-1
+  TF_NETWORK_DIR: infra/terraform/environments/dev/01-network
+  TF_APP_DIR: infra/terraform/environments/dev/02-app
+  TF_STATE_BUCKET: kicks-shoes-tf-state
+  ECR_REPOSITORY: kicks-shoes-backend
+
+jobs:
+  deploy-dev:
+    name: Build Image and Deploy Dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Resolve AWS account id
+        id: aws_account
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure Terraform state bucket exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! aws s3api head-bucket --bucket "$TF_STATE_BUCKET" 2>/dev/null; then
+            aws s3api create-bucket \
+              --bucket "$TF_STATE_BUCKET" \
+              --region "$AWS_REGION" \
+              --create-bucket-configuration LocationConstraint="$AWS_REGION"
+          fi
+
+      - name: Ensure ECR repository exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "$ECR_REPOSITORY" >/dev/null
+
+      - name: Login to ECR
+        id: login_ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        id: build_push
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.login_ecr.outputs.registry }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          IMAGE_REPO="$ECR_REGISTRY/$ECR_REPOSITORY"
+          IMAGE_TAG="dev-${COMMIT_SHA::12}"
+          IMAGE_URI="$IMAGE_REPO:$IMAGE_TAG"
+
+          docker build -f backend/Dockerfile -t "$IMAGE_URI" -t "$IMAGE_REPO:dev-latest" ./backend
+          docker push "$IMAGE_URI"
+          docker push "$IMAGE_REPO:dev-latest"
+
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+      - name: Validate app prerequisites
+        shell: bash
+        env:
+          DEV_DOMAIN_NAME: ${{ vars.DEV_DOMAIN_NAME }}
+          DEV_APP_CONFIG_SECRET_NAME: ${{ vars.DEV_APP_CONFIG_SECRET_NAME }}
+        run: |
+          set -euo pipefail
+
+          DOMAIN_NAME="${DEV_DOMAIN_NAME:-kicks-shoes.com}"
+          APP_CONFIG_SECRET_NAME="${DEV_APP_CONFIG_SECRET_NAME:-kicks-shoes-dev/app-config}"
+
+          ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+            --dns-name "$DOMAIN_NAME" \
+            --query 'HostedZones[?Name==`'"$DOMAIN_NAME"'.`].Id | [0]' \
+            --output text)
+
+          if [ -z "$ZONE_ID" ] || [ "$ZONE_ID" = "None" ]; then
+            echo "Missing Route53 hosted zone for $DOMAIN_NAME"
+            exit 1
+          fi
+
+          if ! nslookup -type=ns "$DOMAIN_NAME" >/tmp/domain-ns.txt 2>&1; then
+            echo "Public DNS for $DOMAIN_NAME is not resolvable. ACM DNS validation will not complete."
+            cat /tmp/domain-ns.txt
+            exit 1
+          fi
+
+          aws secretsmanager describe-secret --secret-id "$APP_CONFIG_SECRET_NAME" >/dev/null
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform apply network stack
+        working-directory: ${{ env.TF_NETWORK_DIR }}
+        shell: bash
+        env:
+          TF_IN_AUTOMATION: 'true'
+        run: |
+          set -euo pipefail
+          terraform init -reconfigure
+          terraform plan -var-file="terraform.tfvars"
+          terraform apply -auto-approve -var-file="terraform.tfvars"
+
+      - name: Terraform apply app stack
+        working-directory: ${{ env.TF_APP_DIR }}
+        shell: bash
+        env:
+          TF_IN_AUTOMATION: 'true'
+          DEV_DOMAIN_NAME: ${{ vars.DEV_DOMAIN_NAME }}
+          DEV_APP_CONFIG_SECRET_NAME: ${{ vars.DEV_APP_CONFIG_SECRET_NAME }}
+        run: |
+          set -euo pipefail
+
+          DOMAIN_NAME="${DEV_DOMAIN_NAME:-kicks-shoes.com}"
+          APP_CONFIG_SECRET_NAME="${DEV_APP_CONFIG_SECRET_NAME:-kicks-shoes-dev/app-config}"
+
+          terraform init -reconfigure
+          terraform plan \
+            -var-file="terraform.tfvars" \
+            -var="container_image=${{ steps.build_push.outputs.image_uri }}" \
+            -var="domain_name=$DOMAIN_NAME" \
+            -var="app_config_secret_name=$APP_CONFIG_SECRET_NAME"
+
+          terraform apply -auto-approve \
+            -var-file="terraform.tfvars" \
+            -var="container_image=${{ steps.build_push.outputs.image_uri }}" \
+            -var="domain_name=$DOMAIN_NAME" \
+            -var="app_config_secret_name=$APP_CONFIG_SECRET_NAME"
