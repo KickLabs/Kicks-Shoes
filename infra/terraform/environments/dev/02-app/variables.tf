@@ -10,12 +10,19 @@ variable "aws_region" {
 
 variable "domain_name" {
   type        = string
-  description = "Root domain name, e.g. kicks-shoes.com"
+  description = "Root domain name, e.g. kicks-shoes.com (required only when enable_custom_domain is true)"
+  default     = ""
+}
+
+variable "enable_custom_domain" {
+  type        = bool
+  description = "Enable ACM/HTTPS/CloudFront/Route53 custom domain resources"
+  default     = false
 }
 
 variable "container_image" {
   type        = string
-  description = "ECR image URI"
+  description = "Container image URI for backend service"
 }
 
 variable "container_port" {
@@ -55,7 +62,7 @@ variable "autoscaling_cpu_target" {
 
 variable "app_config_secret_name" {
   type        = string
-  description = "Secrets Manager secret name"
+  description = "Secrets Manager secret name containing app config keys"
   default     = "kicks-shoes-dev/app-config"
 }
 
