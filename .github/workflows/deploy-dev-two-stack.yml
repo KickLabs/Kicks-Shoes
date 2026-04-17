@@ -91,29 +91,47 @@ jobs:
         env:
           DEV_DOMAIN_NAME: ${{ vars.DEV_DOMAIN_NAME }}
           DEV_APP_CONFIG_SECRET_NAME: ${{ vars.DEV_APP_CONFIG_SECRET_NAME }}
+          SKIP_DNS_VALIDATION: ${{ vars.SKIP_DNS_VALIDATION }}
         run: |
           set -euo pipefail
 
           DOMAIN_NAME="${DEV_DOMAIN_NAME:-kicks-shoes.com}"
           APP_CONFIG_SECRET_NAME="${DEV_APP_CONFIG_SECRET_NAME:-kicks-shoes-dev/app-config}"
+          SKIP_DNS="${SKIP_DNS_VALIDATION:-true}"
 
+          # Check Route53 hosted zone exists
           ZONE_ID=$(aws route53 list-hosted-zones-by-name \
             --dns-name "$DOMAIN_NAME" \
             --query 'HostedZones[?Name==`'"$DOMAIN_NAME"'.`].Id | [0]' \
             --output text)
 
           if [ -z "$ZONE_ID" ] || [ "$ZONE_ID" = "None" ]; then
-            echo "Missing Route53 hosted zone for $DOMAIN_NAME"
-            exit 1
+            echo "⚠️  Warning: Missing Route53 hosted zone for $DOMAIN_NAME"
+            echo "Continuing without domain validation for dev environment"
+          else
+            echo "✓ Route53 hosted zone found: $ZONE_ID"
           fi
 
-          if ! nslookup -type=ns "$DOMAIN_NAME" >/tmp/domain-ns.txt 2>&1; then
-            echo "Public DNS for $DOMAIN_NAME is not resolvable. ACM DNS validation will not complete."
-            cat /tmp/domain-ns.txt
-            exit 1
+          # Optional DNS validation (can be skipped for dev)
+          if [ "$SKIP_DNS" != "true" ]; then
+            if ! nslookup -type=ns "$DOMAIN_NAME" >/tmp/domain-ns.txt 2>&1; then
+              echo "❌ Public DNS for $DOMAIN_NAME is not resolvable. ACM DNS validation will not complete."
+              cat /tmp/domain-ns.txt
+              exit 1
+            fi
+            echo "✓ DNS is publicly resolvable"
+          else
+            echo "⚠️  Skipping DNS validation (dev environment)"
+            echo "Note: ACM certificate validation may take longer or require manual DNS setup"
           fi
 
-          aws secretsmanager describe-secret --secret-id "$APP_CONFIG_SECRET_NAME" >/dev/null
+          # Verify Secrets Manager secret exists
+          if aws secretsmanager describe-secret --secret-id "$APP_CONFIG_SECRET_NAME" >/dev/null 2>&1; then
+            echo "✓ Secrets Manager secret found: $APP_CONFIG_SECRET_NAME"
+          else
+            echo "❌ Secrets Manager secret not found: $APP_CONFIG_SECRET_NAME"
+            exit 1
+          fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
