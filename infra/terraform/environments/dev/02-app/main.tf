@@ -407,6 +407,14 @@ module "ecs_service" {
         {
           name  = "PORT"
           value = tostring(var.container_port)
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "DYNAMODB_TABLE_NAME"
+          value = module.dynamodb.dynamodb_table_id
         }
       ]
       secrets = [
