@@ -14,6 +14,7 @@ permissions:
   contents: read
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   AWS_REGION: ap-southeast-1
   TF_NETWORK_DIR: infra/terraform/environments/dev/01-network
   TF_APP_DIR: infra/terraform/environments/dev/02-app
@@ -164,13 +165,35 @@ jobs:
 
           DOMAIN_NAME="${DEV_DOMAIN_NAME:-kicks-shoes.com}"
           APP_CONFIG_SECRET_NAME="${DEV_APP_CONFIG_SECRET_NAME:-kicks-shoes-dev/app-config}"
-          ENABLE_CUSTOM_DOMAIN="${DEV_ENABLE_CUSTOM_DOMAIN:-false}"
 
           terraform init -reconfigure \
             -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
             -backend-config="key=dev/02-app/terraform.tfstate" \
             -backend-config="region=${{ steps.tf_state.outputs.bucket_region }}" \
             -backend-config="encrypt=true"
+
+          # Some existing IAM policies may exist but be missing from remote state.
+          # Import them to prevent EntityAlreadyExists failures during apply.
+          import_policy_if_missing() {
+            local tf_addr="$1"
+            local policy_name="$2"
+
+            if terraform state show "$tf_addr" >/dev/null 2>&1; then
+              return 0
+            fi
+
+            local arn
+            arn="$(aws iam list-policies --scope Local --query "Policies[?PolicyName=='${policy_name}'].Arn | [0]" --output text)"
+            if [ -n "$arn" ] && [ "$arn" != "None" ]; then
+              echo "Importing existing IAM policy $policy_name into state"
+              terraform import "$tf_addr" "$arn" >/dev/null || true
+            fi
+          }
+
+          import_policy_if_missing "aws_iam_policy.ecs_secrets" "kicks-shoes-dev-ecs-secrets"
+          import_policy_if_missing "aws_iam_policy.ecs_s3" "kicks-shoes-dev-ecs-s3"
+          import_policy_if_missing "aws_iam_policy.ecs_dynamodb" "kicks-shoes-dev-ecs-dynamodb"
+
           PLAN_ARGS=(
             -out=tfplan
             "-var=container_image=${{ steps.build_push.outputs.image_uri }}"
