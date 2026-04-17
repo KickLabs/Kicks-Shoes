@@ -159,7 +159,6 @@ jobs:
           TF_IN_AUTOMATION: 'true'
           DEV_DOMAIN_NAME: ${{ vars.DEV_DOMAIN_NAME }}
           DEV_APP_CONFIG_SECRET_NAME: ${{ vars.DEV_APP_CONFIG_SECRET_NAME }}
-          DEV_ENABLE_CUSTOM_DOMAIN: ${{ vars.DEV_ENABLE_CUSTOM_DOMAIN }}
         run: |
           set -euo pipefail
 
@@ -176,7 +175,6 @@ jobs:
             -out=tfplan
             "-var=container_image=${{ steps.build_push.outputs.image_uri }}"
             "-var=domain_name=$DOMAIN_NAME"
-            "-var=enable_custom_domain=$ENABLE_CUSTOM_DOMAIN"
             "-var=app_config_secret_name=$APP_CONFIG_SECRET_NAME"
           )
           if [ -f "terraform.tfvars" ]; then
