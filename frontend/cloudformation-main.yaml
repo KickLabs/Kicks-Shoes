@@ -28,6 +28,72 @@ Conditions:
   HasWAF: !Not [!Equals [!Ref WAFWebACLArn, '']]
 
 Resources:
+
+  # SNS Topic for S3 Event Notifications
+  S3NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ProjectName}-s3-notifications'
+      DeliveryStatusLogging:
+        - Protocol: sqs
+          SuccessFeedbackRoleArn: !GetAtt SNSDeliveryLoggingRole.Arn
+          FailureFeedbackRoleArn: !GetAtt SNSDeliveryLoggingRole.Arn
+          SuccessFeedbackSampleRate: 100
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-s3-notifications'
+
+  # IAM Role for SNS to write delivery logs to CloudWatch
+  SNSDeliveryLoggingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-sns-delivery-logging-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SNSCloudWatchLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: !GetAtt S3EventLogGroup.Arn
+
+  # CloudWatch Log Group để lưu chi tiết S3 events từ SNS
+  S3EventLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/sns/${ProjectName}-s3-notifications'
+      RetentionInDays: 90
+
+  # SNS Topic Policy - cho phép S3 publish vào SNS
+  S3NotificationTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref S3NotificationTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref S3NotificationTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${ProjectName}-frontend'
+
   # S3 Bucket for Frontend
   FrontendBucket:
     Type: AWS::S3::Bucket
@@ -49,6 +115,20 @@ Resources:
           - Id: DeleteOldVersions
             Status: Enabled
             NoncurrentVersionExpirationInDays: 30
+          - Id: TransitionAndExpireRule
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+              - TransitionInDays: 90
+                StorageClass: GLACIER_IR
+            ExpirationInDays: 365
+      NotificationConfiguration:
+        TopicConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Topic: !Ref S3NotificationTopic
+          - Event: 's3:ObjectRemoved:*'
+            Topic: !Ref S3NotificationTopic
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-frontend'
@@ -234,3 +314,15 @@ Outputs:
     Value: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
     Export:
       Name: !Sub '${AWS::StackName}-DistributionArn'
+
+  S3NotificationTopicArn:
+    Description: SNS Topic ARN for S3 Event Notifications
+    Value: !Ref S3NotificationTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-S3NotificationTopicArn'
+
+  S3EventLogGroupName:
+    Description: CloudWatch Log Group for S3 SNS delivery logs
+    Value: !Ref S3EventLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-S3EventLogGroup'
