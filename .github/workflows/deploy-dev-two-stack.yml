@@ -47,6 +47,7 @@ jobs:
           echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
 
       - name: Ensure Terraform state bucket exists
+        id: tf_state
         shell: bash
         run: |
           set -euo pipefail
@@ -56,6 +57,11 @@ jobs:
               --region "$AWS_REGION" \
               --create-bucket-configuration LocationConstraint="$AWS_REGION"
           fi
+          BUCKET_REGION="$(aws s3api get-bucket-location --bucket "$TF_STATE_BUCKET" --query 'LocationConstraint' --output text)"
+          if [ "$BUCKET_REGION" = "None" ] || [ -z "$BUCKET_REGION" ]; then
+            BUCKET_REGION="us-east-1"
+          fi
+          echo "bucket_region=$BUCKET_REGION" >> "$GITHUB_OUTPUT"
 
       - name: Ensure ECR repository exists
         shell: bash
@@ -91,47 +97,35 @@ jobs:
         env:
           DEV_DOMAIN_NAME: ${{ vars.DEV_DOMAIN_NAME }}
           DEV_APP_CONFIG_SECRET_NAME: ${{ vars.DEV_APP_CONFIG_SECRET_NAME }}
-          SKIP_DNS_VALIDATION: ${{ vars.SKIP_DNS_VALIDATION }}
+          DEV_ENABLE_CUSTOM_DOMAIN: ${{ vars.DEV_ENABLE_CUSTOM_DOMAIN }}
         run: |
           set -euo pipefail
 
           DOMAIN_NAME="${DEV_DOMAIN_NAME:-kicks-shoes.com}"
           APP_CONFIG_SECRET_NAME="${DEV_APP_CONFIG_SECRET_NAME:-kicks-shoes-dev/app-config}"
-          SKIP_DNS="${SKIP_DNS_VALIDATION:-true}"
+          ENABLE_CUSTOM_DOMAIN="${DEV_ENABLE_CUSTOM_DOMAIN:-false}"
 
-          # Check Route53 hosted zone exists
-          ZONE_ID=$(aws route53 list-hosted-zones-by-name \
-            --dns-name "$DOMAIN_NAME" \
-            --query 'HostedZones[?Name==`'"$DOMAIN_NAME"'.`].Id | [0]' \
-            --output text)
+          if [ "$ENABLE_CUSTOM_DOMAIN" = "true" ]; then
+            ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+              --dns-name "$DOMAIN_NAME" \
+              --query 'HostedZones[?Name==`'"$DOMAIN_NAME"'.`].Id | [0]' \
+              --output text)
 
-          if [ -z "$ZONE_ID" ] || [ "$ZONE_ID" = "None" ]; then
-            echo "⚠️  Warning: Missing Route53 hosted zone for $DOMAIN_NAME"
-            echo "Continuing without domain validation for dev environment"
-          else
-            echo "✓ Route53 hosted zone found: $ZONE_ID"
-          fi
+            if [ -z "$ZONE_ID" ] || [ "$ZONE_ID" = "None" ]; then
+              echo "Missing Route53 hosted zone for $DOMAIN_NAME"
+              exit 1
+            fi
 
-          # Optional DNS validation (can be skipped for dev)
-          if [ "$SKIP_DNS" != "true" ]; then
             if ! nslookup -type=ns "$DOMAIN_NAME" >/tmp/domain-ns.txt 2>&1; then
-              echo "❌ Public DNS for $DOMAIN_NAME is not resolvable. ACM DNS validation will not complete."
+              echo "Public DNS for $DOMAIN_NAME is not resolvable. ACM DNS validation will not complete."
               cat /tmp/domain-ns.txt
               exit 1
             fi
-            echo "✓ DNS is publicly resolvable"
           else
-            echo "⚠️  Skipping DNS validation (dev environment)"
-            echo "Note: ACM certificate validation may take longer or require manual DNS setup"
+            echo "Custom domain disabled. Skipping Route53/NS checks."
           fi
 
-          # Verify Secrets Manager secret exists
-          if aws secretsmanager describe-secret --secret-id "$APP_CONFIG_SECRET_NAME" >/dev/null 2>&1; then
-            echo "✓ Secrets Manager secret found: $APP_CONFIG_SECRET_NAME"
-          else
-            echo "❌ Secrets Manager secret not found: $APP_CONFIG_SECRET_NAME"
-            exit 1
-          fi
+          aws secretsmanager describe-secret --secret-id "$APP_CONFIG_SECRET_NAME" >/dev/null
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -145,9 +139,18 @@ jobs:
           TF_IN_AUTOMATION: 'true'
         run: |
           set -euo pipefail
-          terraform init -reconfigure
-          terraform plan -var-file="terraform.tfvars"
-          terraform apply -auto-approve -var-file="terraform.tfvars"
+          terraform init -reconfigure \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=dev/01-network/terraform.tfstate" \
+            -backend-config="region=${{ steps.tf_state.outputs.bucket_region }}" \
+            -backend-config="encrypt=true"
+          if [ -f "terraform.tfvars" ]; then
+            terraform plan -var-file="terraform.tfvars" -out=tfplan
+          else
+            echo "terraform.tfvars not found. Using module defaults for network stack."
+            terraform plan -out=tfplan
+          fi
+          terraform apply -auto-approve tfplan
 
       - name: Terraform apply app stack
         working-directory: ${{ env.TF_APP_DIR }}
@@ -156,21 +159,31 @@ jobs:
           TF_IN_AUTOMATION: 'true'
           DEV_DOMAIN_NAME: ${{ vars.DEV_DOMAIN_NAME }}
           DEV_APP_CONFIG_SECRET_NAME: ${{ vars.DEV_APP_CONFIG_SECRET_NAME }}
+          DEV_ENABLE_CUSTOM_DOMAIN: ${{ vars.DEV_ENABLE_CUSTOM_DOMAIN }}
         run: |
           set -euo pipefail
 
           DOMAIN_NAME="${DEV_DOMAIN_NAME:-kicks-shoes.com}"
           APP_CONFIG_SECRET_NAME="${DEV_APP_CONFIG_SECRET_NAME:-kicks-shoes-dev/app-config}"
+          ENABLE_CUSTOM_DOMAIN="${DEV_ENABLE_CUSTOM_DOMAIN:-false}"
 
-          terraform init -reconfigure
-          terraform plan \
-            -var-file="terraform.tfvars" \
-            -var="container_image=${{ steps.build_push.outputs.image_uri }}" \
-            -var="domain_name=$DOMAIN_NAME" \
-            -var="app_config_secret_name=$APP_CONFIG_SECRET_NAME"
+          terraform init -reconfigure \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=dev/02-app/terraform.tfstate" \
+            -backend-config="region=${{ steps.tf_state.outputs.bucket_region }}" \
+            -backend-config="encrypt=true"
+          PLAN_ARGS=(
+            -out=tfplan
+            "-var=container_image=${{ steps.build_push.outputs.image_uri }}"
+            "-var=domain_name=$DOMAIN_NAME"
+            "-var=enable_custom_domain=$ENABLE_CUSTOM_DOMAIN"
+            "-var=app_config_secret_name=$APP_CONFIG_SECRET_NAME"
+          )
+          if [ -f "terraform.tfvars" ]; then
+            PLAN_ARGS+=("-var-file=terraform.tfvars")
+          else
+            echo "terraform.tfvars not found. Using explicit CI variables for app stack."
+          fi
+          terraform plan "${PLAN_ARGS[@]}"
 
-          terraform apply -auto-approve \
-            -var-file="terraform.tfvars" \
-            -var="container_image=${{ steps.build_push.outputs.image_uri }}" \
-            -var="domain_name=$DOMAIN_NAME" \
-            -var="app_config_secret_name=$APP_CONFIG_SECRET_NAME"
+          terraform apply -auto-approve tfplan
