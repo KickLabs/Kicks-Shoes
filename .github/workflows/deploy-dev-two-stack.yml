@@ -160,19 +160,21 @@ jobs:
           TF_IN_AUTOMATION: 'true'
           DEV_DOMAIN_NAME: ${{ vars.DEV_DOMAIN_NAME }}
           DEV_APP_CONFIG_SECRET_NAME: ${{ vars.DEV_APP_CONFIG_SECRET_NAME }}
-          DEV_ENABLE_CUSTOM_DOMAIN: ${{ vars.DEV_ENABLE_CUSTOM_DOMAIN }}
         run: |
           set -euo pipefail
 
           DOMAIN_NAME="${DEV_DOMAIN_NAME:-kicks-shoes.com}"
           APP_CONFIG_SECRET_NAME="${DEV_APP_CONFIG_SECRET_NAME:-kicks-shoes-dev/app-config}"
-          ENABLE_CUSTOM_DOMAIN="${DEV_ENABLE_CUSTOM_DOMAIN:-false}"
 
           terraform init -reconfigure \
             -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
             -backend-config="key=dev/02-app/terraform.tfstate" \
             -backend-config="region=${{ steps.tf_state.outputs.bucket_region }}" \
             -backend-config="encrypt=true"
+
+          # Required inputs must be set even for terraform import.
+          export TF_VAR_domain_name="$DOMAIN_NAME"
+          export TF_VAR_container_image="${{ steps.build_push.outputs.image_uri }}"
 
           # Some existing IAM policies may exist but be missing from remote state.
           # Import them to prevent EntityAlreadyExists failures during apply.
@@ -191,7 +193,9 @@ jobs:
 
             if aws iam get-policy --policy-arn "$policy_arn" >/dev/null 2>&1; then
               echo "Importing existing IAM policy $policy_name into state"
-              terraform import "$tf_addr" "$policy_arn" >/dev/null || true
+              terraform import "$tf_addr" "$policy_arn" >/dev/null
+            else
+              echo "IAM policy $policy_name does not exist yet. Terraform will create it."
             fi
           }
 
@@ -200,15 +204,20 @@ jobs:
             PROJECT_NAME="kicks-shoes-dev"
           fi
 
-          import_policy_if_missing "aws_iam_policy.ecs_secrets" "${PROJECT_NAME}-ecs-secrets"
-          import_policy_if_missing "aws_iam_policy.ecs_s3" "${PROJECT_NAME}-ecs-s3"
-          import_policy_if_missing "aws_iam_policy.ecs_dynamodb" "${PROJECT_NAME}-ecs-dynamodb"
+          if grep -q 'resource "aws_iam_policy" "ecs_secrets"' main.tf; then
+            import_policy_if_missing "aws_iam_policy.ecs_secrets" "${PROJECT_NAME}-ecs-secrets"
+          fi
+          if grep -q 'resource "aws_iam_policy" "ecs_s3"' main.tf; then
+            import_policy_if_missing "aws_iam_policy.ecs_s3" "${PROJECT_NAME}-ecs-s3"
+          fi
+          if grep -q 'resource "aws_iam_policy" "ecs_dynamodb"' main.tf; then
+            import_policy_if_missing "aws_iam_policy.ecs_dynamodb" "${PROJECT_NAME}-ecs-dynamodb"
+          fi
 
           PLAN_ARGS=(
             -out=tfplan
             "-var=container_image=${{ steps.build_push.outputs.image_uri }}"
             "-var=domain_name=$DOMAIN_NAME"
-            "-var=enable_custom_domain=$ENABLE_CUSTOM_DOMAIN"
             "-var=app_config_secret_name=$APP_CONFIG_SECRET_NAME"
           )
           if [ -f "terraform.tfvars" ]; then
