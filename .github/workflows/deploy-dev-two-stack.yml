@@ -180,7 +180,9 @@ jobs:
             local tf_addr="$1"
             local policy_name="$2"
 
-            # Clear possibly deposed/partial instances from previous failed replacements.
+            # Always clear stale/deposed instances from state first.
+            # This prevents Terraform from planning a replacement that tries to
+            # create an already existing policy name.
             terraform state rm "$tf_addr" >/dev/null 2>&1 || true
 
             local account_id policy_arn
