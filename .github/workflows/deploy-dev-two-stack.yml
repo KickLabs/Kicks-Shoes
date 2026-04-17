@@ -182,11 +182,13 @@ jobs:
               return 0
             fi
 
-            local arn
-            arn="$(aws iam list-policies --scope Local --query "Policies[?PolicyName=='${policy_name}'].Arn | [0]" --output text)"
-            if [ -n "$arn" ] && [ "$arn" != "None" ]; then
+            local account_id policy_arn
+            account_id="$(aws sts get-caller-identity --query Account --output text)"
+            policy_arn="arn:aws:iam::${account_id}:policy/${policy_name}"
+
+            if aws iam get-policy --policy-arn "$policy_arn" >/dev/null 2>&1; then
               echo "Importing existing IAM policy $policy_name into state"
-              terraform import "$tf_addr" "$arn" >/dev/null || true
+              terraform import "$tf_addr" "$policy_arn" >/dev/null || true
             fi
           }
 
