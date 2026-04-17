@@ -195,7 +195,7 @@ Resources:
         
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
-          ViewerProtocolPolicy: redirect-to-https
+          ViewerProtocolPolicy: allow-all  # Allow both HTTP and HTTPS for development
           AllowedMethods:
             - GET
             - HEAD
