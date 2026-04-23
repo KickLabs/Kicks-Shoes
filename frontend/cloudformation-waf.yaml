@@ -1,5 +1,20 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'WAF Web ACL for CloudFront (MUST be deployed in us-east-1)'
+Description: 'WAF Web ACL for CloudFront Protection - DDoS, Bot, and Attack Mitigation'
+
+# ============================================================================
+# IMPORTANT: WAF for CloudFront MUST be deployed in us-east-1 region
+# ============================================================================
+# Why us-east-1?
+# - CloudFront is a global service managed from us-east-1
+# - WAF Web ACLs for CloudFront must be in the same region
+# - Regional WAF (for ALB/API Gateway) can be in any region
+# 
+# Deployment:
+# aws cloudformation deploy \
+#   --template-file cloudformation-waf.yaml \
+#   --stack-name kicks-shoes-waf \
+#   --region us-east-1
+# ============================================================================
 
 Parameters:
   ProjectName:
@@ -8,34 +23,94 @@ Parameters:
     Description: Project name for resource naming
 
 Resources:
-  # WAF Web ACL (MUST be in us-east-1 for CloudFront)
+  # ============================================================================
+  # WAF Web ACL - Web Application Firewall for CloudFront
+  # ============================================================================
+  # Purpose: Protect frontend from common web attacks and abuse
+  # 
+  # Protection layers:
+  # 1. Rate limiting (prevent DDoS, brute force attacks)
+  # 2. AWS Managed Rules - Core Rule Set (OWASP Top 10 protection)
+  # 3. AWS Managed Rules - Known Bad Inputs (malformed requests)
+  # 4. Geo-blocking (restrict access by country)
+  # 
+  # Cost: ~$5/month base + $1 per million requests
+  # Monitoring: CloudWatch metrics enabled for all rules
+  # ============================================================================
   WAFWebACL:
     Type: AWS::WAFv2::WebACL
     Properties:
       Name: !Sub '${ProjectName}-waf'
-      Scope: CLOUDFRONT
+      Scope: CLOUDFRONT  # CLOUDFRONT (global) or REGIONAL (ALB/API Gateway)
+      
+      # ========================================================================
+      # Default Action: Allow
+      # ========================================================================
+      # Strategy: Allow all traffic by default, block specific threats
+      # Alternative: Block by default, allow specific patterns (whitelist)
+      # ========================================================================
       DefaultAction:
         Allow: {}
+      
+      # ========================================================================
+      # WAF Rules - Evaluated in Priority Order (1 = highest priority)
+      # ========================================================================
       Rules:
-        # Rate limiting rule
+        # ======================================================================
+        # Rule 1: Rate Limiting - DDoS and Brute Force Protection
+        # ======================================================================
+        # Purpose: Prevent abuse by limiting requests per IP address
+        # 
+        # Configuration:
+        # - Limit: 2000 requests per 5 minutes per IP
+        # - Action: Block IP for 5 minutes if limit exceeded
+        # 
+        # Use cases:
+        # - DDoS attack mitigation
+        # - Brute force login prevention
+        # - API abuse prevention
+        # - Scraping/crawling prevention
+        # 
+        # Tuning:
+        # - 2000 req/5min = ~7 req/sec (normal user browsing)
+        # - Increase limit if legitimate users get blocked
+        # - Decrease limit for stricter protection
+        # ======================================================================
         - Name: RateLimitRule
           Priority: 1
           Statement:
             RateBasedStatement:
-              Limit: 2000
-              AggregateKeyType: IP
+              Limit: 2000  # Requests per 5 minutes per IP
+              AggregateKeyType: IP  # Track by source IP address
           Action:
-            Block: {}
+            Block: {}  # Block requests exceeding limit
           VisibilityConfig:
-            SampledRequestsEnabled: true
-            CloudWatchMetricsEnabled: true
+            SampledRequestsEnabled: true  # Sample blocked requests for analysis
+            CloudWatchMetricsEnabled: true  # Send metrics to CloudWatch
             MetricName: RateLimitRule
         
-        # AWS Managed Rules - Core Rule Set
+        # ======================================================================
+        # Rule 2: AWS Managed Rules - Core Rule Set (CRS)
+        # ======================================================================
+        # Purpose: Protection against OWASP Top 10 vulnerabilities
+        # 
+        # Protections included:
+        # - SQL Injection (SQLi)
+        # - Cross-Site Scripting (XSS)
+        # - Local File Inclusion (LFI)
+        # - Remote File Inclusion (RFI)
+        # - Command Injection
+        # - Path Traversal
+        # - Server-Side Request Forgery (SSRF)
+        # 
+        # Maintenance: AWS automatically updates rules (no action needed)
+        # Cost: Free (included in WAF pricing)
+        # False positives: May block legitimate requests (monitor and tune)
+        # ======================================================================
         - Name: AWSManagedRulesCommonRuleSet
           Priority: 2
           OverrideAction:
-            None: {}
+            None: {}  # Use rule group's default actions
           Statement:
             ManagedRuleGroupStatement:
               VendorName: AWS
@@ -45,7 +120,22 @@ Resources:
             CloudWatchMetricsEnabled: true
             MetricName: AWSManagedRulesCommonRuleSet
         
-        # AWS Managed Rules - Known Bad Inputs
+        # ======================================================================
+        # Rule 3: AWS Managed Rules - Known Bad Inputs
+        # ======================================================================
+        # Purpose: Block requests with malformed or malicious patterns
+        # 
+        # Protections included:
+        # - Invalid UTF-8 encoding
+        # - Malformed JSON/XML
+        # - Known exploit patterns
+        # - Suspicious user agents
+        # - Invalid HTTP methods
+        # 
+        # Use case: Block automated scanners and exploit tools
+        # Maintenance: AWS automatically updates rules
+        # False positives: Very rare (high confidence detections)
+        # ======================================================================
         - Name: AWSManagedRulesKnownBadInputsRuleSet
           Priority: 3
           OverrideAction:
@@ -59,11 +149,36 @@ Resources:
             CloudWatchMetricsEnabled: true
             MetricName: AWSManagedRulesKnownBadInputsRuleSet
         
-        # Block specific countries (optional - customize as needed)
+        # ======================================================================
+        # Rule 4: Geo-Blocking - Restrict Access by Country
+        # ======================================================================
+        # Purpose: Allow access only from specific countries
+        # 
+        # Strategy: Block all countries EXCEPT those in the whitelist
+        # Current whitelist:
+        # - VN (Vietnam) - Primary market
+        # - US (United States) - International customers
+        # - SG (Singapore) - Southeast Asia hub
+        # - JP (Japan) - Asian market
+        # - KR (South Korea) - Asian market
+        # - AU (Australia) - Pacific region
+        # 
+        # Customization:
+        # - Add more countries: Append to CountryCodes list
+        # - Remove this rule: Delete entire GeoBlockRule section
+        # - Allow all countries: Set Action to Count (monitor only)
+        # 
+        # Use cases:
+        # - Compliance (GDPR, data residency requirements)
+        # - Reduce attack surface (block high-risk countries)
+        # - Business requirements (serve specific markets only)
+        # 
+        # Note: Uses ISO 3166-1 alpha-2 country codes
+        # ======================================================================
         - Name: GeoBlockRule
           Priority: 4
           Statement:
-            NotStatement:
+            NotStatement:  # Block all countries NOT in the list
               Statement:
                 GeoMatchStatement:
                   CountryCodes:
@@ -73,28 +188,68 @@ Resources:
                     - JP  # Japan
                     - KR  # South Korea
                     - AU  # Australia
+                    # Add more countries as needed:
+                    # - GB  # United Kingdom
+                    # - CA  # Canada
+                    # - DE  # Germany
+                    # - FR  # France
           Action:
-            Block: {}
+            Block: {}  # Block requests from other countries
+            # Alternative: Count: {} (monitor only, don't block)
           VisibilityConfig:
             SampledRequestsEnabled: true
             CloudWatchMetricsEnabled: true
             MetricName: GeoBlockRule
       
+      # ========================================================================
+      # Visibility Configuration - Monitoring and Logging
+      # ========================================================================
+      # SampledRequestsEnabled: Store sample of blocked requests (debugging)
+      # CloudWatchMetricsEnabled: Send metrics to CloudWatch (monitoring)
+      # MetricName: Metric name in CloudWatch
+      # ========================================================================
       VisibilityConfig:
         SampledRequestsEnabled: true
         CloudWatchMetricsEnabled: true
         MetricName: !Sub '${ProjectName}-waf'
+      
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-waf'
+        - Key: Purpose
+          Value: CloudFront Web Application Firewall
 
 Outputs:
+  # ============================================================================
+  # WAF Web ACL ID
+  # ============================================================================
+  # Use case: Reference in other CloudFormation stacks
+  # Format: Unique identifier (not ARN)
+  # ============================================================================
   WAFWebACLId:
     Description: WAF Web ACL ID
     Value: !GetAtt WAFWebACL.Id
     Export:
       Name: !Sub '${AWS::StackName}-WAFId'
   
+  # ============================================================================
+  # WAF Web ACL ARN - Use This to Attach to CloudFront
+  # ============================================================================
+  # Purpose: Attach WAF to CloudFront distribution
+  # 
+  # Usage in cloudformation-main.yaml:
+  # Parameters:
+  #   WAFWebACLArn:
+  #     Type: String
+  #     Default: !ImportValue kicks-shoes-waf-WAFArn
+  # 
+  # Or pass as parameter during deployment:
+  # aws cloudformation deploy \
+  #   --template-file cloudformation-main.yaml \
+  #   --parameter-overrides WAFWebACLArn=<this-arn>
+  # 
+  # Format: arn:aws:wafv2:us-east-1:123456789012:global/webacl/...
+  # ============================================================================
   WAFWebACLArn:
     Description: WAF Web ACL ARN (use this to attach to CloudFront)
     Value: !GetAtt WAFWebACL.Arn
