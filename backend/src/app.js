@@ -59,6 +59,7 @@ import deliveryReportRoutes from './routes/deliveryReportRoutes.js'; // Added De
 import shipperApplicationRoutes from './routes/shipperApplicationRoutes.js'; // Added Shipper Application routes
 import aiInventoryRoutes from './routes/aiInventoryRoutes.js'; // AI Inventory Intelligence
 import weatherRoutes from './routes/weatherRoutes.js'; // Weather Recommendation routes
+import dynamodbRoutes from './routes/dynamodbRoutes.js'; // DynamoDB GSI Query routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import {
@@ -207,6 +208,7 @@ app.use('/api/delivery-reports', deliveryReportRoutes); // Added Delivery Report
 app.use('/api/shipper-applications', shipperApplicationRoutes); // Added Shipper Application routes
 app.use('/api/ai/inventory', aiInventoryRoutes); // AI Inventory Intelligence
 app.use('/api/weather', weatherRoutes); // Weather Recommendation routes
+app.use('/api/dynamodb', dynamodbRoutes); // DynamoDB GSI Query routes (Week 3 Evidence)
 
 // Start cron jobs
 startDiscountStatusUpdateCron();

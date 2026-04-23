@@ -8,10 +8,11 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket  = "kicks-shoes-tf-state"
-    key     = "dev/02-app/terraform.tfstate"
-    region  = "ap-southeast-1"
-    encrypt = true
-  }
+  # Using local state (S3 bucket not accessible)
+  # backend "s3" {
+  #   bucket  = "kicks-shoes-tf-state"
+  #   key     = "dev/02-app/terraform.tfstate"
+  #   region  = "ap-southeast-1"
+  #   encrypt = true
+  # }
 }
