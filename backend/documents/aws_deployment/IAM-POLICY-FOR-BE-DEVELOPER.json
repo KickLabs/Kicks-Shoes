@@ -31,21 +31,43 @@
       "Effect": "Allow",
       "Action": [
         "ecs:UpdateService",
-        "ecs:DescribeServices",
-        "ecs:ListServices",
+        "ecs:DescribeServices"
+      ],
+      "Resource": [
+        "arn:aws:ecs:*:*:service/kicks-shoes-cluster/*"
+      ]
+    },
+    {
+      "Sid": "ECSTaskAccess",
+      "Effect": "Allow",
+      "Action": [
         "ecs:DescribeTasks",
-        "ecs:ListTasks",
+        "ecs:ListTasks"
+      ],
+      "Resource": [
+        "arn:aws:ecs:*:*:task/kicks-shoes-cluster/*"
+      ]
+    },
+    {
+      "Sid": "ECSTaskDefinitionAccess",
+      "Effect": "Allow",
+      "Action": [
         "ecs:DescribeTaskDefinition",
-        "ecs:ListTaskDefinitions",
         "ecs:RegisterTaskDefinition",
         "ecs:DeregisterTaskDefinition"
       ],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "ecs:cluster": "arn:aws:ecs:*:*:cluster/kicks-shoes-cluster"
-        }
-      }
+      "Resource": [
+        "arn:aws:ecs:*:*:task-definition/kicks-shoes-backend-task:*"
+      ]
+    },
+    {
+      "Sid": "ECSListAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:ListServices",
+        "ecs:ListTaskDefinitions"
+      ],
+      "Resource": "*"
     },
     {
       "Sid": "ECSClusterAccess",
