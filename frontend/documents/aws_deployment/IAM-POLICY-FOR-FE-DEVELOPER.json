@@ -35,7 +35,6 @@
         "iam:CreateRole",
         "iam:DeleteRole",
         "iam:GetRole",
-        "iam:PassRole",
         "iam:PutRolePolicy",
         "iam:DeleteRolePolicy",
         "iam:GetRolePolicy",
@@ -46,7 +45,22 @@
         "iam:TagRole",
         "iam:UntagRole"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:iam::*:role/kicks-shoes-*"
+    },
+    {
+      "Sid": "IAMPassRoleForCloudFormation",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::*:role/kicks-shoes-*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": [
+            "cloudformation.amazonaws.com",
+            "sns.amazonaws.com",
+            "logs.amazonaws.com"
+          ]
+        }
+      }
     },
     {
       "Sid": "CloudWatchLogsFullAccess",
