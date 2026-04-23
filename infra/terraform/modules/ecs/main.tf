@@ -9,6 +9,9 @@ locals {
   ] : []
 }
 
+# Data source for current AWS account ID
+data "aws_caller_identity" "current" {}
+
 resource "aws_ecs_cluster" "this" {
   name = "${var.project_name}-cluster"
 
@@ -82,7 +85,10 @@ data "aws_iam_policy_document" "task_execution_secret_access" {
   statement {
     sid     = "DecryptSecretsEnvelope"
     actions = ["kms:Decrypt"]
-    resources = ["*"]
+    # Use specific KMS key ARN instead of wildcard
+    resources = [
+      "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"
+    ]
 
     condition {
       test     = "StringEquals"
