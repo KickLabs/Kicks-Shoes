@@ -3,12 +3,20 @@
 ## 1. Cover
 
 - **Group Name:** 13HZ
-- **Members:** - Trần Phúc Tiến
-  - [Điền tên các thành viên khác]
+- **Members:**
+  - Trần Phúc Tiến (Leader)
+  - Nguyễn Ngọc Giao
+  - Trần Quốc Kiệt
+  - Bùi Thị Thùy Trang
+  - Nguyễn Quách Khang Ninh
+  - Võ Hồng Đức
+  - Nguyễn Tấn Huy
 - **Database Path Chosen:** DynamoDB / Key-Value Paradigm
 - **Link to W2 Evidence:** [Chèn link tới file W2 evidence.md của bạn]
-- **W2 Feedback Addressed:** - Đã khắc phục lỗi mở full quyền (wildcard) trong IAM role cho Lambda.
-  - Triển khai VPC Gateway Endpoints để đảm bảo dữ liệu không đi qua Public Internet, tăng cường bảo mật tầng mạng.![alt text](image.png)
+- **W2 Feedback Addressed:**
+  - Đã khắc phục lỗi mở full quyền (wildcard) trong IAM role cho Lambda.
+  - Triển khai VPC Gateway Endpoints để đảm bảo dữ liệu không đi qua Public Internet, tăng cường bảo mật tầng mạng.
+    ![alt text](./images/iam-policy.png)
 
 ---
 
