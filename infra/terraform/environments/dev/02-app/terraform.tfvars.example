@@ -1,0 +1,19 @@
+project_name = "kicks-shoes-dev"
+aws_region   = "ap-southeast-1"
+domain_name  = "kicks-shoes.com"
+enable_custom_domain = false
+
+container_image        = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/kicks-shoes-backend:dev-latest"
+container_port         = 3000
+desired_count          = 1
+task_cpu               = 256
+task_memory            = 512
+autoscaling_min        = 1
+autoscaling_max        = 3
+autoscaling_cpu_target = 60
+
+app_config_secret_name = "kicks-shoes-dev/app-config"
+
+tags = {
+  Owner = "dev-team"
+}

@@ -62,3 +62,19 @@ id_dsa*
 *.cert
 secrets/
 credentials/
+ket.md
+*.tfvars
+*.tfvars.json
+.aws/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl

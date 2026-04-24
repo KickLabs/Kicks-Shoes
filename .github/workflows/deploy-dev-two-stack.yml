@@ -1,0 +1,230 @@
+name: Deploy Dev Two Stack
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - kicks-production
+    paths:
+      - backend/**
+      - infra/terraform/environments/dev/**
+      - .github/workflows/deploy-dev-two-stack.yml
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  AWS_REGION: ap-southeast-1
+  TF_NETWORK_DIR: infra/terraform/environments/dev/01-network
+  TF_APP_DIR: infra/terraform/environments/dev/02-app
+  TF_STATE_BUCKET: kicks-shoes-tf-state
+  ECR_REPOSITORY: kicks-shoes-backend
+
+jobs:
+  deploy-dev:
+    name: Build Image and Deploy Dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Resolve AWS account id
+        id: aws_account
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure Terraform state bucket exists
+        id: tf_state
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! aws s3api head-bucket --bucket "$TF_STATE_BUCKET" 2>/dev/null; then
+            aws s3api create-bucket \
+              --bucket "$TF_STATE_BUCKET" \
+              --region "$AWS_REGION" \
+              --create-bucket-configuration LocationConstraint="$AWS_REGION"
+          fi
+          BUCKET_REGION="$(aws s3api get-bucket-location --bucket "$TF_STATE_BUCKET" --query 'LocationConstraint' --output text)"
+          if [ "$BUCKET_REGION" = "None" ] || [ -z "$BUCKET_REGION" ]; then
+            BUCKET_REGION="us-east-1"
+          fi
+          echo "bucket_region=$BUCKET_REGION" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure ECR repository exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "$ECR_REPOSITORY" >/dev/null
+
+      - name: Login to ECR
+        id: login_ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        id: build_push
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.login_ecr.outputs.registry }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          IMAGE_REPO="$ECR_REGISTRY/$ECR_REPOSITORY"
+          IMAGE_TAG="dev-${COMMIT_SHA::12}"
+          IMAGE_URI="$IMAGE_REPO:$IMAGE_TAG"
+
+          docker build -f backend/Dockerfile -t "$IMAGE_URI" -t "$IMAGE_REPO:dev-latest" ./backend
+          docker push "$IMAGE_URI"
+          docker push "$IMAGE_REPO:dev-latest"
+
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+      - name: Validate app prerequisites
+        shell: bash
+        env:
+          DEV_DOMAIN_NAME: ${{ vars.DEV_DOMAIN_NAME }}
+          DEV_APP_CONFIG_SECRET_NAME: ${{ vars.DEV_APP_CONFIG_SECRET_NAME }}
+          DEV_ENABLE_CUSTOM_DOMAIN: ${{ vars.DEV_ENABLE_CUSTOM_DOMAIN }}
+        run: |
+          set -euo pipefail
+
+          DOMAIN_NAME="${DEV_DOMAIN_NAME:-kicks-shoes.com}"
+          APP_CONFIG_SECRET_NAME="${DEV_APP_CONFIG_SECRET_NAME:-kicks-shoes-dev/app-config}"
+          ENABLE_CUSTOM_DOMAIN="${DEV_ENABLE_CUSTOM_DOMAIN:-false}"
+
+          if [ "$ENABLE_CUSTOM_DOMAIN" = "true" ]; then
+            ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+              --dns-name "$DOMAIN_NAME" \
+              --query 'HostedZones[?Name==`'"$DOMAIN_NAME"'.`].Id | [0]' \
+              --output text)
+
+            if [ -z "$ZONE_ID" ] || [ "$ZONE_ID" = "None" ]; then
+              echo "Missing Route53 hosted zone for $DOMAIN_NAME"
+              exit 1
+            fi
+
+            if ! nslookup -type=ns "$DOMAIN_NAME" >/tmp/domain-ns.txt 2>&1; then
+              echo "Public DNS for $DOMAIN_NAME is not resolvable. ACM DNS validation will not complete."
+              cat /tmp/domain-ns.txt
+              exit 1
+            fi
+          else
+            echo "Custom domain disabled. Skipping Route53/NS checks."
+          fi
+
+          aws secretsmanager describe-secret --secret-id "$APP_CONFIG_SECRET_NAME" >/dev/null
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform apply network stack
+        working-directory: ${{ env.TF_NETWORK_DIR }}
+        shell: bash
+        env:
+          TF_IN_AUTOMATION: 'true'
+        run: |
+          set -euo pipefail
+          terraform init -reconfigure \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=dev/01-network/terraform.tfstate" \
+            -backend-config="region=${{ steps.tf_state.outputs.bucket_region }}" \
+            -backend-config="encrypt=true"
+          if [ -f "terraform.tfvars" ]; then
+            terraform plan -var-file="terraform.tfvars" -out=tfplan
+          else
+            echo "terraform.tfvars not found. Using module defaults for network stack."
+            terraform plan -out=tfplan
+          fi
+          terraform apply -auto-approve tfplan
+
+      - name: Terraform apply app stack
+        working-directory: ${{ env.TF_APP_DIR }}
+        shell: bash
+        env:
+          TF_IN_AUTOMATION: 'true'
+          DEV_DOMAIN_NAME: ${{ vars.DEV_DOMAIN_NAME }}
+          DEV_APP_CONFIG_SECRET_NAME: ${{ vars.DEV_APP_CONFIG_SECRET_NAME }}
+        run: |
+          set -euo pipefail
+
+          DOMAIN_NAME="${DEV_DOMAIN_NAME:-kicks-shoes.com}"
+          APP_CONFIG_SECRET_NAME="${DEV_APP_CONFIG_SECRET_NAME:-kicks-shoes-dev/app-config}"
+
+          terraform init -reconfigure \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=dev/02-app/terraform.tfstate" \
+            -backend-config="region=${{ steps.tf_state.outputs.bucket_region }}" \
+            -backend-config="encrypt=true"
+
+          # Required inputs must be set even for terraform import.
+          export TF_VAR_domain_name="$DOMAIN_NAME"
+          export TF_VAR_container_image="${{ steps.build_push.outputs.image_uri }}"
+
+          # Some existing IAM policies may exist but be missing from remote state.
+          # Import them to prevent EntityAlreadyExists failures during apply.
+          import_policy_if_missing() {
+            local tf_addr="$1"
+            local policy_name="$2"
+
+            # Always clear stale/deposed instances from state first.
+            # This prevents Terraform from planning a replacement that tries to
+            # create an already existing policy name.
+            terraform state rm "$tf_addr" >/dev/null 2>&1 || true
+
+            local account_id policy_arn
+            account_id="$(aws sts get-caller-identity --query Account --output text)"
+            policy_arn="arn:aws:iam::${account_id}:policy/${policy_name}"
+
+            if aws iam get-policy --policy-arn "$policy_arn" >/dev/null 2>&1; then
+              echo "Importing existing IAM policy $policy_name into state"
+              terraform import "$tf_addr" "$policy_arn" >/dev/null
+            else
+              echo "IAM policy $policy_name does not exist yet. Terraform will create it."
+            fi
+          }
+
+          PROJECT_NAME="$(awk -F'=' '/^project_name/{gsub(/[ "]/,"",$2); print $2}' terraform.tfvars 2>/dev/null || true)"
+          if [ -z "${PROJECT_NAME:-}" ]; then
+            PROJECT_NAME="kicks-shoes-dev"
+          fi
+
+          if grep -q 'resource "aws_iam_policy" "ecs_secrets"' main.tf; then
+            import_policy_if_missing "aws_iam_policy.ecs_secrets" "${PROJECT_NAME}-ecs-secrets"
+          fi
+          if grep -q 'resource "aws_iam_policy" "ecs_s3"' main.tf; then
+            import_policy_if_missing "aws_iam_policy.ecs_s3" "${PROJECT_NAME}-ecs-s3"
+          fi
+          if grep -q 'resource "aws_iam_policy" "ecs_dynamodb"' main.tf; then
+            import_policy_if_missing "aws_iam_policy.ecs_dynamodb" "${PROJECT_NAME}-ecs-dynamodb"
+          fi
+
+          PLAN_ARGS=(
+            -out=tfplan
+            "-var=container_image=${{ steps.build_push.outputs.image_uri }}"
+            "-var=domain_name=$DOMAIN_NAME"
+            "-var=app_config_secret_name=$APP_CONFIG_SECRET_NAME"
+          )
+          if [ -f "terraform.tfvars" ]; then
+            PLAN_ARGS+=("-var-file=terraform.tfvars")
+          else
+            echo "terraform.tfvars not found. Using explicit CI variables for app stack."
+          fi
+          terraform plan "${PLAN_ARGS[@]}"
+
+          terraform apply -auto-approve tfplan

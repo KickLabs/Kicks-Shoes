@@ -1,0 +1,736 @@
+name: AWS Production Deploy
+
+on:
+  push:
+    branches:
+      - kicks-production
+      - main
+    paths:
+      - backend/**
+      - infra/terraform/**
+      - .github/workflows/deploy.yml
+      - Dockerfile.evolution
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-production-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  APP_NAME: kicks-shoes-prod
+  ECR_REPOSITORY: kicks-shoes-backend
+  TF_STATE_KEY: terraform/production/kicks-shoes-prod.tfstate
+  TF_WORKING_DIR: infra/terraform/environments/production
+  DOCKERFILE_PATH: Dockerfile.evolution
+
+jobs:
+  deploy:
+    name: Trivy Scan, Build, Push, Terraform Apply
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (supports workshop session token)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Resolve AWS account ID
+        id: aws_account
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure ECR repository exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "$ECR_REPOSITORY" >/dev/null
+
+      - name: Login to Amazon ECR
+        id: login_ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image with registry cache
+        id: build_image
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.login_ecr.outputs.registry }}
+          COMMIT_SHA: ${{ github.sha }}
+          BASE_IMAGE_URI: ${{ secrets.BASE_IMAGE_URI }}
+        run: |
+          set -euo pipefail
+          IMAGE_REPO="$ECR_REGISTRY/$ECR_REPOSITORY"
+          IMAGE_TAG="sha-${COMMIT_SHA::12}"
+          IMAGE_URI="$IMAGE_REPO:$IMAGE_TAG"
+
+          echo "IMAGE_REPO=$IMAGE_REPO" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
+          echo "image_repo=$IMAGE_REPO" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+          docker pull "$IMAGE_REPO:latest" || true
+
+          if [ -n "${BASE_IMAGE_URI:-}" ]; then
+            docker build \
+              --build-arg BASE_IMAGE_URI="$BASE_IMAGE_URI" \
+              --cache-from "$IMAGE_REPO:latest" \
+              -t "$IMAGE_URI" \
+              -t "$IMAGE_REPO:latest" \
+              -f "$DOCKERFILE_PATH" \
+              .
+          else
+            echo "BASE_IMAGE_URI secret is empty. Falling back to backend/Dockerfile."
+            docker build \
+              --cache-from "$IMAGE_REPO:latest" \
+              -t "$IMAGE_URI" \
+              -t "$IMAGE_REPO:latest" \
+              -f backend/Dockerfile \
+              ./backend
+          fi
+
+      - name: Trivy image scan (HIGH/CRITICAL, non-blocking)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build_image.outputs.image_uri }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Push image tags to ECR
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker push "${{ steps.build_image.outputs.image_uri }}"
+          docker push "${{ steps.build_image.outputs.image_repo }}:latest"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init, plan and apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        shell: bash
+        env:
+          TF_STATE_BUCKET_SECRET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_BUCKET_VAR: ${{ vars.TF_STATE_BUCKET }}
+          TF_STATE_DYNAMODB_TABLE: ${{ secrets.TF_STATE_DYNAMODB_TABLE }}
+          TF_STATE_DYNAMODB_TABLE_VAR: ${{ vars.TF_STATE_DYNAMODB_TABLE }}
+          TF_STATE_KEY: ${{ env.TF_STATE_KEY }}
+          ACCOUNT_ID: ${{ steps.aws_account.outputs.account_id }}
+          TF_IN_AUTOMATION: 'true'
+          TF_VAR_project_name: ${{ env.APP_NAME }}
+          TF_VAR_aws_region: ${{ env.AWS_REGION }}
+          TF_VAR_container_image: ${{ steps.build_image.outputs.image_uri }}
+          TF_VAR_dynamodb_table_name: ${{ env.APP_NAME }}
+          TF_VAR_nat_gateway_count: '1'
+          TF_VAR_app_config_secret_arn: ${{ secrets.APP_CONFIG_SECRET_ARN }}
+          TF_VAR_app_config_secret_keys: '["JWT_SECRET","JWT_REFRESH_SECRET","MONGODB_URI","GOOGLE_AI_API_KEY"]'
+        run: |
+          set -euo pipefail
+
+          TF_STATE_BUCKET_EFFECTIVE="${TF_STATE_BUCKET_SECRET:-}"
+          TF_STATE_BUCKET_SOURCE="secret"
+
+          if [ -z "$TF_STATE_BUCKET_EFFECTIVE" ]; then
+            TF_STATE_BUCKET_EFFECTIVE="${TF_STATE_BUCKET_VAR:-}"
+            TF_STATE_BUCKET_SOURCE="variable"
+          fi
+
+          if [ -z "$TF_STATE_BUCKET_EFFECTIVE" ]; then
+            TF_STATE_BUCKET_EFFECTIVE="tfstate-${ACCOUNT_ID}-${AWS_REGION}-${APP_NAME}"
+            TF_STATE_BUCKET_SOURCE="generated"
+          fi
+
+          TF_STATE_BUCKET_EFFECTIVE="$(echo "$TF_STATE_BUCKET_EFFECTIVE" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9.-' | cut -c1-63)"
+
+          if [ -z "$TF_STATE_BUCKET_EFFECTIVE" ]; then
+            echo "Unable to resolve a valid TF state bucket name."
+            exit 1
+          fi
+
+          echo "Using Terraform state bucket source: $TF_STATE_BUCKET_SOURCE"
+          echo "Using Terraform state bucket: $TF_STATE_BUCKET_EFFECTIVE"
+
+          if ! aws s3api head-bucket --bucket "$TF_STATE_BUCKET_EFFECTIVE" 2>/dev/null; then
+            echo "State bucket does not exist. Creating $TF_STATE_BUCKET_EFFECTIVE"
+            if [ "$AWS_REGION" = "us-east-1" ]; then
+              aws s3api create-bucket --bucket "$TF_STATE_BUCKET_EFFECTIVE"
+            else
+              aws s3api create-bucket \
+                --bucket "$TF_STATE_BUCKET_EFFECTIVE" \
+                --create-bucket-configuration LocationConstraint="$AWS_REGION"
+            fi
+
+            aws s3api put-bucket-versioning \
+              --bucket "$TF_STATE_BUCKET_EFFECTIVE" \
+              --versioning-configuration Status=Enabled
+
+            aws s3api put-bucket-encryption \
+              --bucket "$TF_STATE_BUCKET_EFFECTIVE" \
+              --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+          fi
+
+          TF_STATE_DYNAMODB_TABLE_EFFECTIVE="${TF_STATE_DYNAMODB_TABLE:-}"
+          if [ -z "$TF_STATE_DYNAMODB_TABLE_EFFECTIVE" ]; then
+            TF_STATE_DYNAMODB_TABLE_EFFECTIVE="${TF_STATE_DYNAMODB_TABLE_VAR:-}"
+          fi
+          if [ -z "$TF_STATE_DYNAMODB_TABLE_EFFECTIVE" ]; then
+            TF_STATE_DYNAMODB_TABLE_EFFECTIVE="${APP_NAME}-tf-locks"
+          fi
+
+          TF_STATE_DYNAMODB_TABLE_EFFECTIVE="$(echo "$TF_STATE_DYNAMODB_TABLE_EFFECTIVE" | tr -cd 'A-Za-z0-9_.-' | cut -c1-255)"
+          if [ "${#TF_STATE_DYNAMODB_TABLE_EFFECTIVE}" -lt 3 ]; then
+            echo "Invalid Terraform lock table name after normalization."
+            exit 1
+          fi
+
+          if ! aws dynamodb describe-table --table-name "$TF_STATE_DYNAMODB_TABLE_EFFECTIVE" >/dev/null 2>&1; then
+            echo "State lock table does not exist. Creating $TF_STATE_DYNAMODB_TABLE_EFFECTIVE"
+            aws dynamodb create-table \
+              --table-name "$TF_STATE_DYNAMODB_TABLE_EFFECTIVE" \
+              --attribute-definitions AttributeName=LockID,AttributeType=S \
+              --key-schema AttributeName=LockID,KeyType=HASH \
+              --billing-mode PAY_PER_REQUEST >/dev/null
+            aws dynamodb wait table-exists --table-name "$TF_STATE_DYNAMODB_TABLE_EFFECTIVE"
+          fi
+
+          BACKEND_ARGS=(
+            "-backend-config=bucket=${TF_STATE_BUCKET_EFFECTIVE}"
+            "-backend-config=key=${TF_STATE_KEY}"
+            "-backend-config=region=${AWS_REGION}"
+            "-backend-config=encrypt=true"
+            "-backend-config=dynamodb_table=${TF_STATE_DYNAMODB_TABLE_EFFECTIVE}"
+          )
+
+          DESIRED_NAT_COUNT="${TF_VAR_nat_gateway_count:-1}"
+          case "$DESIRED_NAT_COUNT" in
+            1|2) ;;
+            *)
+              echo "Unsupported TF_VAR_nat_gateway_count=$DESIRED_NAT_COUNT. Falling back to 1"
+              DESIRED_NAT_COUNT="1"
+              ;;
+          esac
+
+          NAT_SECONDARY_ENABLED="false"
+          if [ "$DESIRED_NAT_COUNT" -ge 2 ]; then
+            NAT_SECONDARY_ENABLED="true"
+          fi
+
+          echo "Desired NAT gateway count: $DESIRED_NAT_COUNT"
+
+          terraform init -input=false -reconfigure "${BACKEND_ARGS[@]}"
+
+          state_has() {
+            terraform state show "$1" >/dev/null 2>&1
+          }
+
+          state_id() {
+            terraform state show "$1" 2>/dev/null | sed -n 's/^id[[:space:]]*=[[:space:]]*//p' | head -n 1
+          }
+
+          nat_gateway_state() {
+            aws ec2 describe-nat-gateways --nat-gateway-ids "$1" --query 'NatGateways[0].State' --output text 2>/dev/null || true
+          }
+
+          normalize_none() {
+            if [ "$1" = "None" ] || [ "$1" = "null" ]; then
+              echo ""
+            else
+              echo "$1"
+            fi
+          }
+
+          pick_sorted_nth() {
+            local raw="$1"
+            local index="$2"
+            echo "$raw" | tr '\t' '\n' | sed '/^[[:space:]]*$/d' | sort | sed -n "$((index + 1))p"
+          }
+
+          ensure_import() {
+            local address="$1"
+            local identifier="$2"
+            local current_identifier=""
+
+            if [ -z "$identifier" ]; then
+              return
+            fi
+
+            if state_has "$address"; then
+              current_identifier="$(state_id "$address" || true)"
+              if [ "$current_identifier" = "$identifier" ]; then
+                return
+              fi
+
+              echo "State drift for $address: '$current_identifier' -> '$identifier'. Re-importing."
+              terraform state rm "$address" >/dev/null 2>&1 || true
+            fi
+
+            echo "Importing $address -> $identifier"
+            terraform import -input=false "$address" "$identifier" || true
+          }
+
+          ensure_import_strict() {
+            local address="$1"
+            local identifier="$2"
+            local current_identifier=""
+
+            if [ -z "$identifier" ]; then
+              return
+            fi
+
+            if state_has "$address"; then
+              current_identifier="$(state_id "$address" || true)"
+              if [ "$current_identifier" = "$identifier" ]; then
+                return
+              fi
+
+              echo "State drift for $address: '$current_identifier' -> '$identifier'. Re-importing (strict)."
+              terraform state rm "$address" >/dev/null 2>&1 || true
+            fi
+
+            echo "Importing $address -> $identifier (strict)"
+            terraform import -input=false "$address" "$identifier"
+          }
+
+          APP_TABLE_NAME="${TF_VAR_dynamodb_table_name:-$APP_NAME}"
+
+          ALB_ARN_RAW="$(aws elbv2 describe-load-balancers --names "${APP_NAME}-alb" --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || true)"
+          ALB_ARN="$(normalize_none "$ALB_ARN_RAW")"
+
+          ALB_SG_RAW=""
+          ALB_VPC_RAW=""
+          if [ -n "$ALB_ARN" ]; then
+            ALB_SG_RAW="$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" --query 'LoadBalancers[0].SecurityGroups[0]' --output text 2>/dev/null || true)"
+            ALB_VPC_RAW="$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" --query 'LoadBalancers[0].VpcId' --output text 2>/dev/null || true)"
+          fi
+          ALB_SG_ID="$(normalize_none "$ALB_SG_RAW")"
+          ALB_VPC_ID="$(normalize_none "$ALB_VPC_RAW")"
+
+          IGW_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            IGW_RAW="$(aws ec2 describe-internet-gateways --filters Name=attachment.vpc-id,Values="$ALB_VPC_ID" --query 'InternetGateways[0].InternetGatewayId' --output text 2>/dev/null || true)"
+          fi
+          IGW_ID="$(normalize_none "$IGW_RAW")"
+
+          CLUSTER_RAW="$(aws ecs describe-clusters --clusters "${APP_NAME}-cluster" --query 'clusters[0].clusterName' --output text 2>/dev/null || true)"
+          CLUSTER_NAME="$(normalize_none "$CLUSTER_RAW")"
+
+          SERVICE_STATUS_RAW="$(aws ecs describe-services --cluster "${APP_NAME}-cluster" --services "${APP_NAME}-service" --query 'services[0].status' --output text 2>/dev/null || true)"
+          SERVICE_STATUS="$(normalize_none "$SERVICE_STATUS_RAW")"
+
+          PUBLIC_SUBNET_1_RAW=""
+          PUBLIC_SUBNET_2_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            PUBLIC_SUBNET_1_RAW="$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-public-1" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || true)"
+            PUBLIC_SUBNET_2_RAW="$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-public-2" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || true)"
+          fi
+          PUBLIC_SUBNET_1="$(normalize_none "$PUBLIC_SUBNET_1_RAW")"
+          PUBLIC_SUBNET_2="$(normalize_none "$PUBLIC_SUBNET_2_RAW")"
+
+          if [ -n "$ALB_ARN" ] && { [ -z "$PUBLIC_SUBNET_1" ] || [ -z "$PUBLIC_SUBNET_2" ]; }; then
+            ALB_SUBNETS_RAW="$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" --query 'LoadBalancers[0].AvailabilityZones[*].SubnetId' --output text 2>/dev/null || true)"
+            [ -z "$PUBLIC_SUBNET_1" ] && PUBLIC_SUBNET_1="$(pick_sorted_nth "$ALB_SUBNETS_RAW" 0)"
+            [ -z "$PUBLIC_SUBNET_2" ] && PUBLIC_SUBNET_2="$(pick_sorted_nth "$ALB_SUBNETS_RAW" 1)"
+          fi
+
+          PRIVATE_SUBNET_1_RAW=""
+          PRIVATE_SUBNET_2_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            PRIVATE_SUBNET_1_RAW="$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-private-1" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || true)"
+            PRIVATE_SUBNET_2_RAW="$(aws ec2 describe-subnets --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-private-2" --query 'Subnets[0].SubnetId' --output text 2>/dev/null || true)"
+          fi
+          PRIVATE_SUBNET_1="$(normalize_none "$PRIVATE_SUBNET_1_RAW")"
+          PRIVATE_SUBNET_2="$(normalize_none "$PRIVATE_SUBNET_2_RAW")"
+
+          if [ -n "$CLUSTER_NAME" ] && [ -n "$SERVICE_STATUS" ] && [ "$SERVICE_STATUS" != "MISSING" ] && { [ -z "$PRIVATE_SUBNET_1" ] || [ -z "$PRIVATE_SUBNET_2" ]; }; then
+            ECS_SUBNETS_RAW="$(aws ecs describe-services --cluster "${APP_NAME}-cluster" --services "${APP_NAME}-service" --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets' --output text 2>/dev/null || true)"
+            [ -z "$PRIVATE_SUBNET_1" ] && PRIVATE_SUBNET_1="$(pick_sorted_nth "$ECS_SUBNETS_RAW" 0)"
+            [ -z "$PRIVATE_SUBNET_2" ] && PRIVATE_SUBNET_2="$(pick_sorted_nth "$ECS_SUBNETS_RAW" 1)"
+          fi
+
+          PUBLIC_RT_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            PUBLIC_RT_RAW="$(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-public-rt" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+          fi
+          PUBLIC_RT_ID="$(normalize_none "$PUBLIC_RT_RAW")"
+
+          if [ -z "$PUBLIC_RT_ID" ] && [ -n "$PUBLIC_SUBNET_1" ]; then
+            PUBLIC_RT_RAW="$(aws ec2 describe-route-tables --filters Name=association.subnet-id,Values="$PUBLIC_SUBNET_1" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+            PUBLIC_RT_ID="$(normalize_none "$PUBLIC_RT_RAW")"
+          fi
+
+          PRIVATE_RT_1_RAW=""
+          PRIVATE_RT_2_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            PRIVATE_RT_1_RAW="$(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-private-1" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+            PRIVATE_RT_2_RAW="$(aws ec2 describe-route-tables --filters Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-private-2" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+          fi
+          PRIVATE_RT_1_ID="$(normalize_none "$PRIVATE_RT_1_RAW")"
+          PRIVATE_RT_2_ID="$(normalize_none "$PRIVATE_RT_2_RAW")"
+
+          if [ -z "$PRIVATE_RT_1_ID" ] && [ -n "$PRIVATE_SUBNET_1" ]; then
+            PRIVATE_RT_1_RAW="$(aws ec2 describe-route-tables --filters Name=association.subnet-id,Values="$PRIVATE_SUBNET_1" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+            PRIVATE_RT_1_ID="$(normalize_none "$PRIVATE_RT_1_RAW")"
+          fi
+
+          if [ -z "$PRIVATE_RT_2_ID" ] && [ -n "$PRIVATE_SUBNET_2" ]; then
+            PRIVATE_RT_2_RAW="$(aws ec2 describe-route-tables --filters Name=association.subnet-id,Values="$PRIVATE_SUBNET_2" --query 'RouteTables[0].RouteTableId' --output text 2>/dev/null || true)"
+            PRIVATE_RT_2_ID="$(normalize_none "$PRIVATE_RT_2_RAW")"
+          fi
+
+          NAT_GW_1_RAW=""
+          NAT_GW_2_RAW=""
+          if [ -n "$PUBLIC_SUBNET_1" ]; then
+            NAT_GW_1_RAW="$(aws ec2 describe-nat-gateways --filter Name=subnet-id,Values="$PUBLIC_SUBNET_1" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+          fi
+
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$PUBLIC_SUBNET_2" ]; then
+            NAT_GW_2_RAW="$(aws ec2 describe-nat-gateways --filter Name=subnet-id,Values="$PUBLIC_SUBNET_2" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+          fi
+
+          if [ -n "$ALB_VPC_ID" ]; then
+            if [ -z "$(normalize_none "$NAT_GW_1_RAW")" ]; then
+              NAT_GW_1_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-1" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+            fi
+
+            if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -z "$(normalize_none "$NAT_GW_2_RAW")" ]; then
+              NAT_GW_2_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=tag:Name,Values="${APP_NAME}-nat-2" Name=state,Values=available,pending --query 'NatGateways[0].NatGatewayId' --output text 2>/dev/null || true)"
+            fi
+          fi
+          NAT_GW_1_ID="$(normalize_none "$NAT_GW_1_RAW")"
+          NAT_GW_2_ID="$(normalize_none "$NAT_GW_2_RAW")"
+
+          if [ -n "$ALB_VPC_ID" ] && { [ -z "$NAT_GW_1_ID" ] || { [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -z "$NAT_GW_2_ID" ]; }; }; then
+            NAT_GW_ALL_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=state,Values=available,pending --query 'NatGateways[*].NatGatewayId' --output text 2>/dev/null || true)"
+            [ -z "$NAT_GW_1_ID" ] && NAT_GW_1_ID="$(pick_sorted_nth "$NAT_GW_ALL_RAW" 0)"
+            if [ "$NAT_SECONDARY_ENABLED" = "true" ]; then
+              [ -z "$NAT_GW_2_ID" ] && NAT_GW_2_ID="$(pick_sorted_nth "$NAT_GW_ALL_RAW" 1)"
+            fi
+          fi
+
+          NAT_EIP_1_RAW=""
+          NAT_EIP_2_RAW=""
+
+          if [ -n "$NAT_GW_1_ID" ]; then
+            NAT_EIP_1_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_1_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
+          fi
+
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$NAT_GW_2_ID" ]; then
+            NAT_EIP_2_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_2_ID" --query 'NatGateways[0].NatGatewayAddresses[0].AllocationId' --output text 2>/dev/null || true)"
+          fi
+
+          if [ -n "$ALB_VPC_ID" ]; then
+            if [ -z "$(normalize_none "$NAT_EIP_1_RAW")" ]; then
+              NAT_EIP_1_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-1" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
+            fi
+
+            if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -z "$(normalize_none "$NAT_EIP_2_RAW")" ]; then
+              NAT_EIP_2_RAW="$(aws ec2 describe-addresses --filters Name=domain,Values=vpc Name=tag:Name,Values="${APP_NAME}-nat-eip-2" --query 'Addresses[0].AllocationId' --output text 2>/dev/null || true)"
+            fi
+          fi
+          NAT_EIP_1_ID="$(normalize_none "$NAT_EIP_1_RAW")"
+          NAT_EIP_2_ID="$(normalize_none "$NAT_EIP_2_RAW")"
+
+          # Prefer NAT mapping by EIP live association to keep Terraform index stable.
+          if [ -n "$NAT_EIP_1_ID" ]; then
+            NAT_GW_FROM_EIP_1_RAW="$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_1_ID" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)"
+            NAT_GW_FROM_EIP_1_ID="$(normalize_none "$NAT_GW_FROM_EIP_1_RAW")"
+            [ -n "$NAT_GW_FROM_EIP_1_ID" ] && NAT_GW_1_ID="$NAT_GW_FROM_EIP_1_ID"
+          fi
+
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$NAT_EIP_2_ID" ]; then
+            NAT_GW_FROM_EIP_2_RAW="$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_2_ID" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)"
+            NAT_GW_FROM_EIP_2_ID="$(normalize_none "$NAT_GW_FROM_EIP_2_RAW")"
+            [ -n "$NAT_GW_FROM_EIP_2_ID" ] && NAT_GW_2_ID="$NAT_GW_FROM_EIP_2_ID"
+          fi
+
+          NAT_GW_1_SUBNET_RAW=""
+          NAT_GW_2_SUBNET_RAW=""
+          if [ -n "$NAT_GW_1_ID" ]; then
+            NAT_GW_1_SUBNET_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_1_ID" --query 'NatGateways[0].SubnetId' --output text 2>/dev/null || true)"
+          fi
+
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$NAT_GW_2_ID" ]; then
+            NAT_GW_2_SUBNET_RAW="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$NAT_GW_2_ID" --query 'NatGateways[0].SubnetId' --output text 2>/dev/null || true)"
+          fi
+
+          NAT_GW_1_SUBNET_ID="$(normalize_none "$NAT_GW_1_SUBNET_RAW")"
+          NAT_GW_2_SUBNET_ID="$(normalize_none "$NAT_GW_2_SUBNET_RAW")"
+
+          [ -n "$NAT_GW_1_SUBNET_ID" ] && PUBLIC_SUBNET_1="$NAT_GW_1_SUBNET_ID"
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ]; then
+            [ -n "$NAT_GW_2_SUBNET_ID" ] && PUBLIC_SUBNET_2="$NAT_GW_2_SUBNET_ID"
+          else
+            NAT_GW_2_ID=""
+            NAT_EIP_2_ID=""
+          fi
+
+          if [ -n "$NAT_EIP_1_ID" ] && [ -z "$NAT_GW_1_ID" ]; then
+            EIP1_ASSOC_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_1_ID" --query 'Addresses[0].AssociationId' --output text 2>/dev/null || true)")"
+            EIP1_ASSOC_NAT_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_1_ID" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)")"
+            EIP1_ASSOC_INSTANCE_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_1_ID" --query 'Addresses[0].InstanceId' --output text 2>/dev/null || true)")"
+
+            if [ -n "$EIP1_ASSOC_INSTANCE_ID" ]; then
+              echo "EIP $NAT_EIP_1_ID is attached to EC2 instance $EIP1_ASSOC_INSTANCE_ID. Manual confirmation is required before detach."
+              exit 1
+            fi
+
+            if [ -n "$EIP1_ASSOC_NAT_ID" ]; then
+              EIP1_ASSOC_NAT_STATE="$(normalize_none "$(nat_gateway_state "$EIP1_ASSOC_NAT_ID")")"
+              if [ "$EIP1_ASSOC_NAT_STATE" = "available" ] || [ "$EIP1_ASSOC_NAT_STATE" = "pending" ]; then
+                NAT_GW_1_ID="$EIP1_ASSOC_NAT_ID"
+                echo "Recovered NAT index 0 from EIP association: $NAT_GW_1_ID"
+              else
+                echo "EIP $NAT_EIP_1_ID references NAT $EIP1_ASSOC_NAT_ID in state ${EIP1_ASSOC_NAT_STATE:-unknown}; allowing cleanup/recreate flow."
+              fi
+            elif [ -n "$EIP1_ASSOC_ID" ]; then
+              echo "EIP $NAT_EIP_1_ID has stale association $EIP1_ASSOC_ID with no NAT/instance. Disassociating."
+              aws ec2 disassociate-address --association-id "$EIP1_ASSOC_ID" || true
+            fi
+          fi
+
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ] && [ -n "$NAT_EIP_2_ID" ] && [ -z "$NAT_GW_2_ID" ]; then
+            EIP2_ASSOC_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_2_ID" --query 'Addresses[0].AssociationId' --output text 2>/dev/null || true)")"
+            EIP2_ASSOC_NAT_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_2_ID" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)")"
+            EIP2_ASSOC_INSTANCE_ID="$(normalize_none "$(aws ec2 describe-addresses --allocation-ids "$NAT_EIP_2_ID" --query 'Addresses[0].InstanceId' --output text 2>/dev/null || true)")"
+
+            if [ -n "$EIP2_ASSOC_INSTANCE_ID" ]; then
+              echo "EIP $NAT_EIP_2_ID is attached to EC2 instance $EIP2_ASSOC_INSTANCE_ID. Manual confirmation is required before detach."
+              exit 1
+            fi
+
+            if [ -n "$EIP2_ASSOC_NAT_ID" ]; then
+              EIP2_ASSOC_NAT_STATE="$(normalize_none "$(nat_gateway_state "$EIP2_ASSOC_NAT_ID")")"
+              if [ "$EIP2_ASSOC_NAT_STATE" = "available" ] || [ "$EIP2_ASSOC_NAT_STATE" = "pending" ]; then
+                NAT_GW_2_ID="$EIP2_ASSOC_NAT_ID"
+                echo "Recovered NAT index 1 from EIP association: $NAT_GW_2_ID"
+              else
+                echo "EIP $NAT_EIP_2_ID references NAT $EIP2_ASSOC_NAT_ID in state ${EIP2_ASSOC_NAT_STATE:-unknown}; allowing cleanup/recreate flow."
+              fi
+            elif [ -n "$EIP2_ASSOC_ID" ]; then
+              echo "EIP $NAT_EIP_2_ID has stale association $EIP2_ASSOC_ID with no NAT/instance. Disassociating."
+              aws ec2 disassociate-address --association-id "$EIP2_ASSOC_ID" || true
+            fi
+          fi
+
+          echo "STEP 1 - Check current EIP and NAT state"
+          EIP_ALLOCATION_IDS=()
+          [ -n "$NAT_EIP_1_ID" ] && EIP_ALLOCATION_IDS+=("$NAT_EIP_1_ID")
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ]; then
+            [ -n "$NAT_EIP_2_ID" ] && EIP_ALLOCATION_IDS+=("$NAT_EIP_2_ID")
+          fi
+
+          if [ ${#EIP_ALLOCATION_IDS[@]} -gt 0 ]; then
+            aws ec2 describe-addresses \
+              --allocation-ids "${EIP_ALLOCATION_IDS[@]}" \
+              --query 'Addresses[*].{AllocationId:AllocationId,AssociationId:AssociationId,NatGatewayId:NatGatewayId,InstanceId:InstanceId}' \
+              --output table || true
+          else
+            echo "No NAT EIP allocation IDs discovered yet."
+          fi
+
+          if [ -n "$ALB_VPC_ID" ]; then
+            aws ec2 describe-nat-gateways \
+              --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=state,Values=failed,deleting,deleted,pending \
+              --query 'NatGateways[*].{ID:NatGatewayId,State:State,EIP:NatGatewayAddresses[0].AllocationId}' \
+              --output table || true
+          fi
+
+          echo "STEP 2 - Delete failed NAT Gateways if any"
+          FAILED_NAT_IDS=()
+          if [ -n "$ALB_VPC_ID" ]; then
+            FAILED_NAT_RAW="$(aws ec2 describe-nat-gateways --filter Name=vpc-id,Values="$ALB_VPC_ID" Name=state,Values=failed --query 'NatGateways[*].NatGatewayId' --output text 2>/dev/null || true)"
+            for failed_nat_id in $FAILED_NAT_RAW; do
+              failed_nat_id="$(normalize_none "$failed_nat_id")"
+              if [ -n "$failed_nat_id" ]; then
+                echo "Deleting failed NAT Gateway: $failed_nat_id"
+                aws ec2 delete-nat-gateway --nat-gateway-id "$failed_nat_id" || true
+                FAILED_NAT_IDS+=("$failed_nat_id")
+              fi
+            done
+          fi
+
+          if [ ${#FAILED_NAT_IDS[@]} -gt 0 ]; then
+            echo "Waiting for failed NAT gateways to reach deleted state (timeout: 5m)"
+            aws ec2 wait nat-gateway-deleted --nat-gateway-ids "${FAILED_NAT_IDS[@]}" --cli-read-timeout=0 --cli-connect-timeout=0 2>/dev/null || true
+            sleep 5  # Brief wait for eventual consistency
+            
+            echo "Force-disassociating EIPs that were attached to failed NAT Gateways"
+            for allocation_id in "${EIP_ALLOCATION_IDS[@]}"; do
+              assoc_id_raw="$(aws ec2 describe-addresses --allocation-ids "$allocation_id" --query 'Addresses[0].AssociationId' --output text 2>/dev/null || true)"
+              assoc_id="$(normalize_none "$assoc_id_raw")"
+              
+              if [ -n "$assoc_id" ]; then
+                echo "Forcing disassociation of EIP $allocation_id (association: $assoc_id)"
+                aws ec2 disassociate-address --association-id "$assoc_id" || true
+              fi
+            done
+            
+            echo "Waiting 10s for EIP disassociations to complete"
+            sleep 10
+          fi
+
+          echo "STEP 3 and STEP 6 - Verify EIPs are free and disassociate any remaining safe associations"
+          for allocation_id in "${EIP_ALLOCATION_IDS[@]}"; do
+            association_raw="$(aws ec2 describe-addresses --allocation-ids "$allocation_id" --query 'Addresses[0].AssociationId' --output text 2>/dev/null || true)"
+            nat_raw="$(aws ec2 describe-addresses --allocation-ids "$allocation_id" --query 'Addresses[0].NatGatewayId' --output text 2>/dev/null || true)"
+            instance_raw="$(aws ec2 describe-addresses --allocation-ids "$allocation_id" --query 'Addresses[0].InstanceId' --output text 2>/dev/null || true)"
+
+            association_id="$(normalize_none "$association_raw")"
+            associated_nat_id="$(normalize_none "$nat_raw")"
+            associated_instance_id="$(normalize_none "$instance_raw")"
+
+            if [ -n "$associated_instance_id" ]; then
+              echo "EIP $allocation_id is attached to EC2 instance $associated_instance_id. Manual confirmation is required before detach."
+              exit 1
+            fi
+
+            if [ -n "$association_id" ]; then
+              if [ -z "$associated_nat_id" ]; then
+                echo "EIP $allocation_id has orphaned association $association_id with no NAT. Disassociating."
+                aws ec2 disassociate-address --association-id "$association_id" || true
+              else
+                associated_nat_state="$(normalize_none "$(nat_gateway_state "$associated_nat_id")")"
+                if [ -z "$associated_nat_state" ] || [ "$associated_nat_state" = "failed" ] || [ "$associated_nat_state" = "deleting" ] || [ "$associated_nat_state" = "deleted" ]; then
+                  echo "EIP $allocation_id references NAT $associated_nat_id in state ${associated_nat_state:-unknown}. Disassociating."
+                  aws ec2 disassociate-address --association-id "$association_id" || true
+                else
+                  echo "Keeping EIP $allocation_id association because NAT $associated_nat_id is healthy ($associated_nat_state)"
+                fi
+              fi
+            fi
+          done
+          
+          echo "Final EIP state before Terraform:"
+          if [ ${#EIP_ALLOCATION_IDS[@]} -gt 0 ]; then
+            aws ec2 describe-addresses --allocation-ids "${EIP_ALLOCATION_IDS[@]}" \
+              --query 'Addresses[*].{AllocationId:AllocationId,AssociationId:AssociationId,NatGatewayId:NatGatewayId,PublicIp:PublicIp}' \
+              --output table || true
+          fi
+
+          echo "STEP 4 - Sync Terraform NAT state"
+          if [ "$NAT_SECONDARY_ENABLED" != "true" ]; then
+            if state_has module.network.aws_nat_gateway.this[1]; then
+              terraform state rm module.network.aws_nat_gateway.this[1] || true
+            fi
+            if state_has module.network.aws_eip.nat[1]; then
+              terraform state rm module.network.aws_eip.nat[1] || true
+            fi
+          fi
+
+          echo "STEP 4b - Sync Terraform subnet state (remove extra private subnets if they exist in state but shouldn't)"
+          # If we only have 1 private subnet in config, remove index [1] from state if it exists
+          if [ -z "$PRIVATE_SUBNET_2" ]; then
+            if state_has module.network.aws_subnet.private[1]; then
+              echo "Removing unwanted module.network.aws_subnet.private[1] from state"
+              terraform state rm module.network.aws_subnet.private[1] || true
+            fi
+            if state_has module.network.aws_route_table.private[1]; then
+              echo "Removing unwanted module.network.aws_route_table.private[1] from state"
+              terraform state rm module.network.aws_route_table.private[1] || true
+            fi
+          fi
+
+          terraform refresh -input=false || true
+
+          TG_ARN_RAW="$(aws elbv2 describe-target-groups --names "${APP_NAME}-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
+          TG_ARN="$(normalize_none "$TG_ARN_RAW")"
+
+          LISTENER_ARN_RAW=""
+          if [ -n "$ALB_ARN" ]; then
+            LISTENER_ARN_RAW="$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query 'Listeners[?Port==`80`][0].ListenerArn' --output text 2>/dev/null || true)"
+          fi
+          LISTENER_ARN="$(normalize_none "$LISTENER_ARN_RAW")"
+
+          ECS_SG_RAW=""
+          if [ -n "$ALB_VPC_ID" ]; then
+            ECS_SG_RAW="$(aws ec2 describe-security-groups --filters Name=group-name,Values="${APP_NAME}-ecs-sg" Name=vpc-id,Values="$ALB_VPC_ID" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || true)"
+          fi
+          ECS_SG_ID="$(normalize_none "$ECS_SG_RAW")"
+
+          LOG_GROUP_RAW="$(aws logs describe-log-groups --log-group-name-prefix "/ecs/${APP_NAME}" --query 'logGroups[0].logGroupName' --output text 2>/dev/null || true)"
+          LOG_GROUP_NAME="$(normalize_none "$LOG_GROUP_RAW")"
+
+          TASK_EXEC_ROLE_RAW="$(aws iam get-role --role-name "${APP_NAME}-ecs-task-execution-role" --query 'Role.RoleName' --output text 2>/dev/null || true)"
+          TASK_EXEC_ROLE_NAME="$(normalize_none "$TASK_EXEC_ROLE_RAW")"
+
+          TASK_ROLE_RAW="$(aws iam get-role --role-name "${APP_NAME}-ecs-task-role" --query 'Role.RoleName' --output text 2>/dev/null || true)"
+          TASK_ROLE_NAME="$(normalize_none "$TASK_ROLE_RAW")"
+
+          DDB_TABLE_RAW="$(aws dynamodb describe-table --table-name "${APP_TABLE_NAME}" --query 'Table.TableName' --output text 2>/dev/null || true)"
+          DDB_TABLE_NAME="$(normalize_none "$DDB_TABLE_RAW")"
+
+          ensure_import module.network.aws_vpc.this "$ALB_VPC_ID"
+          ensure_import module.network.aws_internet_gateway.this "$IGW_ID"
+          ensure_import module.network.aws_subnet.public[0] "$PUBLIC_SUBNET_1"
+          ensure_import module.network.aws_subnet.public[1] "$PUBLIC_SUBNET_2"
+          ensure_import module.network.aws_subnet.private[0] "$PRIVATE_SUBNET_1"
+          if [ -n "$PRIVATE_SUBNET_2" ]; then
+            ensure_import module.network.aws_subnet.private[1] "$PRIVATE_SUBNET_2"
+          fi
+          ensure_import module.network.aws_route_table.public "$PUBLIC_RT_ID"
+          ensure_import module.network.aws_route_table.private[0] "$PRIVATE_RT_1_ID"
+          if [ -n "$PRIVATE_RT_2_ID" ]; then
+            ensure_import module.network.aws_route_table.private[1] "$PRIVATE_RT_2_ID"
+          fi
+          ensure_import_strict module.network.aws_eip.nat[0] "$NAT_EIP_1_ID"
+          ensure_import_strict module.network.aws_nat_gateway.this[0] "$NAT_GW_1_ID"
+
+          if [ "$NAT_SECONDARY_ENABLED" = "true" ]; then
+            ensure_import_strict module.network.aws_eip.nat[1] "$NAT_EIP_2_ID"
+            ensure_import_strict module.network.aws_nat_gateway.this[1] "$NAT_GW_2_ID"
+          fi
+
+          if [ -n "$PUBLIC_SUBNET_1" ] && [ -n "$PUBLIC_RT_ID" ]; then
+            ensure_import module.network.aws_route_table_association.public[0] "${PUBLIC_SUBNET_1}/${PUBLIC_RT_ID}"
+          fi
+
+          if [ -n "$PUBLIC_SUBNET_2" ] && [ -n "$PUBLIC_RT_ID" ]; then
+            ensure_import module.network.aws_route_table_association.public[1] "${PUBLIC_SUBNET_2}/${PUBLIC_RT_ID}"
+          fi
+
+          if [ -n "$PRIVATE_SUBNET_1" ] && [ -n "$PRIVATE_RT_1_ID" ]; then
+            ensure_import module.network.aws_route_table_association.private[0] "${PRIVATE_SUBNET_1}/${PRIVATE_RT_1_ID}"
+          fi
+
+          if [ -n "$PRIVATE_SUBNET_2" ] && [ -n "$PRIVATE_RT_2_ID" ]; then
+            ensure_import module.network.aws_route_table_association.private[1] "${PRIVATE_SUBNET_2}/${PRIVATE_RT_2_ID}"
+          fi
+
+          ensure_import module.alb.aws_lb.this "$ALB_ARN"
+          ensure_import module.alb.aws_lb_target_group.ecs "$TG_ARN"
+          ensure_import module.dynamodb.aws_dynamodb_table.this "$DDB_TABLE_NAME"
+          ensure_import module.ecs.aws_cloudwatch_log_group.app "$LOG_GROUP_NAME"
+          ensure_import module.ecs.aws_iam_role.task_execution "$TASK_EXEC_ROLE_NAME"
+          ensure_import module.ecs.aws_iam_role.task "$TASK_ROLE_NAME"
+          ensure_import module.ecs.aws_ecs_cluster.this "$CLUSTER_NAME"
+
+          if [ -n "$CLUSTER_NAME" ] && [ -n "$SERVICE_STATUS" ] && [ "$SERVICE_STATUS" != "MISSING" ]; then
+            ensure_import module.ecs.aws_ecs_service.this "${APP_NAME}-cluster/${APP_NAME}-service"
+          fi
+
+          ensure_import module.alb.aws_security_group.alb "$ALB_SG_ID"
+          ensure_import module.alb.aws_lb_listener.http "$LISTENER_ARN"
+          ensure_import module.ecs.aws_security_group.ecs "$ECS_SG_ID"
+
+          terraform validate
+          echo "STEP 5 - Terraform plan and apply"
+          terraform plan -input=false -lock-timeout=5m -out=tfplan
+          terraform apply -input=false -lock-timeout=5m -auto-approve tfplan

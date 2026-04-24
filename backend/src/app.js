@@ -23,7 +23,7 @@ import helmet from 'helmet';
 import http from 'http';
 import morgan from 'morgan';
 import { Server as SocketIOServer } from 'socket.io';
-import { corsMiddleware } from './config/cors.config.js';
+import { corsMiddleware, isOriginAllowed } from './config/cors.config.js';
 import connectDB from './config/database.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import authRoutes from './routes/authRoutes.js';
@@ -33,6 +33,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import discountRoutes from './routes/discountRoutes.js';
 import emailRoutes from './routes/emailRoutes.js';
+import healthRoutes from './routes/healthRoutes.js';
 import favouriteRoutes from './routes/favouriteRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import livestreamRoutes from './routes/livestreamRoutes.js'; // Added LiveStream routes
@@ -58,6 +59,7 @@ import deliveryReportRoutes from './routes/deliveryReportRoutes.js'; // Added De
 import shipperApplicationRoutes from './routes/shipperApplicationRoutes.js'; // Added Shipper Application routes
 import aiInventoryRoutes from './routes/aiInventoryRoutes.js'; // AI Inventory Intelligence
 import weatherRoutes from './routes/weatherRoutes.js'; // Weather Recommendation routes
+import dynamodbRoutes from './routes/dynamodbRoutes.js'; // DynamoDB GSI Query routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import {
@@ -89,17 +91,17 @@ app.options('*', corsMiddleware);
 
 // Enhanced request logging with detailed debug info
 app.use((req, res, next) => {
-  console.log(`=== REQUEST DEBUG ===`);
-  console.log(`${req.method} ${req.path} from ${req.headers.origin || 'unknown'}`);
-  console.log('Host:', req.headers.host);
-  console.log('User-Agent:', req.headers['user-agent']);
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Content-Length:', req.headers['content-length']);
-  console.log('Request URL:', req.url);
-  console.log('Request path:', req.path);
-  console.log('Request base URL:', req.baseUrl);
-  console.log('Request original URL:', req.originalUrl);
-  console.log('========================');
+  logger.debug('=== REQUEST DEBUG ===');
+  logger.debug(`${req.method} ${req.path} from ${req.headers.origin || 'unknown'}`);
+  logger.debug('Host:', req.headers.host);
+  logger.debug('User-Agent:', req.headers['user-agent']);
+  logger.debug('Content-Type:', req.headers['content-type']);
+  logger.debug('Content-Length:', req.headers['content-length']);
+  logger.debug('Request URL:', req.url);
+  logger.debug('Request path:', req.path);
+  logger.debug('Request base URL:', req.baseUrl);
+  logger.debug('Request original URL:', req.originalUrl);
+  logger.debug('========================');
   next();
 });
 
@@ -107,19 +109,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // List of allowed origins
-  const allowedOrigins = [
-    'https://kicks-shoes-2025.web.app',
-    'https://kicks-shoes-2025.firebaseapp.com',
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:5173',
-    // Azure App Service domains
-    process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null,
-    process.env.WEBSITE_HOSTNAME ? `http://${process.env.WEBSITE_HOSTNAME}` : null,
-  ].filter(Boolean);
-
-  if (allowedOrigins.includes(origin)) {
+  if (origin && isOriginAllowed(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
@@ -165,11 +155,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Extended health checks (DynamoDB read/write validation)
+app.use('/api/health', healthRoutes);
+
 // Debug endpoint to test tryon route accessibility
 app.get('/api/tryon/debug', (req, res) => {
-  console.log('=== TRYON DEBUG ENDPOINT ===');
-  console.log('Request received at:', new Date().toISOString());
-  console.log('Request headers:', req.headers);
+  logger.debug('=== TRYON DEBUG ENDPOINT ===');
+  logger.debug('Request received at:', new Date().toISOString());
+  logger.debug('Request headers:', req.headers);
 
   res.status(200).json({
     message: 'Tryon endpoint is accessible',
@@ -215,6 +208,7 @@ app.use('/api/delivery-reports', deliveryReportRoutes); // Added Delivery Report
 app.use('/api/shipper-applications', shipperApplicationRoutes); // Added Shipper Application routes
 app.use('/api/ai/inventory', aiInventoryRoutes); // AI Inventory Intelligence
 app.use('/api/weather', weatherRoutes); // Weather Recommendation routes
+app.use('/api/dynamodb', dynamodbRoutes); // DynamoDB GSI Query routes (Week 3 Evidence)
 
 // Start cron jobs
 startDiscountStatusUpdateCron();
@@ -229,7 +223,11 @@ logger.info('AI Inventory Intelligence started - Daily analysis at 8:00 AM');
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || (process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : 'localhost'); // Docker & Azure compatibility
+const HOST =
+  process.env.HOST ||
+  (process.env.NODE_ENV === 'development' && !process.env.WEBSITE_HOSTNAME
+    ? 'localhost'
+    : '0.0.0.0');
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
@@ -238,25 +236,10 @@ const io = new SocketIOServer(server, {
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
-      const allowedOrigins = [
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'http://127.0.0.1:5173',
-        'https://kicks-shoes-2025.web.app',
-        'https://kicks-shoes-2025.firebaseapp.com',
-        // Azure App Service domains
-        process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : null,
-        process.env.WEBSITE_HOSTNAME ? `http://${process.env.WEBSITE_HOSTNAME}` : null,
-        // Additional domains for better cross-network support
-        'https://kicks-shoes-frontend.azurewebsites.net',
-        'https://kicks-shoes-app.azurewebsites.net',
-        'https://kicks-shoes-backend.azurewebsites.net',
-      ].filter(Boolean);
-
-      if (allowedOrigins.indexOf(origin) !== -1) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
-        console.log('Socket CORS blocked origin:', origin);
+        logger.warn('Socket CORS blocked origin:', origin);
         callback(new Error('Not allowed by CORS'));
       }
     },

@@ -360,6 +360,11 @@ const AppHeader = () => {
       icon: <ReadOutlined style={{ color: '#2d5bff', marginRight: 4 }} />,
       label: 'Blog',
     },
+    {
+      key: 'ai-chat',
+      icon: <UserOutlined style={{ color: '#00bcd4', marginRight: 4 }} />,
+      label: 'AI Chat',
+    },
   ];
 
   // Dropdown menu items (for mobile)
@@ -406,12 +411,18 @@ const AppHeader = () => {
       icon: <ReadOutlined style={{ color: '#2d5bff', marginRight: 4 }} />,
       label: 'Blog',
     },
+    {
+      key: 'ai-chat',
+      icon: <UserOutlined style={{ color: '#00bcd4', marginRight: 4 }} />,
+      label: 'AI Chat',
+    },
   ];
 
   // Determine active menu item based on current location
   const getActiveKey = () => {
     const path = location.pathname;
     if (path === '/blog' || path.startsWith('/blog/')) return 'blog';
+    if (path === '/ai-chat') return 'ai-chat';
     if (path === '/livestream' || path.startsWith('/livestream/')) return 'livestream';
     if (path === '/listing-page' || path.startsWith('/listing-page')) return 'shop';
     if (path === '/shoes' || path === '/clothing' || path === '/accessories' || path === '/other')
@@ -437,6 +448,8 @@ const AppHeader = () => {
       navigate('/livestream');
     } else if (e.key === 'blog') {
       navigate('/blog');
+    } else if (e.key === 'ai-chat') {
+      navigate('/ai-chat');
     }
   };
 
