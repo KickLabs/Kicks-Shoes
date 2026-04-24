@@ -174,3 +174,9 @@
 
 - **Scenario Chosen:** DynamoDB Point-in-Time Recovery (PITR).
 - **Action:** Đã kích hoạt tính năng PITR để bảo vệ dữ liệu khỏi các thao tác xóa/sửa nhầm bằng cách cho phép khôi phục về bất kỳ thời điểm nào (giây) trong 35 ngày gần nhất.
+
+![Bonus](./images/bedrock_test_ui.png)
+
+- Bonus: Bedrock Test UI
+- **Scenario Chosen:** Bedrock Test UI.
+- **Action:** Sử dụng giao diện Test UI của Bedrock để tương tác trực tiếp với Knowledge Base, kiểm tra khả năng truy xuất ngữ cảnh từ RAG.
