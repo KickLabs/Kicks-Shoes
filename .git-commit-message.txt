@@ -1,0 +1,47 @@
+chore: migrate infrastructure from ap-southeast-1 to us-east-1
+
+BREAKING CHANGE: All AWS infrastructure will be deployed to us-east-1 region
+
+Changes:
+- Update Terraform configs (dev + production) to use us-east-1
+- Update GitHub Actions workflows to deploy to us-east-1
+- Update backend .env.example documentation
+- Add migration documentation and verification scripts
+
+Benefits:
+- ~20-30% cost savings on AWS services
+- Lower latency for US-based users
+- More availability zones (6 vs 3)
+- Better AWS service availability
+
+Migration Guide:
+- See MIGRATION_US_EAST_1.md for detailed steps
+- See DEPLOY_CHECKLIST.md for deployment checklist
+- See REGION_MIGRATION_SUMMARY.md for summary
+- Run scripts/verify-region-config.ps1 to verify
+
+Required Actions Before Deploy:
+1. Create ECR repository in us-east-1
+2. Create Secrets Manager secret in us-east-1
+3. Verify GitHub secrets are configured
+4. Run verification script
+
+Files Changed:
+- infra/terraform/environments/dev/01-network/terraform.tfvars
+- infra/terraform/environments/dev/01-network/variables.tf
+- infra/terraform/environments/dev/02-app/terraform.tfvars
+- infra/terraform/environments/dev/02-app/variables.tf
+- infra/terraform/environments/production/variables.tf
+- .github/workflows/deploy-dev-two-stack.yml
+- .github/workflows/deploy.yml
+- backend/.env.example
+
+Files Added:
+- MIGRATION_US_EAST_1.md
+- DEPLOY_CHECKLIST.md
+- REGION_MIGRATION_SUMMARY.md
+- scripts/verify-region-config.sh
+- scripts/verify-region-config.ps1
+- .git-commit-message.txt
+
+Co-authored-by: Kiro AI <kiro@example.com>

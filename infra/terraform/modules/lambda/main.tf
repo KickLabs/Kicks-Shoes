@@ -176,14 +176,21 @@ resource "aws_lambda_event_source_mapping" "dynamodb_stream" {
   event_source_arn  = var.dynamodb_stream_arn
   function_name     = aws_lambda_function.bedrock_chat.arn
   starting_position = "LATEST"
-  
+
   # Batch configuration
   batch_size                         = 10
   maximum_batching_window_in_seconds = 5
-  
-  # Error handling
-  maximum_retry_attempts = 3
-  
+
+  # W5 MH5: retry 2 times then send to DLQ
+  maximum_retry_attempts = 2
+
+  # W5 MH5: failed events go to SQS DLQ
+  destination_config {
+    on_failure {
+      destination_arn = aws_sqs_queue.bedrock_dlq.arn
+    }
+  }
+
   # Filter only INSERT events (new messages)
   filter_criteria {
     filter {
@@ -192,10 +199,44 @@ resource "aws_lambda_event_source_mapping" "dynamodb_stream" {
       })
     }
   }
-  
+
   depends_on = [
-    aws_iam_role_policy.dynamodb_access
+    aws_iam_role_policy.dynamodb_access,
+    aws_iam_role_policy.dlq_access,
   ]
+}
+
+# =============================================================================
+# W5 MH5 — Async Invocation + Dead Letter Queue
+# bedrock-chat is already async (DynamoDB Streams trigger)
+# Add SQS DLQ to catch failed invocations after retries exhausted
+# =============================================================================
+
+resource "aws_sqs_queue" "bedrock_dlq" {
+  name                      = "${var.project_name}-bedrock-dlq"
+  message_retention_seconds = 1209600 # 14 days
+  visibility_timeout_seconds = 300
+
+  tags = merge(var.tags, {
+    Name    = "${var.project_name}-bedrock-dlq"
+    Purpose = "Dead Letter Queue for failed bedrock-chat Lambda invocations"
+  })
+}
+
+# IAM policy — allow Lambda to send messages to DLQ
+resource "aws_iam_role_policy" "dlq_access" {
+  name = "dlq-access"
+  role = aws_iam_role.lambda_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "SendToDLQ"
+      Effect   = "Allow"
+      Action   = ["sqs:SendMessage"]
+      Resource = aws_sqs_queue.bedrock_dlq.arn
+    }]
+  })
 }
 
 # Data source for current AWS account

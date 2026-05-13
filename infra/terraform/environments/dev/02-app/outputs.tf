@@ -96,3 +96,47 @@ output "dynamodb_vpc_endpoint_state" {
   description = "State of the DynamoDB VPC Gateway Endpoint"
   value       = aws_vpc_endpoint.dynamodb.state
 }
+
+# =============================================================================
+# W5 Outputs
+# =============================================================================
+
+output "api_gateway_invoke_url" {
+  description = "API Gateway URL — set as VITE_BEDROCK_API_URL in frontend .env"
+  value       = aws_apigatewayv2_api.bedrock.api_endpoint
+}
+
+output "bedrock_dlq_url" {
+  description = "SQS DLQ URL for failed bedrock-chat invocations"
+  value       = module.lambda_bedrock_chat.dlq_url
+}
+
+output "bedrock_dlq_arn" {
+  description = "SQS DLQ ARN"
+  value       = module.lambda_bedrock_chat.dlq_arn
+}
+
+output "efs_file_system_id" {
+  description = "EFS file system ID"
+  value       = aws_efs_file_system.main.id
+}
+
+output "backup_vault_name" {
+  description = "AWS Backup vault name"
+  value       = aws_backup_vault.main.name
+}
+
+output "backup_role_arn" {
+  description = "IAM role ARN for triggering manual backup jobs"
+  value       = aws_iam_role.backup.arn
+}
+
+output "network_firewall_arn" {
+  description = "Network Firewall ARN"
+  value       = aws_networkfirewall_firewall.main.arn
+}
+
+output "firewall_alert_log_group" {
+  description = "CloudWatch Log Group for firewall alert logs (blocked requests)"
+  value       = aws_cloudwatch_log_group.firewall_alert.name
+}

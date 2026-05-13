@@ -383,6 +383,17 @@ module "ecs_service" {
       effect    = "Allow"
       actions   = ["s3:ListBucket"]
       resources = [module.s3_uploads.s3_bucket_arn]
+    },
+    {
+      sid    = "EFSMount"
+      effect = "Allow"
+      actions = [
+        "elasticfilesystem:ClientMount",
+        "elasticfilesystem:ClientWrite",
+        "elasticfilesystem:ClientRootAccess",
+        "elasticfilesystem:DescribeMountTargets"
+      ]
+      resources = [aws_efs_file_system.main.arn]
     }
   ]
 
@@ -467,6 +478,14 @@ module "ecs_service" {
           valueFrom = "${data.aws_secretsmanager_secret.app_config.arn}:GOOGLE_MAILER_REFRESH_TOKEN::"
         }
       ]
+      # W5 MH3: mount EFS volume
+      mount_points = [
+        {
+          sourceVolume  = "efs-app-data"
+          containerPath = "/mnt/efs"
+          readOnly      = false
+        }
+      ]
       log_configuration = {
         logDriver = "awslogs"
         options = {
@@ -478,6 +497,21 @@ module "ecs_service" {
     }
   }
 
+  # W5 MH3: EFS volume definition
+  volume = [
+    {
+      name = "efs-app-data"
+      efs_volume_configuration = {
+        file_system_id          = aws_efs_file_system.main.id
+        transit_encryption      = "ENABLED"
+        authorization_config = {
+          access_point_id = aws_efs_access_point.app.id
+          iam             = "ENABLED"
+        }
+      }
+    }
+  ]
+
   load_balancer = {
     service = {
       target_group_arn = module.alb.target_groups["ecs"].arn
@@ -486,7 +520,7 @@ module "ecs_service" {
     }
   }
 
-  depends_on = [module.alb]
+  depends_on = [module.alb, aws_efs_mount_target.private]
 
   tags = local.common_tags
 }

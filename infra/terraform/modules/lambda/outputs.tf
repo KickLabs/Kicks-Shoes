@@ -29,3 +29,14 @@ output "event_source_mapping_uuid" {
   description = "UUID of the DynamoDB event source mapping"
   value       = aws_lambda_event_source_mapping.dynamodb_stream.uuid
 }
+
+# W5 MH5
+output "dlq_url" {
+  description = "SQS Dead Letter Queue URL"
+  value       = aws_sqs_queue.bedrock_dlq.url
+}
+
+output "dlq_arn" {
+  description = "SQS Dead Letter Queue ARN"
+  value       = aws_sqs_queue.bedrock_dlq.arn
+}

@@ -60,6 +60,7 @@ import shipperApplicationRoutes from './routes/shipperApplicationRoutes.js'; // 
 import aiInventoryRoutes from './routes/aiInventoryRoutes.js'; // AI Inventory Intelligence
 import weatherRoutes from './routes/weatherRoutes.js'; // Weather Recommendation routes
 import dynamodbRoutes from './routes/dynamodbRoutes.js'; // DynamoDB GSI Query routes
+import efsRoutes from './routes/efsRoutes.js'; // W5 MH3: EFS file storage routes
 import logger from './utils/logger.js';
 import { setupUploadDirectories } from './utils/setupUploads.js';
 import {
@@ -209,6 +210,7 @@ app.use('/api/shipper-applications', shipperApplicationRoutes); // Added Shipper
 app.use('/api/ai/inventory', aiInventoryRoutes); // AI Inventory Intelligence
 app.use('/api/weather', weatherRoutes); // Weather Recommendation routes
 app.use('/api/dynamodb', dynamodbRoutes); // DynamoDB GSI Query routes (Week 3 Evidence)
+app.use('/api/efs', efsRoutes); // W5 MH3: EFS file storage evidence
 
 // Start cron jobs
 startDiscountStatusUpdateCron();

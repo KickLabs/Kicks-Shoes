@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  AWS_REGION: ap-southeast-1
+  AWS_REGION: us-east-1
   APP_NAME: kicks-shoes-prod
   ECR_REPOSITORY: kicks-shoes-backend
   TF_STATE_KEY: terraform/production/kicks-shoes-prod.tfstate
