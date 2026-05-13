@@ -19,14 +19,14 @@ resource "aws_networkfirewall_rule_group" "domain_allowlist" {
         generated_rules_type = "ALLOWLIST"
         target_types         = ["HTTP_HOST", "TLS_SNI"]
         targets = [
-          ".amazonaws.com",                          # AWS services (ECR, S3, DynamoDB, Secrets Manager)
-          ".docker.io",                              # Docker Hub
+          ".amazonaws.com", # AWS services (ECR, S3, DynamoDB, Secrets Manager)
+          ".docker.io",     # Docker Hub
           ".docker.com",
-          "generativelanguage.googleapis.com",       # Google Gemini API
-          "api.openweathermap.org",                  # Weather API
-          ".mongodb.net",                            # MongoDB Atlas
-          ".payos.vn",                               # PayOS payment
-          "api.vnappmob.com",                        # Vietnam province API
+          "generativelanguage.googleapis.com", # Google Gemini API
+          "api.openweathermap.org",            # Weather API
+          ".mongodb.net",                      # MongoDB Atlas
+          ".payos.vn",                         # PayOS payment
+          "api.vnappmob.com",                  # Vietnam province API
         ]
       }
     }

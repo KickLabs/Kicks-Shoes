@@ -21,10 +21,10 @@ module "vpc" {
   public_subnets   = var.public_subnet_cidrs
   private_subnets  = var.private_subnet_cidrs
   database_subnets = var.db_subnet_cidrs
-  intra_subnets    = var.firewall_subnet_cidrs  # W5 MH2: firewall subnets
+  intra_subnets    = var.firewall_subnet_cidrs # W5 MH2: firewall subnets
 
   enable_nat_gateway     = true
-  single_nat_gateway     = true   # dev: 1 NAT GW for cost saving
+  single_nat_gateway     = true # dev: 1 NAT GW for cost saving
   one_nat_gateway_per_az = false
 
   enable_dns_hostnames = true

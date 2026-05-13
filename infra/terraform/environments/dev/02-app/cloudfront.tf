@@ -8,10 +8,10 @@ locals {
 }
 
 resource "aws_cloudfront_distribution" "backend" {
-  enabled             = true
-  is_ipv6_enabled     = true
-  comment             = "CloudFront proxy for ${var.project_name} Backend ALB"
-  price_class         = "PriceClass_100"
+  enabled         = true
+  is_ipv6_enabled = true
+  comment         = "CloudFront proxy for ${var.project_name} Backend ALB"
+  price_class     = "PriceClass_100"
 
   origin {
     domain_name = module.alb.dns_name
@@ -33,10 +33,10 @@ resource "aws_cloudfront_distribution" "backend" {
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
 
-    # Forward all headers, cookies, query strings to Backend ALB (Cache Disabled equivalent)
+    # Forward specific whitelist headers, cookies, query strings to Backend ALB to improve caching
     forwarded_values {
       query_string = true
-      headers      = ["*"]
+      headers      = ["Authorization", "Origin", "Accept", "Content-Type"]
 
       cookies {
         forward = "all"

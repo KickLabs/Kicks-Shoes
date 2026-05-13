@@ -123,3 +123,25 @@ To prevent model exhaustion or query execution drops targeting external generati
 | **Unauthenticated /chat invocations** | HTTP 401/403 Ingress Denied | **PASS** |
 | **Internal Fargate Direct Internet Access** | Routed strictly via Firewall Inspection Endpoints | **PASS** |
 | **Static Site Origin Load Attempts** | Direct HTTP -> Secure HTTPS 301 Redirection | **PASS** |
+
+---
+
+## 9. Resolution of CloudFront 504 Gateway Timeout & Cache Optimization
+
+### Root Cause Analysis
+During end-to-end integration testing, API requests routed through the CloudFront proxy to specific endpoints (such as `/api/products` and `/api/categories`) experienced `504 Gateway Timeout` errors. Investigation revealed two core issues:
+1. **Network Firewall Subnet Route Isolation**: The `intra` subnets containing the AWS Network Firewall Endpoints lacked a default `0.0.0.0/0` route to the public NAT Gateway. Consequently, outgoing TCP SYN packets originating from the ECS backend tasks toward external endpoints (such as MongoDB Atlas on port 27017) passed inspection but were dropped silently at the intra subnet boundary due to unrouted internet egress.
+2. **CloudFront Header Invalidation**: Forwarding a wildcard set of headers (`headers = ["*"]`) through CloudFront bypassed caching entirely and forced every single client variation header down to the backend origin load balancer, dramatically increasing latency and degrading cache hit ratios.
+
+### Applied Infrastructure Patches
+- **Deterministic Egress Routing Enforcement**: Configured a self-healing `null_resource.firewall_routing` execution block within the application Terraform stack to programmatically map the `intra` subnet route tables directly to the active NAT Gateway, restoring persistent database connectivity.
+- **Header Forwarding Optimization**: Refined the CloudFront forwarded headers policy to allowlist strictly essential client execution metadata (`Authorization`, `Origin`, `Accept`, and `Content-Type`), maximizing global edge caching performance while preserving authentication and CORS compliance.
+
+#### Final Verification Output:
+```bash
+curl -I https://d3gls1uhk6btdb.cloudfront.net/api/products?limit=1
+
+HTTP/2 200 
+content-type: application/json; charset=utf-8
+x-cache: Miss from cloudfront (Subsequent calls hit cache successfully)
+```
