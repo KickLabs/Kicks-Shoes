@@ -34,3 +34,65 @@ output "cognito_user_pool_id" {
 output "cognito_client_id" {
   value = aws_cognito_user_pool_client.frontend.id
 }
+
+# ============================================================================
+# Lambda Outputs
+# ============================================================================
+
+output "lambda_function_name" {
+  description = "Name of the Bedrock chat Lambda function"
+  value       = module.lambda_bedrock_chat.lambda_function_name
+}
+
+output "lambda_function_arn" {
+  description = "ARN of the Bedrock chat Lambda function"
+  value       = module.lambda_bedrock_chat.lambda_function_arn
+}
+
+output "lambda_cloudwatch_log_group" {
+  description = "CloudWatch Log Group for Lambda function"
+  value       = module.lambda_bedrock_chat.cloudwatch_log_group_name
+}
+
+# ============================================================================
+# DynamoDB Chat Table Outputs
+# ============================================================================
+
+output "dynamodb_chat_table_name" {
+  description = "Name of the DynamoDB chat messages table"
+  value       = module.dynamodb_chat.chat_messages_table_name
+}
+
+output "dynamodb_chat_table_arn" {
+  description = "ARN of the DynamoDB chat messages table"
+  value       = module.dynamodb_chat.chat_messages_table_arn
+}
+
+output "dynamodb_chat_stream_arn" {
+  description = "ARN of the DynamoDB stream for chat messages"
+  value       = module.dynamodb_chat.chat_messages_stream_arn
+}
+
+# ============================================================================
+# VPC Endpoint Outputs (Must-have 4 Evidence)
+# ============================================================================
+
+output "s3_vpc_endpoint_id" {
+  description = "ID of the S3 VPC Gateway Endpoint"
+  value       = aws_vpc_endpoint.s3.id
+}
+
+output "s3_vpc_endpoint_state" {
+  description = "State of the S3 VPC Gateway Endpoint"
+  value       = aws_vpc_endpoint.s3.state
+}
+
+output "dynamodb_vpc_endpoint_id" {
+  description = "ID of the DynamoDB VPC Gateway Endpoint"
+  value       = aws_vpc_endpoint.dynamodb.id
+}
+
+output "dynamodb_vpc_endpoint_state" {
+  description = "State of the DynamoDB VPC Gateway Endpoint"
+  value       = aws_vpc_endpoint.dynamodb.state
+}

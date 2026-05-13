@@ -29,7 +29,12 @@ Conditions:
 
 Resources:
 
+  # ============================================================================
   # SNS Topic for S3 Event Notifications
+  # ============================================================================
+  # Purpose: Capture all S3 bucket changes (create/delete objects) and send to SNS
+  # Use case: Audit trail, compliance, monitoring deployments
+  # ============================================================================
   S3NotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -43,7 +48,12 @@ Resources:
         - Key: Name
           Value: !Sub '${ProjectName}-s3-notifications'
 
+  # ============================================================================
   # IAM Role for SNS to write delivery logs to CloudWatch
+  # ============================================================================
+  # Purpose: Allow SNS to write delivery status logs to CloudWatch Logs
+  # Permissions: CreateLogGroup, CreateLogStream, PutLogEvents
+  # ============================================================================
   SNSDeliveryLoggingRole:
     Type: AWS::IAM::Role
     Properties:
@@ -69,14 +79,24 @@ Resources:
                   - logs:DescribeLogStreams
                 Resource: !GetAtt S3EventLogGroup.Arn
 
-  # CloudWatch Log Group để lưu chi tiết S3 events từ SNS
+  # ============================================================================
+  # CloudWatch Log Group for S3 Event Details from SNS
+  # ============================================================================
+  # Purpose: Store detailed S3 event logs delivered via SNS
+  # Retention: 90 days (adjust based on compliance requirements)
+  # ============================================================================
   S3EventLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/sns/${ProjectName}-s3-notifications'
       RetentionInDays: 90
 
-  # SNS Topic Policy - cho phép S3 publish vào SNS
+  # ============================================================================
+  # SNS Topic Policy - Allow S3 to Publish to SNS
+  # ============================================================================
+  # Purpose: Grant S3 bucket permission to publish events to SNS topic
+  # Security: Restricted to specific S3 bucket ARN only
+  # ============================================================================
   S3NotificationTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
@@ -94,48 +114,116 @@ Resources:
               ArnLike:
                 aws:SourceArn: !Sub 'arn:aws:s3:::${ProjectName}-frontend'
 
-  # S3 Bucket for Frontend
+  # ============================================================================
+  # S3 Bucket for Frontend - Static Website Hosting
+  # ============================================================================
+  # Architecture Pattern: User → CloudFront (HTTPS) → S3 Bucket (PRIVATE)
+  # 
+  # Security Best Practices:
+  # DO NOT enable S3 Static Website Hosting (makes bucket public)
+  # DO NOT make bucket public (use CloudFront + OAC instead)
+  # All access goes through CloudFront + Origin Access Control (OAC)
+  # Bucket Policy: ONLY cloudfront.amazonaws.com can access
+  # 
+  # Features:
+  # - Block All Public Access: Enforced for security
+  # - Encryption: SSE-S3 (free, automatic, at-rest encryption)
+  # - Versioning: Enabled (allows rollback on bad deployments)
+  # - Lifecycle: Delete old versions after 30 days (cost optimization)
+  # - Event Notifications: Log all changes to SNS for audit trail
+  # ============================================================================
   FrontendBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${ProjectName}-frontend'
+      
+      # ========================================================================
+      # Block All Public Access - REQUIRED for security
+      # ========================================================================
+      # Prevents accidental public exposure of bucket contents
+      # All access must go through CloudFront with OAC
+      # ========================================================================
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      
+      # ========================================================================
+      # Encryption at Rest - SSE-S3 (free, automatic)
+      # ========================================================================
+      # Algorithm: AES-256 encryption
+      # BucketKeyEnabled: Reduces KMS API calls (cost optimization)
+      # Alternative: Use SSE-KMS if you need audit trail via CloudTrail
+      # ========================================================================
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+            BucketKeyEnabled: true  # Reduces KMS request costs
+      
+      # ========================================================================
+      # Versioning - Enabled for Rollback Capability
+      # ========================================================================
+      # Purpose: Allows rollback to previous version if deployment fails
+      # Use case: Deploy v2 → bug found → rollback to v1 instantly
+      # Cost: Old versions consume storage (mitigated by lifecycle policy)
+      # ========================================================================
       VersioningConfiguration:
         Status: Enabled
+      
+      # ========================================================================
+      # Lifecycle Policy - Cost Optimization
+      # ========================================================================
+      # Strategy: Delete old versions after 30 days
+      # 
+      # Why NOT transition current objects to Glacier?
+      # Glacier has slow retrieval time (minutes to hours)
+      # Frontend needs instant access for users
+      # Keep current objects in STANDARD storage class
+      # 
+      # Noncurrent versions (old deployments):
+      # - Kept for 30 days (enough time to rollback if needed)
+      # - Automatically deleted after 30 days (saves storage costs)
+      # ========================================================================
       LifecycleConfiguration:
         Rules:
           - Id: DeleteOldVersions
             Status: Enabled
             NoncurrentVersionExpirationInDays: 30
-          - Id: TransitionAndExpireRule
-            Status: Enabled
-            Transitions:
-              - TransitionInDays: 30
-                StorageClass: STANDARD_IA
-              - TransitionInDays: 90
-                StorageClass: GLACIER_IR
-            ExpirationInDays: 365
+            # Deletes old versions after 30 days
+            # Keeps enough time for rollback if deployment issues occur
+      
+      # ========================================================================
+      # S3 Event Notifications - Audit Trail
+      # ========================================================================
+      # Captures: All object create/delete events
+      # Destination: SNS Topic → CloudWatch Logs
+      # Use case: Track who deployed what and when (compliance/audit)
+      # ========================================================================
       NotificationConfiguration:
         TopicConfigurations:
           - Event: 's3:ObjectCreated:*'
             Topic: !Ref S3NotificationTopic
           - Event: 's3:ObjectRemoved:*'
             Topic: !Ref S3NotificationTopic
+      
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-frontend'
         - Key: Environment
           Value: production
+        - Key: Purpose
+          Value: Static Website Hosting via CloudFront
 
-  # S3 Bucket Policy
+  # ============================================================================
+  # S3 Bucket Policy - CloudFront Access Only
+  # ============================================================================
+  # Security: ONLY CloudFront can read objects from this bucket
+  # Principal: cloudfront.amazonaws.com (service principal)
+  # Condition: Must match specific CloudFront distribution ARN
+  # Result: Direct S3 URLs will return 403 Forbidden
+  # ============================================================================
   FrontendBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -152,7 +240,16 @@ Resources:
               StringEquals:
                 AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
 
-  # CloudFront Origin Access Control
+  # ============================================================================
+  # CloudFront Origin Access Control (OAC)
+  # ============================================================================
+  # Modern replacement for Origin Access Identity (OAI)
+  # Benefits over OAI:
+  # - Supports SSE-KMS encrypted objects
+  # - Supports all S3 regions
+  # - Uses SigV4 signing (more secure)
+  # - Recommended by AWS for new deployments
+  # ============================================================================
   CloudFrontOAC:
     Type: AWS::CloudFront::OriginAccessControl
     Properties:
@@ -162,7 +259,20 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
-  # CloudFront Distribution
+  # ============================================================================
+  # CloudFront Distribution - Global CDN for Frontend
+  # ============================================================================
+  # Architecture: User → CloudFront Edge Location → S3 Origin
+  # 
+  # Features:
+  # - HTTP/2 and HTTP/3 support (faster page loads)
+  # - IPv6 enabled (modern internet standard)
+  # - Global edge locations (low latency worldwide)
+  # - Automatic HTTPS redirect (security best practice)
+  # - Custom error pages for SPA routing (403/404 → index.html)
+  # - Security headers (HSTS, XSS protection, etc.)
+  # - Access logging to S3 (audit trail)
+  # ============================================================================
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -170,15 +280,28 @@ Resources:
         Enabled: true
         Comment: !Sub '${ProjectName} Frontend Distribution'
         DefaultRootObject: index.html
-        HttpVersion: http2and3
-        IPV6Enabled: true
-        PriceClass: PriceClass_All
+        HttpVersion: http2and3  # Enable HTTP/2 and HTTP/3 (QUIC)
+        IPV6Enabled: true       # Enable IPv6 support
+        PriceClass: PriceClass_All  # Use all edge locations (best performance)
         
+        # ======================================================================
+        # Custom Domain Configuration (Optional)
+        # ======================================================================
+        # If DomainName parameter is provided, use custom domain
+        # Requires: ACM certificate in us-east-1 region
+        # ======================================================================
         Aliases: !If
           - HasCustomDomain
           - [!Ref DomainName]
           - !Ref AWS::NoValue
         
+        # ======================================================================
+        # SSL/TLS Certificate Configuration
+        # ======================================================================
+        # Option 1: Custom domain with ACM certificate (HTTPS)
+        # Option 2: CloudFront default certificate (*.cloudfront.net)
+        # MinimumProtocolVersion: TLSv1.2_2021 (secure, modern browsers)
+        # ======================================================================
         ViewerCertificate: !If
           - HasCertificate
           - AcmCertificateArn: !Ref CertificateArn
@@ -186,16 +309,31 @@ Resources:
             MinimumProtocolVersion: TLSv1.2_2021
           - CloudFrontDefaultCertificate: true
         
+        # ======================================================================
+        # Origin Configuration - S3 Bucket
+        # ======================================================================
+        # Uses Regional Domain Name (not website endpoint)
+        # Origin Access Control (OAC) for secure access
+        # ======================================================================
         Origins:
           - Id: S3Origin
             DomainName: !GetAtt FrontendBucket.RegionalDomainName
             S3OriginConfig:
-              OriginAccessIdentity: ''
+              OriginAccessIdentity: ''  # Empty for OAC (not OAI)
             OriginAccessControlId: !Ref CloudFrontOAC
         
+        # ======================================================================
+        # Cache Behavior Configuration
+        # ======================================================================
+        # ViewerProtocolPolicy: redirect-to-https (HTTP → HTTPS redirect)
+        # AllowedMethods: GET, HEAD, OPTIONS (read-only, no POST/PUT/DELETE)
+        # Compress: true (gzip/brotli compression for faster downloads)
+        # CachePolicyId: CachingOptimized (AWS managed policy)
+        # OriginRequestPolicyId: CORS-S3Origin (AWS managed policy)
+        # ======================================================================
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
-          ViewerProtocolPolicy: redirect-to-https
+          ViewerProtocolPolicy: redirect-to-https  # Force HTTPS (production ready)
           AllowedMethods:
             - GET
             - HEAD
@@ -203,11 +341,18 @@ Resources:
           CachedMethods:
             - GET
             - HEAD
-          Compress: true
+          Compress: true  # Enable gzip/brotli compression
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
           OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf  # CORS-S3Origin
           ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
         
+        # ======================================================================
+        # Custom Error Responses - SPA Routing Support
+        # ======================================================================
+        # Problem: SPA routes like /products/123 don't exist as S3 objects
+        # Solution: Return index.html for 403/404 errors (client-side routing)
+        # Use case: React Router, Vue Router, Angular Router
+        # ======================================================================
         CustomErrorResponses:
           - ErrorCode: 403
             ResponseCode: 200
@@ -218,11 +363,25 @@ Resources:
             ResponsePagePath: /index.html
             ErrorCachingMinTTL: 300
         
+        # ======================================================================
+        # WAF Integration (Optional)
+        # ======================================================================
+        # If WAFWebACLArn parameter is provided, attach WAF to CloudFront
+        # Use case: DDoS protection, rate limiting, geo-blocking
+        # Note: WAF Web ACL must be created in us-east-1 region
+        # ======================================================================
         WebACLId: !If
           - HasWAF
           - !Ref WAFWebACLArn
           - !Ref AWS::NoValue
         
+        # ======================================================================
+        # Access Logging Configuration
+        # ======================================================================
+        # Logs all CloudFront requests to S3 logging bucket
+        # Prefix: cloudfront/ (organize logs by service)
+        # Use case: Analytics, debugging, compliance, audit trail
+        # ======================================================================
         Logging:
           Bucket: !GetAtt LoggingBucket.DomainName
           Prefix: cloudfront/
@@ -232,54 +391,180 @@ Resources:
         - Key: Name
           Value: !Sub '${ProjectName}-cloudfront'
 
-  # Security Headers Policy
+  # ============================================================================
+  # Security Headers Policy - HTTP Response Headers
+  # ============================================================================
+  # Purpose: Add security headers to all CloudFront responses
+  # 
+  # Headers included:
+  # - Strict-Transport-Security (HSTS): Force HTTPS for 2 years
+  # - X-Content-Type-Options: Prevent MIME type sniffing
+  # - X-Frame-Options: Prevent clickjacking attacks
+  # - X-XSS-Protection: Enable browser XSS filter
+  # - Referrer-Policy: Control referrer information
+  # - Permissions-Policy: Disable unnecessary browser features
+  # 
+  # Security benefits:
+  # - Protects against XSS, clickjacking, MIME sniffing attacks
+  # - Enforces HTTPS usage (HSTS preload)
+  # - Reduces attack surface (Permissions-Policy)
+  # ============================================================================
   SecurityHeadersPolicy:
     Type: AWS::CloudFront::ResponseHeadersPolicy
     Properties:
       ResponseHeadersPolicyConfig:
         Name: !Sub '${ProjectName}-security-headers'
         SecurityHeadersConfig:
+          # HSTS: Force HTTPS for 2 years, include subdomains, preload list
           StrictTransportSecurity:
-            AccessControlMaxAgeSec: 63072000
+            AccessControlMaxAgeSec: 63072000  # 2 years
             IncludeSubdomains: true
             Preload: true
             Override: true
+          # Prevent MIME type sniffing (e.g., .txt interpreted as .js)
           ContentTypeOptions:
             Override: true
+          # Prevent clickjacking by disallowing iframe embedding
           FrameOptions:
             FrameOption: DENY
             Override: true
+          # Enable browser XSS filter (legacy, but still useful)
           XSSProtection:
             ModeBlock: true
             Protection: true
             Override: true
+          # Control referrer information sent to external sites
           ReferrerPolicy:
             ReferrerPolicy: strict-origin-when-cross-origin
             Override: true
         CustomHeadersConfig:
           Items:
+            # Disable unnecessary browser features (privacy + security)
             - Header: Permissions-Policy
               Value: geolocation=(), microphone=(), camera=()
               Override: true
 
-  # S3 Bucket for Logs
+  # ============================================================================
+  # S3 Bucket for Logs - Access Logs, App Logs, Audit
+  # ============================================================================
+  # Purpose: Centralized logging bucket for all AWS service logs
+  # 
+  # Architecture Pattern:
+  # - App/CloudFront/ALB → Write logs to S3 Log Bucket
+  # - Separate prefixes: cloudfront/, alb-logs/, app-logs/, vpc-flow-logs/
+  # 
+  # Best Practices:
+  # DO NOT enable CloudFront distribution (logs are not viewed via web)
+  # DO NOT enable Versioning (logs are immutable, never edited)
+  # DO NOT allow app to READ/DELETE logs (write-only access)
+  # Use tiered storage (Standard → IA → Glacier) for cost optimization
+  # Set lifecycle policy (logs grow very fast)
+  # Use SSE-KMS if audit/compliance requires encryption audit trail
+  # 
+  # IAM Permissions:
+  # - App: s3:PutObject ONLY (write logs)
+  # - App: NO s3:GetObject, NO s3:DeleteObject (security)
+  # ============================================================================
   LoggingBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${ProjectName}-logs'
+      
+      # ========================================================================
+      # Block All Public Access - REQUIRED
+      # ========================================================================
+      # Logs may contain sensitive information (IP addresses, user agents, etc.)
+      # Never expose logs publicly
+      # ========================================================================
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      
+      # ========================================================================
+      # Encryption at Rest
+      # ========================================================================
+      # Option 1: SSE-S3 (AES-256) - Free, automatic, no audit trail
+      # Option 2: SSE-KMS - Audit trail via CloudTrail (who accessed logs)
+      # 
+      # Use SSE-KMS if:
+      # - Compliance requires encryption audit trail
+      # - Need to track who accessed logs
+      # 
+      # Use SSE-S3 if:
+      # - Cost optimization (KMS has per-request charges)
+      # - No audit trail requirement
+      # ========================================================================
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256  # Change to 'aws:kms' for audit trail
+            BucketKeyEnabled: true  # Reduces KMS API calls (cost optimization)
+      
+      # ========================================================================
+      # Lifecycle Policy - REQUIRED (logs grow very fast)
+      # ========================================================================
+      # Tiered Storage Strategy for Cost Optimization:
+      # 
+      # Days 0-30: STANDARD storage class
+      #   - Use case: Active debugging, recent logs
+      #   - Access pattern: Frequent access
+      #   - Cost: $0.023/GB/month
+      # 
+      # Days 31-90: STANDARD_IA (Infrequent Access)
+      #   - Use case: Occasional lookups when investigating issues
+      #   - Access pattern: Infrequent access
+      #   - Cost: $0.0125/GB/month (46% cheaper)
+      # 
+      # Days 91-730: GLACIER_IR (Instant Retrieval)
+      #   - Use case: Compliance, audit trail, long-term retention
+      #   - Access pattern: Rare access (milliseconds retrieval)
+      #   - Cost: $0.004/GB/month (83% cheaper)
+      # 
+      # After 2 years: DELETE
+      #   - Alternative: Move to DEEP_ARCHIVE if need longer retention
+      #   - Deep Archive cost: $0.00099/GB/month (96% cheaper)
+      #   - Deep Archive retrieval: 12-48 hours
+      # ========================================================================
       LifecycleConfiguration:
         Rules:
-          - Id: DeleteOldLogs
+          - Id: TieredStorageForLogs
             Status: Enabled
-            ExpirationInDays: 90
+            # Days 0-30: STANDARD (active debugging, need fast access)
+            Transitions:
+              # Days 31-90: STANDARD_IA (lookup when needed)
+              - TransitionInDays: 31
+                StorageClass: STANDARD_IA
+              # Days 91-730: GLACIER_IR (keep for audit/compliance)
+              - TransitionInDays: 91
+                StorageClass: GLACIER_IR
+            # After 2 years: Delete (or use DEEP_ARCHIVE for longer retention)
+            ExpirationInDays: 730
+      
+      # ========================================================================
+      # Object Ownership - Allow CloudFront/ALB to Write Logs
+      # ========================================================================
+      # BucketOwnerPreferred: Bucket owner gets full control of objects
+      # Required for: CloudFront, ALB, VPC Flow Logs to write to this bucket
+      # ========================================================================
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerPreferred
+      
+      # ========================================================================
+      # IAM Permissions (configured separately in app IAM role):
+      # ========================================================================
+      # App should have:
+      # s3:PutObject (write logs only)
+      # NO s3:GetObject (prevent reading logs)
+      # NO s3:DeleteObject (prevent tampering with audit trail)
+      # ========================================================================
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-logs'
+        - Key: Purpose
+          Value: Centralized logging bucket
 
 Outputs:
   S3BucketName:

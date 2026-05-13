@@ -11,8 +11,12 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.700.0",
     "@aws-sdk/client-dynamodb": "^3.1031.0",
+    "@aws-sdk/client-s3": "^3.1031.0",
     "@aws-sdk/lib-dynamodb": "^3.1031.0",
+    "@aws-sdk/lib-storage": "^3.1031.0",
+    "@aws-sdk/s3-request-presigner": "^3.1031.0",
     "@google/genai": "^1.28.0",
     "@google/generative-ai": "^0.21.0",
     "@payos/node": "^2.0.3",

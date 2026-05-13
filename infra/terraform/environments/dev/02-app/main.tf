@@ -5,6 +5,13 @@ locals {
     ManagedBy   = "terraform"
   })
 
+  # Use default VPC (Service Control Policy prevents creating new VPC)
+  vpc_id              = data.aws_vpc.default.id
+  public_subnet_ids   = data.aws_subnets.default.ids
+  private_subnet_ids  = data.aws_subnets.default.ids  # Using same subnets as public (default VPC)
+  db_subnet_ids       = data.aws_subnets.default.ids  # Using same subnets
+  route_table_id      = data.aws_route_table.default.id
+
   uploads_bucket_name = "${var.project_name}-${data.aws_caller_identity.current.account_id}-uploads"
   ecs_cluster_name    = "${var.project_name}-cluster"
   ecs_service_name    = "${var.project_name}-service"
@@ -53,7 +60,7 @@ module "sg_alb" {
 
   name        = "${var.project_name}-alb-sg"
   description = "ALB allow 80/443 from internet"
-  vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
+  vpc_id      = local.vpc_id
 
   ingress_cidr_blocks = ["0.0.0.0/0"]
   ingress_rules       = ["http-80-tcp", "https-443-tcp"]
@@ -68,7 +75,7 @@ module "sg_ecs" {
 
   name        = "${var.project_name}-ecs-sg"
   description = "ECS allow traffic from ALB only"
-  vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
+  vpc_id      = local.vpc_id
 
   computed_ingress_with_source_security_group_id = [
     {
@@ -90,7 +97,7 @@ module "sg_redis" {
 
   name        = "${var.project_name}-redis-sg"
   description = "Redis allow 6379 from ECS only"
-  vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
+  vpc_id      = local.vpc_id
 
   computed_ingress_with_source_security_group_id = [
     {
@@ -183,8 +190,8 @@ module "alb" {
 
   name               = "${var.project_name}-alb"
   load_balancer_type = "application"
-  vpc_id             = data.terraform_remote_state.network.outputs.vpc_id
-  subnets            = data.terraform_remote_state.network.outputs.public_subnet_ids
+  vpc_id             = local.vpc_id
+  subnets            = local.public_subnet_ids
   security_groups    = [module.sg_alb.security_group_id]
 
   target_groups = {
@@ -246,8 +253,18 @@ module "dynamodb" {
     }
   ]
 
-  point_in_time_recovery_enabled = false
+  point_in_time_recovery_enabled = true  # Changed from false to true
 
+  tags = local.common_tags
+}
+
+# DynamoDB Chat Messages Table with Stream for Lambda
+module "dynamodb_chat" {
+  source = "../../../modules/dynamodb"
+
+  project_name = var.project_name
+  table_name   = "${var.project_name}-table"  # For compatibility with existing module
+  
   tags = local.common_tags
 }
 
@@ -289,7 +306,7 @@ module "elasticache" {
   num_cache_nodes = 1
 
   subnet_group_name  = "${var.project_name}-redis-subnet-group"
-  subnet_ids         = data.terraform_remote_state.network.outputs.db_subnet_ids
+  subnet_ids         = local.db_subnet_ids
   create_security_group = false
   security_group_ids = [module.sg_redis.security_group_id]
 
@@ -310,7 +327,7 @@ module "ecs_service" {
   cpu           = var.task_cpu
   memory        = var.task_memory
 
-  subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
+  subnet_ids         = local.private_subnet_ids
   security_group_ids = [module.sg_ecs.security_group_id]
   assign_public_ip   = false
 
@@ -327,7 +344,10 @@ module "ecs_service" {
       sid       = "KmsDecrypt"
       effect    = "Allow"
       actions   = ["kms:Decrypt"]
-      resources = ["*"]
+      # Use specific KMS key ARN pattern instead of wildcard
+      resources = [
+        "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"
+      ]
     }
   ]
 
@@ -607,4 +627,86 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
   alarm_actions = [aws_sns_topic.alerts.arn]
 
   tags = local.common_tags
+}
+
+# ============================================================================
+# Lambda Function for Bedrock Chat Processing
+# ============================================================================
+
+# Create placeholder zip file if it doesn't exist
+resource "null_resource" "lambda_placeholder" {
+  provisioner "local-exec" {
+    command = "if [ ! -f ../../../lambda-placeholder.zip ]; then echo 'placeholder' | zip ../../../lambda-placeholder.zip -; fi"
+    interpreter = ["bash", "-c"]
+  }
+}
+
+module "lambda_bedrock_chat" {
+  source = "../../../modules/lambda"
+  
+  project_name = var.project_name
+  environment  = "dev"
+  
+  # Lambda deployment package
+  # Build: cd backend/lambda/bedrock-chat && npm install && zip -r ../../bedrock-chat.zip .
+  lambda_zip_path = fileexists("${path.module}/../../../lambda-placeholder.zip") ? "${path.module}/../../../lambda-placeholder.zip" : "${path.module}/../../../../backend/lambda/bedrock-chat.zip"
+  
+  # Bedrock configuration
+  bedrock_kb_id     = "QVO2CHQ1MF"  # Your Bedrock Knowledge Base ID
+  bedrock_region    = "us-west-2"   # Bedrock KB region
+  
+  # DynamoDB configuration
+  dynamodb_table_name   = module.dynamodb_chat.chat_messages_table_name
+  dynamodb_table_arn    = module.dynamodb_chat.chat_messages_table_arn
+  dynamodb_stream_arn   = module.dynamodb_chat.chat_messages_stream_arn
+  
+  # MongoDB URI from Secrets Manager
+  mongodb_uri = data.aws_secretsmanager_secret_version.app_config.secret_string
+  
+  # CloudWatch Logs retention
+  log_retention_days = 7
+  
+  # VPC configuration (optional - enable if MongoDB is in VPC)
+  vpc_config_enabled = false
+  # subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
+  # security_group_ids = [module.sg_ecs.security_group_id]
+  
+  tags = local.common_tags
+  
+  depends_on = [
+    module.dynamodb_chat,
+    null_resource.lambda_placeholder
+  ]
+}
+
+# ============================================================================
+# VPC Endpoints for S3 and DynamoDB (Must-have 4)
+# ============================================================================
+
+# S3 Gateway Endpoint
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = local.vpc_id
+  service_name = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [local.route_table_id]
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-s3-endpoint"
+    Purpose = "S3 Gateway Endpoint for private subnet access"
+  })
+}
+
+# DynamoDB Gateway Endpoint
+resource "aws_vpc_endpoint" "dynamodb" {
+  vpc_id       = local.vpc_id
+  service_name = "com.amazonaws.${var.aws_region}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [local.route_table_id]
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-dynamodb-endpoint"
+    Purpose = "DynamoDB Gateway Endpoint for private subnet access"
+  })
 }

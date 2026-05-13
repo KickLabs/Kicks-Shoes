@@ -1,0 +1,50 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "BedrockAccess",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock:RetrieveAndGenerate",
+                "bedrock:Retrieve",
+                "bedrock:InvokeModel"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "DynamoDBAccess",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:Query"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:us-west-2:438465144712:table/kicks-shoes-dev-table",
+                "arn:aws:dynamodb:us-west-2:438465144712:table/kicks-shoes-dev-table/index/*"
+            ]
+        },
+        {
+            "Sid": "DynamoDBStreamAccess",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:DescribeStream",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:ListStreams"
+            ],
+            "Resource": "arn:aws:dynamodb:us-west-2:438465144712:table/kicks-shoes-dev-table/stream/*"
+        },
+        {
+            "Sid": "CloudWatchLogs",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/kicks-shoes-dev-*:*"
+        }
+    ]
+}

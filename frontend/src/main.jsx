@@ -91,6 +91,9 @@ import ShipperDashboard from './components/pages/shipper/ShipperDashboard';
 // AI Inventory
 import AIInventoryDashboard from './components/pages/dashboard/AIInventoryDashboard';
 
+// Bedrock Chat (Week 3)
+import BedrockChat from './components/pages/BedrockChat';
+
 const userInfo = localStorage.getItem('userInfo');
 const user = userInfo ? JSON.parse(userInfo) : null;
 
@@ -242,6 +245,10 @@ const router = createBrowserRouter([
       {
         path: 'outfit-suggestion',
         element: <OutfitSuggestionPage />,
+      },
+      {
+        path: 'ai-chat',
+        element: <BedrockChat />,
       },
       {
         path: 'shop/visual-search',
