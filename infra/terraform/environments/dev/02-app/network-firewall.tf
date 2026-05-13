@@ -72,11 +72,10 @@ resource "aws_networkfirewall_firewall" "main" {
   firewall_policy_arn = aws_networkfirewall_firewall_policy.main.arn
   vpc_id              = local.vpc_id
 
-  # Use first 2 subnets as firewall subnets
-  # In default VPC: reuse existing subnets (no dedicated firewall subnet possible)
-  # In custom VPC: use intra_subnets from 01-network
+  # Use intra subnets (firewall subnets) from 01-network stack
+  # Traffic path: ECS (private) → Firewall Endpoint (intra) → NAT GW (public) → IGW
   dynamic "subnet_mapping" {
-    for_each = slice(local.public_subnet_ids, 0, min(2, length(local.public_subnet_ids)))
+    for_each = data.terraform_remote_state.network.outputs.firewall_subnet_ids
     content {
       subnet_id = subnet_mapping.value
     }

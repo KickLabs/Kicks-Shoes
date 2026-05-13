@@ -5,12 +5,12 @@ locals {
     ManagedBy   = "terraform"
   })
 
-  # Use default VPC (Service Control Policy prevents creating new VPC)
-  vpc_id              = data.aws_vpc.default.id
-  public_subnet_ids   = data.aws_subnets.default.ids
-  private_subnet_ids  = data.aws_subnets.default.ids  # Using same subnets as public (default VPC)
-  db_subnet_ids       = data.aws_subnets.default.ids  # Using same subnets
-  route_table_id      = data.aws_route_table.default.id
+  # Use project VPC from network stack (traffic goes through Network Firewall)
+  vpc_id              = data.terraform_remote_state.network.outputs.vpc_id
+  public_subnet_ids   = data.terraform_remote_state.network.outputs.public_subnet_ids
+  private_subnet_ids  = data.terraform_remote_state.network.outputs.private_subnet_ids
+  db_subnet_ids       = data.terraform_remote_state.network.outputs.db_subnet_ids
+  route_table_id      = data.aws_route_table.private.id
 
   uploads_bucket_name = "${var.project_name}-${data.aws_caller_identity.current.account_id}-uploads"
   ecs_cluster_name    = "${var.project_name}-cluster"
@@ -233,31 +233,6 @@ module "ecs_cluster" {
   tags = local.common_tags
 }
 
-module "dynamodb" {
-  source  = "terraform-aws-modules/dynamodb-table/aws"
-  version = "~> 4.0"
-
-  name         = "${var.project_name}-table"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "pk"
-  range_key    = "sk"
-
-  attributes = [
-    {
-      name = "pk"
-      type = "S"
-    },
-    {
-      name = "sk"
-      type = "S"
-    }
-  ]
-
-  point_in_time_recovery_enabled = true  # Changed from false to true
-
-  tags = local.common_tags
-}
-
 # DynamoDB Chat Messages Table with Stream for Lambda
 module "dynamodb_chat" {
   source = "../../../modules/dynamodb"
@@ -329,7 +304,7 @@ module "ecs_service" {
 
   subnet_ids         = local.private_subnet_ids
   security_group_ids = [module.sg_ecs.security_group_id]
-  assign_public_ip   = false
+  assign_public_ip   = false  # Private subnet with NAT GW via firewall
 
   create_task_exec_iam_role = true
   task_exec_secret_arns = [data.aws_secretsmanager_secret.app_config.arn]
@@ -368,8 +343,8 @@ module "ecs_service" {
         "dynamodb:UpdateItem"
       ]
       resources = [
-        module.dynamodb.dynamodb_table_arn,
-        "${module.dynamodb.dynamodb_table_arn}/index/*"
+        module.dynamodb_chat.dynamodb_table_arn,
+        "${module.dynamodb_chat.dynamodb_table_arn}/index/*"
       ]
     },
     {
@@ -445,7 +420,15 @@ module "ecs_service" {
         },
         {
           name  = "DYNAMODB_TABLE_NAME"
-          value = module.dynamodb.dynamodb_table_id
+          value = module.dynamodb_chat.dynamodb_table_id
+        },
+        {
+          name  = "ALLOW_ANY_CLOUDFRONT"
+          value = "true"
+        },
+        {
+          name  = "CLOUDFRONT_URL"
+          value = "https://d1n7m1eramrdgj.cloudfront.net"
         }
       ]
       secrets = [
@@ -670,8 +653,8 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
 # Create placeholder zip file if it doesn't exist
 resource "null_resource" "lambda_placeholder" {
   provisioner "local-exec" {
-    command = "if [ ! -f ../../../lambda-placeholder.zip ]; then echo 'placeholder' | zip ../../../lambda-placeholder.zip -; fi"
-    interpreter = ["bash", "-c"]
+    command     = "if (-not (Test-Path '../../../lambda-placeholder.zip')) { Compress-Archive -Path (New-Item -ItemType File -Path 'placeholder.txt' -Value 'placeholder' -Force) -DestinationPath '../../../lambda-placeholder.zip' -Force }"
+    interpreter = ["PowerShell", "-Command"]
   }
 }
 
@@ -744,3 +727,14 @@ resource "aws_vpc_endpoint" "dynamodb" {
     Purpose = "DynamoDB Gateway Endpoint for private subnet access"
   })
 }
+
+# ============================================================================
+# W5 MH2: Route private subnet traffic through Network Firewall
+# Private subnet → Firewall endpoint → NAT GW → Internet
+# ============================================================================
+
+# resource "aws_route" "private_to_firewall" {
+#   route_table_id         = data.aws_route_table.private.id
+#   destination_cidr_block = "0.0.0.0/0"
+#   vpc_endpoint_id        = tolist(aws_networkfirewall_firewall.main.firewall_status[0].sync_states)[0].attachment[0].endpoint_id
+# }

@@ -66,7 +66,6 @@ resource "aws_lambda_function" "jwt_authorizer" {
   environment {
     variables = {
       SECRET_NAME = var.app_config_secret_name
-      AWS_REGION  = var.aws_region
     }
   }
 
@@ -143,6 +142,7 @@ resource "aws_apigatewayv2_stage" "default" {
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway.arn
+    format         = "$context.requestId"
   }
 
   tags = local.common_tags

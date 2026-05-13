@@ -15,7 +15,7 @@ output "ecs_service_name" {
 }
 
 output "dynamodb_table_name" {
-  value = module.dynamodb.dynamodb_table_id
+  value = module.dynamodb_chat.dynamodb_table_id
 }
 
 output "s3_uploads_bucket" {
@@ -119,24 +119,4 @@ output "bedrock_dlq_arn" {
 output "efs_file_system_id" {
   description = "EFS file system ID"
   value       = aws_efs_file_system.main.id
-}
-
-output "backup_vault_name" {
-  description = "AWS Backup vault name"
-  value       = aws_backup_vault.main.name
-}
-
-output "backup_role_arn" {
-  description = "IAM role ARN for triggering manual backup jobs"
-  value       = aws_iam_role.backup.arn
-}
-
-output "network_firewall_arn" {
-  description = "Network Firewall ARN"
-  value       = aws_networkfirewall_firewall.main.arn
-}
-
-output "firewall_alert_log_group" {
-  description = "CloudWatch Log Group for firewall alert logs (blocked requests)"
-  value       = aws_cloudwatch_log_group.firewall_alert.name
 }

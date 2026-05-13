@@ -103,7 +103,7 @@ resource "aws_backup_selection" "dynamodb_main" {
   plan_id      = aws_backup_plan.daily.id
   iam_role_arn = aws_iam_role.backup.arn
 
-  resources = [module.dynamodb.dynamodb_table_arn]
+  resources = [module.dynamodb_chat.dynamodb_table_arn]
 }
 
 # -----------------------------------------------------------------------------
