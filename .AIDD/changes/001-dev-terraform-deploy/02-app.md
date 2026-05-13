@@ -129,19 +129,19 @@ terraform {
 data "terraform_remote_state" "network" {
   backend = "s3"
   config = {
-    bucket = "kicks-shoes-tf-state"
+    bucket = "kicks-shoes-state-trang"
     key    = "dev/01-network/terraform.tfstate"
     region = "ap-southeast-1"
   }
 }
 
-# Existing Route53 hosted zone
+# Lấy thông tin Hosted Zone từ Route53 (đã có sẵn)
 data "aws_route53_zone" "main" {
   name         = var.domain_name
   private_zone = false
 }
 
-# Existing Secrets Manager secret (pre-created manually or via CLI)
+# Lấy bí mật từ Secrets Manager (phải tạo trước bằng tay)
 data "aws_secretsmanager_secret" "app_config" {
   name = var.app_config_secret_name
 }

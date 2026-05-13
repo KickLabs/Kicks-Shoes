@@ -198,10 +198,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket  = "kicks-shoes-tf-state"
+    bucket  = "kicks-shoes-state-trang"
     key     = "dev/01-network/terraform.tfstate"
     region  = "ap-southeast-1"
     encrypt = true
+    # dynamodb_table = "terraform-locks" 
   }
 }
 ```

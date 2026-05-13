@@ -1,0 +1,66 @@
+{
+    "Parameters": [
+        {
+            "ParameterKey": "WAFWebACLArn",
+            "DefaultValue": "",
+            "NoEcho": false,
+            "Description": "WAF Web ACL ARN (optional, must be created in us-east-1 first)"
+        },
+        {
+            "ParameterKey": "ProjectName",
+            "DefaultValue": "kicks-shoes",
+            "NoEcho": false,
+            "Description": "Project name for resource naming"
+        },
+        {
+            "ParameterKey": "DomainName",
+            "DefaultValue": "",
+            "NoEcho": false,
+            "Description": "Custom domain name (optional, e.g., www.example.com)"
+        },
+        {
+            "ParameterKey": "CertificateArn",
+            "DefaultValue": "",
+            "NoEcho": false,
+            "Description": "ACM Certificate ARN for custom domain (must be in us-east-1)"
+        }
+    ],
+    "Description": "S3 + CloudFront Stack for Frontend Deployment (without WAF)",
+    "Capabilities": [
+        "CAPABILITY_NAMED_IAM"
+    ],
+    "CapabilitiesReason": "The following resource(s) require capabilities: [AWS::IAM::Role]"
+}
+{
+    "Parameters": [
+        {
+            "ParameterKey": "WAFWebACLArn",
+            "DefaultValue": "",
+            "NoEcho": false,
+            "Description": "WAF Web ACL ARN (optional, must be created in us-east-1 first)"
+        },
+        {
+            "ParameterKey": "ProjectName",
+            "DefaultValue": "kicks-shoes",
+            "NoEcho": false,
+            "Description": "Project name for resource naming"
+        },
+        {
+            "ParameterKey": "DomainName",
+            "DefaultValue": "",
+            "NoEcho": false,
+            "Description": "Custom domain name (optional, e.g., www.example.com)"
+        },
+        {
+            "ParameterKey": "CertificateArn",
+            "DefaultValue": "",
+            "NoEcho": false,
+            "Description": "ACM Certificate ARN for custom domain (must be in us-east-1)"
+        }
+    ],
+    "Description": "S3 + CloudFront Stack for Frontend Deployment (without WAF)",
+    "Capabilities": [
+        "CAPABILITY_NAMED_IAM"
+    ],
+    "CapabilitiesReason": "The following resource(s) require capabilities: [AWS::IAM::Role]"
+}
