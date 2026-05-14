@@ -33,6 +33,104 @@ Trước khi đi vào chi tiết, hãy nắm vững các khái niệm cơ bản:
 
 ---
 
+## 0. Nền tảng: Kiến trúc VPC Multi-tier (Tòa nhà Nhiều tầng)
+
+> [!IMPORTANT]
+> Đây là **kiến trúc nền móng** cho toàn bộ 5 Must-Have. Mọi MH đều hoạt động bên trong VPC Multi-tier này.
+
+### 📚 Định nghĩa
+**VPC Multi-tier** là kiến trúc phân lớp mạng, chia VPC thành **nhiều tầng subnet** riêng biệt, mỗi tầng có mức độ truy cập Internet và mục đích sử dụng khác nhau. Trong dự án Kicks Shoes, VPC được chia thành **4 tầng**:
+
+```mermaid
+graph TB
+    INTERNET((Internet)) -->|Truy cập trực tiếp| PUB
+    subgraph VPC ["VPC 10.0.0.0/16 (Tòa nhà)"]
+        subgraph PUB ["Tầng 1: Public Subnet (Sảnh đón khách)"]
+            ALB[Application Load Balancer]
+            NAT[NAT Gateway]
+        end
+        subgraph PRIV ["Tầng 2: Private Subnet (Phòng làm việc kín)"]
+            ECS[ECS Fargate Backend]
+        end
+        subgraph INTRA ["Tầng 3: Intra Subnet (Trạm kiểm duyệt)"]
+            FW[Network Firewall Endpoint]
+        end
+        subgraph DB ["Tầng 4: Database Subnet (Két sắt)"]
+            REDIS[Redis Cache]
+        end
+    end
+    ECS -->|MH2: Route qua Firewall| FW
+    FW -->|Hợp lệ| NAT
+    NAT --> INTERNET
+```
+
+| Tầng | Tên trong Code | CIDR ví dụ | Đặt gì ở đây? | Đặc điểm truy cập Internet |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Public** | `public_subnets` | `10.0.1.0/24`, `10.0.2.0/24` | ALB (cổng đón khách), NAT Gateway | ✅ Ra/vào Internet trực tiếp qua IGW |
+| **2. Private** | `private_subnets` | `10.0.11.0/24`, `10.0.12.0/24` | ECS Fargate (server backend) | 🔒 Chỉ ra Internet qua Firewall → NAT (MH2) |
+| **3. Intra** | `intra_subnets` | `10.0.21.0/24`, `10.0.22.0/24` | Network Firewall Endpoint | 🔒 Mặc định **cô lập hoàn toàn**, MH2 bổ sung route → NAT |
+| **4. Database** | `database_subnets` | `10.0.31.0/24`, `10.0.32.0/24` | Redis Cache, RDS (nếu có) | 🔒 Ra Internet qua NAT (để cập nhật patch) |
+
+### 💻 Code Terraform — Giải thích từng dòng
+
+**File:** [01-network/main.tf](file:///d:/Workspace/Study/AWS/Kicks-Shoes-AWS/infra/terraform/environments/dev/01-network/main.tf)
+
+```hcl
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"  # Dùng module cộng đồng (có sẵn, không cần viết từ đầu)
+  version = "~> 5.0"
+
+  name = "${var.project_name}-vpc"   # Tên tòa nhà
+  cidr = var.vpc_cidr                # 10.0.0.0/16 = Dải IP tổng (65,536 địa chỉ)
+
+  # Triển khai trên 2 Availability Zones (2 trung tâm dữ liệu vật lý cách xa nhau)
+  # Nếu 1 trung tâm bị sập → Trung tâm còn lại vẫn hoạt động
+  azs = slice(data.aws_availability_zones.available.names, 0, 2)
+
+  # === ĐÂY CHÍNH LÀ PHẦN MULTI-TIER — Khai báo 4 tầng subnet ===
+  public_subnets   = var.public_subnet_cidrs    # Tầng 1: Sảnh đón khách
+  private_subnets  = var.private_subnet_cidrs   # Tầng 2: Phòng làm việc kín
+  database_subnets = var.db_subnet_cidrs        # Tầng 3: Két sắt database
+  intra_subnets    = var.firewall_subnet_cidrs  # Tầng 4: Trạm kiểm duyệt (W5 MH2)
+
+  # NAT Gateway: Cửa một chiều cho tầng hầm (Private) ra Internet
+  enable_nat_gateway     = true
+  single_nat_gateway     = true   # Dev: Dùng 1 NAT GW để tiết kiệm tiền (~$32/tháng)
+  one_nat_gateway_per_az = false
+
+  # DNS: Cho phép các server trong VPC tra cứu tên miền
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  # Tạo bảng route riêng cho tầng Database
+  create_database_subnet_group       = true
+  create_database_subnet_route_table = true
+}
+```
+
+### 🔗 Mapping sang các Must-Have
+* **MH1** gắn VPC Flow Logs lên toàn bộ VPC → Giám sát traffic ở **cả 4 tầng**.
+* **MH2** khai thác tầng **Intra** để đặt Firewall Endpoint, sửa Route Table tầng **Private** → ép traffic đi qua Firewall trước.
+* **MH3** gắn EFS Mount Target vào tầng **Private** (nơi Fargate chạy).
+* **MH4** & **MH5** chạy Lambda/API Gateway ở ngoài VPC (serverless) nhưng giao tiếp với DynamoDB nằm trong **hạ tầng AWS nội bộ**.
+
+### 🖥️ Cách xem trên AWS Console
+1. Mở **AWS Console** → Tìm dịch vụ **VPC** → Menu trái chọn **Your VPCs** → Click `kicks-shoes-dev-tientp-vpc`.
+2. Menu trái chọn **Subnets** → Lọc theo VPC → Bạn sẽ thấy **8 subnet** (4 tầng × 2 AZ):
+   - 2 subnet có tag `public` (Tầng 1)
+   - 2 subnet có tag `private` (Tầng 2)
+   - 2 subnet có tag `firewall` hoặc `intra` (Tầng 3)
+   - 2 subnet có tag `database` (Tầng 4)
+3. Menu trái chọn **Route tables** → Mỗi tầng có bảng chỉ đường riêng:
+   - `kicks-shoes-dev-tientp-vpc-public` → Route `0.0.0.0/0` trỏ đến `igw-...` (Internet Gateway)
+   - `kicks-shoes-dev-tientp-vpc-private` → Route `0.0.0.0/0` trỏ đến `vpce-...` (Firewall Endpoint)
+   - `kicks-shoes-dev-tientp-vpc-intra` → Route `0.0.0.0/0` trỏ đến `nat-...` (NAT Gateway)
+   - `kicks-shoes-dev-tientp-vpc-db` → Route `0.0.0.0/0` trỏ đến `nat-...` (NAT Gateway)
+4. Menu trái chọn **NAT gateways** → Thấy 1 NAT Gateway đang Active trong Public Subnet.
+5. Menu trái chọn **Internet gateways** → Thấy 1 IGW đã Attached vào VPC.
+
+---
+
 ## 1. MH1 — VPC Flow Logs (Camera An Ninh Mạng)
 
 ### 📚 Định nghĩa
@@ -115,7 +213,7 @@ resource "aws_flow_log" "vpc" {
 1. Đăng nhập **AWS Console** → Tìm dịch vụ **VPC** (gõ "VPC" trên thanh tìm kiếm).
 2. Menu bên trái chọn **Your VPCs** → Click vào VPC `kicks-shoes-dev-tientp-vpc`.
 3. Chọn tab **Flow logs** → Bạn sẽ thấy Flow Log đang Active, trỏ đến CloudWatch Log Group.
-4. Muốn đọc nội dung log? Mở dịch vụ **CloudWatch** → **Logs** → **Log groups** → Tìm `/vpc/kicks-shoes-dev-tientp/flow-logs` → Click vào **Log streams** để xem các bản ghi chi tiết.
+4. Muốn đọc nội dung log? Mở dịch vụ **CloudWatch** → **Logs** → **Logs Management** → **Log groups** → Tìm `/vpc/kicks-shoes-dev-tientp/flow-logs` → Click vào **Log streams** để xem các bản ghi chi tiết.
 
 ---
 

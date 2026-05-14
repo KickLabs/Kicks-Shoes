@@ -217,12 +217,32 @@ resource "aws_apigatewayv2_stage" "default" {
 }
 ```
 
-### 🖥️ Cách xem trên AWS Console
-1. Mở **AWS Console** → Tìm dịch vụ **API Gateway** → Click `kicks-shoes-dev-tientp-bedrock-api`.
-2. Menu trái chọn **Routes** → Thấy route `POST /chat` với Authorizer đã gắn.
-3. Menu trái chọn **Authorization** → Click vào route `POST /chat` → Thấy `jwt-authorizer` đang bảo vệ.
-4. Menu trái chọn **Stages** → Click `$default` → Tab **Route settings** → Xem Throttling (Rate: 10, Burst: 20).
-5. **Xem Lambda Authorizer:** Mở dịch vụ **Lambda** → Tìm `kicks-shoes-dev-tientp-jwt-authorizer` → Tab **Configuration** → **Environment variables** → Thấy `SECRET_NAME` trỏ đến Secrets Manager.
+### 🖥️ Cách xem và Chụp ảnh Nghiệm thu (Evidence Screenshots) trên AWS Console
+1. **Chụp sơ đồ tích hợp Route:** Mở **AWS Console** → Tìm dịch vụ **API Gateway** → Click `kicks-shoes-dev-tientp-bedrock-api`. Menu trái chọn **Routes** → Mở rộng tuyến `POST /chat` để thấy luồng kết nối trực quan xuống Lambda. 👉 *Chụp màn hình sơ đồ này.*
+2. **Chụp cấu hình bảo mật:** Menu trái chọn **Authorization** → Click vào route `POST /chat` → Khung bên phải hiển thị Authorizer đang bảo vệ. 👉 *Chụp màn hình xác thực JWT.*
+3. **Chụp thông số giới hạn tốc độ:** Menu trái chọn **Stages** → Click `$default` → Tab **Route settings** (hoặc Default Throttling) → Thấy rõ chỉ số bảo vệ biên (Rate: 10, Burst: 20). 👉 *Chụp minh chứng Throttling.*
+4. **Chụp ảnh nghiệm thử dòng lệnh thực tế (PowerShell thuần):** 
+   Thay vì dùng `curl` dễ bị mất dấu ngoặc kép trên Windows, dán khối lệnh sau vào PowerShell để lấy ảnh màn hình kết quả lộng lẫy, chuẩn UTF-8:
+   ```powershell
+   [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+   $headers = @{
+       "Authorization" = "Bearer <DAN_TOKEN_CUA_BAN_VAO_DAY>"
+       "Content-Type"  = "application/json"
+   }
+   $body = @{ message = "Tư vấn cho tôi giày chạy bộ" } | ConvertTo-Json -Compress
+   Invoke-RestMethod -Uri "https://tihs825aph.execute-api.us-east-1.amazonaws.com/chat" -Method Post -Headers $headers -Body $body
+   ```
+
+> [!NOTE]
+> **💡 Giải ngố lỗi hiển thị Trigger trên AWS Lambda Console:**
+> Khi kiểm tra Lambda `kicks-shoes-dev-tientp-jwt-authorizer` trên giao diện AWS Console (tab Triggers), bạn có thể gặp thông báo màu đỏ/vàng dạng:
+> *"The API with ID tihs825aph doesn’t include a route with path /* having an integration..."*
+> 
+> **Bản chất:** Đây là một **cảnh báo ảo (False Positive)** cực kỳ phổ biến của giao diện AWS Console đối với **HTTP API Gateway (v2)**.
+> - Trong code Terraform, chúng ta cấu hình `source_arn` tuân thủ nghiêm ngặt nguyên tắc **Đặc quyền tối thiểu (Least Privilege)**, trỏ chính xác đến tài nguyên Authorizer:
+>   `source_arn = "${aws_apigatewayv2_api.bedrock.execution_arn}/authorizers/${aws_apigatewayv2_authorizer.jwt.id}"`
+> - Tuy nhiên, cơ chế kiểm tra tự động của giao diện Lambda Console lại được thiết kế để tìm kiếm định dạng của một *Route Integration* (chứa path `/*`). Do không thấy path tương ứng, Console tự động hiển thị cảnh báo này.
+> - **Thực tế:** Chức năng kiểm tra Token JWT và bảo vệ API Gateway vẫn hoạt động hoàn toàn chính xác và an toàn. Bạn hoàn toàn có thể yên tâm bỏ qua thông báo này, hoặc áp dụng cách mở rộng `source_arn` thành `/*/*` (đã được comment sẵn trong file `api-gateway.tf`) nếu muốn làm sạch hoàn toàn giao diện Console khi chụp ảnh minh chứng (Evidence Pack).
 
 ---
 
@@ -313,21 +333,20 @@ resource "aws_lambda_event_source_mapping" "dynamodb_stream" {
 }
 ```
 
-### 🖥️ Cách xem trên AWS Console
+### 🖥️ Cách xem và Chụp ảnh Nghiệm thu (Evidence Screenshots) trên AWS Console
+**1. Chụp cấu hình Trigger & Cơ chế luân chuyển lỗi (Event Source Mapping):**
+- Mở **AWS Console** → Dịch vụ **Lambda** → Tìm `kicks-shoes-dev-tientp-bedrock-chat`.
+- Tab **Configuration** → **Triggers** → Nhấn vào khối DynamoDB Trigger.
+- Bảng chi tiết mở rộng sẽ hiển thị rõ ràng thông số bảo vệ: **Batch size** (10), **Retry attempts** (`2`), và **On-failure destination** trỏ chính xác về SQS DLQ ARN. 👉 *Chụp trọn vẹn bảng thông số này.*
 
-**Xem Lambda & Event Source Mapping:**
-1. Mở **AWS Console** → Dịch vụ **Lambda** → Tìm `kicks-shoes-dev-tientp-bedrock-chat`.
-2. Tab **Configuration** → **Triggers** → Thấy DynamoDB trigger đang Active.
-3. Click vào trigger → Xem chi tiết: Batch size, Filter criteria, Retry attempts.
+**2. Chụp thông số bảo tồn dữ liệu của SQS DLQ:**
+- Mở dịch vụ **SQS** → Tìm và chọn hàng đợi `kicks-shoes-dev-tientp-bedrock-dlq`.
+- Màn hình Overview hiển thị thời hạn lưu giữ tối đa: **Message retention period** là **14 ngày** (1209600 giây), đảm bảo không bao giờ trôi mất gói tin thất bại. 👉 *Chụp tổng quan hàng đợi SQS.*
 
-**Xem SQS Dead-Letter Queue:**
-1. Mở dịch vụ **SQS** → Tìm `kicks-shoes-dev-tientp-bedrock-dlq`.
-2. Tab **Monitoring** → Biểu đồ hiển thị số lượng tin nhắn lỗi đang nằm trong hàng đợi.
-3. Nếu có tin nhắn lỗi → Click **Send and receive messages** → **Poll for messages** → Đọc nội dung tin nhắn lỗi để debug.
-
-**Xem DynamoDB Streams:**
-1. Mở dịch vụ **DynamoDB** → **Tables** → Click `kicks-shoes-dev-tientp-chat-messages`.
-2. Tab **Exports and streams** → Mục **DynamoDB stream details** → Thấy Stream đang "Enabled" với chế độ "New image".
+**3. Chụp tính năng Tối tân: Giao diện Phục hồi Thông điệp Lỗi (DLQ Redrive):**
+- Vẫn tại trang chi tiết hàng đợi `kicks-shoes-dev-tientp-bedrock-dlq` ở trên.
+- Nhìn lên góc trên cùng bên phải, nhấn vào nút hành động đặc biệt: **Start DLQ redrive** (Bắt đầu khôi phục DLQ).
+- Màn hình chuyển sang bảng điều khiển chuẩn bị đẩy ngược các gói tin bị lỗi về lại nguồn phát để hệ thống AI phân tích lại. 👉 *Chụp trọn vẹn màn hình giao diện Redrive mang tính sát thủ này.*
 
 ---
 

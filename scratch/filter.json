@@ -1,0 +1,7 @@
+{
+  "Filters": [
+    {
+      "Pattern": "{\"eventName\":[\"INSERT\"]}"
+    }
+  ]
+}

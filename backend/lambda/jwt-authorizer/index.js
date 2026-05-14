@@ -15,7 +15,7 @@ import {
 import jwt from 'jsonwebtoken';
 
 const secretsClient = new SecretsManagerClient({
-  region: process.env.AWS_REGION || 'ap-southeast-1',
+  region: process.env.AWS_REGION || 'us-east-1',
 });
 
 // Cache secret to avoid Secrets Manager call on every invocation

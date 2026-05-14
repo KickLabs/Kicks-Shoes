@@ -47,6 +47,7 @@ resource "aws_networkfirewall_firewall_policy" "main" {
   firewall_policy {
     stateless_default_actions          = ["aws:forward_to_sfe"]
     stateless_fragment_default_actions = ["aws:forward_to_sfe"]
+    stateful_default_actions           = ["aws:alert_strict"]
 
     stateful_rule_group_reference {
       resource_arn = aws_networkfirewall_rule_group.domain_allowlist.arn
@@ -75,7 +76,7 @@ resource "aws_networkfirewall_firewall" "main" {
   # Use intra subnets (firewall subnets) from 01-network stack
   # Traffic path: ECS (private) → Firewall Endpoint (intra) → NAT GW (public) → IGW
   dynamic "subnet_mapping" {
-    for_each = data.terraform_remote_state.network.outputs.firewall_subnet_ids
+    for_each = local.public_subnet_ids
     content {
       subnet_id = subnet_mapping.value
     }
