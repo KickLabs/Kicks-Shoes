@@ -5,11 +5,11 @@ locals {
     ManagedBy   = "terraform"
   })
 
-  # Use project VPC from network stack (traffic goes through Network Firewall)
-  vpc_id             = data.terraform_remote_state.network.outputs.vpc_id
-  public_subnet_ids  = data.terraform_remote_state.network.outputs.public_subnet_ids
-  private_subnet_ids = data.terraform_remote_state.network.outputs.private_subnet_ids
-  db_subnet_ids      = data.terraform_remote_state.network.outputs.db_subnet_ids
+  # Use project VPC from dynamic lookup
+  vpc_id             = data.aws_vpc.main.id
+  public_subnet_ids  = data.aws_subnets.public.ids
+  private_subnet_ids = data.aws_subnets.private.ids
+  db_subnet_ids      = data.aws_subnets.private.ids
   route_table_id     = data.aws_route_table.private.id
 
   uploads_bucket_name = "${var.project_name}-${data.aws_caller_identity.current.account_id}-uploads"
@@ -344,7 +344,9 @@ module "ecs_service" {
       ]
       resources = [
         module.dynamodb_chat.dynamodb_table_arn,
-        "${module.dynamodb_chat.dynamodb_table_arn}/index/*"
+        "${module.dynamodb_chat.dynamodb_table_arn}/index/*",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/kicks-shoes-chat-messages",
+        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/kicks-shoes-chat-messages/index/*"
       ]
     },
     {
@@ -420,7 +422,11 @@ module "ecs_service" {
         },
         {
           name  = "DYNAMODB_TABLE_NAME"
-          value = module.dynamodb_chat.dynamodb_table_id
+          value = module.dynamodb_chat.chat_messages_table_name
+        },
+        {
+          name  = "DYNAMODB_CHAT_TABLE"
+          value = module.dynamodb_chat.chat_messages_table_name
         },
         {
           name  = "ALLOW_ANY_CLOUDFRONT"
@@ -669,8 +675,8 @@ module "lambda_bedrock_chat" {
   lambda_zip_path = fileexists("${path.module}/../../../lambda-placeholder.zip") ? "${path.module}/../../../lambda-placeholder.zip" : "${path.module}/../../../../backend/lambda/bedrock-chat.zip"
 
   # Bedrock configuration
-  bedrock_kb_id  = "QVO2CHQ1MF" # Your Bedrock Knowledge Base ID
-  bedrock_region = "us-west-2"  # Bedrock KB region
+  bedrock_kb_id  = "3MR7O4U9IC" # Your Bedrock Knowledge Base ID
+  bedrock_region = "us-east-1"  # Bedrock KB region
 
   # DynamoDB configuration
   dynamodb_table_name = module.dynamodb_chat.chat_messages_table_name
@@ -683,10 +689,10 @@ module "lambda_bedrock_chat" {
   # CloudWatch Logs retention
   log_retention_days = 7
 
-  # VPC configuration (optional - enable if MongoDB is in VPC)
-  vpc_config_enabled = false
-  # subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
-  # security_group_ids = [module.sg_ecs.security_group_id]
+  # VPC configuration để tuân thủ định tuyến qua NAT Gateway / Network Firewall
+  vpc_config_enabled = true
+  subnet_ids         = local.private_subnet_ids
+  security_group_ids = [module.sg_ecs.security_group_id]
 
   tags = local.common_tags
 
@@ -758,8 +764,8 @@ resource "null_resource" "firewall_routing" {
           aws ec2 create-route --route-table-id ${data.aws_route_table.private.id} --destination-cidr-block 0.0.0.0/0 --vpc-endpoint-id $endpointId --region ${var.aws_region} 2>&1 | Out-Null
         }
 
-        $natGwId = "${data.terraform_remote_state.network.outputs.natgw_ids[0]}"
-        $intraRtId = "${data.terraform_remote_state.network.outputs.intra_route_table_ids[0]}"
+        $natGwId = (aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=${data.aws_vpc.main.id}" --region ${var.aws_region} --query "NatGateways[0].NatGatewayId" --output text)
+        $intraRtId = (aws ec2 describe-route-tables --filters "Name=vpc-id,Values=${data.aws_vpc.main.id}" "Name=tag:Name,Values=*intra*" --region ${var.aws_region} --query "RouteTables[0].RouteTableId" --output text)
         Write-Host "Updating intra route table $intraRtId to route via NAT Gateway $natGwId..."
         aws ec2 replace-route --route-table-id $intraRtId --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $natGwId --region ${var.aws_region} 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {

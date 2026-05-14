@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import bedrockChatService from '../../services/bedrockChatService';
+import ReactMarkdown from 'react-markdown';
 import './BedrockChat.css';
 
 const BedrockChat = ({ isWidget = false }) => {
@@ -110,15 +111,25 @@ const BedrockChat = ({ isWidget = false }) => {
       };
       setMessages(prev => [...prev, tempUserMessage]);
 
-      // Send to backend
-      await bedrockChatService.sendMessage(userMessage);
-      console.log('Message sent, waiting for AI response...');
-
-      // Reload messages after 3 seconds to get AI response
-      setTimeout(async () => {
-        await loadMessages();
+      // Send to backend or API Gateway
+      const bedrockUrl = import.meta.env.VITE_BEDROCK_API_URL;
+      
+      if (bedrockUrl) {
+        console.log('Using Direct API Gateway (MH4)');
+        const token = localStorage.getItem('accessToken');
+        const aiResponse = await bedrockChatService.sendBedrockDirect(userMessage, token);
+        setMessages(prev => [...prev.filter(m => !m._temp), tempUserMessage, aiResponse]);
         setIsLoading(false);
-      }, 3000);
+      } else {
+        await bedrockChatService.sendMessage(userMessage);
+        console.log('Message sent, waiting for AI response...');
+
+        // Reload messages after 3 seconds to get AI response
+        setTimeout(async () => {
+          await loadMessages();
+          setIsLoading(false);
+        }, 3000);
+      }
 
     } catch (err) {
       console.error('Error sending message:', err);
@@ -157,8 +168,8 @@ const BedrockChat = ({ isWidget = false }) => {
             {formatTime(message.timestamp)}
           </span>
         </div>
-        <div className="message-content">
-          {message.content}
+        <div className="message-content markdown-content">
+          <ReactMarkdown>{message.content || ''}</ReactMarkdown>
         </div>
         {isAI && message.metadata && (
           <div className="message-metadata">
@@ -242,7 +253,7 @@ const BedrockChat = ({ isWidget = false }) => {
 
       <div className="chat-footer">
         <small>
-          Powered by AWS Bedrock • Knowledge Base ID: QVO2CHQ1MF
+          Powered by AWS Bedrock • Knowledge Base ID: 3MR7O4U9IC
         </small>
       </div>
     </div>

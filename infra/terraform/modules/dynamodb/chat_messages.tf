@@ -6,18 +6,18 @@ resource "aws_dynamodb_table" "chat_messages" {
   billing_mode = "PAY_PER_REQUEST"
   
   # Primary key
-  hash_key  = "conversationId"
-  range_key = "timestamp"
+  hash_key  = "pk"
+  range_key = "sk"
   
   # Attributes
   attribute {
-    name = "conversationId"
+    name = "pk"
     type = "S"
   }
   
   attribute {
-    name = "timestamp"
-    type = "N"
+    name = "sk"
+    type = "S"
   }
   
   attribute {
@@ -34,7 +34,7 @@ resource "aws_dynamodb_table" "chat_messages" {
   global_secondary_index {
     name            = "UserMessagesIndex"
     hash_key        = "userId"
-    range_key       = "timestamp"
+    range_key       = "sk"
     projection_type = "ALL"
   }
   
@@ -42,7 +42,7 @@ resource "aws_dynamodb_table" "chat_messages" {
   global_secondary_index {
     name            = "MessageTypeIndex"
     hash_key        = "messageType"
-    range_key       = "timestamp"
+    range_key       = "sk"
     projection_type = "ALL"
   }
   
