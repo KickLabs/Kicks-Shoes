@@ -1,0 +1,15 @@
+{
+  "name": "jwt-authorizer",
+  "version": "1.0.0",
+  "description": "Lambda JWT Authorizer for API Gateway",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm install --omit=dev && zip -r authorizer.zip index.js node_modules/",
+    "build:win": "npm install --omit=dev && powershell Compress-Archive -Path index.js,node_modules -DestinationPath authorizer.zip -Force"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "3.1031.0",
+    "jsonwebtoken": "9.0.2"
+  }
+}

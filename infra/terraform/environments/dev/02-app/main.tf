@@ -5,12 +5,12 @@ locals {
     ManagedBy   = "terraform"
   })
 
-  # Use default VPC (Service Control Policy prevents creating new VPC)
-  vpc_id              = data.aws_vpc.default.id
-  public_subnet_ids   = data.aws_subnets.default.ids
-  private_subnet_ids  = data.aws_subnets.default.ids  # Using same subnets as public (default VPC)
-  db_subnet_ids       = data.aws_subnets.default.ids  # Using same subnets
-  route_table_id      = data.aws_route_table.default.id
+  # Use project VPC from network stack (traffic goes through Network Firewall)
+  vpc_id             = data.terraform_remote_state.network.outputs.vpc_id
+  public_subnet_ids  = data.terraform_remote_state.network.outputs.public_subnet_ids
+  private_subnet_ids = data.terraform_remote_state.network.outputs.private_subnet_ids
+  db_subnet_ids      = data.terraform_remote_state.network.outputs.db_subnet_ids
+  route_table_id     = data.aws_route_table.private.id
 
   uploads_bucket_name = "${var.project_name}-${data.aws_caller_identity.current.account_id}-uploads"
   ecs_cluster_name    = "${var.project_name}-cluster"
@@ -30,7 +30,7 @@ locals {
         protocol    = "HTTPS"
         status_code = "HTTP_301"
       }
-    } : {
+      } : {
       forward = {
         target_group_key = "ecs"
       }
@@ -86,7 +86,7 @@ module "sg_ecs" {
     }
   ]
   number_of_computed_ingress_with_source_security_group_id = 1
-  egress_rules                                              = ["all-all"]
+  egress_rules                                             = ["all-all"]
 
   tags = local.common_tags
 }
@@ -108,7 +108,7 @@ module "sg_redis" {
     }
   ]
   number_of_computed_ingress_with_source_security_group_id = 1
-  egress_rules                                              = ["all-all"]
+  egress_rules                                             = ["all-all"]
 
   tags = local.common_tags
 }
@@ -233,38 +233,13 @@ module "ecs_cluster" {
   tags = local.common_tags
 }
 
-module "dynamodb" {
-  source  = "terraform-aws-modules/dynamodb-table/aws"
-  version = "~> 4.0"
-
-  name         = "${var.project_name}-table"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "pk"
-  range_key    = "sk"
-
-  attributes = [
-    {
-      name = "pk"
-      type = "S"
-    },
-    {
-      name = "sk"
-      type = "S"
-    }
-  ]
-
-  point_in_time_recovery_enabled = true  # Changed from false to true
-
-  tags = local.common_tags
-}
-
 # DynamoDB Chat Messages Table with Stream for Lambda
 module "dynamodb_chat" {
   source = "../../../modules/dynamodb"
 
   project_name = var.project_name
-  table_name   = "${var.project_name}-table"  # For compatibility with existing module
-  
+  table_name   = "${var.project_name}-table" # For compatibility with existing module
+
   tags = local.common_tags
 }
 
@@ -300,15 +275,15 @@ module "elasticache" {
   create_cluster           = true
   create_replication_group = false
 
-  engine         = "redis"
-  engine_version = "7.0"
-  node_type      = "cache.t3.micro"
+  engine          = "redis"
+  engine_version  = "7.0"
+  node_type       = "cache.t3.micro"
   num_cache_nodes = 1
 
-  subnet_group_name  = "${var.project_name}-redis-subnet-group"
-  subnet_ids         = local.db_subnet_ids
+  subnet_group_name     = "${var.project_name}-redis-subnet-group"
+  subnet_ids            = local.db_subnet_ids
   create_security_group = false
-  security_group_ids = [module.sg_redis.security_group_id]
+  security_group_ids    = [module.sg_redis.security_group_id]
 
   apply_immediately = true
 
@@ -329,10 +304,10 @@ module "ecs_service" {
 
   subnet_ids         = local.private_subnet_ids
   security_group_ids = [module.sg_ecs.security_group_id]
-  assign_public_ip   = false
+  assign_public_ip   = false # Private subnet with NAT GW via firewall
 
   create_task_exec_iam_role = true
-  task_exec_secret_arns = [data.aws_secretsmanager_secret.app_config.arn]
+  task_exec_secret_arns     = [data.aws_secretsmanager_secret.app_config.arn]
   task_exec_iam_statements = [
     {
       sid       = "ReadAppSecretsMeta"
@@ -341,9 +316,9 @@ module "ecs_service" {
       resources = [data.aws_secretsmanager_secret.app_config.arn]
     },
     {
-      sid       = "KmsDecrypt"
-      effect    = "Allow"
-      actions   = ["kms:Decrypt"]
+      sid     = "KmsDecrypt"
+      effect  = "Allow"
+      actions = ["kms:Decrypt"]
       # Use specific KMS key ARN pattern instead of wildcard
       resources = [
         "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"
@@ -368,8 +343,8 @@ module "ecs_service" {
         "dynamodb:UpdateItem"
       ]
       resources = [
-        module.dynamodb.dynamodb_table_arn,
-        "${module.dynamodb.dynamodb_table_arn}/index/*"
+        module.dynamodb_chat.dynamodb_table_arn,
+        "${module.dynamodb_chat.dynamodb_table_arn}/index/*"
       ]
     },
     {
@@ -383,6 +358,17 @@ module "ecs_service" {
       effect    = "Allow"
       actions   = ["s3:ListBucket"]
       resources = [module.s3_uploads.s3_bucket_arn]
+    },
+    {
+      sid    = "EFSMount"
+      effect = "Allow"
+      actions = [
+        "elasticfilesystem:ClientMount",
+        "elasticfilesystem:ClientWrite",
+        "elasticfilesystem:ClientRootAccess",
+        "elasticfilesystem:DescribeMountTargets"
+      ]
+      resources = [aws_efs_file_system.main.arn]
     }
   ]
 
@@ -406,8 +392,8 @@ module "ecs_service" {
 
   container_definitions = {
     app = {
-      image     = var.container_image
-      essential = true
+      image                    = var.container_image
+      essential                = true
       readonly_root_filesystem = false
       port_mappings = [
         {
@@ -434,7 +420,15 @@ module "ecs_service" {
         },
         {
           name  = "DYNAMODB_TABLE_NAME"
-          value = module.dynamodb.dynamodb_table_id
+          value = module.dynamodb_chat.dynamodb_table_id
+        },
+        {
+          name  = "ALLOW_ANY_CLOUDFRONT"
+          value = "true"
+        },
+        {
+          name  = "CLOUDFRONT_URL"
+          value = "https://d1n7m1eramrdgj.cloudfront.net"
         }
       ]
       secrets = [
@@ -467,6 +461,14 @@ module "ecs_service" {
           valueFrom = "${data.aws_secretsmanager_secret.app_config.arn}:GOOGLE_MAILER_REFRESH_TOKEN::"
         }
       ]
+      # W5 MH3: mount EFS volume
+      mount_points = [
+        {
+          sourceVolume  = "efs-app-data"
+          containerPath = "/mnt/efs"
+          readOnly      = false
+        }
+      ]
       log_configuration = {
         logDriver = "awslogs"
         options = {
@@ -478,6 +480,21 @@ module "ecs_service" {
     }
   }
 
+  # W5 MH3: EFS volume definition
+  volume = [
+    {
+      name = "efs-app-data"
+      efs_volume_configuration = {
+        file_system_id     = aws_efs_file_system.main.id
+        transit_encryption = "ENABLED"
+        authorization_config = {
+          access_point_id = aws_efs_access_point.app.id
+          iam             = "ENABLED"
+        }
+      }
+    }
+  ]
+
   load_balancer = {
     service = {
       target_group_arn = module.alb.target_groups["ecs"].arn
@@ -486,7 +503,7 @@ module "ecs_service" {
     }
   }
 
-  depends_on = [module.alb]
+  depends_on = [module.alb, aws_efs_mount_target.private]
 
   tags = local.common_tags
 }
@@ -636,43 +653,43 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
 # Create placeholder zip file if it doesn't exist
 resource "null_resource" "lambda_placeholder" {
   provisioner "local-exec" {
-    command = "if [ ! -f ../../../lambda-placeholder.zip ]; then echo 'placeholder' | zip ../../../lambda-placeholder.zip -; fi"
-    interpreter = ["bash", "-c"]
+    command     = "if (-not (Test-Path '../../../lambda-placeholder.zip')) { Compress-Archive -Path (New-Item -ItemType File -Path 'placeholder.txt' -Value 'placeholder' -Force) -DestinationPath '../../../lambda-placeholder.zip' -Force }"
+    interpreter = ["PowerShell", "-Command"]
   }
 }
 
 module "lambda_bedrock_chat" {
   source = "../../../modules/lambda"
-  
+
   project_name = var.project_name
   environment  = "dev"
-  
+
   # Lambda deployment package
   # Build: cd backend/lambda/bedrock-chat && npm install && zip -r ../../bedrock-chat.zip .
   lambda_zip_path = fileexists("${path.module}/../../../lambda-placeholder.zip") ? "${path.module}/../../../lambda-placeholder.zip" : "${path.module}/../../../../backend/lambda/bedrock-chat.zip"
-  
+
   # Bedrock configuration
-  bedrock_kb_id     = "QVO2CHQ1MF"  # Your Bedrock Knowledge Base ID
-  bedrock_region    = "us-west-2"   # Bedrock KB region
-  
+  bedrock_kb_id  = "QVO2CHQ1MF" # Your Bedrock Knowledge Base ID
+  bedrock_region = "us-west-2"  # Bedrock KB region
+
   # DynamoDB configuration
-  dynamodb_table_name   = module.dynamodb_chat.chat_messages_table_name
-  dynamodb_table_arn    = module.dynamodb_chat.chat_messages_table_arn
-  dynamodb_stream_arn   = module.dynamodb_chat.chat_messages_stream_arn
-  
+  dynamodb_table_name = module.dynamodb_chat.chat_messages_table_name
+  dynamodb_table_arn  = module.dynamodb_chat.chat_messages_table_arn
+  dynamodb_stream_arn = module.dynamodb_chat.chat_messages_stream_arn
+
   # MongoDB URI from Secrets Manager
   mongodb_uri = data.aws_secretsmanager_secret_version.app_config.secret_string
-  
+
   # CloudWatch Logs retention
   log_retention_days = 7
-  
+
   # VPC configuration (optional - enable if MongoDB is in VPC)
   vpc_config_enabled = false
   # subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
   # security_group_ids = [module.sg_ecs.security_group_id]
-  
+
   tags = local.common_tags
-  
+
   depends_on = [
     module.dynamodb_chat,
     null_resource.lambda_placeholder
@@ -685,28 +702,74 @@ module "lambda_bedrock_chat" {
 
 # S3 Gateway Endpoint
 resource "aws_vpc_endpoint" "s3" {
-  vpc_id       = local.vpc_id
-  service_name = "com.amazonaws.${var.aws_region}.s3"
+  vpc_id            = local.vpc_id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
   vpc_endpoint_type = "Gateway"
 
   route_table_ids = [local.route_table_id]
 
   tags = merge(local.common_tags, {
-    Name = "${var.project_name}-s3-endpoint"
+    Name    = "${var.project_name}-s3-endpoint"
     Purpose = "S3 Gateway Endpoint for private subnet access"
   })
 }
 
 # DynamoDB Gateway Endpoint
 resource "aws_vpc_endpoint" "dynamodb" {
-  vpc_id       = local.vpc_id
-  service_name = "com.amazonaws.${var.aws_region}.dynamodb"
+  vpc_id            = local.vpc_id
+  service_name      = "com.amazonaws.${var.aws_region}.dynamodb"
   vpc_endpoint_type = "Gateway"
 
   route_table_ids = [local.route_table_id]
 
   tags = merge(local.common_tags, {
-    Name = "${var.project_name}-dynamodb-endpoint"
+    Name    = "${var.project_name}-dynamodb-endpoint"
     Purpose = "DynamoDB Gateway Endpoint for private subnet access"
   })
+}
+
+# ============================================================================
+# W5 MH2: Route private subnet traffic through Network Firewall
+# Private subnet → Firewall endpoint → NAT GW → Internet
+# ============================================================================
+
+# resource "aws_route" "private_to_firewall" {
+#   route_table_id         = data.aws_route_table.private.id
+#   destination_cidr_block = "0.0.0.0/0"
+#   vpc_endpoint_id        = tolist(aws_networkfirewall_firewall.main.firewall_status[0].sync_states)[0].attachment[0].endpoint_id
+# }
+
+# Enforce deterministic routing via local-exec to override standard VPC module routes
+resource "null_resource" "firewall_routing" {
+  triggers = {
+    firewall_id = aws_networkfirewall_firewall.main.id
+    # Always trigger during runs to ensure routes remain compliant
+    timestamp = "${timestamp()}"
+  }
+
+  provisioner "local-exec" {
+    command     = <<-EOT
+      $statusJson = (aws network-firewall describe-firewall --firewall-name ${aws_networkfirewall_firewall.main.name} --region ${var.aws_region} | ConvertFrom-Json)
+      $endpointId = $statusJson.FirewallStatus.SyncStates[0].Attachment.EndpointId
+      if ($endpointId) {
+        Write-Host "Updating private route table to route via Firewall Endpoint $endpointId..."
+        aws ec2 replace-route --route-table-id ${data.aws_route_table.private.id} --destination-cidr-block 0.0.0.0/0 --vpc-endpoint-id $endpointId --region ${var.aws_region} 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+          aws ec2 create-route --route-table-id ${data.aws_route_table.private.id} --destination-cidr-block 0.0.0.0/0 --vpc-endpoint-id $endpointId --region ${var.aws_region} 2>&1 | Out-Null
+        }
+
+        $natGwId = "${data.terraform_remote_state.network.outputs.natgw_ids[0]}"
+        $intraRtId = "${data.terraform_remote_state.network.outputs.intra_route_table_ids[0]}"
+        Write-Host "Updating intra route table $intraRtId to route via NAT Gateway $natGwId..."
+        aws ec2 replace-route --route-table-id $intraRtId --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $natGwId --region ${var.aws_region} 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+          aws ec2 create-route --route-table-id $intraRtId --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $natGwId --region ${var.aws_region} 2>&1 | Out-Null
+        }
+        Write-Host "Network Fortress routing successfully enforced."
+      }
+    EOT
+    interpreter = ["PowerShell", "-Command"]
+  }
+
+  depends_on = [aws_networkfirewall_firewall.main]
 }

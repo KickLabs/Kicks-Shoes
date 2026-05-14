@@ -3,11 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files and pre-installed node_modules
 COPY package*.json ./
-
-# Install dependencies
-RUN npm install --omit=dev
+COPY node_modules ./node_modules
 
 # Production stage
 FROM node:20-alpine

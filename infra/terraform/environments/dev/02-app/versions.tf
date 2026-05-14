@@ -6,13 +6,14 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 
-  # Using local state (S3 bucket not accessible)
-  # backend "s3" {
-  #   bucket  = "kicks-shoes-tf-state"
-  #   key     = "dev/02-app/terraform.tfstate"
-  #   region  = "ap-southeast-1"
-  #   encrypt = true
-  # }
+  backend "s3" {
+    # Configured at runtime via -backend-config flags in CI/CD
+    # See .github/workflows/deploy-dev-two-stack.yml
+  }
 }

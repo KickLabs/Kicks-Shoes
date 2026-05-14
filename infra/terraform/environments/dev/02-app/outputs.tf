@@ -15,7 +15,7 @@ output "ecs_service_name" {
 }
 
 output "dynamodb_table_name" {
-  value = module.dynamodb.dynamodb_table_id
+  value = module.dynamodb_chat.dynamodb_table_id
 }
 
 output "s3_uploads_bucket" {
@@ -95,4 +95,28 @@ output "dynamodb_vpc_endpoint_id" {
 output "dynamodb_vpc_endpoint_state" {
   description = "State of the DynamoDB VPC Gateway Endpoint"
   value       = aws_vpc_endpoint.dynamodb.state
+}
+
+# =============================================================================
+# W5 Outputs
+# =============================================================================
+
+output "api_gateway_invoke_url" {
+  description = "API Gateway URL — set as VITE_BEDROCK_API_URL in frontend .env"
+  value       = aws_apigatewayv2_api.bedrock.api_endpoint
+}
+
+output "bedrock_dlq_url" {
+  description = "SQS DLQ URL for failed bedrock-chat invocations"
+  value       = module.lambda_bedrock_chat.dlq_url
+}
+
+output "bedrock_dlq_arn" {
+  description = "SQS DLQ ARN"
+  value       = module.lambda_bedrock_chat.dlq_arn
+}
+
+output "efs_file_system_id" {
+  description = "EFS file system ID"
+  value       = aws_efs_file_system.main.id
 }

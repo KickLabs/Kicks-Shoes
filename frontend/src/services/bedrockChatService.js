@@ -2,11 +2,23 @@
  * Bedrock Chat Service
  * Handles chat with AWS Bedrock AI via backend API
  * Integrates with DynamoDB + Lambda for AI responses
+ *
+ * Message flow:
+ *   sendMessage()
+ *     → POST /chat/message  (Express backend → MongoDB + DynamoDB)
+ *     → DynamoDB Stream triggers Lambda bedrock-chat
+ *     → Lambda calls Bedrock KB → saves AI response to DynamoDB
+ *     → startPolling() picks up AI response via GET /dynamodb/messages/:id/latest
+ *
+ * W5 MH4: sendBedrockDirect()
+ *     → POST <VITE_BEDROCK_API_URL>/chat  (API Gateway → Lambda bedrock-chat directly)
+ *     → JWT Bearer token required (Lambda Authorizer)
  */
 
 import api from '../config/api.config.js';
 
-const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'http://kicks-shoes-dev-alb-1501513987.us-west-2.elb.amazonaws.com';
+// W5 MH4: API Gateway URL — set VITE_BEDROCK_API_URL in .env after terraform apply
+const BEDROCK_API_URL = import.meta.env.VITE_BEDROCK_API_URL || null;
 
 class BedrockChatService {
   constructor() {
@@ -52,21 +64,13 @@ class BedrockChatService {
   }
 
   /**
-   * Send message to backend (saves to MongoDB + DynamoDB)
+   * Send message via Express backend (saves to MongoDB + DynamoDB → triggers Lambda async)
    * @param {string} content - Message content
    * @returns {Promise<Object>} Message object
    */
   async sendMessage(content) {
     try {
-      // Ensure conversation exists
       await this.getOrCreateConversation();
-
-      console.log('Sending message:', {
-        conversationId: this.conversationId,
-        sender: this.userId,
-        receiver: this.shopId,
-        content
-      });
 
       const response = await api.post('/chat/message', {
         conversationId: this.conversationId,
@@ -84,15 +88,47 @@ class BedrockChatService {
   }
 
   /**
+   * W5 MH4 — Send message directly via API Gateway → Lambda bedrock-chat
+   * Requires VITE_BEDROCK_API_URL to be set and a valid JWT token.
+   * Returns AI response synchronously (Lambda invoked synchronously by API GW).
+   *
+   * @param {string} content - Message content
+   * @param {string} token - JWT Bearer token (from localStorage)
+   * @returns {Promise<Object>} AI response from Bedrock
+   */
+  async sendBedrockDirect(content, token) {
+    if (!BEDROCK_API_URL) {
+      throw new Error('VITE_BEDROCK_API_URL is not configured. Set it in .env after terraform apply.');
+    }
+
+    const response = await fetch(`${BEDROCK_API_URL}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        message: content,
+        conversationId: this.conversationId,
+        userId: this.userId,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`API Gateway error ${response.status}: ${text}`);
+    }
+
+    return response.json();
+  }
+
+  /**
    * Get messages from MongoDB (traditional chat)
    * @returns {Promise<Array>} Array of messages
    */
   async getMongoMessages() {
     try {
-      if (!this.conversationId) {
-        return [];
-      }
-
+      if (!this.conversationId) return [];
       const response = await api.get(`/chat/messages/${this.conversationId}`);
       return response.data;
     } catch (error) {
@@ -108,17 +144,12 @@ class BedrockChatService {
    */
   async getDynamoMessages(limit = 50) {
     try {
-      if (!this.conversationId) {
-        return { messages: [], count: 0 };
-      }
+      if (!this.conversationId) return { messages: [], count: 0 };
 
-      console.log('Fetching DynamoDB messages for conversation:', this.conversationId);
-      
       const response = await api.get(`/dynamodb/messages/${this.conversationId}`, {
         params: { limit }
       });
 
-      console.log('DynamoDB messages received:', response.data.count);
       return response.data;
     } catch (error) {
       console.error('Error fetching DynamoDB messages:', error);
@@ -133,14 +164,10 @@ class BedrockChatService {
    */
   async getAIResponses(limit = 20) {
     try {
-      if (!this.conversationId) {
-        return { messages: [], count: 0 };
-      }
-
+      if (!this.conversationId) return { messages: [], count: 0 };
       const response = await api.get(`/dynamodb/messages/${this.conversationId}/ai`, {
         params: { limit }
       });
-
       return response.data;
     } catch (error) {
       console.error('Error fetching AI responses:', error);
@@ -154,10 +181,7 @@ class BedrockChatService {
    */
   async getLatestMessage() {
     try {
-      if (!this.conversationId) {
-        return null;
-      }
-
+      if (!this.conversationId) return null;
       const response = await api.get(`/dynamodb/messages/${this.conversationId}/latest`);
       return response.data.message;
     } catch (error) {
@@ -172,16 +196,13 @@ class BedrockChatService {
    * @param {number} interval - Polling interval in ms (default: 3000)
    */
   startPolling(onNewMessage, interval = 3000) {
-    if (this.pollingInterval) {
-      this.stopPolling();
-    }
+    if (this.pollingInterval) this.stopPolling();
 
     let lastTimestamp = Date.now();
 
     this.pollingInterval = setInterval(async () => {
       try {
         const latest = await this.getLatestMessage();
-        
         if (latest && latest.timestamp > lastTimestamp) {
           lastTimestamp = latest.timestamp;
           onNewMessage(latest);
@@ -227,24 +248,11 @@ class BedrockChatService {
     this.stopPolling();
   }
 
-  /**
-   * Get conversation ID
-   * @returns {string|null} Current conversation ID
-   */
-  getConversationId() {
-    return this.conversationId;
-  }
-
-  /**
-   * Set conversation ID
-   * @param {string} conversationId - Conversation ID
-   */
-  setConversationId(conversationId) {
-    this.conversationId = conversationId;
-  }
+  getConversationId() { return this.conversationId; }
+  setConversationId(conversationId) { this.conversationId = conversationId; }
 }
 
-// Create singleton instance
+// Singleton instance
 const bedrockChatService = new BedrockChatService();
 export default bedrockChatService;
 

@@ -15,7 +15,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  AWS_REGION: ap-southeast-1
+  AWS_REGION: us-east-1
   TF_NETWORK_DIR: infra/terraform/environments/dev/01-network
   TF_APP_DIR: infra/terraform/environments/dev/02-app
   TF_STATE_BUCKET: kicks-shoes-tf-state
@@ -213,6 +213,10 @@ jobs:
           if grep -q 'resource "aws_iam_policy" "ecs_dynamodb"' main.tf; then
             import_policy_if_missing "aws_iam_policy.ecs_dynamodb" "${PROJECT_NAME}-ecs-dynamodb"
           fi
+          # W5: EFS IAM policy
+          if grep -q 'resource "aws_iam_policy" "ecs_efs"' efs.tf 2>/dev/null; then
+            import_policy_if_missing "aws_iam_policy.ecs_efs" "${PROJECT_NAME}-ecs-efs-policy"
+          fi
 
           PLAN_ARGS=(
             -out=tfplan
@@ -228,3 +232,72 @@ jobs:
           terraform plan "${PLAN_ARGS[@]}"
 
           terraform apply -auto-approve tfplan
+
+      - name: Build JWT Authorizer Lambda
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTHORIZER_DIR="backend/lambda/jwt-authorizer"
+          if [ -f "$AUTHORIZER_DIR/package.json" ]; then
+            echo "Building JWT Authorizer Lambda..."
+            cd "$AUTHORIZER_DIR"
+            npm install --omit=dev
+            zip -r authorizer.zip index.js node_modules/
+            echo "authorizer.zip created at $AUTHORIZER_DIR/authorizer.zip"
+          else
+            echo "JWT Authorizer not found, skipping."
+          fi
+
+      - name: Capture Terraform outputs
+        id: tf_outputs
+        working-directory: ${{ env.TF_APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ALB_DNS="$(terraform output -raw alb_dns_name 2>/dev/null || echo '')"
+          API_GW_URL="$(terraform output -raw api_gateway_invoke_url 2>/dev/null || echo '')"
+          EFS_ID="$(terraform output -raw efs_file_system_id 2>/dev/null || echo '')"
+          BACKUP_VAULT="$(terraform output -raw backup_vault_name 2>/dev/null || echo '')"
+          DLQ_URL="$(terraform output -raw bedrock_dlq_url 2>/dev/null || echo '')"
+          FIREWALL_ARN="$(terraform output -raw network_firewall_arn 2>/dev/null || echo '')"
+
+          echo "alb_dns=$ALB_DNS" >> "$GITHUB_OUTPUT"
+          echo "api_gateway_url=$API_GW_URL" >> "$GITHUB_OUTPUT"
+          echo "efs_id=$EFS_ID" >> "$GITHUB_OUTPUT"
+          echo "backup_vault=$BACKUP_VAULT" >> "$GITHUB_OUTPUT"
+          echo "dlq_url=$DLQ_URL" >> "$GITHUB_OUTPUT"
+          echo "firewall_arn=$FIREWALL_ARN" >> "$GITHUB_OUTPUT"
+
+          echo "=== W5 Deployment Summary ==="
+          echo "ALB DNS:          $ALB_DNS"
+          echo "API Gateway URL:  $API_GW_URL"
+          echo "EFS ID:           $EFS_ID"
+          echo "Backup Vault:     $BACKUP_VAULT"
+          echo "DLQ URL:          $DLQ_URL"
+          echo "Firewall ARN:     $FIREWALL_ARN"
+          echo "============================="
+
+      - name: Verify ECS service health
+        shell: bash
+        env:
+          ALB_DNS: ${{ steps.tf_outputs.outputs.alb_dns }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ALB_DNS" ]; then
+            echo "ALB DNS not available, skipping health check."
+            exit 0
+          fi
+
+          echo "Waiting for ECS service to stabilize..."
+          MAX_ATTEMPTS=20
+          ATTEMPT=0
+          until curl -sf "http://$ALB_DNS/api/health" >/dev/null 2>&1; do
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+              echo "Health check failed after $MAX_ATTEMPTS attempts."
+              exit 1
+            fi
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS — waiting 15s..."
+            sleep 15
+          done
+          echo "Health check passed: http://$ALB_DNS/api/health"
