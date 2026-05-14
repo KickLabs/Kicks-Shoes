@@ -1,9 +1,0 @@
-{
-  "kicks-shoes-products": [
-    {"PutRequest": {"Item": {"pk": {"S": "PRODUCT#shoes"}, "sk": {"S": "SKU#S001"}, "name": {"S": "Nike Air Max 2026"}, "price": {"N": "3500000"}, "stock": {"N": "10"}, "gsi1pk": {"S": "STATUS#active"}, "gsi1sk": {"S": "PRICE#0003500000"}, "updated_at": {"S": "2026-05-06T08:00:00Z"}}}},
-    {"PutRequest": {"Item": {"pk": {"S": "PRODUCT#shoes"}, "sk": {"S": "SKU#S002"}, "name": {"S": "Adidas Ultraboost v5"}, "price": {"N": "4200000"}, "stock": {"N": "15"}, "gsi1pk": {"S": "STATUS#active"}, "gsi1sk": {"S": "PRICE#0004200000"}, "updated_at": {"S": "2026-05-06T08:00:00Z"}}}},
-    {"PutRequest": {"Item": {"pk": {"S": "PRODUCT#electronics"}, "sk": {"S": "SKU#E001"}, "name": {"S": "Air Quality Sensor PM2.5"}, "price": {"N": "1290000"}, "stock": {"N": "42"}, "gsi1pk": {"S": "STATUS#active"}, "gsi1sk": {"S": "PRICE#0001290000"}, "updated_at": {"S": "2026-05-06T08:00:00Z"}}}},
-    {"PutRequest": {"Item": {"pk": {"S": "PRODUCT#electronics"}, "sk": {"S": "SKU#E002"}, "name": {"S": "Raspberry Pi 5 8GB"}, "price": {"N": "2490000"}, "stock": {"N": "15"}, "gsi1pk": {"S": "STATUS#active"}, "gsi1sk": {"S": "PRICE#0002490000"}, "updated_at": {"S": "2026-05-06T08:00:00Z"}}}},
-    {"PutRequest": {"Item": {"pk": {"S": "PRODUCT#books"}, "sk": {"S": "SKU#B001"}, "name": {"S": "Designing Data-Intensive Applications"}, "price": {"N": "650000"}, "stock": {"N": "8"}, "gsi1pk": {"S": "STATUS#active"}, "gsi1sk": {"S": "PRICE#0000650000"}, "updated_at": {"S": "2026-05-06T08:00:00Z"}}}}
-  ]
-}
