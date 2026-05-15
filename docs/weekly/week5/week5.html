@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>W5 Evidence Pack — Network Fortress & Hardened Ingress</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap&subset=vietnamese"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --aws: #ff9900;
+        --blue: #42a5f5;
+        --bg: #0b1220;
+        --panel: #111c2e;
+        --muted: #b0bec5;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: #050914;
+        font-family: 'Montserrat', sans-serif;
+        color: #fff;
+      }
+      .deck {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 32px;
+        padding: 32px 0;
+      }
+      .slide-container {
+        width: 1280px;
+        height: 720px;
+        position: relative;
+        background: linear-gradient(135deg, #0b1220 0%, #1a2a40 100%);
+        overflow: hidden;
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+        page-break-after: always;
+      }
+      .grid-pattern {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 153, 0, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 153, 0, 0.035) 1px, transparent 1px);
+        background-size: 40px 40px;
+        z-index: 0;
+      }
+      .circle {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.16;
+        filter: blur(0.2px);
+      }
+      .circle.orange {
+        width: 520px;
+        height: 520px;
+        right: -160px;
+        top: -160px;
+        background: radial-gradient(circle, var(--aws) 0%, transparent 70%);
+      }
+      .circle.blue {
+        width: 340px;
+        height: 340px;
+        left: -90px;
+        bottom: -120px;
+        background: radial-gradient(circle, var(--blue) 0%, transparent 70%);
+      }
+      .logo {
+        position: absolute;
+        top: 48px;
+        left: 78px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 5;
+        color: #fff;
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+      }
+      .logo i {
+        color: var(--aws);
+        font-size: 25px;
+      }
+      .slide-no {
+        position: absolute;
+        right: 72px;
+        bottom: 42px;
+        color: #78909c;
+        font-size: 14px;
+        z-index: 10;
+      }
+      .accent-bar {
+        position: absolute;
+        left: 78px;
+        top: 145px;
+        width: 8px;
+        height: 420px;
+        border-radius: 6px;
+        background: linear-gradient(180deg, var(--aws), #ffb84d);
+        box-shadow: 0 0 22px rgba(255, 153, 0, 0.32);
+        z-index: 5;
+      }
+      .content {
+        position: absolute;
+        z-index: 10;
+        left: 112px;
+        right: 72px;
+        top: 120px;
+        bottom: 70px;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: 'Montserrat', sans-serif;
+      }
+      .title {
+        font-size: 66px;
+        line-height: 1.08;
+        font-weight: 900;
+        letter-spacing: -1px;
+      }
+      .title span,
+      .orange {
+        color: var(--aws);
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 27px;
+        font-weight: 300;
+        margin-top: 22px;
+      }
+      .kicker {
+        color: var(--aws);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      .section-title {
+        font-size: 42px;
+        font-weight: 800;
+        margin-bottom: 20px;
+      }
+      .card {
+        background: rgba(17, 28, 46, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+      }
+      .card h3 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(255, 153, 0, 0.35);
+        color: #ffd39a;
+        background: rgba(255, 153, 0, 0.08);
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .flow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 22px;
+      }
+      .node {
+        min-width: 145px;
+        text-align: center;
+        padding: 16px 14px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-weight: 700;
+      }
+      .arrow {
+        color: var(--aws);
+        font-size: 24px;
+      }
+      .code {
+        background: #07101f;
+        border: 1px solid rgba(66, 165, 245, 0.25);
+        color: #cde8ff;
+        border-radius: 16px;
+        padding: 16px;
+        font-family: Consolas, monospace;
+        font-size: 16px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .three {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .metric {
+        font-size: 34px;
+        font-weight: 900;
+        color: #fff;
+        font-family: 'Montserrat', sans-serif;
+      }
+      .table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 10px;
+        font-size: 16px;
+      }
+      .table td,
+      .table th {
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.06);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .table th {
+        color: #ffd39a;
+        text-align: left;
+        background: rgba(255, 153, 0, 0.08);
+      }
+      .table td:first-child,
+      .table th:first-child {
+        border-radius: 14px 0 0 14px;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .table td:last-child,
+      .table th:last-child {
+        border-radius: 0 14px 14px 0;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .img-evidence {
+        width: 100%;
+        height: auto;
+        max-height: 320px;
+        object-fit: contain;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .img-evidence.small {
+        max-height: 160px;
+      }
+      .img-evidence.large {
+        max-height: 420px;
+      }
+      .presentation-mode {
+        overflow: hidden;
+        background: #000;
+      }
+      .presentation-mode .deck {
+        padding: 0;
+        gap: 0;
+        width: 100vw;
+        height: 100vh;
+      }
+      .presentation-mode .slide-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(var(--scale, 1));
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s;
+        box-shadow: none;
+        margin: 0;
+      }
+      .presentation-mode .slide-container.active {
+        opacity: 1;
+        visibility: visible;
+        z-index: 100;
+      }
+      .controls {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        display: flex;
+        gap: 12px;
+        z-index: 1000;
+      }
+      .btn {
+        background: rgba(11, 18, 32, 0.8);
+        color: var(--aws);
+        border: 1px solid rgba(255, 153, 0, 0.4);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: all 0.2s;
+        backdrop-filter: blur(4px);
+      }
+      .btn:hover {
+        background: rgba(255, 153, 0, 0.2);
+        transform: scale(1.05);
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        .deck {
+          padding: 0;
+          gap: 0;
+        }
+        .slide-container {
+          box-shadow: none;
+        }
+        .controls {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button class="btn" id="prevBtn" title="Previous Slide">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <button class="btn" id="nextBtn" title="Next Slide">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+      <button class="btn" id="fsBtn" title="Toggle Fullscreen">
+        <i class="fas fa-expand"></i>
+      </button>
+    </div>
+    <div class="deck">
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo"><i class="fab fa-aws"></i><span>KICKS SHOES CLOUD PLATFORM</span></div>
+        <div class="accent-bar"></div>
+        <div class="content" style="top: 185px">
+          <h1 class="title">
+            W5 Evidence Pack<br /><span>Network Fortress</span><br />& Hardened Ingress
+          </h1>
+          <p class="subtitle">Terraform-powered AWS infrastructure hardening demo</p>
+          <div class="flow" style="margin-top: 48px">
+            <span class="pill"><i class="fas fa-shield-halved"></i> Team 13Hz</span>
+            <span class="pill"><i class="fas fa-calendar-check"></i> 14/05/2026</span>
+            <span class="pill"><i class="fab fa-github"></i> Kicks-Shoes-AWS</span>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-project-diagram"></i><span>ARCHITECTURE OVERVIEW</span></div>
+        <div class="content">
+          <div class="kicker">System Topology</div>
+          <h2 class="section-title">Kicks Shoes - The Network Fortress</h2>
+          <div style="height: calc(100% - 80px); display: flex; justify-content: center; align-items: center;">
+            <img src="../../images/week5/diagram.png" style="max-height: 100%; max-width: 100%; object-fit: contain; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" alt="AWS Architecture Diagram">
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo"><i class="fab fa-aws"></i><span>W5 OBJECTIVES</span></div>
+        <div class="content">
+          <div class="kicker">Demo storyline</div>
+          <h2 class="section-title">Từ E-commerce App → Hạ tầng được “bọc thép”</h2>
+          <div class="three">
+            <div class="card">
+              <h3><i class="fas fa-network-wired orange"></i> MH1 — Network Design</h3>
+              <p class="muted">
+                Justified Single-VPC, Multi-AZ, micro-segmentation qua Public / Private / Intra /
+                Database subnets.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-fire orange"></i> MH2 — Firewall</h3>
+              <p class="muted">
+                AWS Network Firewall kiểm soát egress bằng domain allowlist và log cảnh báo.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-database orange"></i> MH3 — Storage & Backup</h3>
+              <p class="muted">
+                EFS encrypted, mount target private, AWS Backup bảo vệ EFS / DynamoDB / EBS.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-door-closed orange"></i> MH4 — Hardened API</h3>
+              <p class="muted">
+                HTTP API Gateway v2, Lambda Proxy Integration, JWT Authorizer, throttling.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-bolt orange"></i> MH5 — Serverless Scaling</h3>
+              <p class="muted">
+                DynamoDB Streams → Lambda async → SQS DLQ để cô lập lỗi Bedrock timeout.
+              </p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-check-double orange"></i> Verification</h3>
+              <p class="muted">
+                Negative security tests chứng minh unauthorized traffic bị chặn đúng lớp.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-network-wired"></i><span>MH1 — MULTI-VPC CONNECTIVITY</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Architecture decision</div>
+          <h2 class="section-title">Path C — Justified Single-VPC</h2>
+          <div class="two">
+            <div class="card">
+              <h3>Technical Justification: Single-VPC</h3>
+              <ul class="muted list-disc pl-6 space-y-3 text-sm">
+                <li>
+                  <b>Boundary Assessment:</b> Kiến trúc hiện tại không yêu cầu multi-tenant
+                  isolation hay strict compliance (PCI-DSS), Single-VPC là "sweet spot" giữa bảo mật
+                  và độ phức tạp.
+                </li>
+                <li>
+                  <b>Micro-segmentation:</b> Phân lớp Subnet (Public/Private/Intra/DB) kết hợp
+                  Security Groups đã đáp ứng đủ nguyên tắc "Defense in Depth" nội bộ.
+                </li>
+                <li>
+                  <b>Cost-Performance Trade-off:</b> Tránh Data Transfer Cost và network hops
+                  (latency) của Transit Gateway giữa các module đang giao tiếp cường độ cao.
+                </li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>Vẫn đảm bảo isolation bằng subnet tầng</h3>
+              <div class="grid grid-cols-2 gap-3 mt-4">
+                <span class="pill">Public: ALB / NAT</span
+                ><span class="pill">Private: ECS Fargate</span
+                ><span class="pill">Intra: Firewall Endpoint</span
+                ><span class="pill">Database: Redis / DB</span>
+              </div>
+              <p class="muted mt-5">
+                Trigger tách VPC tương lai: Payment Gateway cần PCI-DSS Level 1.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-camera"></i><span>MH1 — EVIDENCE</span></div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">Route Table & VPC Flow Logs</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2"><i class="fas fa-route"></i> Route Table</h3>
+              <img
+                src="../../images/week5/1.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="muted text-sm font-bold mb-2">
+                <i class="fas fa-check-circle text-green-400"></i> VPC Flow Logs
+              </h3>
+              <img
+                src="../../images/week5/2.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo"><i class="fas fa-fire"></i><span>MH2 — NETWORK FIREWALL</span></div>
+        <div class="content">
+          <div class="kicker">Egress control</div>
+          <h2 class="section-title">Stateful Allowlist chống Data Exfiltration</h2>
+          <div class="two">
+            <div class="card">
+              <h3>Firewall đặt ở đâu?</h3>
+              <p class="muted">
+                Firewall Endpoint được ghim vào Intra Subnets. Route table của Private Subnet ép
+                toàn bộ outbound traffic đi qua firewall trước khi ra NAT Gateway.
+              </p>
+              <div class="code mt-3" style="font-size: 13px">
+                Private Route Table 0.0.0.0/0 → vpce-firewall Firewall → NAT Gateway → Internet
+              </div>
+            </div>
+            <div class="card">
+              <h3>Allowlist Targets</h3>
+              <ul class="space-y-3 muted">
+                <li><span class="pill">*.amazonaws.com</span> AWS API / ECR / S3</li>
+                <li><span class="pill">*.docker.io / *.docker.com</span> Base images</li>
+                <li><span class="pill">generativelanguage.googleapis.com</span> Gemini API</li>
+                <li><span class="pill">*.mongodb.net</span> MongoDB Atlas</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-camera"></i><span>MH2 — EVIDENCE</span></div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">Firewall Policy & Allowlist</h2>
+          <div class="two" style="height: 400px">
+            <img
+              src="../../images/week5/3.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+            <img
+              src="../../images/week5/4.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-clipboard-list"></i><span>FIREWALL LOG EVIDENCE</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Observed evidence</div>
+          <h2 class="section-title">Traffic hợp lệ vs Traffic bị Drop</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="mb-2">
+                <i class="fas fa-check-circle text-green-300"></i> Flow Log — ACCEPT
+              </h3>
+              <img
+                src="../../images/week5/5.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="mb-2"><i class="fas fa-ban text-red-300"></i> Alert Log — BLOCKED</h3>
+              <img
+                src="../../images/week5/6.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-folder-tree"></i><span>MH3 — FILE STORAGE & BACKUP</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Data durability</div>
+          <h2 class="section-title">EFS dùng chung + AWS Backup Plan</h2>
+          <div class="two">
+            <div class="card">
+              <h3>Amazon EFS</h3>
+              <ul class="muted list-disc pl-6 space-y-3 mb-4">
+                <li>File system: <b>fs-07bb685d649bcce04</b></li>
+                <li>Encrypted At-Rest bằng KMS.</li>
+                <li>Mount Target trong Private Subnets.</li>
+                <li>Chỉ cho phép app SG truy cập, không mở 0.0.0.0/0.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>AWS Backup</h3>
+              <ul class="muted list-disc pl-6 space-y-3 mb-4">
+                <li>Automated daily backups cho EFS.</li>
+                <li>Retention period được cấu hình tự động dọn dẹp.</li>
+                <li>Đã xác minh khôi phục (Restore Test) thành công.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-camera"></i><span>MH3 — EVIDENCE 1</span></div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">Amazon EFS & AWS Backup Plan</h2>
+          <div class="two" style="height: 400px">
+            <img
+              src="../../images/week5/7.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+            <img
+              src="../../images/week5/8.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-camera"></i><span>MH3 — EVIDENCE 2</span></div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">Kết quả Restore Test</h2>
+          <div class="two" style="height: 400px">
+            <img
+              src="../../images/week5/9.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+            <img
+              src="../../images/week5/11.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-key"></i><span>MH4 — API GATEWAY BEFORE LAMBDA</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Hardened ingress</div>
+          <h2 class="section-title">Không expose Lambda trực tiếp ra Internet</h2>
+          <div class="flow">
+            <div class="node">Client</div>
+            <div class="arrow">→</div>
+            <div class="node">HTTP API Gateway v2</div>
+            <div class="arrow">→</div>
+            <div class="node">JWT Authorizer</div>
+            <div class="arrow">→</div>
+            <div class="node">Lambda Proxy<br />/chat</div>
+            <div class="arrow">→</div>
+            <div class="node">Bedrock</div>
+          </div>
+          <div class="three mt-8">
+            <div class="card">
+              <h3>Endpoint</h3>
+              <p class="muted">POST /chat qua API Gateway: <br /><b>kicks-shoes-bedrock-api</b></p>
+            </div>
+            <div class="card">
+              <h3>Auth</h3>
+              <p class="muted">
+                JWT Authorizer kiểm tra token bằng secret trong AWS Secrets Manager.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Throttling</h3>
+              <p class="muted"><span class="metric">10 rps</span><br />Burst tối đa 20 requests.</p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-camera"></i><span>MH4 — EVIDENCE 1</span></div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">Luồng xử lý Firewall -> NAT -> Bedrock (Phần 1)</h2>
+          <div class="two" style="height: 400px">
+            <img
+              src="../../images/week5/14.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+            <img
+              src="../../images/week5/15.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-camera"></i><span>MH4 — EVIDENCE 2</span></div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">Luồng xử lý Firewall -> NAT -> Bedrock (Phần 2)</h2>
+          <div class="two" style="height: 400px">
+            <img
+              src="../../images/week5/16.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+            <img
+              src="../../images/week5/17.png"
+              class="img-evidence"
+              style="max-height: 100%; height: 100%"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo"><i class="fas fa-terminal"></i><span>API VALIDATION</span></div>
+        <div class="content">
+          <div class="kicker">Positive & negative tests</div>
+          <h2 class="section-title">Token hợp lệ được xử lý, token thiếu bị chặn</h2>
+          <div class="two">
+            <div class="card">
+              <h3><i class="fas fa-check-circle text-green-300"></i> Valid Token → 200 OK</h3>
+              <div class="code mt-3" style="font-size: 11px">
+                curl -i -X POST /chat -H "Authorization: Bearer &lt;token&gt;" -d '{"message":"Tư
+                vấn"}' HTTP/1.1 200 OK
+              </div>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-ban text-red-300"></i> Missing Token → 401</h3>
+              <div class="code mt-3" style="font-size: 11px">
+                curl -i -X POST /chat -d '{"message":"spam API"}' HTTP/1.1 401 Unauthorized
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-camera"></i><span>API VALIDATION — EVIDENCE</span></div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <h2 class="section-title">Kết quả Postman / Curl</h2>
+          <div class="two" style="height: 400px">
+            <div class="flex flex-col h-full">
+              <h3 class="mb-2">
+                <i class="fas fa-check-circle text-green-300"></i> Valid Token → 200 OK
+              </h3>
+              <img
+                src="../../images/week5/13.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+            <div class="flex flex-col h-full">
+              <h3 class="mb-2"><i class="fas fa-ban text-red-300"></i> Missing Token → 401</h3>
+              <img
+                src="../../images/week5/12.png"
+                class="img-evidence"
+                style="max-height: 100%; height: 100%"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo"><i class="fas fa-bolt"></i><span>MH5 — SERVERLESS SCALING</span></div>
+        <div class="content">
+          <div class="kicker">Event-driven resilience</div>
+          <h2 class="section-title">Async Invocation + Dead-Letter Queue</h2>
+          <div class="flow">
+            <div class="node">User Chat</div>
+            <div class="arrow">→</div>
+            <div class="node">DynamoDB<br />INSERT</div>
+            <div class="arrow">→</div>
+            <div class="node">DynamoDB Streams</div>
+            <div class="arrow">→</div>
+            <div class="node">Lambda<br />Bedrock Chat</div>
+            <div class="arrow">→</div>
+            <div class="node">AI Reply</div>
+          </div>
+          <div class="card mt-8">
+            <h3>Khi lỗi xảy ra</h3>
+            <div class="flow">
+              <div class="node">Retry #1</div>
+              <div class="arrow">→</div>
+              <div class="node">Retry #2</div>
+              <div class="arrow">→</div>
+              <div class="node">SQS DLQ</div>
+            </div>
+            <p class="muted mt-5">
+              Mục tiêu: không làm treo UI, không làm sập stream, vẫn giữ payload lỗi để debug.
+            </p>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-camera"></i><span>MH5 — EVIDENCE</span></div>
+        <div class="content">
+          <div class="kicker">Minh chứng cấu hình</div>
+          <div class="flex justify-center" style="height: 400px">
+            <img
+              src="../../images/week5/18.png"
+              class="img-evidence"
+              style="max-height: 100%; max-width: 80%; height: 100%"
+            />
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo">
+          <i class="fas fa-shield-halved"></i><span>NEGATIVE SECURITY TESTS</span>
+        </div>
+        <div class="content">
+          <div class="kicker">Final proof</div>
+          <h2 class="section-title">Bảng đối chứng: lớp nào chặn lỗi nào?</h2>
+          <table class="table" style="font-size: 15px; border-spacing: 0 6px">
+            <tr>
+              <th style="padding: 10px 14px">Layer</th>
+              <th style="padding: 10px 14px">Kịch bản trái phép</th>
+              <th style="padding: 10px 14px">Kết quả</th>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px">API Gateway</td>
+              <td style="padding: 10px 14px">POST /chat không có token</td>
+              <td style="padding: 10px 14px">401 Unauthorized, Lambda không bị kích hoạt</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px">Network Firewall</td>
+              <td style="padding: 10px 14px">curl đến domain/IP lạ từ Fargate</td>
+              <td style="padding: 10px 14px">Timeout, firewall drop theo allowlist</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px">Security Groups</td>
+              <td style="padding: 10px 14px">Port scan SSH/RDP từ Internet</td>
+              <td style="padding: 10px 14px">
+                Kết nối thất bại, không có inbound 0.0.0.0/0 nguy hiểm
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px">EFS Mount</td>
+              <td style="padding: 10px 14px">Mount EFS từ EC2 ngoài SG</td>
+              <td style="padding: 10px 14px">Bị từ chối ở tầng TCP</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px">ALB Origin</td>
+              <td style="padding: 10px 14px">Truy cập HTTP thuần</td>
+              <td style="padding: 10px 14px">301 redirect sang HTTPS/CDN</td>
+            </tr>
+          </table>
+          <div class="card mt-2" style="padding: 16px 22px">
+            <h3 style="font-size: 18px; margin-bottom: 6px">Closing message</h3>
+            <p class="muted" style="font-size: 14px">
+              W5 chứng minh Kicks Shoes không chỉ chạy được, mà đã có network segmentation,
+              controlled egress, hardened ingress, backup/restore và failure isolation.
+            </p>
+          </div>
+        </div>
+        <div class="slide-no"></div>
+      </section>
+    </div>
+
+    <script>
+      let currentSlide = 0;
+      const slides = document.querySelectorAll('.slide-container');
+      const totalSlides = slides.length;
+
+      function updateSlides() {
+        slides.forEach((slide, index) => {
+          let noEl = slide.querySelector('.slide-no');
+          if (noEl) noEl.innerText = String(index + 1).padStart(2, '0') + ' / ' + totalSlides;
+
+          if (document.body.classList.contains('presentation-mode')) {
+            if (index === currentSlide) {
+              slide.classList.add('active');
+            } else {
+              slide.classList.remove('active');
+            }
+          } else {
+            slide.classList.remove('active');
+          }
+        });
+      }
+
+      function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+          });
+          document.body.classList.add('presentation-mode');
+        } else {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          }
+          document.body.classList.remove('presentation-mode');
+        }
+        setTimeout(updateScale, 100);
+      }
+
+      document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement) {
+          document.body.classList.remove('presentation-mode');
+          slides.forEach(s => (s.style.transform = ''));
+        } else {
+          document.body.classList.add('presentation-mode');
+        }
+        updateSlides();
+        updateScale();
+      });
+
+      function updateScale() {
+        if (document.body.classList.contains('presentation-mode')) {
+          const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+          slides.forEach(slide => {
+            slide.style.setProperty('--scale', scale);
+          });
+        } else {
+          slides.forEach(slide => {
+            slide.style.removeProperty('--scale');
+          });
+        }
+      }
+
+      window.addEventListener('resize', updateScale);
+
+      document.getElementById('prevBtn').addEventListener('click', () => {
+        if (currentSlide > 0) {
+          currentSlide--;
+          updateSlides();
+          if (!document.body.classList.contains('presentation-mode')) {
+            slides[currentSlide].scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+      });
+
+      document.getElementById('nextBtn').addEventListener('click', () => {
+        if (currentSlide < totalSlides - 1) {
+          currentSlide++;
+          updateSlides();
+          if (!document.body.classList.contains('presentation-mode')) {
+            slides[currentSlide].scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+      });
+
+      document.getElementById('fsBtn').addEventListener('click', toggleFullScreen);
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+          document.getElementById('nextBtn').click();
+        } else if (e.key === 'ArrowLeft') {
+          document.getElementById('prevBtn').click();
+        } else if (e.key === 'f') {
+          toggleFullScreen();
+        }
+      });
+
+      const observer = new IntersectionObserver(
+        entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting && !document.body.classList.contains('presentation-mode')) {
+              currentSlide = Array.from(slides).indexOf(entry.target);
+            }
+          });
+        },
+        { threshold: 0.5 }
+      );
+
+      slides.forEach(slide => observer.observe(slide));
+      updateSlides();
+    </script>
+  </body>
+</html>
