@@ -257,8 +257,10 @@ module "s3_uploads" {
   server_side_encryption_configuration = {
     rule = {
       apply_server_side_encryption_by_default = {
-        sse_algorithm = "AES256"
+        sse_algorithm     = "aws:kms"
+        kms_master_key_id = aws_kms_key.s3_uploads.arn
       }
+      bucket_key_enabled = true # Reduces KMS API calls and cost
     }
   }
 
@@ -345,8 +347,8 @@ module "ecs_service" {
       resources = [
         module.dynamodb_chat.dynamodb_table_arn,
         "${module.dynamodb_chat.dynamodb_table_arn}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/kicks-shoes-chat-messages",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/kicks-shoes-chat-messages/index/*"
+        module.dynamodb_chat.chat_messages_table_arn,
+        "${module.dynamodb_chat.chat_messages_table_arn}/index/*"
       ]
     },
     {
@@ -434,7 +436,11 @@ module "ecs_service" {
         },
         {
           name  = "CLOUDFRONT_URL"
-          value = "https://d1n7m1eramrdgj.cloudfront.net"
+          value = "https://d652dbdxs95hf.cloudfront.net"
+        },
+        {
+          name  = "FRONTEND_URL"
+          value = "https://d652dbdxs95hf.cloudfront.net"
         }
       ]
       secrets = [
@@ -672,7 +678,7 @@ module "lambda_bedrock_chat" {
 
   # Lambda deployment package
   # Build: cd backend/lambda/bedrock-chat && npm install && zip -r ../../bedrock-chat.zip .
-  lambda_zip_path = fileexists("${path.module}/../../../lambda-placeholder.zip") ? "${path.module}/../../../lambda-placeholder.zip" : "${path.module}/../../../../backend/lambda/bedrock-chat.zip"
+  lambda_zip_path = fileexists("${path.module}/../../../../../backend/lambda/bedrock-chat/bedrock-chat.zip") ? "${path.module}/../../../../../backend/lambda/bedrock-chat/bedrock-chat.zip" : "${path.module}/../../../lambda-placeholder.zip"
 
   # Bedrock configuration
   bedrock_kb_id  = "3MR7O4U9IC" # Your Bedrock Knowledge Base ID
@@ -684,7 +690,7 @@ module "lambda_bedrock_chat" {
   dynamodb_stream_arn = module.dynamodb_chat.chat_messages_stream_arn
 
   # MongoDB URI from Secrets Manager
-  mongodb_uri = data.aws_secretsmanager_secret_version.app_config.secret_string
+  mongodb_uri = jsondecode(data.aws_secretsmanager_secret_version.app_config.secret_string)["MONGODB_URI"]
 
   # CloudWatch Logs retention
   log_retention_days = 7

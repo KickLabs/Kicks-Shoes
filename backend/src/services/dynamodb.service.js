@@ -29,7 +29,7 @@ const docClient = DynamoDBDocumentClient.from(client, {
 });
 
 // Table name
-const CHAT_MESSAGES_TABLE = process.env.DYNAMODB_CHAT_TABLE || 'kicks-shoes-chat-messages';
+const CHAT_MESSAGES_TABLE = process.env.DYNAMODB_TABLE_NAME || process.env.DYNAMODB_CHAT_TABLE || 'kicks-shoes-dev-tientp-chat-messages';
 
 /**
  * GSI Query Example 1: Query messages by userId

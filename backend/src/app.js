@@ -16,8 +16,11 @@
  * - Logging configuration
  */
 
-import compression from 'compression';
 import dotenv from 'dotenv';
+// Load environment variables as early as possible
+dotenv.config();
+
+import compression from 'compression';
 import express from 'express';
 import helmet from 'helmet';
 import http from 'http';
@@ -69,9 +72,6 @@ import {
   startAutoCompleteOrdersCron,
 } from './utils/cronJobs.js';
 import inventoryScheduler from './services/inventoryScheduler.service.js'; // AI Inventory Scheduler
-
-// Load environment variables
-dotenv.config();
 
 // Connect to database
 connectDB();
