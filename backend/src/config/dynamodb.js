@@ -27,7 +27,7 @@ const docClient = DynamoDBDocumentClient.from(client, {
 });
 
 // Table name from environment variables (supports local .env and Terraform ECS injection)
-export const CHAT_MESSAGES_TABLE = process.env.DYNAMODB_TABLE_NAME || process.env.DYNAMODB_CHAT_TABLE || 'kicks-shoes-chat-messages';
+export const CHAT_MESSAGES_TABLE = process.env.DYNAMODB_TABLE_NAME || process.env.DYNAMODB_CHAT_TABLE || 'kicks-shoes-dev-tientp-chat-messages';
 
 // Export clients
 export { client as dynamoClient, docClient };

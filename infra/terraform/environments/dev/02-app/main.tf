@@ -345,8 +345,8 @@ module "ecs_service" {
       resources = [
         module.dynamodb_chat.dynamodb_table_arn,
         "${module.dynamodb_chat.dynamodb_table_arn}/index/*",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/kicks-shoes-chat-messages",
-        "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/kicks-shoes-chat-messages/index/*"
+        module.dynamodb_chat.chat_messages_table_arn,
+        "${module.dynamodb_chat.chat_messages_table_arn}/index/*"
       ]
     },
     {
