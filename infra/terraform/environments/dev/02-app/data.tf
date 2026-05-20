@@ -76,3 +76,15 @@ data "aws_secretsmanager_secret_version" "app_config" {
 }
 
 data "aws_caller_identity" "current" {}
+
+# W6 Fix: Firewall subnets (intra tier) — for Multi-AZ Network Firewall endpoints
+data "aws_subnets" "firewall" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.main.id]
+  }
+  filter {
+    name   = "tag:Tier"
+    values = ["firewall"]
+  }
+}

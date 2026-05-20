@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>W6 Evidence Pack — Operations Hardening & Cost-Aware Cloud</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap&subset=vietnamese" rel="stylesheet" />
+    <style>
+      :root { --aws: #ff9900; --blue: #42a5f5; --bg: #0b1220; --panel: #111c2e; --muted: #b0bec5; }
+      * { box-sizing: border-box; }
+      body, html { margin: 0; padding: 0; min-height: 100%; background: #050914; font-family: 'Montserrat', sans-serif; color: #fff; overflow-x: hidden;}
+      .deck { display: flex; flex-direction: column; align-items: center; gap: 32px; padding: 32px 0; }
+      .slide-container { width: 1280px; height: 720px; position: relative; background: linear-gradient(135deg, #0b1220 0%, #1a2a40 100%); overflow: hidden; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45); page-break-after: always; }
+      .grid-pattern { position: absolute; inset: 0; background-image: linear-gradient(rgba(255, 153, 0, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 153, 0, 0.035) 1px, transparent 1px); background-size: 40px 40px; z-index: 0; }
+      .circle { position: absolute; border-radius: 50%; opacity: 0.16; filter: blur(0.2px); }
+      .circle.orange { width: 520px; height: 520px; right: -160px; top: -160px; background: radial-gradient(circle, var(--aws) 0%, transparent 70%); }
+      .circle.blue { width: 340px; height: 340px; left: -90px; bottom: -120px; background: radial-gradient(circle, var(--blue) 0%, transparent 70%); }
+      .logo { position: absolute; top: 48px; left: 78px; display: flex; align-items: center; gap: 12px; z-index: 5; color: #fff; font-weight: 700; letter-spacing: 0.8px; }
+      .logo i { color: var(--aws); font-size: 25px; }
+      .slide-no { position: absolute; right: 72px; bottom: 42px; color: #78909c; font-size: 14px; z-index: 10; }
+      .accent-bar { position: absolute; left: 78px; top: 145px; width: 8px; height: 420px; border-radius: 6px; background: linear-gradient(180deg, var(--aws), #ffb84d); box-shadow: 0 0 22px rgba(255, 153, 0, 0.32); z-index: 5; }
+      .content { position: absolute; z-index: 10; left: 112px; right: 72px; top: 120px; bottom: 70px; }
+      .title { font-size: 66px; line-height: 1.08; font-weight: 900; letter-spacing: -1px; }
+      .title span, .orange { color: var(--aws); }
+      .subtitle { color: var(--muted); font-size: 27px; font-weight: 300; margin-top: 22px; }
+      .kicker { color: var(--aws); text-transform: uppercase; letter-spacing: 2px; font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+      .section-title { font-size: 42px; font-weight: 800; margin-bottom: 20px; }
+      .card { background: rgba(17, 28, 46, 0.78); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 22px; padding: 22px; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22); }
+      .card h3 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+      .muted { color: var(--muted); }
+      .pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(255, 153, 0, 0.35); color: #ffd39a; background: rgba(255, 153, 0, 0.08); padding: 8px 12px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+      .flow { display: flex; align-items: center; gap: 14px; margin-top: 22px; }
+      .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+      .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+      .img-evidence { width: 100%; height: auto; max-height: 320px; object-fit: cover; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.5); }
+      .controls { position: fixed; bottom: 24px; right: 24px; display: flex; gap: 12px; z-index: 1000; }
+      .btn { background: rgba(11, 18, 32, 0.8); color: var(--aws); border: 1px solid rgba(255, 153, 0, 0.4); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s; backdrop-filter: blur(4px); }
+      .btn:hover { background: rgba(255, 153, 0, 0.2); transform: scale(1.05); }
+      .code { background: #07101f; border: 1px solid rgba(66, 165, 245, 0.25); color: #cde8ff; border-radius: 16px; padding: 16px; font-family: Consolas, monospace; font-size: 14px; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button class="btn" id="prevBtn" title="Previous Slide"><i class="fas fa-chevron-left"></i></button>
+      <button class="btn" id="nextBtn" title="Next Slide"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <div class="deck">
+      
+      <!-- Slide 1: Cover -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo"><i class="fab fa-aws"></i><span>KICKS SHOES CLOUD PLATFORM</span></div>
+        <div class="accent-bar"></div>
+        <div class="content" style="top: 185px">
+          <h1 class="title">W6 Evidence Pack<br /><span>Operations Hardening</span><br />& Cost-Aware Cloud</h1>
+          <p class="subtitle">Demonstrating Cost Visibility, Auto-Remediation & Observability</p>
+          <div class="flow" style="margin-top: 48px">
+            <span class="pill"><i class="fas fa-shield-halved"></i> Team 13Hz</span>
+            <span class="pill"><i class="fas fa-calendar-check"></i> 22/05/2026</span>
+            <span class="pill"><i class="fab fa-github"></i> Kicks-Shoes-AWS</span>
+          </div>
+        </div>
+        <div class="slide-no">1</div>
+      </section>
+
+      <!-- Slide 2: Project Recap & Fixes -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-wrench"></i><span>PROJECT RECAP & W5 FIXES</span></div>
+        <div class="content">
+          <div class="kicker">Context & Improvements</div>
+          <h2 class="section-title">E-commerce 3-tier App + Trợ lý AI Bedrock</h2>
+          <div class="two">
+            <div class="card">
+              <h3>Kiến trúc Carry-Forward</h3>
+              <p class="muted text-sm mb-2">Đã xây dựng qua 5 tuần: ALB &rightarrow; ECS Fargate &rightarrow; MongoDB. Lưu trữ S3 + EFS. Tính năng Chat AI dùng DynamoDB + Bedrock. Mạng bảo vệ bởi Network Firewall & API Gateway.</p>
+              <div class="mt-4 border-t border-gray-700 pt-3">
+                 <h4 class="text-sm font-bold text-aws">Hard Rule $150 Cap:</h4>
+                 <p class="muted text-xs">Phá hủy môi trường hàng đêm để kiểm soát ngân sách dev.</p>
+              </div>
+            </div>
+            <div class="card">
+               <h3>W5 Trainer Feedback Khắc phục</h3>
+               <ul class="muted list-disc pl-5 space-y-2 text-sm">
+                 <li><strong class="text-white">Firewall Multi-AZ:</strong> Endpoints nay đặt ở 2 subnet độc lập (AZ-a, AZ-b) triệt tiêu SPOF.</li>
+                 <li><strong class="text-white">DLQ Payload Chuẩn:</strong> Chụp dữ liệu SQS thật chứa `RetriesExhausted` từ luồng Async.</li>
+                 <li><strong class="text-white">AWS Backup Integrity:</strong> Đính chính tên tài nguyên DynamoDB và minh chứng `cat` file khôi phục trên EFS thành công.</li>
+               </ul>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">2</div>
+      </section>
+
+      <!-- Slide 3: W6 Objectives -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo"><i class="fab fa-aws"></i><span>W6 OBJECTIVES</span></div>
+        <div class="content">
+          <div class="kicker">The 4 Must-Haves</div>
+          <h2 class="section-title">Xây dựng Lớp Vận Hành "Bọc Thép"</h2>
+          <div class="two">
+            <div class="card">
+              <h3><i class="fas fa-search-dollar orange"></i> MH-COST-V: Visibility</h3>
+              <p class="muted">Gắn tag 100% resources theo chuẩn. Activate Cost Allocation & phân rã bill qua AWS Budgets / Cost Explorer.</p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-hand-holding-dollar orange"></i> MH-COST-A: Control</h3>
+              <p class="muted">Lambda Cost Guard tự động tắt EC2/RDS. Kích hoạt bởi EventBridge Daily Cron & Budgets SNS Chain.</p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-chart-line orange"></i> MH-OBS: Observability</h3>
+              <p class="muted">Dashboard CloudWatch giám sát Custom Metric (Bedrock Query Latency) + Log Insights cho API Gateway.</p>
+            </div>
+            <div class="card">
+              <h3><i class="fas fa-user-shield orange"></i> MH-SEC: Self-Healing</h3>
+              <p class="muted">Tự động phát hiện S3 mất Block Public Access và Vá lỗi lập tức (Detect &rightarrow; Auto-Fix Loop qua CloudTrail).</p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">3</div>
+      </section>
+
+      <!-- Slide 4: Cost Visibility -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-tags"></i><span>MH-COST-V</span></div>
+        <div class="content">
+          <div class="kicker">Cost Visibility & Attribution</div>
+          <h2 class="section-title">Chiến lược Gắn Thẻ & Minh bạch Chi phí</h2>
+          <div class="two">
+            <div class="card">
+              <h3>Tagging Strategy Document</h3>
+              <ul class="muted list-disc pl-6 space-y-2 text-sm">
+                <li><code>Environment = "dev"</code> (Bắt buộc chữ thường)</li>
+                <li><code>Application = "KicksShoes"</code></li>
+                <li><code>Owner = "team-lead@kicks-shoes.com"</code></li>
+                <li><code>CostCenter = "G13"</code></li>
+              </ul>
+              <div class="code mt-4">Enforcement Rule: Dùng AWS Config và SCP từ chối lệnh tạo tài nguyên nếu thiếu 4 tag này.</div>
+            </div>
+            <div class="card">
+              <h3>Phân Tích Chi Phí Top 3 Drivers</h3>
+              <p class="muted text-sm mb-2">Thông qua Cost Explorer (đã Activate Tag):</p>
+              <ol class="muted list-decimal pl-6 space-y-1 text-sm">
+                <li><strong class="text-white">Network Firewall (~$19/ngày):</strong> Đắt nhất nhưng đáng giá do thiết lập Multi-AZ chặn Egress trái phép.</li>
+                <li><strong class="text-white">ECS Fargate:</strong> Cực rẻ nhờ áp dụng Task Size tối giản.</li>
+                <li><strong class="text-white">ElastiCache Redis:</strong> Cần thiết cho bộ đệm session nhanh.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">4</div>
+      </section>
+
+      <!-- Slide 5: Cost Action -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-stop-circle"></i><span>MH-COST-A</span></div>
+        <div class="content">
+          <div class="kicker">Cost Control & Action</div>
+          <h2 class="section-title">Tự động Dừng Dịch vụ Tránh Phí Ẩn</h2>
+          <div class="two">
+            <div class="card">
+              <h3>Automated Cost Guard</h3>
+              <p class="muted text-sm mb-3">Lambda với Role <em>Least-Privilege</em> tự động Stop EC2/RDS mang tag `dev` thiếu cờ `keep=true`. Ngăn rò rỉ chi phí ban đêm.</p>
+              <div class="flow" style="margin-top: 10px; font-size: 13px;">
+                <span class="pill">Cron 20:00</span> <i class="fas fa-arrow-right orange"></i>
+                <span class="pill">Cost Guard</span> <i class="fas fa-arrow-right orange"></i>
+                <span class="pill">Stop Instances (CloudTrail Evidence)</span>
+              </div>
+            </div>
+            <div class="card">
+               <h3>ADR: Budgets Cost Data Latency</h3>
+               <p class="muted text-sm">Vì dữ liệu chi phí AWS bị chậm (lag) từ 8-24 tiếng, Budgets Alert thực tế <strong>sẽ không bắn</strong> trong tài khoản Sandbox 48h của workshop.</p>
+               <p class="muted text-sm mt-2"><strong>Giải pháp:</strong> Đã cấu hình đẩy luồng chuẩn (Budgets $150 &rightarrow; SNS &rightarrow; Lambda) nhưng demo kích hoạt Lambda bằng cách push message test trực tiếp lên SNS.</p>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">5</div>
+      </section>
+
+      <!-- Slide 6: Observability -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-chart-area"></i><span>MH-OBS</span></div>
+        <div class="content">
+          <div class="kicker">CloudWatch Observability</div>
+          <h2 class="section-title">Giám sát Custom Metric & Alarms</h2>
+          <div class="two">
+            <div class="card">
+              <h3>Custom Metrics: Bedrock Latency</h3>
+              <div class="code mb-3">await cwClient.send(new PutMetricDataCommand({
+  Namespace: "KicksShoes/Operations",
+  MetricData: [{
+    MetricName: "BedrockQueryLatencyMs",
+    Value: responseTime
+  }]
+}));</div>
+              <p class="muted text-sm">Dashboard trung tâm hiển thị thời gian phản hồi AI, kết hợp cùng ECS CPU Utilization và API Gateway Errors.</p>
+            </div>
+            <div class="card flex flex-col justify-center items-center">
+               <div class="border border-dashed border-gray-600 rounded p-6 text-center text-gray-500 w-full h-full flex flex-col justify-center items-center">
+                <i class="fas fa-search text-3xl mb-2 text-blue-400"></i><br>
+                <strong>Log Insights Query:</strong><br>
+                <span>Sử dụng <code>stats count(*)</code> lọc từ khóa ERROR trong 5 phút từ `/aws/lambda/kicks-shoes-bedrock-chat`.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">6</div>
+      </section>
+
+      <!-- Slide 7: Security Guard -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-user-secret"></i><span>MH-SEC</span></div>
+        <div class="content">
+          <div class="kicker">Self-Healing Security Guard</div>
+          <h2 class="section-title">Detect &rightarrow; Auto-Fix: Vá lỗi S3 Public</h2>
+          <div class="flow mb-6 text-sm">
+             <div class="node py-2 px-3">Tắt S3 BPA (Hiểm họa)</div>
+             <div class="arrow">→</div>
+             <div class="node py-2 px-3">CloudTrail EventBridge</div>
+             <div class="arrow">→</div>
+             <div class="node py-2 px-3">Lambda s3:PutPublicAccessBlock</div>
+             <div class="arrow">→</div>
+             <div class="node bg-green-900 border-green-500 py-2 px-3">Bảo vệ phục hồi (ON)</div>
+          </div>
+          <div class="two">
+             <div class="card">
+                <h3>Mô hình Mối đe dọa (Blast Radius)</h3>
+                <p class="muted text-sm">Nếu thư mục Uploads vô ý bị mở public, hacker có thể rà quét dữ liệu hình ảnh PII người dùng hoặc phát tán mã độc. Việc Auto-Remediation khóa lỗ hổng chỉ trong vòng <strong>dưới 1 phút</strong>.</p>
+             </div>
+             <div class="card">
+                <h3>KMS CMK & Trade-off Chi phí</h3>
+                <p class="muted text-sm">Dùng CMK mã hóa S3 thay cho AES-256 cơ bản. <strong>Sự đánh đổi:</strong> Tốn thêm ~$1/tháng nhưng mang lại khả năng Audit Trail (ghi nhận danh tính IAM của người giải mã vào CloudTrail) — một yêu cầu Compliance sống còn.</p>
+             </div>
+          </div>
+        </div>
+        <div class="slide-no">7</div>
+      </section>
+
+    </div>
+
+    <script>
+      let currentSlide = 0;
+      const slides = document.querySelectorAll('.slide-container');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+
+      function showSlide(index) {
+        slides.forEach(s => {
+          s.style.display = 'none';
+        });
+        if (index >= 0 && index < slides.length) {
+          slides[index].style.display = 'block';
+        }
+      }
+
+      prevBtn.addEventListener('click', () => {
+        if (currentSlide > 0) {
+          currentSlide--;
+          showSlide(currentSlide);
+        }
+      });
+
+      nextBtn.addEventListener('click', () => {
+        if (currentSlide < slides.length - 1) {
+          currentSlide++;
+          showSlide(currentSlide);
+        }
+      });
+
+      showSlide(currentSlide);
+    </script>
+  </body>
+</html>

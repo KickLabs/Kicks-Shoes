@@ -63,20 +63,24 @@ resource "aws_networkfirewall_firewall_policy" "main" {
 }
 
 # -----------------------------------------------------------------------------
-# Network Firewall — one endpoint per firewall subnet AZ
-# NOTE: Uses firewall_subnet_ids from 02-app data sources
-# When using default VPC: deploy into available subnets
-# When using custom VPC from 01-network: use firewall_subnet_ids output
+# Network Firewall — one endpoint per FIREWALL subnet AZ (Multi-AZ)
+#
+# W6 FIX (Trainer feedback): Previously used public_subnet_ids which placed
+# both endpoints in the same AZ — a hidden HA SPOF. Now uses the dedicated
+# intra/firewall subnets (10.0.30.0/24 AZ-a, 10.0.31.0/24 AZ-b) created by
+# 01-network, giving true Multi-AZ firewall coverage.
+#
+# Traffic path: ECS (private) → Firewall Endpoint (intra/firewall) → NAT GW (public) → IGW
 # -----------------------------------------------------------------------------
 resource "aws_networkfirewall_firewall" "main" {
   name                = "${var.project_name}-firewall"
   firewall_policy_arn = aws_networkfirewall_firewall_policy.main.arn
   vpc_id              = local.vpc_id
 
-  # Use intra subnets (firewall subnets) from 01-network stack
-  # Traffic path: ECS (private) → Firewall Endpoint (intra) → NAT GW (public) → IGW
+  # Use dedicated firewall/intra subnets — one per AZ for true Multi-AZ HA
+  # These subnets are tagged Tier=firewall by 01-network module
   dynamic "subnet_mapping" {
-    for_each = local.public_subnet_ids
+    for_each = data.aws_subnets.firewall.ids
     content {
       subnet_id = subnet_mapping.value
     }

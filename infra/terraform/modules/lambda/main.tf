@@ -171,6 +171,30 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+# =============================================================================
+# W6 MH-OBS: IAM Policy for Lambda — CloudWatch PutMetricData
+# Allows bedrock-chat to publish custom metrics (BedrockQueryLatencyMs, etc.)
+# =============================================================================
+resource "aws_iam_role_policy" "cloudwatch_metrics" {
+  name = "cloudwatch-metrics"
+  role = aws_iam_role.lambda_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "PutCustomMetrics"
+      Effect   = "Allow"
+      Action   = ["cloudwatch:PutMetricData"]
+      Resource = "*"
+      Condition = {
+        StringEquals = {
+          "cloudwatch:namespace" = "KicksShoes/Operations"
+        }
+      }
+    }]
+  })
+}
+
 # DynamoDB Event Source Mapping
 resource "aws_lambda_event_source_mapping" "dynamodb_stream" {
   event_source_arn  = var.dynamodb_stream_arn

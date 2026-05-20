@@ -67,6 +67,10 @@ variable "app_config_secret_name" {
 }
 
 variable "tags" {
-  type    = map(string)
-  default = {}
+  type = map(string)
+  default = {
+    Owner       = "team-lead@kicks-shoes.com"
+    CostCenter  = "G13"
+    Application = "KicksShoes"
+  }
 }

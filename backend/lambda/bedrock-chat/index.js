@@ -6,6 +6,11 @@
  * 
  * Trigger: DynamoDB Stream (INSERT events only)
  * Runtime: Node.js 20.x
+ * 
+ * W6 MH-OBS: Publishes custom CloudWatch metrics:
+ *   - KicksShoes/Operations :: BedrockQueryLatencyMs  (latency per call)
+ *   - KicksShoes/Operations :: BedrockQueryCount      (invocation count)
+ *   - KicksShoes/Operations :: BedrockQueryErrors     (error count)
  */
 
 import { 
@@ -14,6 +19,10 @@ import {
 } from "@aws-sdk/client-bedrock-agent-runtime";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  CloudWatchClient,
+  PutMetricDataCommand
+} from "@aws-sdk/client-cloudwatch";
 
 // Initialize AWS clients
 const bedrockClient = new BedrockAgentRuntimeClient({ 
@@ -23,6 +32,33 @@ const bedrockClient = new BedrockAgentRuntimeClient({
 const dynamoClient = DynamoDBDocumentClient.from(
   new DynamoDBClient({ region: process.env.AWS_REGION })
 );
+
+// W6 MH-OBS: CloudWatch client for custom metrics
+const cwClient = new CloudWatchClient({ region: process.env.AWS_REGION || "us-east-1" });
+
+/**
+ * W6 MH-OBS: Publish a custom metric to CloudWatch namespace KicksShoes/Operations
+ * Non-blocking — errors are logged but do not fail the main handler.
+ */
+async function publishMetric(metricName, value, unit = "Milliseconds") {
+  try {
+    await cwClient.send(new PutMetricDataCommand({
+      Namespace: "KicksShoes/Operations",
+      MetricData: [{
+        MetricName: metricName,
+        Value: value,
+        Unit: unit,
+        Dimensions: [
+          { Name: "Environment", Value: process.env.NODE_ENV || "dev" },
+          { Name: "Application", Value: "KicksShoes" }
+        ]
+      }]
+    }));
+  } catch (err) {
+    // Non-fatal — observability must not break the main flow
+    console.error("[METRIC_ERROR] Failed to publish metric:", metricName, err.message);
+  }
+}
 
 /**
  * Lambda handler function
@@ -277,6 +313,10 @@ async function processMessageWithBedrock(message) {
     
     console.log('AI response saved to DynamoDB');
     
+    // W6 MH-OBS: Publish success metrics
+    await publishMetric('BedrockQueryLatencyMs', responseTime, 'Milliseconds');
+    await publishMetric('BedrockQueryCount', 1, 'Count');
+    
     // W5 MH4: Trả về nguyên bản đối tượng tin nhắn AI hoàn chỉnh
     return aiMessage;
     
@@ -310,6 +350,9 @@ async function processMessageWithBedrock(message) {
       TableName: process.env.DYNAMODB_TABLE_NAME,
       Item: errorMessage
     }));
+    
+    // W6 MH-OBS: Publish error metric — this drives the Lambda Errors alarm
+    await publishMetric('BedrockQueryErrors', 1, 'Count');
     
     return errorMessage;
   }

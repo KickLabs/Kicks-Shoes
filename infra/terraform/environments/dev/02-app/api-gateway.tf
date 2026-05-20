@@ -60,8 +60,8 @@ resource "aws_lambda_function" "jwt_authorizer" {
   memory_size   = 128
 
   # Build: cd backend/lambda/jwt-authorizer && npm install && zip -r authorizer.zip .
-  filename         = fileexists("${path.module}/../../../../backend/lambda/jwt-authorizer/authorizer.zip") ? "${path.module}/../../../../backend/lambda/jwt-authorizer/authorizer.zip" : "${path.module}/../../../lambda-placeholder.zip"
-  source_code_hash = fileexists("${path.module}/../../../../backend/lambda/jwt-authorizer/authorizer.zip") ? filebase64sha256("${path.module}/../../../../backend/lambda/jwt-authorizer/authorizer.zip") : null
+  filename         = fileexists("${path.module}/../../../../../backend/lambda/jwt-authorizer/authorizer.zip") ? "${path.module}/../../../../../backend/lambda/jwt-authorizer/authorizer.zip" : "${path.module}/../../../lambda-placeholder.zip"
+  source_code_hash = fileexists("${path.module}/../../../../../backend/lambda/jwt-authorizer/authorizer.zip") ? filebase64sha256("${path.module}/../../../../../backend/lambda/jwt-authorizer/authorizer.zip") : null
 
   environment {
     variables = {
@@ -142,7 +142,17 @@ resource "aws_apigatewayv2_stage" "default" {
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway.arn
-    format          = "$context.requestId"
+    format = jsonencode({
+      requestId          = "$context.requestId"
+      ip                 = "$context.identity.sourceIp"
+      requestTime        = "$context.requestTime"
+      httpMethod         = "$context.httpMethod"
+      routeKey           = "$context.routeKey"
+      status             = "$context.status"
+      responseLatency    = "$context.responseLatency"
+      integrationLatency = "$context.integrationLatency"
+      errorMessage       = "$context.error.message"
+    })
   }
 
   tags = local.common_tags
