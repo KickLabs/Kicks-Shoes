@@ -254,6 +254,28 @@ module "s3_uploads" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 
+  versioning = {
+    enabled = true
+  }
+
+  lifecycle_rule = [
+    {
+      id      = "move-to-ia-and-delete"
+      enabled = true
+
+      transition = [
+        {
+          days          = 30
+          storage_class = "STANDARD_IA"
+        }
+      ]
+
+      expiration = {
+        days = 90
+      }
+    }
+  ]
+
   server_side_encryption_configuration = {
     rule = {
       apply_server_side_encryption_by_default = {
@@ -362,17 +384,6 @@ module "ecs_service" {
       effect    = "Allow"
       actions   = ["s3:ListBucket"]
       resources = [module.s3_uploads.s3_bucket_arn]
-    },
-    {
-      sid    = "EFSMount"
-      effect = "Allow"
-      actions = [
-        "elasticfilesystem:ClientMount",
-        "elasticfilesystem:ClientWrite",
-        "elasticfilesystem:ClientRootAccess",
-        "elasticfilesystem:DescribeMountTargets"
-      ]
-      resources = [aws_efs_file_system.main.arn]
     }
   ]
 
@@ -473,14 +484,7 @@ module "ecs_service" {
           valueFrom = "${data.aws_secretsmanager_secret.app_config.arn}:GOOGLE_MAILER_REFRESH_TOKEN::"
         }
       ]
-      # W5 MH3: mount EFS volume
-      mount_points = [
-        {
-          sourceVolume  = "efs-app-data"
-          containerPath = "/mnt/efs"
-          readOnly      = false
-        }
-      ]
+
       log_configuration = {
         logDriver = "awslogs"
         options = {
@@ -492,20 +496,7 @@ module "ecs_service" {
     }
   }
 
-  # W5 MH3: EFS volume definition
-  volume = [
-    {
-      name = "efs-app-data"
-      efs_volume_configuration = {
-        file_system_id     = aws_efs_file_system.main.id
-        transit_encryption = "ENABLED"
-        authorization_config = {
-          access_point_id = aws_efs_access_point.app.id
-          iam             = "ENABLED"
-        }
-      }
-    }
-  ]
+
 
   load_balancer = {
     service = {
@@ -515,7 +506,7 @@ module "ecs_service" {
     }
   }
 
-  depends_on = [module.alb, aws_efs_mount_target.private]
+  depends_on = [module.alb]
 
   tags = local.common_tags
 }
@@ -752,6 +743,7 @@ resource "aws_vpc_endpoint" "dynamodb" {
 # }
 
 # Enforce deterministic routing via local-exec to override standard VPC module routes
+/*
 resource "null_resource" "firewall_routing" {
   triggers = {
     firewall_id = aws_networkfirewall_firewall.main.id
@@ -785,3 +777,4 @@ resource "null_resource" "firewall_routing" {
 
   depends_on = [aws_networkfirewall_firewall.main]
 }
+*/

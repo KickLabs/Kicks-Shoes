@@ -79,13 +79,13 @@ resource "aws_backup_plan" "daily" {
 # Backup Selections
 # -----------------------------------------------------------------------------
 
-# EFS backup
-resource "aws_backup_selection" "efs" {
-  name         = "${var.project_name}-efs-backup"
+# S3 uploads backup
+resource "aws_backup_selection" "s3_uploads" {
+  name         = "${var.project_name}-s3-uploads-backup"
   plan_id      = aws_backup_plan.daily.id
   iam_role_arn = aws_iam_role.backup.arn
 
-  resources = [aws_efs_file_system.main.arn]
+  resources = [module.s3_uploads.s3_bucket_arn]
 }
 
 # DynamoDB chat messages table backup

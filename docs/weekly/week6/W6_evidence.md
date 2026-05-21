@@ -29,9 +29,9 @@
 **Kiến trúc xuyên suốt (W1–W5):**
 - **W1/W2:** Hạ tầng mạng 3-tier (ALB → ECS Fargate), lưu trữ S3 (bảo mật Block Public Access), và IAM least-privilege.
 - **W3/W4:** Tích hợp DynamoDB lưu lịch sử chat, Lambda bedrock-chat xử lý LLM, Bedrock Knowledge Base RAG đa luồng.
-- **W5:** Gia cố mạng (Network Fortress) với Multi-VPC/Multi-AZ, Network Firewall (Domain allowlist), VPC Flow Logs, hệ thống chia sẻ tệp EFS, HTTP API Gateway bảo vệ bởi JWT Authorizer và hệ thống hàng chờ cô lập lỗi SQS DLQ.
+- **W5:** Gia cố mạng (Network Fortress) với Multi-VPC/Multi-AZ, Network Firewall (Domain allowlist), VPC Flow Logs, HTTP API Gateway bảo vệ bởi JWT Authorizer và hệ thống hàng chờ cô lập lỗi SQS DLQ.
 
-**Tối ưu W6:** Lớp Vận Hành (Cost Visibility, Cost Action, Monitoring, Self-Healing Security).
+**Tối ưu W6:** Lớp Vận Hành (Cost Visibility, Cost Action, Monitoring, Self-Healing Security) cùng chiến lược "Bonus Optimized" xóa EFS chuyển sang S3 Backup và Scale Fargate về 0 ban đêm.
 
 ### W5 Feedback → W6 Fixes Applied
 
@@ -100,8 +100,8 @@ Dựa trên phản hồi từ trainer tuần trước, nhóm đã khắc phục 
 ## 4. MH-COST-A: Cost Control & Action
 
 ### Lambda Cost Guard (Automated Cost Action)
-**Logic:** Stop các máy ảo EC2/RDS mang tag `Environment=dev` nhưng bỏ quên không gắn tag ngoại lệ `keep=true`.
-**IAM role:** Least-privilege — chỉ cấp quyền `ec2:StopInstances`, `ec2:DescribeInstances`, `rds:StopDBInstance`, `rds:DescribeDBInstances`. Không cấp quyền wildcard.
+**Logic:** Scale toàn bộ ứng dụng ECS Fargate mang tag `Environment=dev` về số lượng `DesiredCount = 0` và `MinCapacity = 0` ban đêm để tiết kiệm hoàn toàn phí Compute.
+**IAM role:** Least-privilege — chỉ cấp quyền `ecs:UpdateService` và `application-autoscaling:RegisterScalableTarget`. Không cấp quyền wildcard.
 
 [Screenshot: Lambda console — function overview, runtime Python 3.12, role]
 [Screenshot: IAM role policy — chỉ đúng 4 actions kể trên]
@@ -110,16 +110,27 @@ Dựa trên phản hồi từ trainer tuần trước, nhóm đã khắc phục 
 [Screenshot: EventBridge Scheduler — kicks-shoes-dev-cost-guard-daily, cron(0 20 * * ? *)]
 [Screenshot: AWS Budgets → SNS → Lambda Chain]
 
-### Bằng chứng Thực thi (Demonstrated Stop)
-[Screenshot: EC2 console → instance i-xxxxxxxx → State: running (Before)]
-[Screenshot: CloudWatch Logs → "Stopping EC2 instance"]
-[Screenshot: EC2 console → instance i-xxxxxxxx → State: stopped (After)]
-[Screenshot: CloudTrail → EventName=StopInstances → userAgent contains "lambda"]
+### Bằng chứng Thực thi (Demonstrated Fargate Scale 0)
+[Screenshot: ECS console → kicks-shoes-dev-service → Desired tasks: 1, Running tasks: 1 (Before)]
+[Screenshot: CloudWatch Logs → "Successfully scaled kicks-shoes-dev-tientp-service down to 0"]
+[Screenshot: ECS console → kicks-shoes-dev-service → Desired tasks: 0, Running tasks: 0 (After)]
+[Screenshot: CloudTrail → EventName=UpdateService → requestParameters chứa desiredCount=0]
 
-### ADR — Cost Data Latency & Budgets Trigger
+### Bằng chứng Tối ưu Chi phí Bonus (W6 Stretch Goal)
+[Screenshot: AWS Backup → Backup plans → kicks-shoes-dev-tientp-backup-plan đang backup bucket S3 Uploads]
+[Screenshot: S3 console → kicks-shoes-dev-tientp-uploads bucket → Management → Lifecycle rules: Chuyển sang Standard-IA sau 30 ngày, Expire sau 90 ngày]
+
+### ADR 01 — Cost Data Latency & Budgets Trigger
 **Context:** AWS cost data có độ trễ cập nhật (lag) khoảng 8–24h. Trong môi trường Sandbox workshop (thời gian sống 48h), cảnh báo Budgets dựa trên chi phí sẽ **KHÔNG** kịp kích hoạt do không đủ thời gian tích lũy cost data.
-**Decision:** Xây dựng toàn bộ luồng kết nối (Budgets $150 → SNS → Lambda). Kịch bản Demo được thực hiện bằng cách đẩy (publish) một test message thủ công vào SNS Topic để kích hoạt Lambda Stop EC2. 
+**Decision:** Xây dựng toàn bộ luồng kết nối (Budgets $150 → SNS → Lambda). Kịch bản Demo được thực hiện bằng cách đẩy (publish) một test message thủ công vào SNS Topic để kích hoạt Lambda Cost Guard. 
 **Production behavior:** Trong môi trường Prod thực tế, Budgets trigger sẽ tự kích hoạt sau 8-24h khi AWS chốt số cost data. Scheduled trigger (20:00 UTC hàng ngày) đóng vai trò là cơ chế dọn dẹp chính (Primary mechanism) cho môi trường Dev.
+
+### ADR 02 — Bonus Optimized FinOps Architecture (W6 Stretch Goal)
+**Context:** Hệ thống ban đầu dùng EFS ($0.30/GB) để lưu trữ và Lambda Cost Guard chỉ tắt EC2/RDS, bỏ ngỏ Fargate chạy 24/7 gây lãng phí tài nguyên compute.
+**Decision:** 
+1. Gỡ bỏ hoàn toàn EFS, chuyển sang dùng S3 Standard ($0.023/GB) kết hợp S3 Lifecycle Rule (tự động luân chuyển sang Standard-IA sau 30 ngày và xóa sau 90 ngày) giúp tiết kiệm >80% chi phí lưu trữ.
+2. Nâng cấp Lambda Cost Guard để ghi đè `MinCapacity = 0` (chặn Auto Scaling) và `DesiredCount = 0` (xóa container) của ECS Fargate Service.
+**Consequences:** Tiết kiệm triệt để chi phí Compute và Storage ban đêm, đáp ứng hoàn hảo tiêu chí "Cost-Aware Cloud" của Tuần 6.
 
 ---
 

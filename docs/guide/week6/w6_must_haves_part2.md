@@ -302,7 +302,7 @@ Copy template từ `.AIDD/changes/003-w6-operations-hardening/06-evidence-pack.m
 | 1 — Cover | Account, region, URL, W5 feedback → fix |
 | 2 — Carry-forward | ECS RUNNING, ALB healthy, FE→BE→DB demo |
 | 3 — MH-COST-V | Tag screenshots, Cost Explorer, Budget |
-| 4 — MH-COST-A | CloudTrail StopInstances, SNS test, ADR |
+| 4 — MH-COST-A | CloudTrail UpdateService, SNS test, ADR |
 | 5 — MH-OBS | Dashboard, alarm state, Log Insights |
 | 6 — MH-SEC | Before/after BPA, CloudTrail remediate, KMS |
 
@@ -317,7 +317,7 @@ Post link Slack trước slot Friday.
 | Alarm INSUFFICIENT_DATA Friday | Invoke Lambda từ Thứ 5 |
 | Cost tags không hiện Cost Explorer | Activate Thứ 2, chờ 24h |
 | Budget alert không fire trong 48h | SNS publish test + ADR |
-| Vượt $150 | `task_cpu=256`, `cache.t3.micro`, 1 NAT, tắt EC2 demo sau stop |
+| Vượt $150 | `task_cpu=256`, `cache.t3.micro`, 1 NAT, scale Fargate về 0 ban đêm |
 | Network Firewall đắt nhất | Cân nhắc stop ngoài giờ demo (cost-guard không stop Firewall) |
 
 ---
@@ -329,7 +329,7 @@ Post link Slack trước slot Friday.
 | MH | Mở service nào | Tìm tên gì | Evidence cần gì |
 |----|----------------|------------|-----------------|
 | COST-V | Billing, Resource Groups | Budget, Tags 4 keys | Screenshot Cost Explorer |
-| COST-A | Lambda, CloudTrail | cost-guard, StopInstances | CloudTrail event |
+| COST-A | Lambda, CloudTrail | cost-guard, UpdateService | CloudTrail event |
 | OBS | CloudWatch | Dashboard, Alarms, Insights | Alarm state + query rows |
 | SEC | S3, CloudTrail, KMS | BPA settings, CMK alias | Before/after screenshots |
 

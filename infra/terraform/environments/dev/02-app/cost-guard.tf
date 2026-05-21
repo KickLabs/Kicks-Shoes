@@ -33,21 +33,20 @@ resource "aws_iam_role_policy" "cost_guard_actions" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "StopEC2"
+        Sid    = "ScaleECS"
         Effect = "Allow"
         Action = [
-          "ec2:DescribeInstances",
-          "ec2:StopInstances"
+          "ecs:DescribeServices",
+          "ecs:UpdateService"
         ]
         Resource = "*"
       },
       {
-        Sid    = "StopRDS"
+        Sid    = "ScaleAppAutoScaling"
         Effect = "Allow"
         Action = [
-          "rds:DescribeDBInstances",
-          "rds:StopDBInstance",
-          "rds:ListTagsForResource"
+          "application-autoscaling:DescribeScalableTargets",
+          "application-autoscaling:RegisterScalableTarget"
         ]
         Resource = "*"
       }
@@ -65,7 +64,7 @@ resource "aws_cloudwatch_log_group" "cost_guard" {
 # Lambda Function
 resource "aws_lambda_function" "cost_guard" {
   function_name = "${var.project_name}-cost-guard"
-  description   = "Stops dev EC2/RDS not tagged keep=true — daily + Budgets trigger"
+  description   = "Scales down ECS Fargate to 0 — daily + Budgets trigger"
   role          = aws_iam_role.cost_guard.arn
   handler       = "index.handler"
   runtime       = "python3.12"
@@ -74,6 +73,13 @@ resource "aws_lambda_function" "cost_guard" {
 
   filename         = "${path.module}/../../../../../backend/lambda/cost-guard/cost-guard.zip"
   source_code_hash = fileexists("${path.module}/../../../../../backend/lambda/cost-guard/cost-guard.zip") ? filebase64sha256("${path.module}/../../../../../backend/lambda/cost-guard/cost-guard.zip") : null
+
+  environment {
+    variables = {
+      ECS_CLUSTER_NAME = local.ecs_cluster_name
+      ECS_SERVICE_NAME = local.ecs_service_name
+    }
+  }
 
   depends_on = [aws_cloudwatch_log_group.cost_guard]
   tags       = local.common_tags

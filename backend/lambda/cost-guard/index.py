@@ -1,70 +1,63 @@
 """
-Cost Guard Lambda — W6 MH-COST-A
-Stops EC2/RDS instances tagged Environment=dev and NOT tagged keep=true.
+Cost Guard Lambda — W6 MH-COST-A (Bonus Optimized)
+Scales ECS Fargate service desiredCount to 0 to save compute costs.
 
 Triggers:
   1. EventBridge Scheduler — daily cron 20:00 UTC
   2. SNS from AWS Budgets (cost-driven path)
 
-IAM: least-privilege — ec2:StopInstances + rds:StopDBInstance only
+IAM: least-privilege — ecs:UpdateService + application-autoscaling:RegisterScalableTarget
 """
 
 import boto3
 import json
 import logging
+import os
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-ec2 = boto3.client("ec2")
-rds = boto3.client("rds")
+ecs = boto3.client("ecs")
+app_autoscaling = boto3.client("application-autoscaling")
+
+CLUSTER_NAME = os.environ.get("ECS_CLUSTER_NAME")
+SERVICE_NAME = os.environ.get("ECS_SERVICE_NAME")
 
 
 def handler(event, context):
     logger.info("Cost Guard triggered. Event: %s", json.dumps(event))
 
+    if not CLUSTER_NAME or not SERVICE_NAME:
+        logger.error("Missing ECS_CLUSTER_NAME or ECS_SERVICE_NAME env vars.")
+        return {"statusCode": 500, "message": "Missing config"}
+
     stopped_resources = []
 
-    # -------------------------------------------------------------------------
-    # Stop EC2 instances tagged Environment=dev and NOT keep=true
-    # -------------------------------------------------------------------------
-    ec2_response = ec2.describe_instances(
-        Filters=[
-            {"Name": "instance-state-name", "Values": ["running"]},
-            {"Name": "tag:Environment", "Values": ["dev"]},
-        ]
-    )
+    # 1. Update Application Auto Scaling MinCapacity to 0
+    # Must do this first, otherwise Application Auto Scaling will scale it back up to MinCapacity=1
+    resource_id = f"service/{CLUSTER_NAME}/{SERVICE_NAME}"
+    try:
+        app_autoscaling.register_scalable_target(
+            ServiceNamespace="ecs",
+            ResourceId=resource_id,
+            ScalableDimension="ecs:service:DesiredCount",
+            MinCapacity=0
+        )
+        logger.info("Successfully updated Auto Scaling MinCapacity to 0 for %s", resource_id)
+    except Exception as e:
+        logger.error("Failed to update Auto Scaling Target: %s", str(e))
 
-    for reservation in ec2_response["Reservations"]:
-        for instance in reservation["Instances"]:
-            instance_id = instance["InstanceId"]
-            tags = {t["Key"]: t["Value"] for t in instance.get("Tags", [])}
-
-            if tags.get("keep", "").lower() == "true":
-                logger.info("Skipping EC2 %s (keep=true)", instance_id)
-                continue
-
-            logger.info("Stopping EC2 instance: %s", instance_id)
-            ec2.stop_instances(InstanceIds=[instance_id])
-            stopped_resources.append({"type": "EC2", "id": instance_id})
-
-    # -------------------------------------------------------------------------
-    # Stop RDS instances tagged Environment=dev and NOT keep=true
-    # -------------------------------------------------------------------------
-    rds_response = rds.describe_db_instances()
-
-    for db in rds_response["DBInstances"]:
-        if db["DBInstanceStatus"] != "available":
-            continue
-
-        db_id = db["DBInstanceIdentifier"]
-        tags_response = rds.list_tags_for_resource(ResourceName=db["DBInstanceArn"])
-        tags = {t["Key"]: t["Value"] for t in tags_response["TagList"]}
-
-        if tags.get("Environment", "") == "dev" and tags.get("keep", "").lower() != "true":
-            logger.info("Stopping RDS instance: %s", db_id)
-            rds.stop_db_instance(DBInstanceIdentifier=db_id)
-            stopped_resources.append({"type": "RDS", "id": db_id})
+    # 2. Update ECS Service desiredCount to 0 to stop all running tasks
+    try:
+        ecs.update_service(
+            cluster=CLUSTER_NAME,
+            service=SERVICE_NAME,
+            desiredCount=0
+        )
+        logger.info("Successfully updated desiredCount to 0 for ECS Service %s", SERVICE_NAME)
+        stopped_resources.append({"type": "ECS Service", "id": SERVICE_NAME})
+    except Exception as e:
+        logger.error("Failed to update ECS service: %s", str(e))
 
     result = {
         "statusCode": 200,
@@ -77,3 +70,4 @@ def handler(event, context):
         stopped_resources,
     )
     return result
+
