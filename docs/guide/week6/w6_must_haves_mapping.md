@@ -17,11 +17,11 @@
 | **Cost Allocation Tag** | Tag dùng **chia hóa đơn** trong Cost Explorer. Phải **Activate** trên Billing (chờ ~24h). | Bật “tính tiền theo nhãn” trên sao kê | `Owner`, `Application`, `CostCenter` |
 | **AWS Budgets** | Cảnh báo khi chi phí **vượt ngưỡng** ($ hoặc %). Gửi SNS — **không** tự tắt máy (trừ khi nối SNS → Lambda). | Còi báo 80% hạn mức điện | `kicks-shoes-dev-tientp-monthly-150-cap` |
 | **Cost Anomaly Detection** | ML phát hiện bill **bất thường** (vd tăng đột biến NAT). | Bảo vệ gia tăng bất ngờ | *(tùy chọn)* |
-| **Cost Guard Lambda** | Robot **stop EC2/RDS** dev (không tag `keep=true`). **Không** stop ECS. | Timer tắt máy phòng lab | `kicks-shoes-dev-tientp-cost-guard` |
+| **Cost Guard Lambda** | Robot **scale Fargate về 0** để tiết kiệm compute. | Timer tắt máy phòng lab | `kicks-shoes-dev-tientp-cost-guard` |
 | **EventBridge Scheduler** | Hẹn giờ gọi Lambda (cron), không cần server bật 24/7. | Báo thức 20:00 | `cron(0 20 * * ? *)` |
 | **SNS Topic** | Kênh phát tin — Budget, alarm, test đều có thể gửi vào đây. | Nhóm chat thông báo | `...-alerts` |
-| **CloudTrail** | Sổ audit: **ai** gọi API AWS **lúc nào** (StopInstances, PutPublicAccessBlock). | Camera cửa API | Event history |
-| **StopInstances** | Tắt EC2 — **giữ disk**, bật lại được, vẫn mất phí disk. | Tắt máy, không bán phế liệu | Demo MH-COST-A |
+| **CloudTrail** | Sổ audit: **ai** gọi API AWS **lúc nào** (UpdateService, PutPublicAccessBlock). | Camera cửa API | Event history |
+| **UpdateService** | Lệnh ECS hạ số lượng container về 0 để tắt ứng dụng. | Cúp cầu dao điện | Demo MH-COST-A |
 | **TerminateInstances** | Xóa hẳn EC2 — **mất data**. cost-guard **không** dùng. | Bán phế liệu | ❌ không dùng |
 | **Custom Metric** | Số liệu app tự gửi (`PutMetricData`), vd latency Bedrock. | Đồng hồ đo tự lắp | `BedrockQueryLatencyMs` |
 | **CloudWatch Dashboard** | Một trang gom nhiều biểu đồ. | Bảng điều khiển xe | `...-operations` |
@@ -44,7 +44,7 @@ graph TB
         BE[CloudFront → ALB → ECS]
         APIGW[API Gateway → bedrock-chat]
         FW[Network Firewall]
-        EFS[EFS + Backup]
+        S3UP[S3 Uploads]
     end
     subgraph W6["Lớp W6 (thêm)"]
         TAGS[Tags Cost Allocation]
@@ -65,14 +65,14 @@ sequenceDiagram
     participant Budget as AWS Budgets
     participant SNS as SNS alerts
     participant Lambda as cost-guard
-    participant EC2 as EC2 dev (no keep=true)
+    participant ECS as ECS Fargate
     participant Sched as EventBridge Scheduler
 
     Sched->>Lambda: cron 20:00 UTC daily
     Budget->>SNS: threshold 80% / 100%
     SNS->>Lambda: invoke (test / cost alert)
-    Lambda->>EC2: StopInstances
-    Lambda->>RDS: StopDBInstance
+    Lambda->>ECS: RegisterScalableTarget (Min=0)
+    Lambda->>ECS: UpdateService (DesiredCount=0)
 ```
 
 ---
@@ -215,22 +215,18 @@ aws ce get-cost-and-usage `
 
 ```
 Bắt đầu
-  → Liệt kê EC2 đang "running"
-  → Có tag Environment=dev?
-       Không → bỏ qua
-       Có → có tag keep=true?
-            Có → bỏ qua (miễn trừ)
-            Không → StopInstances
-  → Lặp tương tự cho RDS status "available"
-  → Ghi log + return danh sách đã stop
+  → Nhận biến môi trường ECS_CLUSTER_NAME và ECS_SERVICE_NAME
+  → Gọi API RegisterScalableTarget để set MinCapacity = 0 (khóa Auto Scaling)
+  → Gọi API UpdateService để set DesiredCount = 0 (xóa sổ container)
+  → Ghi log + return danh sách đã scale
 ```
 
-| Resource | Điều kiện STOP | Không stop khi |
+| Resource | Hành động | Mục đích |
 |----------|----------------|----------------|
-| EC2 | `running` + `Environment=dev` | `keep=true` |
-| RDS | `available` + `Environment=dev` | `keep=true` |
+| ECS Fargate | `UpdateService (DesiredCount=0)` | Dừng toàn bộ web app để không tốn tiền compute ban đêm. |
+| Application Auto Scaling | `RegisterScalableTarget (Min=0)` | Ngăn chặn Auto Scaling tự động đẩy container lên lại. |
 
-**Ví dụ:** EC2 lab `Environment=dev` không `keep` → bị stop lúc 20:00 UTC. ECS backend **không** có tag EC2 → **không** bị cost-guard tắt.
+**Ví dụ:** Thay vì đi tìm EC2 để tắt như cách cũ, hệ thống 100% Serverless của chúng ta sẽ tự động "rút phích cắm" của các container Fargate lúc 20:00 UTC. Sáng hôm sau cần test, bạn chỉ việc gõ `terraform apply` để đẩy lên lại.
 
 ### 💻 Lambda Code
 
@@ -253,21 +249,50 @@ Compress-Archive -Path backend/lambda/cost-guard/index.py `
 | `aws_lambda_function.cost_guard` | Python 3.12, zip từ repo |
 | `aws_scheduler_schedule.cost_guard_daily` | 20:00 UTC |
 | `aws_sns_topic_subscription.budgets_to_cost_guard` | SNS → Lambda |
-| `aws_iam_role_policy.cost_guard_actions` | `ec2:StopInstances`, `rds:StopDBInstance` |
+| `aws_iam_role_policy.cost_guard_actions` | `ecs:UpdateService`, `application-autoscaling:RegisterScalableTarget` |
 
 > [!NOTE]
 > Đường dẫn zip từ `02-app`: **`../../../../../backend/lambda/...`** (5 cấp lên repo root), không phải 4 cấp.
 
+---
+
+### 💡 [Deep-Dive] Phân tích chuyên sâu: Tại sao lại Scale Fargate thay vì tắt EC2?
+*(Dành cho các thành viên muốn hiểu sâu để giải trình với Mentor)*
+
+**1. Khác biệt cốt lõi giữa Server-based và Serverless:**
+Trong các kiến trúc cũ (Server-based), ứng dụng chạy trên máy ảo EC2. Nếu muốn không tốn tiền ban đêm, bạn đơn giản là gửi lệnh `StopInstances` để tắt nguồn máy chủ. 
+Tuy nhiên, dự án Kicks-Shoes của chúng ta xịn hơn, chúng ta dùng **ECS Fargate (100% Serverless)**. AWS tự quản lý máy chủ bên dưới, bạn không có máy ảo EC2 nào để "tắt". Cách duy nhất để ngừng trả tiền là báo với AWS: *"Bây giờ tôi không cần container nào chạy nữa"*, tức là đưa số lượng container (Desired Count) về `0`.
+
+**2. Vấn đề của Auto Scaling (Tại sao không chỉ set DesiredCount = 0?):**
+ECS của chúng ta được gắn với Application Auto Scaling. Nếu Lambda chỉ đơn thuần gửi lệnh `UpdateService(DesiredCount=0)`, thì chưa đầy 1 phút sau, Auto Scaling sẽ phát hiện số lượng container đang dưới mức tối thiểu (`MinCapacity=1`), và nó sẽ... tự động tạo container mới đắp vào! 
+👉 **Cách xử lý triệt để của nhóm:** Lambda của chúng ta thông minh hơn. Nó phải thực hiện **2 bước**:
+- **Bước 1:** Khóa miệng Auto Scaling bằng lệnh `RegisterScalableTarget(MinCapacity=0)`.
+- **Bước 2:** Xóa sổ container bằng lệnh `UpdateService(DesiredCount=0)`.
+
+---
+
+### 💡 [Deep-Dive] Phân tích chuyên sâu: Tại sao lại Xóa EFS và dùng S3 Lifecycle?
+
+**1. Bài toán rò rỉ chi phí (Cost Leakage):**
+Trong môi trường Cloud, lưu trữ EFS cực kỳ đắt đỏ (**$0.30/GB/Tháng**), đắt gấp 13 lần so với S3 Standard (**$0.023/GB/Tháng**). 
+Thêm nữa, mỗi lần ứng dụng từ ECS đẩy ảnh lên EFS, dữ liệu có thể phải đi vòng qua NAT Gateway (nếu không setup VPC Endpoint cực kỳ chuẩn xác), gây phát sinh thêm chi phí data processing. 
+
+**2. FinOps - Tối ưu Dòng tiền Dài hạn (Stretch Goal):**
+Bằng việc loại bỏ hoàn toàn EFS, hệ thống được giảm tải. Thay vào đó, chúng ta lưu trữ trên S3 và áp dụng nguyên lý **Cloud-Native FinOps** thông qua `lifecycle_rule`:
+- 30 ngày đầu: Ảnh nằm ở Standard (tốc độ cao).
+- Sau 30 ngày: Ảnh ít được xem, tự động chuyển sang `STANDARD_IA` (Chỉ còn **$0.0125/GB/Tháng**).
+- Sau 90 ngày: Tự động xóa (Expiration).
+👉 Chiến lược này giúp nhóm tiết kiệm đến **80% chi phí lưu trữ dài hạn** mà không cần con người can thiệp thủ công. Minh chứng đanh thép cho kỹ năng Vận Hành Đám Mây (Cloud Operations)!
+
+---
+
 ### 🖥️ Demo bắt buộc (Evidence)
 
-**Bước 1 — Tạo EC2 test:**
+**Bước 1 — Kiểm tra trạng thái ECS trước khi tắt:**
 
 ```powershell
-aws ec2 run-instances `
-  --image-id resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 `
-  --instance-type t3.micro `
-  --tag-specifications "ResourceType=instance,Tags=[{Key=Environment,Value=dev},{Key=Name,Value=w6-cost-guard-demo}]" `
-  --region us-east-1
+aws ecs describe-services --cluster kicks-shoes-dev-tientp-cluster --services kicks-shoes-dev-tientp-service --query "services[0].desiredCount"
+# Phải hiển thị >= 1
 ```
 
 **Bước 2 — Invoke Lambda:**
@@ -278,7 +303,9 @@ aws lambda invoke --function-name kicks-shoes-dev-tientp-cost-guard `
 Get-Content out.json
 ```
 
-**Bước 3 — CloudTrail:** Event history → filter `StopInstances` → screenshot.
+**Bước 3 — Xác nhận kết quả & CloudTrail:**
+Chạy lại lệnh ở Bước 1, kết quả phải ra `0`.
+Vào CloudTrail Event history → filter `UpdateService` → screenshot minh chứng.
 
 **Bước 4 — Test SNS chain:**
 
@@ -304,7 +331,7 @@ aws scheduler get-schedule --name kicks-shoes-dev-tientp-cost-guard-daily --grou
 ### 📋 Checklist MH-COST-A
 
 - [ ] Lambda + Scheduler + SNS subscription Active
-- [ ] Demo stop EC2 → CloudTrail evidence
+- [ ] Demo Scale Fargate về 0 → CloudTrail evidence (`UpdateService`)
 - [ ] Test SNS → Lambda invoke thành công
 - [ ] ADR cost-data latency (1 đoạn trong evidence pack)
 

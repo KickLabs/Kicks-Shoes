@@ -116,7 +116,3 @@ output "bedrock_dlq_arn" {
   value       = module.lambda_bedrock_chat.dlq_arn
 }
 
-output "efs_file_system_id" {
-  description = "EFS file system ID"
-  value       = aws_efs_file_system.main.id
-}
