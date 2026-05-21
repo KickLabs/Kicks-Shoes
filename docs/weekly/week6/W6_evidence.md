@@ -16,11 +16,11 @@
 
 | Item | Value |
 |------|-------|
-| AWS Account ID | [account-id] |
+| AWS Account ID | 962533717758 |
 | Region | us-east-1 |
-| VPC ID | vpc-xxxxxxxx |
+| VPC ID | vpc-06f48bef6407f20be |
 | ECS Cluster | kicks-shoes-dev-tientp-cluster |
-| App URL | https://[cloudfront-domain].cloudfront.net |
+| App URL | https://dlcjow973n7gl.cloudfront.net |
 
 ### Lược sử Dự án (Project Recap)
 
@@ -44,35 +44,51 @@ Dựa trên phản hồi từ trainer tuần trước, nhóm đã khắc phục 
 
 ## 2. Carry-Forward: App Running End-to-End
 
-> ⚠️ [CHÚ Ý: BẠN CẦN CHỤP ẢNH THẬT DÁN VÀO ĐÂY]
-
 **ECS Service RUNNING:**
-[Screenshot: ECS console → kicks-shoes-dev-cluster → kicks-shoes-dev-service → Status: RUNNING, Desired: 1, Running: 1]
+
+![ECS Service RUNNING](../../images/week6/1.png)
 
 **ALB Target Healthy:**
-[Screenshot: ALB Target Group → kicks-shoes-dev-tg → Target health: healthy]
+
+![ALB Target Healthy](../../images/week6/2.png)
 
 **Live demo FE→ALB→ECS→DB:**
-[Screenshot: browser UI của Kicks Shoes đang hoạt động]
-[Screenshot: AI Chat đang trả lời câu hỏi tư vấn giày]
+![browser UI của Kicks Shoes đang hoạt động](../../images/week6/3.png)
+*(Hướng dẫn: Mở link trang web của dự án trên trình duyệt và chụp màn hình.)*
+![AI Chat đang trả lời câu hỏi tư vấn giày](../../images/week6/4.png)
+*(Hướng dẫn: Mở trang web -> chat với AI -> chụp lại đoạn AI tư vấn thành công.)*
 
 ---
 
 ## 3. MH-COST-V: Cost Visibility & Attribution
 
 ### Tags trên resources (4 keys bắt buộc)
-[Screenshot: ECS Service tags — Owner, Environment=dev, CostCenter=G13, Application=KicksShoes]
-[Screenshot: Lambda bedrock-chat tags — 4 keys]
+
+![Tags trên resources ECS](../../images/week6/5.png)
+
+![Tags trên resources RDS](../../images/week6/6.png)
 
 ### Cost Allocation Tags Activated (Billing console)
-[Screenshot: AWS Billing → Cost allocation tags → Owner: Active, Application: Active]
+*(Ghi chú: Theo xác nhận từ Trainer ngày 21/05, bước này đang bị Access Denied do giới hạn SCP từ AWS Organizations của tài khoản Lab. Các team được phép BỎ QUA chụp màn hình phần này, chỉ cần đảm bảo gán Tags đầy đủ trên Resources là được).*
+
+![BỎ QUA - Không cần chụp ảnh này](../../images/week6/7.png)
+*(Hướng dẫn: Bỏ qua theo thông báo của Trainer)*
 
 ### Cost Tool: AWS Budgets & Anomaly Detection
-[Screenshot: Budgets console — kicks-shoes-dev-monthly-150-cap, $150 threshold, SNS action]
-[Screenshot: Cost Anomaly Detection monitor]
+
+![AWS Budgets & Anomaly Detection](../../images/week6/7.png)
+
+![AWS Budgets & Anomaly Detection](../../images/week6/8.png)
+
+![AWS Cost Anomaly Detection monitor](../../images/week6/9.png)
+
+![Cost Explorer → Group by: Service](../../images/week6/10.png)
 
 ### Baseline Cost Breakdown (Cost Explorer)
-[Screenshot: Cost Explorer → Filter: Application=KicksShoes → Group by: Service]
+*(Ghi chú: Do lỗi Access Denied không bật được Cost Allocation Tags ở bước trên, Tag `Application` sẽ không xuất hiện trong Cost Explorer. Hơn nữa Cost Explorer cần 24h để đồng bộ dữ liệu. Bạn cứ chụp màn hình Cost Explorer hiện tại (Group by Service) là đủ, không cần ép Filter theo Tag nữa).*
+
+![Cost Explorer → Group by: Service (Bỏ qua đoạn Filter bằng Tag)](../../images/week6/10.png)
+*(Hướng dẫn: Mở AWS Console -> Tìm Cost Explorer -> Bỏ qua phần Filter, chỉ cần chọn Group by là Service rồi chụp ảnh biểu đồ).*
 
 **Top 3 cost drivers observation:**
 1. **Network Firewall** (~$0.395/h/endpoint × 2 endpoints) — Resource đắt nhất. Việc triển khai Multi-AZ nhân đôi chi phí so với Single-AZ, nhưng là bắt buộc cho môi trường Production để đảm bảo High Availability (HA) cho Egress E-commerce.
@@ -99,26 +115,58 @@ Dựa trên phản hồi từ trainer tuần trước, nhóm đã khắc phục 
 
 ## 4. MH-COST-A: Cost Control & Action
 
+### Bối cảnh nghiệp vụ (E-commerce DEV Environment)
+Kicks-Shoes là hệ thống E-commerce hiện đang trong giai đoạn phát triển tích cực (Môi trường DEV). Đặc thù của team Dev là chỉ làm việc vào ban ngày (giờ hành chính). Do hệ thống sử dụng ECS Fargate (Serverless Compute) tính phí theo thời gian chạy, việc để container chạy rỗng ban đêm và cuối tuần sẽ gây lãng phí tài nguyên nghiêm trọng. 
+**Giải pháp:** Xây dựng cơ chế **"Smart Wake-up" (Thức dậy thông minh)**. Hệ thống tự động tắt (Scale 0) vào ban đêm và tự động bật lại (Scale 1) vào sáng hôm sau. ĐẶC BIỆT: Trước khi bật lại vào buổi sáng, Lambda phải kiểm tra tổng hóa đơn (Budget). Nếu team đã tiêu lố ngân sách $150, hệ thống kiên quyết không bật để bảo vệ túi tiền.
+
 ### Lambda Cost Guard (Automated Cost Action)
-**Logic:** Scale toàn bộ ứng dụng ECS Fargate mang tag `Environment=dev` về số lượng `DesiredCount = 0` và `MinCapacity = 0` ban đêm để tiết kiệm hoàn toàn phí Compute.
-**IAM role:** Least-privilege — chỉ cấp quyền `ecs:UpdateService` và `application-autoscaling:RegisterScalableTarget`. Không cấp quyền wildcard.
+**Logic:** 
+- Tối (20:00 VN): Scale toàn bộ ứng dụng ECS Fargate mang tag `Environment=dev` về số lượng `DesiredCount = 0` và `MinCapacity = 0`.
+- Sáng (08:00 VN): Đọc AWS Budgets. Nếu an toàn, mở khóa `MinCapacity = 1` và `DesiredCount = 1` để khởi động lại.
+**IAM role:** Least-privilege — cấp quyền `ecs:UpdateService`, `application-autoscaling:RegisterScalableTarget` và `budgets:ViewBudget`. Không cấp quyền wildcard.
 
-[Screenshot: Lambda console — function overview, runtime Python 3.12, role]
-[Screenshot: IAM role policy — chỉ đúng 4 actions kể trên]
+![Lambda console — function overview](../../images/week6/11.png)
 
-### Cơ chế kích hoạt: Daily Scheduled & Cost-Driven
-[Screenshot: EventBridge Scheduler — kicks-shoes-dev-cost-guard-daily, cron(0 20 * * ? *)]
-[Screenshot: AWS Budgets → SNS → Lambda Chain]
+![IAM role policy](../../images/week6/12.png)
 
-### Bằng chứng Thực thi (Demonstrated Fargate Scale 0)
-[Screenshot: ECS console → kicks-shoes-dev-service → Desired tasks: 1, Running tasks: 1 (Before)]
-[Screenshot: CloudWatch Logs → "Successfully scaled kicks-shoes-dev-tientp-service down to 0"]
-[Screenshot: ECS console → kicks-shoes-dev-service → Desired tasks: 0, Running tasks: 0 (After)]
-[Screenshot: CloudTrail → EventName=UpdateService → requestParameters chứa desiredCount=0]
+### Cơ chế kích hoạt: Multi-layered Triggers
+
+![EventBridge Scheduler](../../images/week6/13.png)
+![AWS Budgets — Hiển thị 2 budget song song](../../images/week6/14.png)
+
+![AWS Budgets → SNS → Lambda Chain](../../images/week6/15.png)
+![ECS console](../../images/week6/16.png)
+
+#### AWS Budgets & Anomaly Detection
+![AWS Budgets & Anomaly Detection](../../images/week6/7.png)
+![AWS Budgets & Anomaly Detection](../../images/week6/8.png)
+
+![CloudWatch Logs](../../images/week6/17.png)
+
+### Bằng chứng Thực thi (Demonstrated Smart Wake-up & Scale)
+
+####  Desired: 1, Running: 1 (Lúc đang chạy)
+![ECS console → kicks-shoes-dev-service → Desired: 1, Running: 1 (Lúc đang chạy)](../../images/week6/18.png)
+
+####  CloudWatch Logs
+![CloudWatch Logs → "Successfully scaled kicks-shoes-dev-tientp-service down to 0" (Ban đêm)](../../images/week6/19.png)
+
+####  Desired: 0, Running: 0 (Đã ngủ)
+![ECS console → kicks-shoes-dev-service → Desired: 0, Running: 0 (Đã ngủ)](../../images/week6/20.png)
+*(Hướng dẫn: Mở AWS Console -> Tìm ECS -> Chọn cluster `kicks-shoes-dev-tientp-cluster` -> Tab Services / Tasks để xem trạng thái.)*
+
+![CloudWatch Logs → "Morning Wake-up routine initiated... Successfully woke up ECS Fargate Service" (Buổi sáng lúc 8h VN)](../../images/week6/21.png)
+*(Hướng dẫn: Mở AWS Console -> Tìm CloudWatch -> Log groups (hoặc Log Insights) -> Chọn Log group của Lambda tương ứng -> Xem log events.)*
+
+### Bằng chứng cho việc thực thi overbudget sẽ scale = 0
+
+![alt text](../../images/week6/autoscaleoverbudget.png)
 
 ### Bằng chứng Tối ưu Chi phí Bonus (W6 Stretch Goal)
-[Screenshot: AWS Backup → Backup plans → kicks-shoes-dev-tientp-backup-plan đang backup bucket S3 Uploads]
-[Screenshot: S3 console → kicks-shoes-dev-tientp-uploads bucket → Management → Lifecycle rules: Chuyển sang Standard-IA sau 30 ngày, Expire sau 90 ngày]
+
+![AWS Backup → Backup plans → kicks-shoes-dev-tientp-backup-plan đang backup bucket S3 Uploads](../../images/week6/22.png)
+
+![S3 console → kicks-shoes-dev-tientp-uploads bucket → Management → Lifecycle rules: Chuyển sang Standard-IA sau 30 ngày, Expire sau 90 ngày](../../images/week6/23.png)
 
 ### ADR 01 — Cost Data Latency & Budgets Trigger
 **Context:** AWS cost data có độ trễ cập nhật (lag) khoảng 8–24h. Trong môi trường Sandbox workshop (thời gian sống 48h), cảnh báo Budgets dựa trên chi phí sẽ **KHÔNG** kịp kích hoạt do không đủ thời gian tích lũy cost data.
@@ -132,12 +180,20 @@ Dựa trên phản hồi từ trainer tuần trước, nhóm đã khắc phục 
 2. Nâng cấp Lambda Cost Guard để ghi đè `MinCapacity = 0` (chặn Auto Scaling) và `DesiredCount = 0` (xóa container) của ECS Fargate Service.
 **Consequences:** Tiết kiệm triệt để chi phí Compute và Storage ban đêm, đáp ứng hoàn hảo tiêu chí "Cost-Aware Cloud" của Tuần 6.
 
+### "Wasteful → Changed" Reflection
+Trong quá trình thiết kế hệ thống Kicks-Shoes, chúng tôi nhận thấy 2 điểm lãng phí (Wasteful) cực kỳ nghiêm trọng trong kiến trúc ban đầu:
+1. **Lãng phí Lưu trữ (Storage Waste):** Việc sử dụng Amazon EFS để lưu trữ hình ảnh tải lên là quá dư thừa về tính năng và đắt đỏ ($0.30/GB/tháng).
+   &rightarrow; **Changed:** Chúng tôi đã quyết định gỡ bỏ EFS hoàn toàn, thiết kế lại hệ thống để sử dụng Amazon S3 ($0.023/GB/tháng). Không những thế, chúng tôi còn cài đặt thêm S3 Lifecycle Rule để chuyển các file cũ sang Standard-IA, giúp cắt giảm hơn 80% chi phí lưu trữ dài hạn.
+2. **Lãng phí Máy chủ ban đêm (Compute Waste):** Ban đêm Môi trường DEV không có ai code, nhưng ECS Fargate vẫn duy trì container chạy rỗng 24/7.
+   &rightarrow; **Changed:** Chúng tôi đã lập trình lại Lambda Cost Guard kết hợp EventBridge (Smart Wake-up) để tự động xóa sạch container (Scale 0) lúc 20:00 tối, và tự động gọi container dậy (Scale 1) vào lúc 08:00 sáng hôm sau, miễn là hóa đơn (Budget) chưa bị lố. Hành động này giúp tiết kiệm 11 tiếng đồng hồ tiền Compute mỗi ngày.
+Điều này chứng minh khả năng áp dụng nguyên tắc FinOps (Cloud Financial Management) vào thiết kế kiến trúc thực tế.
+
 ---
 
 ## 5. MH-OBS: CloudWatch Observability
 
 ### CloudWatch Dashboard
-[Screenshot: Dashboard kicks-shoes-dev-operations — hiển thị các widget có số liệu thật]
+![Dashboard kicks-shoes-dev-operations — hiển thị các widget có số liệu thật](../../images/week6/24.png)
 
 **Widget 1 — Custom Metric (Nổi bật nhất):**
 - Title: **"Bedrock Query Latency (Custom Metric)"**
@@ -175,7 +231,7 @@ await publishMetric('BedrockQueryLatencyMs', responseTime);
 ```
 
 ### CloudWatch Alarm & Log Insights
-[Screenshot: Alarm kicks-shoes-dev-lambda-errors state = **OK** hoặc **ALARM** (Tuyệt đối không phải INSUFFICIENT_DATA)]
+![Alarm kicks-shoes-dev-lambda-errors state = **OK** hoặc **ALARM** (Tuyệt đối không phải INSUFFICIENT_DATA)](../../images/week6/25.png)
 
 **Saved Query Log Insights:**
 - **Query Name:** `kicks-shoes-lambda-error-spikes`
@@ -187,8 +243,7 @@ fields @timestamp, @message
 | sort @timestamp desc
 | limit 20
 ```
-[Screenshot: Log Insights kết quả chạy ra >= 5 dòng lỗi timestamps thật]
-
+![Log Insights kết quả chạy ra >= 5 dòng lỗi timestamps thật](../../images/week6/26.png)
 ---
 
 ## 6. MH-SEC: Self-Healing Security Guard
@@ -202,18 +257,19 @@ fields @timestamp, @message
 **Logic Lambda:** Quét S3 bucket, nếu Block Public Access = OFF &rightarrow; gọi API `PutPublicAccessBlock` ép bật lên lại (ON). Role least-privilege chỉ có 3 quyền S3 liên quan, không dùng wildcard.
 
 **Bằng chứng vòng lặp tự sửa lỗi:**
-1. [Screenshot: S3 console → Permissions → Block Public Access: **OFF** (Đỏ - Trạng thái nguy hiểm)]
-2. [Screenshot: CloudWatch Logs → "VIOLATION: Bucket kicks-shoes... has public access enabled. Remediating..."]
-3. [Screenshot: S3 console → Permissions → Block Public Access: **ON** (Xanh lục - Đã được Lambda tự động fix)]
-4. [Screenshot: CloudTrail → EventName=**PutPublicAccessBlock** do userAgent chứa "lambda" thực hiện]
+1. ![S3 console → Permissions → Block Public Access: **OFF** (Đỏ - Trạng thái nguy hiểm)](../../images/week6/27.png)
+
+2. ![CloudWatch Logs → "VIOLATION: Bucket kicks-shoes... has public access enabled. Remediating..."](../../images/week6/28.png)
+3. ![S3 console → Permissions → Block Public Access: **ON** (Xanh lục - Đã được Lambda tự động fix)](../../images/week6/29.png)
+4. ![CloudTrail → EventName=**PutBucketPublicAccessBlock** do userAgent chứa "lambda" thực hiện](../../images/week6/30.png)
 
 ### Lớp phòng vệ hỗ trợ (Supporting Preventive Control) — KMS CMK
 Hệ thống sử dụng khóa Customer Managed Key (CMK) Symmetric để mã hóa tĩnh cho S3 Uploads thay vì xài key mặc định của AWS.
 - **Key alias:** `alias/kicks-shoes-dev-s3-uploads`
 - **Applied to:** S3 bucket properties -> Default encryption (SSE-KMS)
 
-[Screenshot: KMS console → Customer managed keys → kicks-shoes-dev-s3-uploads → Key rotation: Enabled]
-[Screenshot: CloudTrail → Event history → EventName=**kms:GenerateDataKey** → userAgent=s3.amazonaws.com]
+![KMS console → Customer managed keys → kicks-shoes-dev-s3-uploads → Key rotation: Enabled](../../images/week6/31.png)
+![CloudTrail → Event history → EventName=**kms:GenerateDataKey** → userAgent=s3.amazonaws.com](../../images/week6/32.png)
 
 ### Security-Cost Trade-off (Đánh đổi Bảo mật và Chi phí)
 **Chi phí:** Khóa KMS CMK tiêu tốn $1/tháng/key cộng thêm $0.03 cho mỗi 10.000 API calls (`kms:Decrypt` / `kms:GenerateDataKey`).

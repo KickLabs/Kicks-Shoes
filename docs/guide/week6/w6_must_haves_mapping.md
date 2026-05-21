@@ -171,11 +171,54 @@ resource "aws_budgets_budget" "monthly_cost_cap" {
 > 2. Tìm `Owner`, `Application`, `CostCenter` → **Activate**
 > 3. Đợi **~24 giờ** mới có data trong Cost Explorer
 
-### 🖥️ Cách xem trên AWS Console
+### 🖥️ Cách xem TAG đã được gắn trên các Service chưa (AWS Console)
 
-1. **Resource Groups and Tag Editor** → Tìm ECS service / Lambda → Tab **Tags** → 4 keys: `Owner`, `Environment`, `CostCenter`, `Application`.
-2. **Billing** → **Budgets** → `kicks-shoes-dev-tientp-monthly-150-cap` → xem Actual vs Budgeted.
-3. **Cost Explorer** → Group by **Service** → Filter tag `Application = KicksShoes` (sau khi activate).
+Bạn cần mở giao diện AWS Console của từng dịch vụ để kiểm tra xem 4 thẻ bắt buộc (`Owner`, `Environment`, `CostCenter`, `Application`) đã xuất hiện chưa:
+
+**1. Trên ECS (Fargate Service):**
+- Mở AWS Console &rightarrow; Tìm **ECS** &rightarrow; Chọn Cluster `kicks-shoes-dev-tientp-cluster`.
+- Chuyển sang tab **Services** &rightarrow; Nhấn vào tên service `kicks-shoes-dev-tientp-service`.
+- Cuộn xuống dưới cùng, chọn tab **Tags**. Bạn sẽ thấy danh sách các thẻ ở đây.
+
+**2. Trên AWS Lambda (Cost Guard & Bedrock Chat):**
+- Mở AWS Console &rightarrow; Tìm **Lambda** &rightarrow; Chọn function `kicks-shoes-dev-tientp-cost-guard`.
+- Chọn tab **Configuration** (Cấu hình) &rightarrow; Nhìn menu bên trái chọn **Tags**.
+
+**3. Trên S3 Bucket (Kho lưu trữ ảnh):**
+- Mở AWS Console &rightarrow; Tìm **S3** &rightarrow; Bấm vào bucket `kicks-shoes-dev-tientp-962533717758-uploads`.
+- Chọn tab **Properties** (Thuộc tính).
+- Cuộn xuống tìm mục **Tags** (thường nằm ở nửa dưới trang).
+
+**4. Trên Network Firewall:**
+- Mở AWS Console &rightarrow; Tìm **VPC**.
+- Ở menu bên trái, cuộn xuống mục **AWS Network Firewall** &rightarrow; Chọn **Firewalls**.
+- Bấm vào tên Firewall của bạn, cuộn xuống dưới cùng tìm mục **Tags**.
+
+*(Tất cả các tài nguyên này đều phải có đủ thẻ vì chúng ta đã dùng `local.common_tags` bao trùm toàn bộ code Terraform).*
+
+### 🖥️ Cách xem cấu hình Smart Wake-up & Budgets trên AWS Console
+
+Để minh chứng cho Trainer thấy hệ thống của bạn tự động "Ngủ - Thức" và giới hạn chi phí theo từng ngày/tháng, bạn hãy thao tác click như sau để chụp ảnh màn hình:
+
+**1. Xem Lịch trình "Ngủ - Thức" (EventBridge Scheduler):**
+- Mở AWS Console &rightarrow; Tìm **EventBridge**.
+- Ở menu bên trái, dưới phần **Scheduler**, chọn **Schedules**.
+- Bạn sẽ thấy 2 lịch trình:
+  - `kicks-shoes-dev-tientp-cost-guard-daily`: Lịch ngủ buổi tối (Cron: `0 20 * * ? *`).
+  - `kicks-shoes-dev-tientp-cost-guard-morning`: Lịch thức buổi sáng (Cron: `0 1 * * ? *`).
+- Click vào từng lịch để xem phần Target đang gọi đến Lambda Cost Guard.
+
+**2. Xem Cảnh báo Ngân sách (AWS Budgets):**
+- Mở AWS Console &rightarrow; Tìm **Billing** (hoặc Billing and Cost Management).
+- Ở menu bên trái, dưới phần **Cost management**, chọn **Budgets**.
+- Bạn sẽ thấy 2 Budget đang chạy song song để bảo vệ túi tiền của bạn nhiều lớp:
+  - `kicks-shoes-dev-tientp-monthly-150-cap`: Chặn mức 150$ cho nguyên tháng.
+  - `kicks-shoes-dev-tientp-daily-10-cap`: Chặn mức 10$ cho từng ngày (Chống "cháy tiền" đột ngột trong 24h).
+- Click vào từng Budget để xem Actual vs Budgeted và biểu đồ thanh cảnh báo 80%, 100%.
+
+### 🖥️ Cách xem Cost Explorer (Sau khi tag có hiệu lực)
+
+1. **Cost Explorer** &rightarrow; Group by **Service** &rightarrow; Filter tag `Application = KicksShoes` (Chỉ làm được sau khi Activate Cost Allocation Tags 24h).
 
 ### ✅ Verify CLI
 
@@ -208,17 +251,22 @@ aws ce get-cost-and-usage `
 | Hành động | Ai làm | Khi nào |
 |-----------|--------|---------|
 | Gửi cảnh báo | AWS Budgets → SNS | Vượt 80% / 100% ngưỡng $150 |
-| Stop EC2/RDS | cost-guard Lambda | 20:00 UTC mỗi ngày **hoặc** khi SNS kích hoạt |
-| Stop ECS/Fargate | ❌ **Không** (code không có) | Muốn tiết kiệm ECS → scale count (khác scope) |
+| Tắt hệ thống (Scale 0) | cost-guard Lambda | 20:00 UTC mỗi ngày **hoặc** khi SNS báo lố tiền |
+| Bật hệ thống (Scale 1) | cost-guard Lambda | 01:00 UTC (Sáng) **VÀ** Budget < $150 |
 
 ### 🎯 Logic cost-guard (đọc như flowchart)
 
 ```
 Bắt đầu
-  → Nhận biến môi trường ECS_CLUSTER_NAME và ECS_SERVICE_NAME
-  → Gọi API RegisterScalableTarget để set MinCapacity = 0 (khóa Auto Scaling)
-  → Gọi API UpdateService để set DesiredCount = 0 (xóa sổ container)
-  → Ghi log + return danh sách đã scale
+  → Nhận trigger từ EventBridge hoặc SNS
+  → Nếu là (Buổi tối) HOẶC (SNS cảnh báo hết tiền):
+       → Gọi API RegisterScalableTarget để set MinCapacity = 0
+       → Gọi API UpdateService để set DesiredCount = 0
+  → Nếu là (Buổi sáng):
+       → Check hóa đơn (AWS Budgets)
+       → Đã xài lố $150? → Thoát, không bật!
+       → Chưa lố $150? → Set MinCapacity = 1, DesiredCount = 1
+  → Ghi log kết quả
 ```
 
 | Resource | Hành động | Mục đích |
@@ -249,7 +297,7 @@ Compress-Archive -Path backend/lambda/cost-guard/index.py `
 | `aws_lambda_function.cost_guard` | Python 3.12, zip từ repo |
 | `aws_scheduler_schedule.cost_guard_daily` | 20:00 UTC |
 | `aws_sns_topic_subscription.budgets_to_cost_guard` | SNS → Lambda |
-| `aws_iam_role_policy.cost_guard_actions` | `ecs:UpdateService`, `application-autoscaling:RegisterScalableTarget` |
+| `aws_iam_role_policy.cost_guard_actions` | `ecs:UpdateService`, `application-autoscaling`, `budgets:ViewBudget` |
 
 > [!NOTE]
 > Đường dẫn zip từ `02-app`: **`../../../../../backend/lambda/...`** (5 cấp lên repo root), không phải 4 cấp.

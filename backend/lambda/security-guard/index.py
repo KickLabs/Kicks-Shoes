@@ -11,6 +11,7 @@ IAM: least-privilege — s3:PutPublicAccessBlock + s3:GetPublicAccessBlock + s3:
 """
 
 import boto3
+from botocore.exceptions import ClientError
 import json
 import logging
 import os
@@ -75,13 +76,16 @@ def handler(event, context):
             else:
                 logger.info("OK: Bucket %s Block Public Access is ON", bucket_name)
 
-        except s3.exceptions.NoSuchPublicAccessBlockConfiguration:
-            logger.warning(
-                "VIOLATION: Bucket %s has no Block Public Access config. Creating...",
-                bucket_name,
-            )
-            _remediate(bucket_name)
-            remediated.append(bucket_name)
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") == "NoSuchPublicAccessBlockConfiguration":
+                logger.warning(
+                    "VIOLATION: Bucket %s has no Block Public Access config. Creating...",
+                    bucket_name,
+                )
+                _remediate(bucket_name)
+                remediated.append(bucket_name)
+            else:
+                logger.error("Error checking bucket %s: %s", bucket_name, exc)
 
         except Exception as exc:
             logger.error("Error checking bucket %s: %s", bucket_name, exc)
