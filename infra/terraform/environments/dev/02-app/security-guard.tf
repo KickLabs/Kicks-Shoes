@@ -108,7 +108,7 @@ resource "aws_lambda_permission" "eventbridge_security_guard" {
   source_arn    = aws_cloudwatch_event_rule.s3_public_access.arn
 }
 
-# Fallback: daily cron scan at 21:00 UTC
+# Fallback: daily cron scan at 21:00 VN
 resource "aws_scheduler_schedule" "security_guard_daily" {
   name       = "${var.project_name}-security-guard-daily"
   group_name = "default"
@@ -118,6 +118,7 @@ resource "aws_scheduler_schedule" "security_guard_daily" {
   }
 
   schedule_expression = "cron(0 21 * * ? *)"
+  schedule_expression_timezone = "Asia/Ho_Chi_Minh"
 
   target {
     arn      = aws_lambda_function.security_guard.arn

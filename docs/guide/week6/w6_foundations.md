@@ -52,7 +52,8 @@ flowchart LR
     end
     subgraph A["MH-COST-A — Hành động tiền"]
         L[cost-guard Lambda]
-        L -->|scale 0| ECS[ECS Fargate]
+        L -->|Tối: scale 0| ECS[ECS Fargate]
+        L -->|Sáng: scale 1| ECS
     end
     subgraph O["MH-OBS — Nhìn thấy sức khỏe app"]
         M[Metric + Dashboard]
@@ -139,6 +140,12 @@ User mở FE (CloudFront)
 
 ## 8. Luồng tiền & cost-guard (chi tiết từng bước)
 
+### 💡 Bối cảnh E-commerce (Tại sao phải Scale 0 ban đêm?)
+Kicks-Shoes là một dự án E-commerce tích hợp AI đang trong giai đoạn phát triển (**Môi trường DEV**). Ở môi trường DEV, team Developer chỉ code và test hệ thống vào giờ hành chính. Tuy nhiên, nếu cứ để Serverless Container (ECS Fargate) chạy 24/7, dự án sẽ "đốt" tiền vô ích vào ban đêm và cuối tuần. 
+Do đó, chúng ta cần một cơ chế **Smart Wake-up (Thức dậy thông minh)**:
+- **Tối (20:00 UTC):** Lambda dọn dẹp, ép số lượng container về 0.
+- **Sáng (01:00 UTC):** Lambda kiểm tra hóa đơn (Budgets). Nếu tiền chưa vượt ngưỡng $150, nó sẽ dựng container (Scale = 1) trở lại để team Dev vào làm việc bình thường. Nếu đã vượt $150, nó kiên quyết để hệ thống "ngủ" luôn nhằm bảo vệ túi tiền.
+
 ### 8.1 Chỉ nhìn (COST-V)
 
 1. Mọi resource có **tag** `Application=KicksShoes`, `CostCenter=G13`…
@@ -147,16 +154,24 @@ User mở FE (CloudFront)
 
 ### 8.2 Nhìn + hành động (COST-A)
 
-**Trigger A — Lịch (20:00 UTC mỗi ngày):**
+**Trigger A — Lịch Tối (20:00 UTC mỗi ngày):**
 ```
-EventBridge Scheduler → gọi cost-guard Lambda
+EventBridge Scheduler → gọi cost-guard Lambda (source: scheduled-night)
     → khóa Auto Scaling (Min=0)
     → ép số lượng container chạy xuống 0 (DesiredCount=0)
 ```
 
-**Trigger B — Budget vượt ngưỡng (trễ 8–24h):**
+**Trigger B — Lịch Sáng (01:00 UTC mỗi ngày):**
 ```
-Budget → SNS topic alerts → Lambda cost-guard (cùng logic scale 0)
+EventBridge Scheduler → gọi cost-guard Lambda (source: scheduled-morning)
+    → Đọc AWS Budgets (hạn mức $150)
+    → Nếu vượt $150: Dừng, không bật.
+    → Nếu an toàn: Mở Auto Scaling (Min=1) và Bật lại Container (DesiredCount=1).
+```
+
+**Trigger C — Budget vượt ngưỡng (Bất cứ lúc nào trễ 8–24h):**
+```
+Budget → SNS topic alerts → Lambda cost-guard (logic tắt giống Trigger A)
 ```
 
 ---
