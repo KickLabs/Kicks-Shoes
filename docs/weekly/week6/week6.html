@@ -47,11 +47,12 @@
   <body>
     <div class="controls">
       <button class="btn" id="prevBtn" title="Previous Slide (Phím mũi tên Trái)"><i class="fas fa-chevron-left"></i></button>
+      <button class="btn" id="fsBtn" title="Toggle Fullscreen (Phím F)"><i class="fas fa-expand"></i></button>
       <button class="btn" id="nextBtn" title="Next Slide (Phím mũi tên Phải)"><i class="fas fa-chevron-right"></i></button>
     </div>
     
     <!-- Lightbox Zoom Modal (Dùng class hidden, JS sẽ thêm/xóa flex để tránh xung đột Tailwind) -->
-    <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-95 z-[9999] hidden items-center justify-center cursor-zoom-out p-4 transition-all duration-300">
+    <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-95 hidden items-center justify-center cursor-zoom-out p-4 transition-all duration-300" style="z-index: 99999;">
       <img id="lightbox-img" class="max-w-[95%] max-h-[95%] object-contain border border-gray-800 rounded-lg shadow-2xl" src="" alt="Zoomed view" />
       <div class="absolute top-6 right-6 text-white text-3xl font-bold cursor-pointer hover:text-aws transition-colors"><i class="fas fa-times"></i></div>
     </div>
@@ -578,6 +579,7 @@
       const slides = document.querySelectorAll('.slide-container');
       const prevBtn = document.getElementById('prevBtn');
       const nextBtn = document.getElementById('nextBtn');
+      const fsBtn = document.getElementById('fsBtn');
       const lightbox = document.getElementById('lightbox');
       const lightboxImg = document.getElementById('lightbox-img');
 
@@ -594,7 +596,8 @@
         const scaleY = windowHeight / targetHeight;
         
         // Take the smaller scale factor to ensure it fits completely
-        const scale = Math.min(scaleX, scaleY) * 0.96; // 96% to leave a slight margin
+        // If in fullscreen, use 1.0 (100% of the screen) to truly fill screen. Otherwise use 0.96 to leave a margin.
+        const scale = Math.min(scaleX, scaleY) * (document.fullscreenElement ? 1.0 : 0.96);
         
         slides.forEach(slide => {
           slide.style.transform = `translate(-50%, -50%) scale(${scale})`;
@@ -627,8 +630,31 @@
         }
       }
 
+      // Fullscreen support
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable fullscreen: ${err.message}`);
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      }
+
       prevBtn.addEventListener('click', navigatePrev);
       nextBtn.addEventListener('click', navigateNext);
+      fsBtn.addEventListener('click', toggleFullscreen);
+
+      document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement) {
+          fsBtn.innerHTML = '<i class="fas fa-compress"></i>';
+          fsBtn.title = "Exit Fullscreen (Phím F)";
+        } else {
+          fsBtn.innerHTML = '<i class="fas fa-expand"></i>';
+          fsBtn.title = "Toggle Fullscreen (Phím F)";
+        }
+        adjustScale();
+      });
 
       // Keyboard Navigation
       document.addEventListener('keydown', (e) => {
@@ -638,6 +664,8 @@
           navigateNext();
         } else if (e.key === 'Escape') {
           hideLightbox();
+        } else if (e.key.toLowerCase() === 'f') {
+          toggleFullscreen();
         }
       });
 

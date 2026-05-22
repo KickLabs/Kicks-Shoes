@@ -153,10 +153,12 @@ Kicks-Shoes là hệ thống E-commerce hiện đang trong giai đoạn phát tr
 
 ####  Desired: 0, Running: 0 (Đã ngủ)
 ![ECS console → kicks-shoes-dev-service → Desired: 0, Running: 0 (Đã ngủ)](../../images/week6/20.png)
-*(Hướng dẫn: Mở AWS Console -> Tìm ECS -> Chọn cluster `kicks-shoes-dev-tientp-cluster` -> Tab Services / Tasks để xem trạng thái.)*
 
+####  🌅 Morning Wake-up routine initiated
 ![CloudWatch Logs → "Morning Wake-up routine initiated... Successfully woke up ECS Fargate Service" (Buổi sáng lúc 8h VN)](../../images/week6/21.png)
-*(Hướng dẫn: Mở AWS Console -> Tìm CloudWatch -> Log groups (hoặc Log Insights) -> Chọn Log group của Lambda tương ứng -> Xem log events.)*
+
+####  Running: 1
+![Running: 1](../../images/week6/33.png)
 
 ### Bằng chứng cho việc thực thi overbudget sẽ scale = 0
 
