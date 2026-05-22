@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button, Badge, Drawer, List, Avatar, Input, Spin } from 'antd';
 import { MessageOutlined, CloseOutlined, SendOutlined } from '@ant-design/icons';
 import { useAuth } from '../../../contexts/AuthContext';
-import ChatPage from './ChatPage';
+import BedrockChat from '../../pages/BedrockChat';
 import io from 'socket.io-client';
 import './ChatWidget.css';
 
@@ -121,12 +121,7 @@ const ChatWidget = () => {
           {/* Chat Content */}
           {!isMinimized && (
             <div className="chat-widget-content">
-              <ChatPage
-                role={user?.role}
-                userId={user?.role === 'customer' ? user?._id : undefined}
-                shopId={user?.role === 'shop' ? user?._id : user?.shopId}
-                isWidget={true}
-              />
+              <BedrockChat isWidget={true} />
             </div>
           )}
         </div>

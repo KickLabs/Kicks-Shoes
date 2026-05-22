@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>W6 Evidence Pack — Operations Hardening & Cost-Aware Cloud</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap&subset=vietnamese" rel="stylesheet" />
+    <style>
+      :root { --aws: #ff9900; --blue: #42a5f5; --bg: #050914; --panel: #0f172a; --muted: #94a3b8; }
+      * { box-sizing: border-box; }
+      body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #050914; font-family: 'Montserrat', sans-serif; color: #fff; overflow: hidden; }
+      .deck { position: relative; width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+      .slide-container { width: 1280px; height: 720px; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1); background: linear-gradient(135deg, #0b1329 0%, #030712 100%); overflow: hidden; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); transform-origin: center center; display: none; }
+      .grid-pattern { position: absolute; inset: 0; background-image: linear-gradient(rgba(255, 153, 0, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 153, 0, 0.02) 1px, transparent 1px); background-size: 30px 30px; z-index: 0; }
+      .circle { position: absolute; border-radius: 50%; opacity: 0.12; filter: blur(40px); }
+      .circle.orange { width: 500px; height: 500px; right: -150px; top: -150px; background: radial-gradient(circle, var(--aws) 0%, transparent 70%); }
+      .circle.blue { width: 400px; height: 400px; left: -100px; bottom: -100px; background: radial-gradient(circle, var(--blue) 0%, transparent 70%); }
+      .logo { position: absolute; top: 32px; left: 64px; display: flex; align-items: center; gap: 10px; z-index: 20; color: #fff; font-weight: 800; letter-spacing: 1px; font-size: 15px; }
+      .logo i { color: var(--aws); font-size: 22px; }
+      .slide-no { position: absolute; right: 64px; bottom: 32px; color: #64748b; font-size: 13px; z-index: 20; font-weight: 600; }
+      .accent-bar { position: absolute; left: 40px; top: 120px; width: 6px; height: 480px; border-radius: 4px; background: linear-gradient(180deg, var(--aws), #ffb84d); box-shadow: 0 0 16px rgba(255, 153, 0, 0.25); z-index: 10; }
+      .content { position: absolute; z-index: 10; left: 72px; right: 64px; top: 96px; bottom: 56px; display: flex; flex-direction: column; justify-content: flex-start; }
+      .title { font-size: 56px; line-height: 1.1; font-weight: 900; letter-spacing: -1.5px; }
+      .title span, .orange { color: var(--aws); }
+      .subtitle { color: var(--muted); font-size: 22px; font-weight: 300; margin-top: 16px; }
+      .kicker { color: var(--aws); text-transform: uppercase; letter-spacing: 2px; font-size: 12px; font-weight: 800; margin-bottom: 8px; }
+      .section-title { font-size: 34px; font-weight: 800; margin-bottom: 16px; line-height: 1.2; }
+      .card { background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); }
+      .card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; color: #f8fafc; }
+      .muted { color: var(--muted); }
+      .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(255, 153, 0, 0.3); color: #ffd39a; background: rgba(255, 153, 0, 0.06); padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+      .flow { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+      .two-col { display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; height: calc(100% - 70px); }
+      .two-equal { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; height: calc(100% - 70px); }
+      .img-evidence-container { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; height: 100%; transition: all 0.2s; }
+      .img-evidence-container:hover { border-color: rgba(255, 153, 0, 0.5); box-shadow: 0 0 15px rgba(255, 153, 0, 0.15); }
+      .img-evidence { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; }
+      .controls { position: fixed; bottom: 24px; right: 24px; display: flex; gap: 12px; z-index: 1000; }
+      .btn { background: rgba(15, 23, 42, 0.85); color: var(--aws); border: 1px solid rgba(255, 153, 0, 0.4); width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s; backdrop-filter: blur(4px); }
+      .btn:hover { background: rgba(255, 153, 0, 0.2); transform: scale(1.05); }
+      .code { background: #020617; border: 1px solid rgba(66, 165, 245, 0.15); color: #93c5fd; border-radius: 12px; padding: 12px; font-family: Consolas, monospace; font-size: 12px; white-space: pre-wrap; line-height: 1.4; }
+      .text-aws { color: var(--aws); }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button class="btn" id="prevBtn" title="Previous Slide (Phím mũi tên Trái)"><i class="fas fa-chevron-left"></i></button>
+      <button class="btn" id="fsBtn" title="Toggle Fullscreen (Phím F)"><i class="fas fa-expand"></i></button>
+      <button class="btn" id="nextBtn" title="Next Slide (Phím mũi tên Phải)"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    
+    <!-- Lightbox Zoom Modal (Dùng class hidden, JS sẽ thêm/xóa flex để tránh xung đột Tailwind) -->
+    <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-95 hidden items-center justify-center cursor-zoom-out p-4 transition-all duration-300" style="z-index: 99999;">
+      <img id="lightbox-img" class="max-w-[95%] max-h-[95%] object-contain border border-gray-800 rounded-lg shadow-2xl" src="" alt="Zoomed view" />
+      <div class="absolute top-6 right-6 text-white text-3xl font-bold cursor-pointer hover:text-aws transition-colors"><i class="fas fa-times"></i></div>
+    </div>
+
+    <div class="deck">
+      
+      <!-- Slide 1: Cover -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="circle orange"></div>
+        <div class="circle blue"></div>
+        <div class="logo"><i class="fab fa-aws"></i><span>KICKS SHOES CLOUD PLATFORM</span></div>
+        <div class="accent-bar"></div>
+        <div class="content" style="top: 185px">
+          <div class="kicker">Dự án Kicks Shoes — Nhóm 13Hz</div>
+          <h1 class="title">W6 Evidence Pack<br /><span>Operations Hardening</span><br />& Cost-Aware Cloud</h1>
+          <p class="subtitle">Báo cáo Vận hành Giám sát, Bảo mật Tự phục hồi & Tối ưu hóa Chi phí</p>
+          <div class="flow" style="margin-top: 48px">
+            <span class="pill"><i class="fas fa-server"></i> AWS Account: 962533717758</span>
+            <span class="pill"><i class="fas fa-map-marker-alt"></i> Region: us-east-1</span>
+            <span class="pill"><i class="fas fa-calendar-check"></i> 22/05/2026</span>
+          </div>
+        </div>
+        <div class="slide-no">1 / 10</div>
+      </section>
+
+      <!-- Slide 2: Project Recap & App Running End-to-End -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-wrench"></i><span>PROJECT RECAP & APP RUNNING</span></div>
+        <div class="accent-bar"></div>
+        <div class="content">
+          <div class="kicker">Carry-Forward & W5 Feedback Fixes</div>
+          <h2 class="section-title">Hạ tầng hoạt động & Khắc phục phản hồi Tuần trước</h2>
+          <div class="two-col">
+            <div class="flex flex-col gap-4">
+              <div class="card">
+                <h3><i class="fas fa-tools text-aws"></i> Khắc phục lỗi Tuần 5</h3>
+                <ul class="muted list-disc pl-5 space-y-1 text-xs">
+                  <li><strong>Firewall Multi-AZ:</strong> Chuyển Endpoint sang 2 subnet độc lập (AZ-a, AZ-b) triệt tiêu SPOF.</li>
+                  <li><strong>DLQ Payload:</strong> Bắt chính xác luồng Async chứa cờ <code>condition: "RetriesExhausted"</code>.</li>
+                  <li><strong>Backup Integrity:</strong> Đính chính nhãn tài nguyên và chạy <code>cat</code> file khôi phục trên EFS thành công.</li>
+                </ul>
+              </div>
+              <div class="card flex-1">
+                <h3><i class="fas fa-play-circle text-aws"></i> Trạng thái ứng dụng E2E</h3>
+                <p class="muted text-xs leading-relaxed">
+                  Hạ tầng 3-tier (ALB &rightarrow; ECS Fargate) hoạt động ổn định. AI Chatbot xử lý LLM RAG trơn tru thông qua API Gateway JWT Auth và Lambda Bedrock.
+                </p>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                  <div class="text-center p-1 bg-gray-800 rounded border border-gray-700 text-xs">
+                    <span class="text-green-400 font-bold">ALB Targets</span><br/><span class="text-white">HEALTHY</span>
+                  </div>
+                  <div class="text-center p-1 bg-gray-800 rounded border border-gray-700 text-xs">
+                    <span class="text-green-400 font-bold">ECS Service</span><br/><span class="text-white">RUNNING</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2 h-full">
+              <div class="img-evidence-container h-full">
+                <img class="img-evidence" src="../../images/week6/1.png" alt="ECS Running"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">ECS Tasks</div>
+              </div>
+              <div class="img-evidence-container h-full">
+                <img class="img-evidence" src="../../images/week6/2.png" alt="ALB Healthy"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">ALB Target Group</div>
+              </div>
+              <div class="img-evidence-container h-full">
+                <img class="img-evidence" src="../../images/week6/3.png" alt="Web FE"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">Browser UI Client</div>
+              </div>
+              <div class="img-evidence-container h-full">
+                <img class="img-evidence" src="../../images/week6/4.png" alt="Bedrock Chat"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">Bedrock RAG Chat</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">2 / 10</div>
+      </section>
+
+      <!-- Slide 3: MH-COST-V - Resource Tagging Strategy -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-tags"></i><span>MH-COST-V (RESOURCE TAGGING)</span></div>
+        <div class="accent-bar"></div>
+        <div class="content">
+          <div class="kicker">Cost Visibility & Attribution</div>
+          <h2 class="section-title">Chiến lược phân định Chi phí qua Tag chuẩn</h2>
+          <div class="two-col">
+            <div class="flex flex-col gap-4">
+              <div class="card flex-1">
+                <h3><i class="fas fa-id-card text-aws"></i> Bộ 4 Tag bắt buộc</h3>
+                <p class="muted text-xs mb-3">Được gán đồng bộ 100% trên toàn bộ hạ tầng (ECS, RDS, S3, KMS) để phân hóa chi phí:</p>
+                <table class="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr class="border-b border-gray-700 text-aws">
+                      <th class="py-1">Tag Key</th>
+                      <th class="py-1">Value chuẩn</th>
+                    </tr>
+                  </thead>
+                  <tbody class="muted">
+                    <tr class="border-b border-gray-800">
+                      <td class="py-1 font-semibold text-white">Owner</td>
+                      <td class="py-1">team-lead@kicks-shoes.com</td>
+                    </tr>
+                    <tr class="border-b border-gray-800">
+                      <td class="py-1 font-semibold text-white">Environment</td>
+                      <td class="py-1">dev / staging / prod</td>
+                    </tr>
+                    <tr class="border-b border-gray-800">
+                      <td class="py-1 font-semibold text-white">CostCenter</td>
+                      <td class="py-1">G13</td>
+                    </tr>
+                    <tr>
+                      <td class="py-1 font-semibold text-white">Application</td>
+                      <td class="py-1">KicksShoes</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="card text-xs">
+                <span class="pill"><i class="fas fa-shield-alt"></i> Enforcement Policy</span>
+                <p class="muted mt-2 leading-relaxed">
+                  Thiết lập AWS Config Rule <code>required-tags</code> và Service Control Policy (SCP) để từ chối các hành động khởi tạo tài nguyên nếu thiếu bộ tags chuẩn, ngăn chặn thất thoát kiểm soát chi phí ngay từ đầu.
+                </p>
+              </div>
+            </div>
+            
+            <div class="flex flex-col gap-3 h-full">
+              <div class="img-evidence-container flex-1">
+                <img class="img-evidence" src="../../images/week6/5.png" alt="ECS Tags"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">Tagging trên ECS Service</div>
+              </div>
+              <div class="img-evidence-container flex-1">
+                <img class="img-evidence" src="../../images/week6/6.png" alt="RDS Tags"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">Tagging trên RDS Database</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">3 / 10</div>
+      </section>
+
+      <!-- Slide 4: Cost Visibility (AWS Budgets & Cost Explorer) -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-chart-pie"></i><span>MH-COST-V (BUDGETS & ANALYSIS)</span></div>
+        <div class="accent-bar"></div>
+        <div class="content">
+          <div class="kicker">Cost Visibility & Attribution</div>
+          <h2 class="section-title"> AWS Budgets, Anomaly Detection & Cost Analysis</h2>
+          <div class="two-col">
+            <div class="flex flex-col gap-4 text-xs">
+              <div class="card">
+                <h3><i class="fas fa-exclamation-circle text-aws"></i> AWS Budgets & Anomaly Detection</h3>
+                <p class="muted leading-relaxed">
+                  Thiết lập cảnh báo ngân sách CAP tối đa **$150/tuần**. Tích hợp **AWS Cost Anomaly Detection** tự động phân tích hành vi chi tiêu bất thường dựa trên Machine Learning để cảnh báo tức thời qua Email/Slack.
+                </p>
+              </div>
+              <div class="card flex-1">
+                <h3><i class="fas fa-chart-line text-aws"></i> Phân tích Top 3 Cost Drivers</h3>
+                <ol class="muted list-decimal pl-5 space-y-2 mt-1">
+                  <li>
+                    <strong class="text-white">AWS Network Firewall (80%+):</strong> Chiếm chi phí lớn nhất (~$0.395/endpoint/giờ) do chạy chế độ Multi-AZ để đảm bảo tính chịu lỗi (HA).
+                  </li>
+                  <li>
+                    <strong class="text-white">ECS Fargate:</strong> Chi phí rất tối ưu do điều chỉnh Task Size nhỏ nhất tương thích với tải.
+                  </li>
+                  <li>
+                    <strong class="text-white">ElastiCache Redis:</strong> Phục vụ cache session và tốc độ tải trang E-commerce.
+                  </li>
+                </ol>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2 h-full">
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/7.png" alt="AWS Budgets"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">AWS Budgets Cap</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/8.png" alt="AWS Budgets Setup"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">Budget Alert Setup</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/9.png" alt="Anomaly Detection"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">Anomaly Detection Monitor</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/10.png" alt="Cost Explorer"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">Cost Explorer: Group by Service</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">4 / 10</div>
+      </section>
+
+      <!-- Slide 5: MH-COST-A - Cost Guard Architecture -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-microchip"></i><span>MH-COST-A (COST GUARD ARCHITECTURE)</span></div>
+        <div class="accent-bar"></div>
+        <div class="content">
+          <div class="kicker">Cost Control & Action</div>
+          <h2 class="section-title">Hạ tầng Cost Guard bảo vệ Ngân sách</h2>
+          <div class="two-col">
+            <div class="flex flex-col gap-4 text-xs">
+              <div class="card flex-1">
+                <h3><i class="fas fa-code text-aws"></i> Lambda Cost Guard</h3>
+                <p class="muted leading-relaxed mb-2">
+                  Được phát triển bằng Python 3.12, gán IAM Role Least-Privilege cho phép tương tác trực tiếp với:
+                </p>
+                <div class="grid grid-cols-3 gap-2 text-center text-[10px]">
+                  <div class="p-1 bg-gray-800 rounded border border-gray-700">ecs:UpdateService</div>
+                  <div class="p-1 bg-gray-800 rounded border border-gray-700">autoscaling:*</div>
+                  <div class="p-1 bg-gray-800 rounded border border-gray-700">budgets:ViewBudget</div>
+                </div>
+              </div>
+              <div class="card flex-1">
+                <h3><i class="fas fa-route text-aws"></i> Vòng lặp kích hoạt (Triggers)</h3>
+                <ul class="muted list-disc pl-5 space-y-1.5">
+                  <li><strong>Night Scale-Down:</strong> Tự động kích hoạt lúc **20:00 VN** hàng ngày qua EventBridge Scheduler để hạ `DesiredCount` và `MinCapacity` về 0.</li>
+                  <li><strong>Morning Wake-Up:</strong> Kích hoạt lúc **08:00 VN**. Lambda đọc AWS Budgets, nếu thực chi chưa vượt ngân sách thì mới mở khóa cho phép hạ tầng khởi động lại.</li>
+                  <li><strong>SNS Budget Alert (Overbudget):</strong> Đẩy tín hiệu khẩn cấp hạ DesiredCount lập tức nếu chi phí chạm ngưỡng cảnh báo.</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 h-full">
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/11.png" alt="Lambda Cost Guard"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">Lambda Function</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/12.png" alt="IAM Policy"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">IAM Least-Privilege</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/13.png" alt="EventBridge Scheduler"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">EventBridge Cron</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/14.png" alt="2 Budgets"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">Daily & Weekly Budgets</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/15.png" alt="SNS Topic"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">SNS to Lambda Chain</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/16.png" alt="ECS Scaling Policy"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">ECS Auto Scaling</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">5 / 10</div>
+      </section>
+
+      <!-- Slide 6: Cost Action - Smart Wake-up & Sleep Demo -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-bed"></i><span>MH-COST-A (SMART SCALING DEMO)</span></div>
+        <div class="accent-bar"></div>
+        <div class="content">
+          <div class="kicker">Cost Control & Action</div>
+          <h2 class="section-title">Minh chứng Vận hành "Ngủ đêm - Dậy sáng - Chặn Lố"</h2>
+          <div class="two-col">
+            <div class="flex flex-col gap-4 text-xs">
+              <div class="card">
+                <h3><i class="fas fa-moon text-aws"></i> 1. Trình tự Tắt Đêm (Night Sleep Routine)</h3>
+                <p class="muted leading-relaxed">
+                  Lúc 20:00 VN, EventBridge kích hoạt Lambda Cost Guard -> Thực hiện cập nhật ECS Service desiredCount = 0.
+                </p>
+                <div class="text-[10px] mt-1 text-red-300 font-mono">
+                  &gt; [INFO] Successfully scaled kicks-shoes-dev-tientp-service down to 0
+                </div>
+              </div>
+              <div class="card flex-1">
+                <h3><i class="fas fa-sun text-aws"></i> 2. Trình tự Dậy Sáng & Bảo vệ quá chi phí</h3>
+                <p class="muted leading-relaxed">
+                  Lúc 08:00 VN, Lambda kiểm tra Budget.
+                  <br/>- <strong>Nếu an toàn:</strong> Scale-up DesiredCount = 1.
+                  <br/>- <strong>Nếu vượt quá ngân sách:</strong> Khóa cứng DesiredCount = 0 để bảo vệ ngân sách chủ sở hữu.
+                </p>
+                <div class="text-[10px] mt-1 text-green-300 font-mono">
+                  &gt; [INFO] Budget check: ActualSpend=$18.70, Limit=$150.00
+                  <br/>&gt; [INFO] Successfully woke up ECS Fargate Service
+                </div>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 h-full">
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/18.png" alt="ECS Daytime active"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">Daytime: Active (Desired=1)</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/19.png" alt="Scale Down logs"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">Night Scale-Down Log</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/20.png" alt="ECS Sleep state"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">Night: Sleep (Desired=0)</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/21.png" alt="Wake up logs"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">Morning Wake-up Log</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/autoscaleoverbudget.png" alt="Overbudget log"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">Overbudget: Block Wake Log</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/17.png" alt="CW trigger logs"/>
+                <div class="absolute bottom-1 left-1.5 text-[9px] bg-black bg-opacity-70 px-1 rounded">EventBridge Trigger Log</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">6 / 10</div>
+      </section>
+
+      <!-- Slide 7: Cost Optimization (S3 Backup & Lifecycle Rules) -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-leaf"></i><span>FINOPS REFLECTION & SAVINGS</span></div>
+        <div class="accent-bar"></div>
+        <div class="content">
+          <div class="kicker">Cost-Aware Cloud (FinOps Stretch Goal)</div>
+          <h2 class="section-title">Nhìn lại & Tối ưu hóa kiến trúc hạ tầng</h2>
+          <div class="two-col">
+            <div class="flex flex-col gap-4 text-xs">
+              <div class="card flex-1">
+                <h3><i class="fas fa-trash-alt text-red-400"></i> Điểm Lãng Phí Cũ (Storage Waste)</h3>
+                <p class="muted leading-relaxed">
+                  Thiết kế ban đầu sử dụng Amazon EFS ($0.30/GB/tháng) để lưu trữ hình ảnh tĩnh là quá dư thừa, tăng phí compute không đáng có do cần duy trì mount point 24/7.
+                </p>
+                <div class="mt-2 text-red-300 font-bold text-[10px]">
+                  &times; Chi phí lưu trữ EFS: $0.30/GB/tháng
+                </div>
+              </div>
+              <div class="card flex-1">
+                <h3><i class="fas fa-check-circle text-green-400"></i> Cải Tiến Mới (S3 + Lifecycle Rules)</h3>
+                <p class="muted leading-relaxed">
+                  Gỡ bỏ hoàn toàn EFS, chuyển sang **Amazon S3** ($0.023/GB/tháng) kết hợp:
+                </p>
+                <ul class="muted list-disc pl-5 mt-1 text-[10px]">
+                  <li>Sử dụng **AWS Backup Plans** tự động sao lưu định kỳ cho S3 Uploads.</li>
+                  <li>Cấu hình **S3 Lifecycle Policy** chuyển dữ liệu sang Standard-IA sau 30 ngày và tự động Expire xóa sau 90 ngày.</li>
+                </ul>
+                <div class="mt-2 text-green-300 font-bold text-[10px]">
+                  ✔ Chi phí lưu trữ S3: $0.023/GB/tháng (Tiết kiệm >80%)
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex flex-col gap-3 h-full">
+              <div class="img-evidence-container flex-1">
+                <img class="img-evidence" src="../../images/week6/22.png" alt="AWS Backup S3"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">AWS Backup: Backup Plan cho S3 Uploads</div>
+              </div>
+              <div class="img-evidence-container flex-1">
+                <img class="img-evidence" src="../../images/week6/23.png" alt="S3 Lifecycle rules"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">S3 Lifecycle: Transition & Expire Rules</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">7 / 10</div>
+      </section>
+
+      <!-- Slide 8: MH-OBS - CloudWatch Observability Dashboard -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-chart-line"></i><span>MH-OBS (OBSERVABILITY DASHBOARD)</span></div>
+        <div class="accent-bar"></div>
+        <div class="content">
+          <div class="kicker">CloudWatch Observability</div>
+          <h2 class="section-title">Trung tâm Giám sát Vận hành CloudWatch</h2>
+          <div class="two-col">
+            <div class="flex flex-col gap-4 text-xs">
+              <div class="card flex-1">
+                <h3><i class="fas fa-sliders-h text-aws"></i> Dashboard & Custom Metrics</h3>
+                <p class="muted leading-relaxed">
+                  Thiết lập Dashboard tập trung <code>kicks-shoes-dev-operations</code> để theo dõi sức khỏe hệ thống:
+                </p>
+                <ul class="muted list-disc pl-5 mt-1 space-y-1">
+                  <li><strong>Custom Metric (Bedrock Query Latency):</strong> Đẩy trực tiếp từ mã nguồn Lambda để giám sát thời gian xử lý LLM RAG thực tế của Trợ lý AI.</li>
+                  <li><strong>Standard Metrics:</strong> Giám sát ECS CPU, Lambda Errors, API Gateway 4XX/5XX.</li>
+                </ul>
+              </div>
+              <div class="card text-xs">
+                <h3><i class="fas fa-bell text-aws"></i> Log Insights & Alarms</h3>
+                <p class="muted leading-relaxed mb-2">
+                  Cấu hình Alarm phát hiện bất thường của Lambda (trạng thái **OK / ALARM**). Xây dựng câu truy vấn lưu trữ sẵn (Saved Query) lọc lỗi nhanh:
+                </p>
+                <div class="code text-[9px] p-2">fields @timestamp, @message | filter @message like /ERROR/ | stats count(*) by bin(5m) | limit 20</div>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 gap-2 h-full">
+              <div class="img-evidence-container" style="height: 160px;">
+                <img class="img-evidence" src="../../images/week6/24.png" alt="CloudWatch Dashboard"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">Operations Operations Dashboard</div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 flex-1">
+                <div class="img-evidence-container">
+                  <img class="img-evidence" src="../../images/week6/25.png" alt="Lambda Alarm"/>
+                  <div class="absolute bottom-1 left-2 text-[9px] bg-black bg-opacity-70 px-1 py-0.5 rounded">Lambda Failure Alarm (OK)</div>
+                </div>
+                <div class="img-evidence-container">
+                  <img class="img-evidence" src="../../images/week6/26.png" alt="Log Insights"/>
+                  <div class="absolute bottom-1 left-2 text-[9px] bg-black bg-opacity-70 px-1 py-0.5 rounded">Log Insights Query Results</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">8 / 10</div>
+      </section>
+
+      <!-- Slide 9: MH-SEC - Self-Healing S3 Block Public Access -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-shield-alt"></i><span>MH-SEC (SELF-HEALING SECURITY)</span></div>
+        <div class="accent-bar"></div>
+        <div class="content">
+          <div class="kicker">Self-Healing Security Guard</div>
+          <h2 class="section-title">Vòng lặp Vá lỗ hổng S3 tự phục hồi dưới 1 phút</h2>
+          <div class="two-col">
+            <div class="flex flex-col gap-4 text-xs">
+              <div class="card flex-1">
+                <h3><i class="fas fa-compress-alt text-red-400"></i> Blast Radius & Đánh giá Rủi ro</h3>
+                <p class="muted leading-relaxed">
+                  Nếu S3 Uploads Bucket vô tình bị tắt chế độ **Block Public Access (BPA)**, toàn bộ tài liệu và thông tin PII khách hàng sẽ bị công khai. Kẻ tấn công có thể quét càn quét dữ liệu, gây thất thoát tài sản số và vi phạm tuân thủ dữ liệu (GDPR/ISO).
+                </p>
+              </div>
+              <div class="card flex-1">
+                <h3><i class="fas fa-undo-alt text-green-400"></i> Cơ chế Tự Phục Hồi (Remediation)</h3>
+                <p class="muted leading-relaxed">
+                  Khi BPA bị chuyển sang <span class="text-red-400 font-bold">OFF</span>:
+                  <br/>1. CloudTrail ghi nhận event -> Gửi tín hiệu kích hoạt EventBridge Rule.
+                  <br/>2. Lambda **security-guard** được gọi lập tức -> Gọi API <code>PutBucketPublicAccessBlock</code> để ép trạng thái BPA về lại <span class="text-green-400 font-bold">ON</span>.
+                  <br/>3. **Thời gian vá lỗi tự động:** Dưới **1 phút**, bảo vệ dữ liệu tức thì.
+                </p>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2 h-full">
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/27.png" alt="BPA OFF"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">1. BPA bị tắt (Trạng thái nguy hiểm)</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/28.png" alt="CW Remediation Log"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">2. Lambda phát hiện & Remediating</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/29.png" alt="BPA ON"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">3. BPA được khôi phục ON (An toàn)</div>
+              </div>
+              <div class="img-evidence-container">
+                <img class="img-evidence" src="../../images/week6/30.png" alt="CloudTrail Evidence"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">4. Audit Trail: Lambda sửa BPA</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">9 / 10</div>
+      </section>
+
+      <!-- Slide 10: KMS Default Key Protection & Trade-off -->
+      <section class="slide-container">
+        <div class="grid-pattern"></div>
+        <div class="logo"><i class="fas fa-key"></i><span>MH-SEC (KMS CMK & AUDITING)</span></div>
+        <div class="accent-bar"></div>
+        <div class="content">
+          <div class="kicker">Supporting Preventive Control</div>
+          <h2 class="section-title">Khóa KMS CMK & Đánh đổi Bảo mật - Chi phí</h2>
+          <div class="two-col">
+            <div class="flex flex-col gap-4 text-xs">
+              <div class="card flex-1">
+                <h3><i class="fas fa-lock text-aws"></i> Customer Managed Key (CMK)</h3>
+                <p class="muted leading-relaxed">
+                  Áp dụng khóa Symmetric CMK <code>alias/kicks-shoes-dev-s3-uploads</code> để mã hóa tĩnh cho S3 Uploads Bucket thay vì dùng key mặc định AWS S3.
+                </p>
+                <div class="mt-2 text-green-300 font-bold text-[10px]">
+                  ✔ Bật tính năng tự động xoay vòng khóa hàng năm (Key rotation).
+                </div>
+              </div>
+              <div class="card flex-1">
+                <h3><i class="fas fa-balance-scale text-aws"></i> Đánh đổi Bảo mật và Chi phí</h3>
+                <p class="muted leading-relaxed">
+                  * **Chi phí:** Tốn thêm **$1/tháng/key** cùng chi phí nhỏ cho API calls (<code>kms:GenerateDataKey</code>).
+                  * **Lợi ích đổi lại (Justified):** Khóa CMK ghi lại toàn bộ nhật ký kiểm toán (Audit Trail) chi tiết trên CloudTrail với đầy đủ thông tin IAM User và Timestamp khi giải mã file. Nếu xảy ra rò rỉ, đội ngũ có thể truy vết nguồn gốc (Forensic) chính xác, điều mà khóa mặc định SSE-S3 không thể cung cấp được.
+                </p>
+              </div>
+            </div>
+            
+            <div class="flex flex-col gap-3 h-full">
+              <div class="img-evidence-container flex-1">
+                <img class="img-evidence" src="../../images/week6/31.png" alt="KMS Rotation"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">KMS: Key rotation Enabled</div>
+              </div>
+              <div class="img-evidence-container flex-1">
+                <img class="img-evidence" src="../../images/week6/32.png" alt="CloudTrail KMS Log"/>
+                <div class="absolute bottom-1 left-2 text-[10px] bg-black bg-opacity-70 px-2 py-0.5 rounded">CloudTrail: GenerateDataKey Audit Log</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slide-no">10 / 10</div>
+      </section>
+
+    </div>
+
+    <script>
+      let currentSlide = 0;
+      const slides = document.querySelectorAll('.slide-container');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const fsBtn = document.getElementById('fsBtn');
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImg = document.getElementById('lightbox-img');
+
+      // Auto-scaling logic to fit any screen size (fullscreen support)
+      function adjustScale() {
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        
+        // Target slide size: 1280x720
+        const targetWidth = 1280;
+        const targetHeight = 720;
+        
+        const scaleX = windowWidth / targetWidth;
+        const scaleY = windowHeight / targetHeight;
+        
+        // Take the smaller scale factor to ensure it fits completely
+        // If in fullscreen, use 1.0 (100% of the screen) to truly fill screen. Otherwise use 0.96 to leave a margin.
+        const scale = Math.min(scaleX, scaleY) * (document.fullscreenElement ? 1.0 : 0.96);
+        
+        slides.forEach(slide => {
+          slide.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        });
+      }
+
+      function showSlide(index) {
+        slides.forEach((s, i) => {
+          if (i === index) {
+            s.style.display = 'block';
+          } else {
+            s.style.display = 'none';
+          }
+        });
+        adjustScale();
+      }
+
+      // Slide Navigation
+      function navigatePrev() {
+        if (currentSlide > 0) {
+          currentSlide--;
+          showSlide(currentSlide);
+        }
+      }
+
+      function navigateNext() {
+        if (currentSlide < slides.length - 1) {
+          currentSlide++;
+          showSlide(currentSlide);
+        }
+      }
+
+      // Fullscreen support
+      function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable fullscreen: ${err.message}`);
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      }
+
+      prevBtn.addEventListener('click', navigatePrev);
+      nextBtn.addEventListener('click', navigateNext);
+      fsBtn.addEventListener('click', toggleFullscreen);
+
+      document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement) {
+          fsBtn.innerHTML = '<i class="fas fa-compress"></i>';
+          fsBtn.title = "Exit Fullscreen (Phím F)";
+        } else {
+          fsBtn.innerHTML = '<i class="fas fa-expand"></i>';
+          fsBtn.title = "Toggle Fullscreen (Phím F)";
+        }
+        adjustScale();
+      });
+
+      // Keyboard Navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+          navigatePrev();
+        } else if (e.key === 'ArrowRight') {
+          navigateNext();
+        } else if (e.key === 'Escape') {
+          hideLightbox();
+        } else if (e.key.toLowerCase() === 'f') {
+          toggleFullscreen();
+        }
+      });
+
+      // Window Resize Handler
+      window.addEventListener('resize', adjustScale);
+
+      // Lightbox Controls
+      function showLightbox(src, alt) {
+        lightboxImg.src = src;
+        lightboxImg.alt = alt;
+        lightbox.classList.remove('hidden');
+        lightbox.classList.add('flex');
+      }
+
+      function hideLightbox() {
+        lightbox.classList.remove('flex');
+        lightbox.classList.add('hidden');
+      }
+
+      // Lightbox Zoom Logic
+      const evidenceImages = document.querySelectorAll('.img-evidence');
+      evidenceImages.forEach(img => {
+        img.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showLightbox(img.src, img.alt);
+        });
+      });
+
+      lightbox.addEventListener('click', hideLightbox);
+
+      // Initialize
+      showSlide(currentSlide);
+    </script>
+  </body>
+</html>

@@ -10,7 +10,7 @@ COPY frontend/package*.json ./frontend/
 # Install dependencies
 RUN npm install
 RUN cd backend && npm install
-RUN cd frontend && npm install
+RUN cd frontend && npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -22,4 +22,4 @@ RUN cd frontend && npm run build
 EXPOSE 5000
 
 # Start backend
-CMD ["cd", "backend", "&&", "npm", "start"] 
+CMD ["sh", "-c", "cd backend && npm start"]

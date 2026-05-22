@@ -1,0 +1,123 @@
+{
+    "family": "kicks-shoes-dev-tientp-service",
+    "taskRoleArn": "arn:aws:iam::318662970982:role/kicks-shoes-dev-tientp-service-20260513165419202800000011",
+    "executionRoleArn": "arn:aws:iam::318662970982:role/kicks-shoes-dev-tientp-service-2026051316541773280000000f",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+        {
+            "name": "app",
+            "image": "318662970982.dkr.ecr.us-east-1.amazonaws.com/kicks-shoes-backend:dev-latest",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "containerPort": 3000,
+                    "hostPort": 3000,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "AWS_REGION",
+                    "value": "us-east-1"
+                },
+                {
+                    "name": "PORT",
+                    "value": "3000"
+                },
+                {
+                    "name": "DYNAMODB_TABLE_NAME",
+                    "value": "kicks-shoes-dev-tientp-chat-messages"
+                },
+                {
+                    "name": "DYNAMODB_CHAT_TABLE",
+                    "value": "kicks-shoes-dev-tientp-chat-messages"
+                },
+                {
+                    "name": "ALLOW_ANY_CLOUDFRONT",
+                    "value": "true"
+                },
+                {
+                    "name": "HOST",
+                    "value": "0.0.0.0"
+                },
+                {
+                    "name": "NODE_ENV",
+                    "value": "production"
+                },
+                {
+                    "name": "CLOUDFRONT_URL",
+                    "value": "https://d1n7m1eramrdgj.cloudfront.net"
+                }
+            ],
+            "mountPoints": [
+                {
+                    "sourceVolume": "efs-app-data",
+                    "containerPath": "/mnt/efs",
+                    "readOnly": false
+                }
+            ],
+            "secrets": [
+                {
+                    "name": "JWT_SECRET",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:318662970982:secret:kicks-shoes-dev-tientp/app-config-z1x8TJ:JWT_SECRET::"
+                },
+                {
+                    "name": "JWT_REFRESH_SECRET",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:318662970982:secret:kicks-shoes-dev-tientp/app-config-z1x8TJ:JWT_REFRESH_SECRET::"
+                },
+                {
+                    "name": "MONGODB_URI",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:318662970982:secret:kicks-shoes-dev-tientp/app-config-z1x8TJ:MONGODB_URI::"
+                },
+                {
+                    "name": "GOOGLE_AI_API_KEY",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:318662970982:secret:kicks-shoes-dev-tientp/app-config-z1x8TJ:GOOGLE_AI_API_KEY::"
+                },
+                {
+                    "name": "GOOGLE_MAILER_CLIENT_ID",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:318662970982:secret:kicks-shoes-dev-tientp/app-config-z1x8TJ:GOOGLE_MAILER_CLIENT_ID::"
+                },
+                {
+                    "name": "GOOGLE_MAILER_CLIENT_SECRET",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:318662970982:secret:kicks-shoes-dev-tientp/app-config-z1x8TJ:GOOGLE_MAILER_CLIENT_SECRET::"
+                },
+                {
+                    "name": "GOOGLE_MAILER_REFRESH_TOKEN",
+                    "valueFrom": "arn:aws:secretsmanager:us-east-1:318662970982:secret:kicks-shoes-dev-tientp/app-config-z1x8TJ:GOOGLE_MAILER_REFRESH_TOKEN::"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/kicks-shoes-dev-tientp",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ],
+    "volumes": [
+        {
+            "name": "efs-app-data",
+            "efsVolumeConfiguration": {
+                "fileSystemId": "fs-07bb685d649bcce04",
+                "rootDirectory": "/",
+                "transitEncryption": "ENABLED",
+                "authorizationConfig": {
+                    "accessPointId": "fsap-0d82e965dc6e65a7a",
+                    "iam": "ENABLED"
+                }
+            }
+        }
+    ],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "runtimePlatform": {
+        "cpuArchitecture": "X86_64",
+        "operatingSystemFamily": "LINUX"
+    }
+}

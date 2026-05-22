@@ -1,4 +1,4 @@
-node_modules
+# node_modules is copied from local build (not ignored)
 npm-debug.log
 .env
 .env.*
