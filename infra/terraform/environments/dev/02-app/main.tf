@@ -672,7 +672,7 @@ module "lambda_bedrock_chat" {
   lambda_zip_path = fileexists("${path.module}/../../../../../backend/lambda/bedrock-chat/bedrock-chat.zip") ? "${path.module}/../../../../../backend/lambda/bedrock-chat/bedrock-chat.zip" : "${path.module}/../../../lambda-placeholder.zip"
 
   # Bedrock configuration
-  bedrock_kb_id  = "3MR7O4U9IC" # Your Bedrock Knowledge Base ID
+  bedrock_kb_id  = "SPFM4YMNBB" # Your Bedrock Knowledge Base ID
   bedrock_region = "us-east-1"  # Bedrock KB region
 
   # DynamoDB configuration
@@ -743,7 +743,6 @@ resource "aws_vpc_endpoint" "dynamodb" {
 # }
 
 # Enforce deterministic routing via local-exec to override standard VPC module routes
-/*
 resource "null_resource" "firewall_routing" {
   triggers = {
     firewall_id = aws_networkfirewall_firewall.main.id
@@ -754,7 +753,7 @@ resource "null_resource" "firewall_routing" {
   provisioner "local-exec" {
     command     = <<-EOT
       $statusJson = (aws network-firewall describe-firewall --firewall-name ${aws_networkfirewall_firewall.main.name} --region ${var.aws_region} | ConvertFrom-Json)
-      $endpointId = $statusJson.FirewallStatus.SyncStates[0].Attachment.EndpointId
+      $endpointId = $statusJson.FirewallStatus.SyncStates.psobject.properties.value[0].Attachment.EndpointId
       if ($endpointId) {
         Write-Host "Updating private route table to route via Firewall Endpoint $endpointId..."
         aws ec2 replace-route --route-table-id ${data.aws_route_table.private.id} --destination-cidr-block 0.0.0.0/0 --vpc-endpoint-id $endpointId --region ${var.aws_region} 2>&1 | Out-Null
@@ -777,4 +776,4 @@ resource "null_resource" "firewall_routing" {
 
   depends_on = [aws_networkfirewall_firewall.main]
 }
-*/
+
