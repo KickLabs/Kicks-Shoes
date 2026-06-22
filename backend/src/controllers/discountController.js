@@ -1,4 +1,6 @@
 import Discount from '../models/Discount.js';
+import Order from '../models/Order.js';
+import UserDiscount from '../models/UserDiscount.js';
 
 // Get all discounts
 const getAllDiscounts = async (req, res) => {
@@ -238,25 +240,91 @@ const deleteDiscount = async (req, res) => {
   }
 };
 
-// Get active discounts (public endpoint)
+// Get active discounts for Available Coupons
+// Only shows vouchers that user has saved (UserDiscount with status='saved')
+// Excludes reward_points discounts - those must be entered manually
 const getActiveDiscounts = async (req, res) => {
   try {
     const now = new Date();
-    const discounts = await Discount.find({
-      status: 'active',
-      startDate: { $lte: now },
-      endDate: { $gte: now },
-      $expr: { $lt: ['$usedCount', '$usageLimit'] },
-    })
-      .select(
-        'code description type value minPurchase maxDiscount startDate endDate status source usageLimit usedCount'
-      )
-      .sort({ createdAt: -1 });
+    const userId = req.user?._id; // Get user if authenticated (optional)
 
-    res.status(200).json({
-      success: true,
-      data: discounts,
-    });
+    // If user is authenticated, get only saved vouchers
+    if (userId) {
+      // Get user's saved discounts (UserDiscount with status='saved')
+      const userDiscounts = await UserDiscount.find({
+        user: userId,
+        status: 'saved',
+      })
+        .populate({
+          path: 'discount',
+          match: {
+            status: 'active',
+            startDate: { $lte: now },
+            endDate: { $gte: now },
+            $expr: { $lt: ['$usedCount', '$usageLimit'] },
+            source: { $ne: 'reward_points' }, // Exclude reward_points discounts
+          },
+        })
+        .sort({ createdAt: -1 });
+
+      // Filter out null discounts (from populate match) and check if discount is still valid
+      const validDiscounts = [];
+
+      for (const userDiscount of userDiscounts) {
+        // Skip if discount was filtered out by populate match (null)
+        if (!userDiscount.discount) {
+          continue;
+        }
+
+        const discount = userDiscount.discount;
+
+        // Double check: exclude reward_points (should be filtered by populate match, but just in case)
+        if (discount.source === 'reward_points') {
+          continue;
+        }
+
+        // Check if user has already used this discount
+        const userUsageCount = await Order.countDocuments({
+          user: userId,
+          discountCode: discount.code,
+          status: { $in: ['delivered', 'processing', 'shipped', 'completed'] },
+        });
+
+        // Check perUserLimit
+        if (discount.perUserLimit && userUsageCount >= discount.perUserLimit) {
+          continue; // User has used this discount max times
+        }
+
+        // Discount is valid and available
+        validDiscounts.push({
+          id: discount._id,
+          code: discount.code,
+          description: discount.description || `Discount ${discount.code}`,
+          type: discount.type,
+          value: discount.value,
+          minPurchase: discount.minPurchase,
+          maxDiscount: discount.maxDiscount,
+          startDate: discount.startDate,
+          endDate: discount.endDate,
+          status: discount.status,
+          source: discount.source,
+          usageLimit: discount.usageLimit,
+          usedCount: discount.usedCount,
+          perUserLimit: discount.perUserLimit,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: validDiscounts,
+      });
+    } else {
+      // Not authenticated - return empty array (user must login to see saved vouchers)
+      return res.status(200).json({
+        success: true,
+        data: [],
+      });
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
